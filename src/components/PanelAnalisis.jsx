@@ -10,10 +10,10 @@ const VENDEDORES = [
 ]
 
 const RECOMENDACIONES = [
-  { tipo: 'corrige', etiqueta: 'Corrige', titulo: 'CGI Video Animación está perdiendo dinero', texto: 'Después de impuestos, comisiones y horas quedó en pérdida. Antes de venderlo otra vez, revisa el precio.' },
-  { tipo: 'corrige', etiqueta: 'Corrige', titulo: 'Dependes de Realidad Aumentada', texto: '67% de lo que vendes viene de un solo producto. Si baja, el ingreso baja con él.' },
-  { tipo: 'aprovecha', etiqueta: 'Aprovecha', titulo: 'Empuja Realidad Aumentada', texto: 'Es el que más ganancia deja. Hay espacio para venderlo más.' },
-  { tipo: 'oportunidad', etiqueta: 'Oportunidad', titulo: 'Vende más Desarrollo con IA', texto: 'Deja 58% de margen y solo se vendió 4 veces.' },
+  { tipo: 'corrige', etiqueta: 'Corrige', titulo: '12 clientes llevan más de 7 días sin contacto', texto: 'Programa un seguimiento hoy para no perderlos. Shifu puede redactar los mensajes.' },
+  { tipo: 'corrige', etiqueta: 'Corrige', titulo: 'Dependes de un solo cliente grande', texto: 'Es el 42% de tus negocios abiertos. Si se enfría, tu pipeline baja con él.' },
+  { tipo: 'aprovecha', etiqueta: 'Aprovecha', titulo: 'Responder rápido te hace cerrar más', texto: 'Cierras 2 de cada 5 cuando contestas en menos de una hora.' },
+  { tipo: 'oportunidad', etiqueta: 'Oportunidad', titulo: 'Reactiva a tus clientes de hace 6 meses', texto: 'Hay 18 que ya te compraron y no han vuelto: un mensaje a tiempo los puede traer de regreso.' },
 ]
 
 function Resumen() {
@@ -71,7 +71,7 @@ function Equipo() {
 function Recomendaciones() {
   return (
     <div className="pa-escena">
-      <span className="pa-peq">Qué vender y qué no · según lo que vendió y dejó cada producto</span>
+      <span className="pa-peq">Qué hacer hoy · según cómo van tus clientes</span>
       <div className="pa-recs">
         {RECOMENDACIONES.map((r) => (
           <div key={r.titulo} className={`pa-rec pa-rec-${r.tipo}`}>

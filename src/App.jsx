@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import BriefPage from './pages/BriefPage'
 import LoginPage from './pages/LoginPage'
+import CrmPage from './pages/CrmPage'
 import PanelPage from './pages/PanelPage'
 
 export default function App() {
@@ -10,6 +11,7 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/bienvenida" element={<BriefPage />} />
+      <Route path="/mi-crm" element={<CrmPage />} />
       <Route path="/panel" element={<PanelPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -1,5 +1,6 @@
-/* Preguntas del brief de bienvenida y reglas que convierten las respuestas en recomendaciones.
- * Para agregar o cambiar una pregunta basta con editar esta lista: la pantalla se arma sola. */
+/* Preguntas del cuestionario de bienvenida y reglas que convierten las respuestas en recomendaciones.
+ * Shifu ayuda a crear CRMs con IA: las preguntas buscan entender a qué clientes atiende la persona, cómo les da seguimiento hoy
+ * y qué quiere lograr. Para agregar o cambiar una pregunta basta con editar esta lista: la pantalla se arma sola. */
 
 const o = (v, e, t, d) => ({ v, e, t, d })
 
@@ -7,57 +8,56 @@ export const PREGUNTAS = [
   // ───────── 1 · Tu negocio ─────────
   { id: 'nombre', capitulo: 'Tu negocio', emoji: '👋', tipo: 'texto', requerido: true,
     titulo: '¡Te damos la bienvenida a Shifu! ¿Cómo se llama tu negocio?',
-    sub: 'Con eso empezamos a personalizar todo para ti.', placeholder: 'Por ejemplo: Casa Verde' },
+    sub: 'Con eso empezamos a armar tu CRM a tu medida.', placeholder: 'Por ejemplo: Estudio Aurora' },
   { id: 'ubicacion', capitulo: 'Tu negocio', emoji: '🌎', tipo: 'ubicacion',
-    titulo: (r) => `Mucho gusto${r.nombre ? `, ${r.nombre}` : ''}. ¿Desde dónde vendes?`,
-    sub: 'Nos ayuda a sugerirte moneda, impuestos y envíos.',
+    titulo: (r) => `Mucho gusto${r.nombre ? `, ${r.nombre}` : ''}. ¿Desde dónde trabajas?`,
+    sub: 'Nos ayuda a sugerirte moneda, impuestos y horarios.',
     opciones: [o('gt', '🇬🇹', 'Guatemala'), o('mx', '🇲🇽', 'México'), o('co', '🇨🇴', 'Colombia'), o('es', '🇪🇸', 'España'), o('us', '🇺🇸', 'Estados Unidos'), o('otro', '🌍', 'Otro país')] },
-  { id: 'rubro', capitulo: 'Tu negocio', emoji: '🛍️', tipo: 'una', requerido: true,
-    titulo: '¿A qué se dedica tu negocio?', sub: 'Elige el que más se parezca.',
-    opciones: [o('moda', '👗', 'Moda y accesorios'), o('alimentos', '🍔', 'Alimentos y bebidas'), o('hogar', '🏡', 'Hogar y decoración'), o('tecnologia', '💻', 'Tecnología'),
-      o('belleza', '💄', 'Belleza y cuidado'), o('servicios', '🧰', 'Servicios'), o('arte', '🎨', 'Arte y creativos'), o('otro', '✨', 'Otro')] },
+  { id: 'rubro', capitulo: 'Tu negocio', emoji: '🏷️', tipo: 'una', requerido: true,
+    titulo: '¿A qué se dedica tu negocio?', sub: 'Elige el que más se parezca: así te sugerimos etapas y campos.',
+    opciones: [o('servicios', '💼', 'Servicios profesionales'), o('agencia', '🎨', 'Agencia o estudio creativo'), o('comercio', '🛍️', 'Comercio y retail'), o('salud', '🩺', 'Salud y bienestar'),
+      o('educacion', '🎓', 'Educación'), o('tecnologia', '💻', 'Tecnología'), o('inmobiliaria', '🏠', 'Inmobiliaria y construcción'), o('otro', '✨', 'Otro')] },
   { id: 'tiempo', capitulo: 'Tu negocio', emoji: '⏳', tipo: 'una',
     titulo: '¿Hace cuánto empezaste?', sub: 'No hay respuesta mala: todos empezamos en algún lado.',
     opciones: [o('idea', '💡', 'Solo es una idea'), o('nuevo', '🌱', 'Menos de 1 año'), o('medio', '🌿', '1 a 3 años'), o('veterano', '🌳', 'Más de 3 años')] },
 
-  // ───────── 2 · Cómo vendes hoy ─────────
-  { id: 'canales', capitulo: 'Cómo vendes hoy', emoji: '📣', tipo: 'varias', requerido: true,
-    titulo: '¿Dónde vendes hoy?', sub: 'Puedes elegir varios.',
-    opciones: [o('fisica', '🏪', 'Tienda física'), o('redes', '📸', 'Instagram o Facebook'), o('whatsapp', '💬', 'WhatsApp'), o('web', '🌐', 'Web propia'),
-      o('marketplace', '🛒', 'Marketplace'), o('nada', '🙈', 'Todavía no vendo')] },
-  { id: 'pedidos', capitulo: 'Cómo vendes hoy', emoji: '📦', tipo: 'una',
-    titulo: '¿Cuántos pedidos recibes al mes?', sub: 'Un cálculo aproximado basta.',
-    opciones: [o('p0', '🌙', '0 a 10'), o('p1', '🌤️', '11 a 50'), o('p2', '☀️', '51 a 200'), o('p3', '🚀', 'Más de 200')] },
+  // ───────── 2 · Tus clientes hoy ─────────
+  { id: 'canales', capitulo: 'Tus clientes hoy', emoji: '💬', tipo: 'varias', requerido: true,
+    titulo: '¿Por dónde te contactan tus clientes hoy?', sub: 'Puedes elegir varios.',
+    opciones: [o('whatsapp', '💬', 'WhatsApp'), o('correo', '✉️', 'Correo'), o('llamadas', '📞', 'Llamadas'), o('redes', '📸', 'Instagram o Facebook'), o('presencial', '🤝', 'En persona'), o('web', '🌐', 'Formulario web')] },
+  { id: 'cartera', capitulo: 'Tus clientes hoy', emoji: '🗂️', tipo: 'una',
+    titulo: '¿Cuántos clientes o prospectos manejas?', sub: 'Un cálculo aproximado basta.',
+    opciones: [o('k1', '🌱', 'Menos de 50'), o('k2', '🌿', '50 a 200'), o('k3', '🌳', '200 a 1,000'), o('k4', '🏔️', 'Más de 1,000')] },
 
-  // ───────── 3 · Qué vendes ─────────
-  { id: 'tipo', capitulo: 'Qué vendes', emoji: '🧺', tipo: 'una',
-    titulo: '¿Qué es lo que vendes?', sub: 'Elige la opción principal.',
-    opciones: [o('fisico', '📦', 'Productos físicos'), o('digital', '💾', 'Productos digitales'), o('servicio', '🛎️', 'Servicios'), o('mezcla', '🔀', 'Una mezcla de todo')] },
-  { id: 'catalogo', capitulo: 'Qué vendes', emoji: '🗃️', tipo: 'una',
-    titulo: '¿Cuántos productos o servicios tienes?', sub: 'Así sabemos cómo ayudarte a cargarlos.',
-    opciones: [o('c1', '🎯', '1 a 10'), o('c2', '📚', '11 a 50'), o('c3', '🏬', '51 a 500'), o('c4', '🏭', 'Más de 500')] },
-  { id: 'logistica', capitulo: 'Qué vendes', emoji: '🚚', tipo: 'varias',
-    titulo: '¿Cómo manejas inventario y envíos?', sub: 'Marca todo lo que aplique.',
-    opciones: [o('propio', '📦', 'Inventario propio'), o('pedido', '🧾', 'Produzco por pedido'), o('dropshipping', '🛰️', 'Dropshipping'), o('exterior', '✈️', 'Envío al extranjero')] },
+  // ───────── 3 · Cómo trabajas ─────────
+  { id: 'ciclo', capitulo: 'Cómo trabajas', emoji: '🔁', tipo: 'una',
+    titulo: '¿Cómo es tu proceso de venta?', sub: 'Elige la opción principal.',
+    opciones: [o('cotizacion', '🧾', 'Servicios con cotización'), o('rapida', '⚡', 'Ventas rápidas'), o('recurrente', '🔄', 'Clientes recurrentes'), o('mezcla', '🔀', 'Una mezcla de todo')] },
+  { id: 'problemas', capitulo: 'Cómo trabajas', emoji: '😅', tipo: 'varias',
+    titulo: '¿Qué te pasa más seguido con tus clientes?', sub: 'Marca todo lo que se parezca.',
+    opciones: [o('olvido', '😴', 'Se me olvida dar seguimiento'), o('info', '🔍', 'No encuentro los datos de un cliente'), o('equipo', '🔁', 'Cada quien lleva sus propios datos'), o('mensajes', '💬', 'Pierdo mensajes entre chats')] },
 
   // ───────── 4 · Tu equipo ─────────
   { id: 'equipo', capitulo: 'Tu equipo', emoji: '🤝', tipo: 'una',
     titulo: '¿Cuántas personas trabajan contigo?', sub: 'Contándote a ti.',
     opciones: [o('solo', '🧍', 'Solo yo'), o('chico', '👥', '2 a 5'), o('medio', '🏢', '6 a 20'), o('grande', '🌆', 'Más de 20')] },
   { id: 'herramientas', capitulo: 'Tu equipo', emoji: '🧰', tipo: 'varias',
-    titulo: '¿Qué usas hoy para llevar tu negocio?', sub: 'Puedes marcar varias.',
-    opciones: [o('excel', '📊', 'Excel o Sheets'), o('sistema', '🧩', 'Otro sistema'), o('cuaderno', '📒', 'Cuaderno o notas'), o('nada', '🤷', 'Nada todavía')] },
+    titulo: '¿Qué usas hoy para llevar a tus clientes?', sub: 'Puedes marcar varias.',
+    opciones: [o('excel', '📊', 'Excel o Sheets'), o('crm', '🧩', 'Otro CRM'), o('cuaderno', '📒', 'Cuaderno o notas'), o('nada', '🤷', 'Nada todavía')] },
 
   // ───────── 5 · Qué buscas ─────────
   { id: 'objetivos', capitulo: 'Qué buscas', emoji: '🎯', tipo: 'varias', max: 3, requerido: true,
     titulo: '¿Qué te gustaría lograr con Shifu?', sub: 'Elige hasta 3. Son los que pondremos primero.',
-    opciones: [o('vender', '📈', 'Vender más'), o('ia', '🤖', 'Atender más rápido con IA'), o('inventario', '🗂️', 'Ordenar mi inventario'), o('cobrar', '💳', 'Cobrar online'),
-      o('fuera', '🌎', 'Vender fuera del país'), o('reportes', '📊', 'Ver reportes claros'), o('canales', '🔗', 'Abrir nuevos canales')] },
+    opciones: [o('seguimientos', '🔔', 'No perder ningún seguimiento'), o('contactos', '🗂️', 'Ordenar mis contactos'), o('ia', '🤖', 'Que la IA responda y agende por mí'), o('reportes', '📊', 'Ver mi pipeline y reportes'),
+      o('cotizaciones', '🧾', 'Enviar cotizaciones más rápido'), o('equipo', '👥', 'Trabajar en equipo'), o('integraciones', '🔗', 'Conectar WhatsApp y correo')] },
   { id: 'dolor', capitulo: 'Qué buscas', emoji: '💭', tipo: 'parrafo',
-    titulo: '¿Qué es lo que más te complica hoy?', sub: 'Opcional. Cuéntanos con tus palabras, aunque sea una frase.',
-    placeholder: 'Por ejemplo: pierdo ventas porque tardo en responder los mensajes…' },
+    titulo: '¿Qué es lo que más te complica hoy con tus clientes?', sub: 'Opcional. Cuéntanos con tus palabras, aunque sea una frase.',
+    placeholder: 'Por ejemplo: pierdo clientes porque tardo en responder y se me pasan los seguimientos…' },
 
   // ───────── 6 · Cómo quieres empezar ─────────
+  { id: 'armado', capitulo: 'Cómo quieres empezar', emoji: '🛠️', tipo: 'una',
+    titulo: '¿Cómo quieres armar tu CRM?', sub: 'Lo puedes cambiar cuando quieras.',
+    opciones: [o('ia', '✨', 'Que Shifu lo arme desde mi descripción', 'Cuéntale tu negocio y listo'), o('plantilla', '📋', 'Partir de una plantilla', 'Etapas y campos ya pensados para tu rubro'), o('excel', '📥', 'Importar mi Excel', 'Trae tus contactos de una vez')] },
   { id: 'autonomia', capitulo: 'Cómo quieres empezar', emoji: '✨', tipo: 'una',
     titulo: '¿Cuánto quieres que haga la IA por ti?', sub: 'Lo puedes cambiar cuando quieras.',
     opciones: [o('alta', '🙋', 'Que responda y actúe por mí', 'Tú solo revisas lo importante'), o('media', '💡', 'Que me sugiera y yo decido', 'Tú das la última palabra'), o('baja', '📈', 'Solo reportes y análisis', 'Sin que toque nada')] },
@@ -71,24 +71,24 @@ export const etiqueta = (id, v) => ETQ[id]?.[v] ?? v
 
 const tiene = (r, id, v) => (Array.isArray(r[id]) ? r[id].includes(v) : r[id] === v)
 
-/** Convierte las respuestas en recomendaciones, de la más relevante a la menos. */
+/** Convierte las respuestas en recomendaciones, de la más relevante a la menos. `clave` las enlaza con las tarjetas del panel. */
 export function recomendar(r) {
   const lista = []
   const add = (prioridad, clave, emoji, titulo, texto, porque, boton) => lista.push({ prioridad, clave, emoji, titulo, texto, porque, boton })
-  const sinVender = tiene(r, 'canales', 'nada')
-  const grande = ['c3', 'c4'].includes(r.catalogo)
+  const quiere = (v) => tiene(r, 'objetivos', v)
+  const dolor = (v) => tiene(r, 'problemas', v)
+  const usaExcel = tiene(r, 'herramientas', 'excel') || tiene(r, 'herramientas', 'cuaderno')
 
-  if (sinVender || r.tiempo === 'idea') add(1, 'lanza', '🚀', 'Lanza tu primera tienda en 10 minutos', 'Elige una plantilla lista, sube tus primeros productos y publica.', sinVender ? 'Porque todavía no vendes' : 'Porque tu negocio está empezando', 'Crear mi tienda')
-  if (tiene(r, 'canales', 'whatsapp') || tiene(r, 'canales', 'redes')) add(tiene(r, 'objetivos', 'ia') ? 0 : 2, 'ia', '🤖', 'Activa la IA de atención en tus chats', 'Shifu responde preguntas, toma pedidos y te avisa cuando hace falta una persona.', tiene(r, 'canales', 'whatsapp') ? 'Porque vendes por WhatsApp' : 'Porque vendes por redes', 'Conectar mis chats')
-  else if (tiene(r, 'objetivos', 'ia')) add(0, 'ia', '🤖', 'Prueba a Shifu IA con tus clientes', 'Un asistente que responde al instante en tu tienda.', 'Porque quieres atender más rápido', 'Probar Shifu IA')
-  if (grande || ['p2', 'p3'].includes(r.pedidos)) add(2, 'catalogo', '📥', 'Importa tu catálogo desde Excel', 'Sube todos tus productos de una vez, con fotos y precios.', grande ? 'Porque tienes muchos productos' : 'Porque manejas muchos pedidos', 'Importar catálogo')
-  if (tiene(r, 'objetivos', 'fuera') || tiene(r, 'logistica', 'exterior')) add(0, 'mercados', '🌎', 'Configura mercados e impuestos internacionales', 'Vende en otras monedas, con envíos y aduanas resueltos.', 'Porque quieres vender fuera del país', 'Abrir mercados')
-  if (tiene(r, 'objetivos', 'cobrar')) add(0, 'pagos', '💳', 'Activa Shifu Pay', 'Cobra con tarjeta y recibe el dinero directo en tu cuenta.', 'Porque quieres cobrar online', 'Activar pagos')
-  if (tiene(r, 'objetivos', 'inventario') || tiene(r, 'logistica', 'propio')) add(1, 'inventario', '🗂️', 'Ordena tu inventario', 'Controla existencias, avisos de poco stock y entradas de mercadería.', tiene(r, 'objetivos', 'inventario') ? 'Porque quieres ordenar tu inventario' : 'Porque manejas inventario propio', 'Ir a inventario')
-  if (tiene(r, 'objetivos', 'reportes') || r.autonomia === 'baja') add(1, 'reportes', '📊', 'Mira tu panel de reportes', 'Ventas, productos que más salen y clientes que vuelven, en un vistazo.', 'Porque quieres ver reportes claros', 'Ver reportes')
-  if (tiene(r, 'objetivos', 'canales')) add(1, 'canales', '🔗', 'Conecta un nuevo canal de venta', 'Suma Instagram, TikTok o un marketplace sin duplicar trabajo.', 'Porque quieres abrir nuevos canales', 'Conectar canales')
-  if (tiene(r, 'herramientas', 'nada') || tiene(r, 'herramientas', 'cuaderno')) add(3, 'plantilla', '🧱', 'Empieza con una plantilla lista', 'Deja el cuaderno: tu tienda, pedidos y clientes en un solo lugar.', 'Porque hoy lo llevas a mano', 'Ver plantillas')
-  if (tiene(r, 'objetivos', 'vender')) add(2, 'vender', '📈', 'Mira ideas para vender más', 'Descuentos, correos y campañas que Shifu te sugiere según tu rubro.', 'Porque quieres vender más', 'Ver ideas')
+  if (r.armado === 'ia' || r.tiempo === 'idea') add(0, 'arma', '✨', 'Describe tu negocio y Shifu arma tu CRM', 'Cuéntale cómo vendes y te propone etapas, campos y recordatorios en minutos.', r.armado === 'ia' ? 'Porque quieres que Shifu lo arme' : 'Porque tu negocio está empezando', 'Crear mi CRM')
+  if (r.armado === 'plantilla') add(0, 'plantilla', '📋', 'Elige una plantilla para tu rubro', 'Etapas y campos ya pensados para tu tipo de negocio, listos para ajustar.', 'Porque prefieres partir de una plantilla', 'Ver plantillas')
+  if (r.armado === 'excel' || usaExcel) add(r.armado === 'excel' ? 0 : 2, 'importar', '📥', 'Importa tus contactos desde Excel', 'Sube tu hoja de cálculo y Shifu ordena y completa los datos por ti.', r.armado === 'excel' ? 'Porque quieres importar tu Excel' : 'Porque hoy llevas a tus clientes en hojas o notas', 'Importar contactos')
+  if (quiere('seguimientos') || dolor('olvido')) add(quiere('seguimientos') ? 0 : 1, 'seguimientos', '🔔', 'Activa los recordatorios de seguimiento', 'Cada cliente tiene su siguiente paso y Shifu te avisa cuando toca escribirle.', quiere('seguimientos') ? 'Porque no quieres perder ningún seguimiento' : 'Porque se te pasa dar seguimiento', 'Activar recordatorios')
+  if (quiere('contactos') || dolor('info') || ['k3', 'k4'].includes(r.cartera)) add(quiere('contactos') ? 0 : 2, 'contactos', '🗂️', 'Centraliza todos tus contactos', 'Un solo lugar con el historial, las notas y las conversaciones de cada cliente.', quiere('contactos') ? 'Porque quieres ordenar tus contactos' : 'Porque manejas muchos clientes', 'Ver contactos')
+  if (quiere('ia') || tiene(r, 'canales', 'whatsapp') || tiene(r, 'canales', 'redes')) add(quiere('ia') ? 0 : 2, 'ia', '🤖', 'Activa la IA para responder y agendar por ti', 'Shifu contesta preguntas, crea el contacto y propone el siguiente paso.', quiere('ia') ? 'Porque quieres que la IA te ayude' : 'Porque te escriben por chat', 'Activar la IA')
+  if (quiere('integraciones') || dolor('mensajes') || tiene(r, 'canales', 'whatsapp') || tiene(r, 'canales', 'correo')) add(quiere('integraciones') || dolor('mensajes') ? 1 : 3, 'integraciones', '🔗', 'Conecta WhatsApp y tu correo', 'Las conversaciones entran solas al CRM, sin copiar y pegar.', dolor('mensajes') ? 'Porque pierdes mensajes entre chats' : 'Porque ahí te contactan tus clientes', 'Conectar canales')
+  if (quiere('reportes')) add(1, 'reportes', '📊', 'Mira tu pipeline y tus reportes', 'Cuántas oportunidades hay en cada etapa y cuáles están en riesgo.', 'Porque quieres ver tu pipeline', 'Ver reportes')
+  if (quiere('cotizaciones') || r.ciclo === 'cotizacion') add(quiere('cotizaciones') ? 1 : 3, 'cotizaciones', '🧾', 'Crea tu primera cotización', 'Arma y envía cotizaciones con tus datos en pocos clics.', quiere('cotizaciones') ? 'Porque quieres cotizar más rápido' : 'Porque vendes con cotización', 'Crear cotización')
+  if (r.equipo && r.equipo !== 'solo' && (quiere('equipo') || dolor('equipo'))) add(1, 'equipo', '👥', 'Invita a tu equipo y reparte clientes', 'Cada persona ve sus clientes y todos trabajan sobre los mismos datos.', dolor('equipo') ? 'Porque cada quien lleva sus propios datos' : 'Porque quieres trabajar en equipo', 'Invitar equipo')
 
   // Sin duplicados y de más a menos relevante (a igual prioridad se respeta el orden en que se agregaron).
   const vistos = new Set()

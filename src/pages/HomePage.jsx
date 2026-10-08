@@ -4,10 +4,10 @@ import Nav from '../components/Nav'
 import ProductShowcase from '../components/ProductShowcase'
 import ChipVideo from '../components/home/ChipVideo'
 import Hero from '../components/home/Hero'
-import { Apps, Capital, Desarrolladores, Estadisticas, Pasos } from '../components/home/Plataforma'
-import { Internacional, LlegaATodasPartes, ParaTodos, VendeDondeCompra } from '../components/home/Secciones'
+import { Acompanamiento, Desarrolladores, Estadisticas, Integraciones, Pasos } from '../components/home/Plataforma'
+import { CrmAMedida, ParaTodos, ReuneClientes, TodoEnUnLugar } from '../components/home/Secciones'
 
-/* Inicio de Shifu: misma estructura y orden que la página de referencia, con contenido propio. */
+/* Inicio de Shifu, la plataforma para crear CRMs con IA: misma estructura y orden que la referencia, con contenido propio. */
 export default function HomePage() {
   const [video, setVideo] = useState(false)
   return (
@@ -15,15 +15,15 @@ export default function HomePage() {
       <Nav />
       <main>
         <Hero onVideo={() => setVideo(true)} />
-        <VendeDondeCompra />
-        <LlegaATodasPartes />
-        <Internacional />
+        <ReuneClientes />
+        <TodoEnUnLugar />
+        <CrmAMedida />
         <ParaTodos />
         <ProductShowcase />
-        <Apps />
+        <Integraciones />
         <Desarrolladores />
         <Estadisticas />
-        <Capital />
+        <Acompanamiento />
         <Pasos />
       </main>
       <Footer />

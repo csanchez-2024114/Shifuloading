@@ -3,7 +3,7 @@ import Logo from './Logo'
 
 const COLUMNAS = [
   ['Shifu', ['¿Qué es Shifu?', 'Shifu Editions', 'Inversores']],
-  ['Ecosistema', ['Documentación para desarrolladores', 'Tienda de temas', 'Tienda de aplicaciones', 'Partners', 'Afiliados']],
+  ['Ecosistema', ['Documentación para desarrolladores', 'Galería de plantillas', 'Directorio de integraciones', 'Partners', 'Afiliados']],
   ['Recursos', ['Blog', 'Comparar Shifu', 'Herramientas gratis', 'Registro de cambios']],
   ['Atención al cliente', ['Centro de ayuda', 'Foro de la comunidad', 'Contratar a un partner', 'Estado del servicio']],
 ]

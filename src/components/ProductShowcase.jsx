@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import Logo from './Logo'
 import PanelAnalisis from './PanelAnalisis'
+import ShifuAvatar from './ShifuAvatar'
 
-/* Maqueta animada de Shifu con datos inventados: el dueño del negocio le pregunta a la IA (burbuja gris) y esta responde y actúa (el dueño es la burbuja azul).
+/* Maqueta animada del CRM de Shifu con datos inventados: el dueño del negocio le pregunta a la IA (burbuja gris) por sus clientes y esta responde y agenda (el dueño es la burbuja azul).
  * Se repite sola. Con "reducir movimiento" activado en el sistema, se muestra el resultado final sin animar. */
 
-const MENU = ['Panel', 'Conversaciones', 'Pedidos', 'Clientes', 'Análisis']
+const MENU = ['Panel', 'Contactos', 'Negocios', 'Seguimientos', 'Reportes']
 
 const GUION = [
-  { de: 'dueno', texto: 'Una clienta pidió el modelo azul en talla M. ¿Tenemos stock?' },
-  { de: 'shifu', texto: 'Sí, quedan 4 unidades. ¿Quieres que le cree el pedido a Ana por Q1,250?' },
-  { de: 'dueno', texto: 'Sí, y envíale el enlace de pago.' },
-  { de: 'shifu', texto: 'Listo ✓ Pedido #1042 creado y enlace de pago enviado a Ana.' },
+  { de: 'dueno', texto: '¿A qué clientes llevo más de una semana sin contactar?' },
+  { de: 'shifu', texto: 'A 12. Los más importantes son Ana, Carlos y Luis. ¿Les programo un seguimiento por WhatsApp?' },
+  { de: 'dueno', texto: 'Sí, y que el mensaje sea amable.' },
+  { de: 'shifu', texto: 'Listo ✓ Programé 12 seguimientos y redacté cada mensaje. Te aviso cuando respondan.' },
 ]
 
 const BARRAS = [38, 52, 44, 63, 58, 76, 88]
@@ -24,8 +25,6 @@ const SECUENCIA = [
   { vista: 'panel', escena: 1, ms: 5200 },
   { vista: 'panel', escena: 2, ms: 5200 },
 ]
-
-const quetzales = (n) => `Q${Math.round(n).toLocaleString('es-GT')}`
 
 function usarReducirMovimiento() {
   const [r, setR] = useState(false)
@@ -98,26 +97,25 @@ export default function ProductShowcase() {
     return () => timers.forEach(clearTimeout)
   }, [ciclo, reducir])
 
-  const ventas = 18420 + (cerrada ? 1250 : 0)
-  const pedidos = 37 + (cerrada ? 1 : 0)
+  const alDia = 38 + (cerrada ? 12 : 0)      // seguimientos al día: suben cuando Shifu programa los 12
 
   return (
     <section className="show" id="ia">
       <div className="show-cabecera">
         <p className="show-etiqueta">Así trabaja Shifu</p>
-        <h2>Una IA que atiende, vende y te cuenta cómo va el negocio.</h2>
-        <p className="show-sub">Pregúntale lo que necesites de tu negocio: Shifu responde al instante, crea el pedido y tu equipo lo ve en el panel.</p>
+        <h2>Una IA que conoce a tus clientes y te dice qué hacer hoy.</h2>
+        <p className="show-sub">Pregúntale lo que necesites de tu negocio: Shifu responde al instante, agenda los seguimientos y tu equipo los ve en el CRM.</p>
       </div>
 
       <div className="show-escenario" onMouseEnter={() => setPausa(true)} onMouseLeave={() => setPausa(false)}>
       <div className="show-tabs" role="tablist">
-        {[['ia', 'Atención con IA', 0], ['panel', 'Panel de análisis', 1]].map(([k, etiqueta, destino]) => (
+        {[['ia', 'Asistente con IA', 0], ['panel', 'Panel de análisis', 1]].map(([k, etiqueta, destino]) => (
           <button key={k} type="button" role="tab" aria-selected={vista === k}
             className={`show-tab ${vista === k ? 'show-tab-activa' : ''}`} onClick={() => setIdx(destino)}>{etiqueta}</button>
         ))}
       </div>
 
-      <div className="ventana" role="img" aria-label="Demostración animada del panel de Shifu: la IA atiende a una clienta y cierra un pedido.">
+      <div className="ventana" role="img" aria-label="Demostración animada del CRM de Shifu: la IA encuentra a los clientes sin seguimiento y programa los mensajes.">
         <div className="ventana-barra">
           <span className="punto" /><span className="punto" /><span className="punto" />
           <span className="ventana-url">{vista === 'ia' ? 'app.shifu.com / panel' : 'app.shifu.com / analisis'}</span>
@@ -135,25 +133,25 @@ export default function ProductShowcase() {
           <div className="ventana-main">
             <div className="kpis">
               <div className="kpi">
-                <span>Ventas de hoy</span>
-                <strong><Contador valor={ventas} formato={quetzales} /></strong>
-                <em>+12% vs. ayer</em>
+                <span>Seguimientos al día</span>
+                <strong><Contador valor={alDia} /></strong>
+                <em>Meta de hoy: 60</em>
               </div>
               <div className="kpi">
-                <span>Pedidos</span>
-                <strong><Contador valor={pedidos} /></strong>
-                <em>+5 esta hora</em>
+                <span>Negocios abiertos</span>
+                <strong>24</strong>
+                <em>+3 esta semana</em>
               </div>
               <div className="kpi">
-                <span>Conversión</span>
-                <strong>4.8%</strong>
-                <em>+0.6 pts</em>
+                <span>Tasa de cierre</span>
+                <strong>18%</strong>
+                <em>+2 pts</em>
               </div>
             </div>
 
             <div className="paneles">
               <div className="panel-grafica">
-                <span className="panel-titulo">Ventas de la semana</span>
+                <span className="panel-titulo">Contactos nuevos esta semana</span>
                 <div className="barras">
                   {BARRAS.map((h, i) => (
                     <div key={i} className="barra-col">
@@ -168,14 +166,14 @@ export default function ProductShowcase() {
               <div className="panel-chat">
                 <span className="panel-titulo">Shifu IA · Conversación en vivo</span>
                 <div className="chat">
-                  {GUION.slice(0, paso).map((m, i) => (
-                    <div key={`${ciclo}-${i}`} className={`burbuja burbuja-${m.de}`}>{m.texto}</div>
-                  ))}
-                  {escribiendo && <div className="burbuja burbuja-shifu escribiendo"><i /><i /><i /></div>}
+                  {GUION.slice(0, paso).map((m, i) => (m.de === 'shifu'
+                    ? <div key={`${ciclo}-${i}`} className="fila-shifu"><ShifuAvatar /><div className="burbuja burbuja-shifu">{m.texto}</div></div>
+                    : <div key={`${ciclo}-${i}`} className={`burbuja burbuja-${m.de}`}>{m.texto}</div>))}
+                  {escribiendo && <div className="fila-shifu"><ShifuAvatar /><div className="burbuja burbuja-shifu escribiendo"><i /><i /><i /></div></div>}
                 </div>
                 <div className={`toast ${cerrada ? 'toast-visible' : ''}`}>
                   <span className="toast-ok">✓</span>
-                  <span>Venta cerrada · <strong>Q1,250</strong></span>
+                  <span>Listo · <strong>12 seguimientos programados</strong></span>
                 </div>
               </div>
             </div>

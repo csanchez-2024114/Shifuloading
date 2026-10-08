@@ -1,36 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  LuBookOpen, LuChartPie, LuCodeXml, LuDatabase, LuFileText, LuHeart, LuInbox, LuLayoutDashboard, LuLayoutGrid,
-  LuMegaphone, LuMonitor, LuSend, LuSettings, LuSparkles,
+  LuBellRing, LuChartPie, LuFileText, LuHandshake, LuLayoutDashboard, LuListChecks, LuPlug, LuSend, LuSettings, LuSparkles,
+  LuUsers, LuWorkflow,
 } from 'react-icons/lu'
+import ShifuAvatar from '../components/ShifuAvatar'
 import { CLAVE, recomendar } from '../brief/preguntas'
 import '../panel.css'
 
-/* Pantalla principal de Shifu: saludo, anillo de la IA y 9 acciones. Se arma con lo que la persona contó en el cuestionario:
+/* Pantalla principal del CRM de Shifu: saludo, anillo de la IA y 9 acciones. Se arma con lo que la persona contó en el cuestionario:
  * usa su nombre y marca como "Sugerido" las tarjetas que le tocan. Las acciones se conectarán cuando exista el servidor. */
 
 const MENU = [
   { id: 'dashboard', t: 'Dashboard', Icono: LuLayoutDashboard },
-  { id: 'catalogo', t: 'Catálogo', Icono: LuLayoutGrid },
-  { id: 'marketing', t: 'Marketing', Icono: LuMegaphone },
+  { id: 'contactos', t: 'Contactos', Icono: LuUsers },
+  { id: 'negocios', t: 'Negocios', Icono: LuHandshake },
   { id: 'ajustes', t: 'Ajustes', Icono: LuSettings },
 ]
 
 // `claves` son las recomendaciones del cuestionario que hacen "Sugerida" a una tarjeta.
 const ACCIONES = [
-  { t: 'Analizar ventas', d: 'Qué se vende y cuánto te deja', Icono: LuChartPie, claves: ['reportes'] },
-  { t: 'Crear nueva colección', d: 'Agrupa productos para lanzarlos', Icono: LuBookOpen, claves: ['catalogo', 'plantilla', 'lanza'] },
-  { t: 'Ver clientes fieles', d: 'Quiénes te compran seguido', Icono: LuHeart, claves: ['vender'] },
-  { t: 'Procesar órdenes', d: 'Pedidos por preparar y enviar', Icono: LuMonitor, claves: [] },
-  { t: 'Crear nueva orden', d: 'Registra una venta a mano', Icono: LuInbox, claves: [] },
-  { t: 'Ver base de clientes', d: 'Todos tus contactos en un lugar', Icono: LuDatabase, claves: [] },
-  { t: 'Administrar productos', d: 'Precios, fotos y existencias', Icono: LuCodeXml, claves: ['inventario'] },
-  { t: 'Crear nueva factura', d: 'Cobra y envía el comprobante', Icono: LuFileText, claves: ['pagos'] },
-  { t: 'Ajustes de tu tienda', d: 'Canales, mercados y pagos', Icono: LuSettings, claves: ['mercados', 'canales'] },
+  { t: 'Ver contactos', d: 'Todos tus clientes en un lugar', Icono: LuUsers, claves: ['contactos', 'importar'] },
+  { t: 'Mover negocios', d: 'Tu pipeline, etapa por etapa', Icono: LuHandshake, claves: ['reportes'] },
+  { t: 'Dar seguimiento', d: 'A quién toca escribirle hoy', Icono: LuBellRing, claves: ['seguimientos'] },
+  { t: 'Crear cotización', d: 'Arma y envía una en minutos', Icono: LuFileText, claves: ['cotizaciones'] },
+  { t: 'Agendar actividad', d: 'Llamadas, reuniones y tareas', Icono: LuListChecks, claves: [] },
+  { t: 'Ver reportes', d: 'Cómo van tus ventas', Icono: LuChartPie, claves: ['reportes'] },
+  { t: 'Automatizar mensajes', d: 'Respuestas y recordatorios con IA', Icono: LuWorkflow, claves: ['ia'] },
+  { t: 'Conectar canales', d: 'WhatsApp, correo y más', Icono: LuPlug, claves: ['integraciones'] },
+  { t: 'Ajustes de tu CRM', d: 'Etapas, campos y equipo', Icono: LuSettings, claves: ['arma', 'plantilla', 'equipo'] },
 ]
 
-const SUGERENCIAS = ['¿Cómo van mis ventas?', '¿Qué me recomiendas hoy?', 'Crea una colección nueva']
+const SUGERENCIAS = ['¿A quién debo contactar hoy?', '¿Qué me recomiendas hoy?', 'Crea una cotización nueva']
 
 const leer = () => { try { return JSON.parse(localStorage.getItem(CLAVE)) || {} } catch { return {} } }
 
@@ -73,7 +74,7 @@ export default function PanelPage() {
       const r = plan[0]
       return `Te sugiero esto primero: ${r.emoji} ${r.titulo}. ${r.porque}.`
     }
-    return 'Todavía no estoy conectado a los datos de tu tienda. Cuando Shifu tenga su servidor, aquí te respondo con tus cifras reales.'
+    return 'Todavía no estoy conectado a los datos de tu CRM. Cuando Shifu tenga su servidor, aquí te respondo con tus clientes y cifras reales.'
   }
   const enviar = (pregunta) => {
     const p = pregunta.trim()
@@ -121,9 +122,16 @@ export default function PanelPage() {
           {abierto && (
             <div className="asistente" role="dialog" aria-label="Conversación con Shifu IA">
               <div className="as-chat" aria-live="polite">
-                {chat.length === 0 && <p className="as-vacio">¿En qué te ayudo hoy{nombre ? `, ${nombre}` : ''}? 👋</p>}
-                {chat.map((m, k) => <div key={k} className={`burbuja-p burbuja-p-${m.de}`}>{m.t}</div>)}
-                {escribiendo && <div className="burbuja-p burbuja-p-shifu pensando"><i /><i /><i /></div>}
+                {chat.length === 0 && (
+                  <div className="as-vacio">
+                    <img className="mascota-vacio" src="/img/shifu-cuerpo.webp" alt="Shifu te saluda" width="92" height="93" />
+                    <p>¿En qué te ayudo hoy{nombre ? `, ${nombre}` : ''}?</p>
+                  </div>
+                )}
+                {chat.map((m, k) => (m.de === 'shifu'
+                  ? <div key={k} className="fila-p-shifu"><ShifuAvatar size={30} /><div className="burbuja-p burbuja-p-shifu">{m.t}</div></div>
+                  : <div key={k} className="burbuja-p burbuja-p-dueno">{m.t}</div>))}
+                {escribiendo && <div className="fila-p-shifu"><ShifuAvatar size={30} /><div className="burbuja-p burbuja-p-shifu pensando"><i /><i /><i /></div></div>}
                 <div ref={fin} />
               </div>
               {chat.length === 0 && <div className="as-sug">{SUGERENCIAS.map((s) => <button key={s} type="button" onClick={() => enviar(s)}>{s}</button>)}</div>}

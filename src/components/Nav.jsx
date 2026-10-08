@@ -6,15 +6,15 @@ import Logo from './Logo'
 /* Barra superior fija, con dos menús desplegables grandes ("Por qué Shifu" y "Productos"). */
 
 const PRODUCTOS = [
-  { titulo: 'Crea tu sitio web', items: ['Creador de sitios web', 'Temas', 'Dominios', 'Cuentas de cliente', 'Shifu IA'] },
-  { titulo: 'Vende donde quieras', items: ['Online', 'Chats con inteligencia artificial', 'Punto de venta', 'Aplicación Shifu', 'Redes sociales y mercados', 'Internacional', 'B2B', 'En todos los mercados'] },
-  { titulo: 'Marketing e informes', items: ['Publicidad y campañas', 'Correo electrónico y chat de clientes', 'Descuentos', 'Informes y estadísticas', 'Pruebas y lanzamiento'] },
-  { titulo: 'Dirige tu negocio', items: ['Pedidos e inventario', 'Envíos', 'Automatización de flujos de trabajo'] },
-  { titulo: 'Recibe pagos', items: ['Pantalla de pago', 'Pagos'] },
+  { titulo: 'Crea tu CRM', items: ['Constructor con IA', 'Plantillas por rubro', 'Etapas y campos a tu medida', 'Importar desde Excel', 'Shifu IA'] },
+  { titulo: 'Organiza a tus clientes', items: ['Contactos', 'Negocios y pipeline', 'Seguimientos', 'Cotizaciones', 'Actividades y tareas'] },
+  { titulo: 'Comunícate y automatiza', items: ['WhatsApp y correo', 'Mensajes con IA', 'Recordatorios', 'Formularios web', 'Flujos de trabajo'] },
+  { titulo: 'Mide y decide', items: ['Reportes', 'Panel de ventas', 'Pronósticos', 'Equipo y metas'] },
+  { titulo: 'Conecta', items: ['Integraciones', 'API', 'Webhooks'] },
 ]
 const EXTENDER = [
-  ['Comercio para agentes', 'Crea con nuestras herramientas de comercio más grande'],
-  ['Tienda de aplicaciones', 'El ecosistema de comercio más grande'],
+  ['Galería de plantillas', 'CRMs listos para tu industria'],
+  ['Directorio de integraciones', 'Conecta las herramientas que ya usas'],
   ['Shifu.dev', 'Documentación, API y más'],
 ]
 
@@ -23,9 +23,9 @@ function MenuPorQue() {
     <div className="mega mega-porque">
       <div className="mega-tarjetas">
         {[
-          ['Empieza rápido', 'Empieza a vender mañana mismo.', 'g1'],
-          ['Cambia a Shifu', 'Consigue más clientes. Haz crecer tus ventas.', 'g2'],
-          ['Las marcas líderes ya confían en nosotros', 'Da igual el tamaño de tu negocio: crece hasta donde quieras llegar.', 'g3'],
+          ['Empieza rápido', 'Tu CRM listo en minutos, no en semanas.', 'g1'],
+          ['Cambia a Shifu', 'Trae tus contactos desde Excel y no pierdas ningún seguimiento.', 'g2'],
+          ['Los equipos de ventas confían en nosotros', 'Da igual el tamaño de tu negocio: tu CRM crece contigo.', 'g3'],
         ].map(([t, d, g]) => (
           <a key={t} href="#inicio" className="mega-card">
             <span className={`mega-arte ${g}`} />
@@ -34,11 +34,11 @@ function MenuPorQue() {
         ))}
       </div>
       <div className="mega-lado">
-        <span className="mega-etq">Integrado en todas las tiendas</span>
-        <div className="mega-pago"><span className="chip-pago">shifu pay</span></div>
-        <b>El mejor proceso de pago del mundo</b><small>Mejor conversión garantizada.</small>
+        <span className="mega-etq">Incluido en todos los CRM</span>
+        <div className="mega-pago"><span className="chip-pago">shifu sync</span></div>
+        <b>Tus contactos siempre al día</b><small>Se completan y actualizan solos.</small>
         <div className="mega-ia"><span className="mega-ia-arte" /><b>Shifu IA</b></div>
-        <small>Tu asistente de IA experto</small>
+        <small>Tu asistente de ventas con IA</small>
       </div>
     </div>
   )

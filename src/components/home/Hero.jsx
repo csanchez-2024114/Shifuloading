@@ -30,7 +30,7 @@ export default function Hero({ onVideo }) {
           <span className={`palabra ${sale ? 'palabra-sale' : 'palabra-entra'}`}>{ESCENAS[i].palabra}</span>
         </h1>
         <p className="hero-texto">
-          Piensa a lo grande y crea rápido en Shifu, la plataforma de comercio con inteligencia artificial que vende, atiende y crece contigo.
+          Piensa a lo grande y crea rápido en Shifu: arma tu CRM con inteligencia artificial, con tus contactos, tus ventas y tu seguimiento a tu medida.
         </p>
         <div className="hero-acciones">
           <Link to="/login" className="btn-pildora btn-grande">Comenzar gratis</Link>

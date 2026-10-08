@@ -220,3 +220,8 @@ button { font-family: inherit; cursor: pointer; }
 .ventana-pista { width: 50%; flex: none; display: flex; }
 .ventana-pista > .ventana-cuerpo, .ventana-pista > .pa { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .ventana-pistas { transition: none; } }
+
+/* ───────── Shifu en las conversaciones ───────── */
+.av-shifu { flex: none; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(255,255,255,.14); background: #fff; }
+.fila-shifu { align-self: flex-start; display: flex; align-items: flex-end; gap: 8px; max-width: 94%; animation: entra .35s ease both; }
+.fila-shifu .burbuja { align-self: auto; max-width: none; animation: none; }

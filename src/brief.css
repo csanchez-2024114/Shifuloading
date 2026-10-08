@@ -109,3 +109,6 @@
 /* "Omitir pregunta": discreto, para las preguntas que avanzan solas al tocar una tarjeta. */
 .brief-omitir-q { padding: 12px 18px; border: 0; background: transparent; color: rgba(255,255,255,.4); font: 500 14px var(--fuente); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; transition: color .2s; }
 .brief-omitir-q:hover { color: #fff; }
+
+/* Shifu saluda en la primera pregunta (reemplaza al emoji) */
+.emoji-mascota { display: block; width: auto; height: clamp(110px, 16vw, 150px); margin: 14px 0 0; filter: drop-shadow(0 14px 20px rgba(0,0,0,.45)); user-select: none; }

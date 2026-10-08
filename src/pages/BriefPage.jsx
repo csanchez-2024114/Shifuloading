@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
-import { CLAVE, PREGUNTAS, etiqueta, recomendar } from '../brief/preguntas'
+import { CLAVE, PREGUNTAS } from '../brief/preguntas'
 import '../brief.css'
 
 /* Cuestionario de bienvenida: una pregunta por pantalla, con emojis, tarjetas para tocar y transiciones suaves.
@@ -37,65 +37,12 @@ function Opcion({ op, n, activa, bloqueada, multiple, onClick }) {
   )
 }
 
-function Confeti() {
-  const piezas = useMemo(() => Array.from({ length: 44 }, (_, i) => ({
-    i, x: Math.random() * 100, d: 2.6 + Math.random() * 2.4, r: Math.random() * 720 - 360, t: Math.random() * 0.9,
-    c: ['#22d3a6', '#7c5cff', '#ffffff', '#5b6bff', '#ffd27a'][i % 5], w: 6 + Math.random() * 6,
-  })), [])
-  return (
-    <div className="confeti" aria-hidden="true">
-      {piezas.map((p) => <span key={p.i} style={{ left: `${p.x}%`, background: p.c, width: p.w, height: p.w * 1.6, animationDuration: `${p.d}s`, animationDelay: `${p.t}s`, '--giro': `${p.r}deg` }} />)}
-    </div>
-  )
-}
-
-function Final({ resp, onEditar, onReiniciar }) {
-  const recs = useMemo(() => recomendar(resp), [resp])
-  const [aviso, setAviso] = useState('')
-  const resumen = [
-    resp.rubro && ['🛍️', etiqueta('rubro', resp.rubro)],
-    resp.ubicacion?.pais && ['🌎', etiqueta('ubicacion', resp.ubicacion.pais)],
-    ...(resp.canales || []).map((c) => ['📣', etiqueta('canales', c)]),
-    ...(resp.objetivos || []).map((c) => ['🎯', etiqueta('objetivos', c)]),
-  ].filter(Boolean)
-
-  return (
-    <section className="final entra-der">
-      <Confeti />
-      <div className="emoji" aria-hidden="true">🎉</div>
-      <h1>¡Listo{resp.nombre ? `, ${resp.nombre}` : ''}! Ya conocemos tu negocio.</h1>
-      <p className="sub">Con lo que nos contaste, este es tu <b>plan de arranque</b>. Lo puedes cambiar cuando quieras.</p>
-      {resumen.length > 0 && <div className="resumen">{resumen.map(([e, t], k) => <span key={k}>{e} {t}</span>)}</div>}
-
-      <ol className="recs">
-        {recs.map((r, k) => (
-          <li key={r.titulo} className="rec" style={{ animationDelay: `${0.25 + k * 0.12}s` }}>
-            <span className="rec-e" aria-hidden="true">{r.emoji}</span>
-            <div className="rec-cuerpo">
-              <b>{r.titulo}</b>
-              <p>{r.texto}</p>
-              <small>✓ {r.porque}</small>
-            </div>
-            <button type="button" className="rec-btn" onClick={() => setAviso('Esta función se conectará cuando Shifu tenga su servidor. ¡Ya quedó anotada en tu plan!')}>{r.boton}</button>
-          </li>
-        ))}
-      </ol>
-      {aviso && <p className="aviso" role="status">💡 {aviso}</p>}
-
-      <div className="acciones acciones-final">
-        <Link to="/panel" className="btn-pildora btn-grande">Entrar a Shifu</Link>
-        <button type="button" className="brief-atras" onClick={onEditar}>Cambiar mis respuestas</button>
-        <button type="button" className="brief-atras" onClick={onReiniciar}>Empezar de nuevo</button>
-      </div>
-    </section>
-  )
-}
-
 export default function BriefPage() {
   const guardado = useMemo(leer, [])
   const [idx, setIdx] = useState(guardado && !guardado.fin ? Math.min(guardado.idx || 0, TOTAL - 1) : 0)
   const [resp, setResp] = useState(guardado?.resp || {})
-  const [fin, setFin] = useState(!!guardado?.fin)
+  const [fin, setFin] = useState(false)
+  const nav = useNavigate()
   const [dir, setDir] = useState('der')
   const temporizador = useRef(null)
   const pantalla = useRef(null)
@@ -104,6 +51,8 @@ export default function BriefPage() {
   const pct = fin ? 100 : (idx / TOTAL) * 100
 
   useEffect(() => { guardar({ idx, resp, fin }) }, [idx, resp, fin])
+  // Al terminar, Shifu arma el CRM: se pasa a la pantalla de carga y de ahí al CRM.
+  useEffect(() => { if (fin) nav('/mi-crm', { state: { cargar: true } }) }, [fin, nav])
   useEffect(() => () => clearTimeout(temporizador.current), [])
   useEffect(() => { pantalla.current?.focus({ preventScroll: true }) }, [idx, fin])
 
@@ -156,6 +105,9 @@ export default function BriefPage() {
   const vaVacia = vacio(q.tipo === 'ubicacion' ? seleccion?.pais : seleccion)
   const autoAvanza = q.tipo === 'una'
 
+  // Quien ya terminó el cuestionario va directo a su CRM; para rehacerlo está "Repetir cuestionario" dentro del CRM.
+  if (guardado?.fin && !fin) return <Navigate to="/mi-crm" replace />
+
   return (
     <div className="brief">
       <div className="brief-fondo" aria-hidden="true"><i className="orbe o1" /><i className="orbe o2" /><i className="orbe o3" /></div>
@@ -168,15 +120,12 @@ export default function BriefPage() {
       </header>
 
       <main className="brief-main">
-        {fin ? (
-          <div ref={pantalla} tabIndex={-1} className="foco">
-            <Final resp={resp} onEditar={() => { setFin(false); setDir('izq'); setIdx(0) }}
-              onReiniciar={() => { setResp({}); setFin(false); setDir('izq'); setIdx(0) }} />
-          </div>
-        ) : (
+        {!fin && (
           <section key={idx} ref={pantalla} tabIndex={-1} className={`pantalla foco entra-${dir}`} aria-labelledby="brief-titulo">
             <span className="chip-cap">{q.capitulo}</span>
-            <div className="emoji" aria-hidden="true">{q.emoji}</div>
+            {q.id === 'nombre'
+              ? <img className="emoji emoji-mascota" src="/img/shifu-cuerpo.webp" alt="Shifu te da la bienvenida" width="140" height="142" />
+              : <div className="emoji" aria-hidden="true">{q.emoji}</div>}
             <h1 id="brief-titulo">{titulo}</h1>
             <p className="sub">{q.sub}</p>
 
@@ -214,11 +163,11 @@ export default function BriefPage() {
               {idx > 0 && <button type="button" className="brief-atras" onClick={atras}>← Atrás</button>}
               {autoAvanza ? (
                 /* En las de una sola respuesta, tocar una tarjeta ya avanza: no hace falta botón, solo la salida de "omitir". */
-                !q.requerido && <button type="button" className="brief-omitir-q" onClick={siguiente}>{idx === TOTAL - 1 ? 'Omitir y ver mi plan' : 'Omitir pregunta'}</button>
+                !q.requerido && <button type="button" className="brief-omitir-q" onClick={siguiente}>{idx === TOTAL - 1 ? 'Omitir y crear mi CRM' : 'Omitir pregunta'}</button>
               ) : (
                 <>
                   <button type="button" className="btn-pildora btn-grande brief-seguir" disabled={!puede} onClick={siguiente}>
-                    {idx === TOTAL - 1 ? 'Ver mi plan' : !q.requerido && vaVacia ? 'Omitir' : 'Continuar'}
+                    {idx === TOTAL - 1 ? 'Crear mi CRM' : !q.requerido && vaVacia ? 'Omitir' : 'Continuar'}
                   </button>
                   <span className="atajo">o presiona <kbd>Enter ↵</kbd></span>
                 </>
