@@ -44,7 +44,7 @@ export default function LoginPage() {
             <button type="button" aria-label="Continuar con WhatsApp"><FaWhatsapp size={20} color="#25d366" /></button>
           </div>
 
-          <p className="login-nuevo">¿Primera vez en Shifu? <a href="#empezar">Empezar →</a></p>
+          <p className="login-nuevo">¿Primera vez en Shifu? <Link to="/bienvenida">Empezar →</Link></p>
         </form>
 
         <p className="login-ayuda">¿Necesitas ayuda?</p>
