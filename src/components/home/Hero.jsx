@@ -1,0 +1,43 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+
+const ESCENAS = [
+  { palabra: 'Emprendedor', clase: 'esc1' },
+  { palabra: 'Marca reconocida', clase: 'esc2' },
+  { palabra: 'Referente de tu sector', clase: 'esc3' },
+  { palabra: 'Negocio imparable', clase: 'esc4' },
+]
+
+/** Título que cambia de palabra solo, con un fondo que cambia a la par. */
+export default function Hero({ onVideo }) {
+  const [i, setI] = useState(0)
+  const [sale, setSale] = useState(false)
+  useEffect(() => {
+    const t = setInterval(() => {
+      setSale(true)
+      setTimeout(() => { setI((n) => (n + 1) % ESCENAS.length); setSale(false) }, 500)
+    }, 4200)
+    return () => clearInterval(t)
+  }, [])
+
+  return (
+    <section className="hero" id="inicio">
+      {ESCENAS.map((e, k) => <div key={e.clase} className={`hero-escena ${e.clase} ${k === i ? 'hero-escena-on' : ''}`} aria-hidden="true" />)}
+      <div className="hero-velo" aria-hidden="true" />
+      <div className="hero-contenido">
+        <h1 className="hero-titulo">
+          <span>Tu negocio puede ser</span>
+          <span className={`palabra ${sale ? 'palabra-sale' : 'palabra-entra'}`}>{ESCENAS[i].palabra}</span>
+        </h1>
+        <p className="hero-texto">
+          Piensa a lo grande y crea rápido en Shifu, la plataforma de comercio con inteligencia artificial que vende, atiende y crece contigo.
+        </p>
+        <div className="hero-acciones">
+          <Link to="/login" className="btn-pildora btn-grande">Comenzar gratis</Link>
+          <a href="#planes" className="btn-borde btn-grande">Ver planes</a>
+          <button type="button" className="hero-enlace" onClick={onVideo}><i aria-hidden="true">▸</i> Por qué creamos Shifu</button>
+        </div>
+      </div>
+    </section>
+  )
+}
