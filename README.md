@@ -13,7 +13,7 @@ Plataforma para crear CRMs con IA.
 
 El frontend habla con los datos solo a través de `src/api`. Con `VITE_API_URL` apunta a un servidor real; sin ella usa un servidor simulado en el navegador. Las rutas que espera están en [`API.md`](API.md).
 
-El backend de `backend/` ya trae autenticación, onboarding, chat con el agente y subida de archivos bajo `/api/v1`, pero **todavía no tiene el módulo de CRM** (contactos, tareas, secciones, automatizaciones). Ese módulo es el siguiente paso.
+El backend de `backend/` ya trae autenticación, onboarding, chat con el agente y subida de archivos bajo `/api/v1`, y ahora también el **módulo de CRM** (`backend/app/crm`, rutas en `/api/v1/crm`): contactos, tareas, secciones y automatizaciones, con su chat. Pruebas: `cd backend && pytest test/crm`.
 
 ## Variables de entorno
 

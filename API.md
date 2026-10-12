@@ -4,14 +4,14 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 
 ## Cómo conectarlo
 
-1. Copia `.env.example` a `.env` y escribe la dirección del servidor: `VITE_API_URL=https://api.shifu.example`.
+1. Copia `.env.example` a `.env` y escribe la dirección del servidor **con el prefijo de versión**: `VITE_API_URL=http://localhost:5000/api/v1`. Todas las rutas de abajo cuelgan de ahí.
 2. Reinicia `npm run dev`. Con esa variable la interfaz usa el servidor real; sin ella usa el **servidor simulado** (`src/api/mock/`), que guarda todo en el navegador y puede borrarse al terminar.
 3. Si el servidor está en otro dominio, debe permitir CORS para el origen de la interfaz y las cabeceras `Content-Type` y `Authorization`.
 
 ## Reglas generales
 
 - JSON en ambos sentidos. Con sesión, cabecera `Authorization: Bearer <token>` (el token se guarda al iniciar sesión).
-- Errores: estado HTTP adecuado y `{ "mensaje": "texto para mostrar" }`. `404` en `GET /crm` significa "esta persona aún no tiene CRM".
+- Errores: estado HTTP adecuado y `{ "mensaje": "texto para mostrar" }` (en errores genéricos del servidor puede venir `{ "detail": "..." }`; la interfaz entiende ambos). `404` en `GET /crm` significa "esta persona aún no tiene CRM". `409` si el CRM cambió mientras se guardaba (se puede reintentar). `422` si algo no cumple las reglas (etapa inválida, nombre vacío, etc.).
 - **Toda ruta que cambia el CRM devuelve el CRM completo y actualizado** (forma de abajo). La pantalla solo lo reemplaza.
 - Los ids son cadenas, los asigna el servidor.
 
@@ -31,7 +31,7 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `DELETE /crm/tareas/:id` | — | CRM |
 | `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM |
 | `PUT /crm/secciones/:id` | `{ nombre }` (renombra una sección) | CRM |
-| `POST /chat` | `{ texto, contexto?: { pendiente?, imagen?, seccion? } }` | `{ respuesta, crm, vista?, pendiente? }` |
+| `POST /crm/chat` | `{ texto, contexto?: { pendiente?, imagen?, seccion? } }` | `{ respuesta, crm, vista?, pendiente? }` |
 
 ### Chat
 
@@ -70,9 +70,16 @@ La lógica de ejemplo está en `src/api/mock/chat.js`.
 Las preguntas y los valores posibles están en `src/brief/preguntas.js`. Forma: `nombre`, `ubicacion: { pais, ciudad? }`, `rubro`, `tiempo`, `canales[]`, `cartera`, `ciclo`, `problemas[]`, `equipo`, `herramientas[]`, `objetivos[]` (sin límite), `dolor`, `armado`, `autonomia`, `presupuesto`.
 El avance del cuestionario se guarda en el navegador mientras se contesta; solo al terminar viaja al servidor con `POST /crm`.
 
+## Estado del servidor
+
+El módulo de CRM ya existe en `backend/app/crm` y `backend/app/routes/crm` (colección `crm_workspaces`, un documento por persona) y implementa todas las rutas de `/crm` de arriba. Sus pruebas están en `backend/test/crm` (`pytest test/crm`). Todas las rutas exigen el token del usuario (`Authorization: Bearer ...`) y solo ven su propio CRM. El chat de `/crm/chat` es por reglas (sin IA) hasta que se conecte el agente.
+
+Todavía no existe en el servidor `POST /auth/correo`: el backend inicia sesión con correo y contraseña (`/api/v1/auth/login` y `/register`) y la pantalla de login solo pide el correo. Hay que decidir cómo se unen.
+
 ## Pendiente de definir en el servidor
 
 - Cobros (la pantalla usa datos de ejemplo todavía).
+- Lectura de la captura por un modelo de visión: hoy el servidor la recibe y acusa recibo, pero no la interpreta.
 - Pantalla `/panel` (asistente de inicio): su chat sigue respondiendo con texto fijo; falta conectarlo a `POST /chat`.
 - Lectura de archivos `.xlsx` (hoy se pega o se sube CSV/TXT y se interpreta en el navegador).
 - Inicio de sesión completo (contraseña, Google, etc.): hoy solo existe el primer paso por correo.

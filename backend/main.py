@@ -49,6 +49,7 @@ from app.routes.me.me import router as me_router
 from app.routes.me.secrets import router as me_secrets_router
 from app.routes.me.analytics import router as me_analytics_router
 from app.routes.me.notifications import router as me_notifications_router
+from app.routes.crm.crmRoutes import router as crm_router
 from app.routes.workflows.workflows import router as workflows_router
 from app.routes.connectors.customRequestRoutes import router as custom_connector_router
 from app.routes.ws.workflow_ws import router as workflow_ws_router
@@ -296,6 +297,8 @@ async def lifespan(app: FastAPI):
              {"name": "idx_user_decision_memory_user_goal"}, "user_decision_memory"),
             ("document_extractions", [("file_id", 1)],
              {"unique": True, "name": "idx_document_extractions_file_id"}, "document_extractions dedup"),
+            ("crm_workspaces", [("user_id", 1)],
+             {"unique": True, "name": "idx_crm_workspaces_user"}, "crm_workspaces un CRM por persona"),
             ("document_extractions", [("user_id", 1), ("last_used_at", -1)],
              {"name": "idx_document_extractions_user_recency"}, "document_extractions cleanup"),
         ]:
@@ -709,6 +712,7 @@ app.include_router(workspaces_router,       prefix="/api/v1/workspaces",    tags
 app.include_router(me_secrets_router,       prefix="/api/v1/me/secrets",    tags=["V1 Me Secrets"])
 app.include_router(me_analytics_router,     prefix="/api/v1/me/analytics",  tags=["V1 Me Analytics"])
 app.include_router(me_notifications_router, prefix="/api/v1/me/notifications", tags=["V1 Me Notifications"])
+app.include_router(crm_router,              prefix="/api/v1/crm",           tags=["V1 CRM"])
 app.include_router(workflows_router,        prefix="/api/v1/workflows",     tags=["V1 Workflows"])
 app.include_router(custom_connector_router, prefix="/api/v1/connectors",    tags=["V1 Connectors"])
 # El webhook del standalone va ANTES que webhook_inbound (misma ruta /webhooks/{token}, gana el primero):

@@ -43,6 +43,7 @@ class Collections:
     STRIPE_EVENTS = 'stripe_events'
     CUSTOM_CONNECTOR_REQUESTS = 'custom_connector_requests'
     USER_NOTIFICATIONS = 'user_notifications'
+    CRM = 'crm_workspaces'  # un documento por persona: su CRM (app/crm)
     FUNCTIONS = 'functions'
     FUNCTION_APPS = 'function_apps'
     ACTION_LOG = 'action_log'  # escrituras que el agente ejecuto en una app del usuario (modo act)

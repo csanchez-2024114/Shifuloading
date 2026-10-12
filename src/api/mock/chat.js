@@ -31,7 +31,9 @@ export function responder(crm, crudo, pendiente) {
     return salida('Perfecto, no borré nada. 👍')
   }
 
-  if (/(import|excel|notas|csv|hoja de calculo|sheets|archivo)/.test(t)) return salida('Claro. Te llevé a “Importar datos”: pega ahí tus notas o las celdas de tu Excel y yo las ordeno como contactos.', { vista: 'importar' })
+  // Si la frase empieza con una orden ("agrega la tarea importar contactos"), manda la orden: "importar" es parte del texto.
+  const esOrden = /^(agrega|anade|crea|registra|anota|suma|nuevo|nueva|elimina|borra|quita|saca|remueve|renombra|cambia|mueve|pasa|modifica|actualiza|pon|activa|enciende|prende|desactiva|apaga)/.test(t)
+  if (!esOrden && /(import|excel|notas|csv|hoja de calculo|sheets|archivo)/.test(t)) return salida('Claro. Te llevé a “Importar datos”: pega ahí tus notas o las celdas de tu Excel y yo las ordeno como contactos.', { vista: 'importar' })
 
   let m = t.match(/^(activa|enciende|prende|desactiva|apaga)r?\s+(?:la\s+|el\s+|las\s+|los\s+)?(.+)$/)
   if (m) {

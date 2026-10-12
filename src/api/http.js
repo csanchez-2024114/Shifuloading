@@ -25,6 +25,8 @@ export async function pedir(metodo, ruta, cuerpo) {
   }
   if (res.status === 204) return null
   const datos = await res.json().catch(() => null)
-  if (!res.ok) throw new ErrorApi(res.status, datos?.mensaje || 'Algo salió mal', datos)
+  // El servidor responde { mensaje } en el CRM y { detail } (texto o lista de errores) en el resto.
+  const detalle = typeof datos?.detail === 'string' ? datos.detail : null
+  if (!res.ok) throw new ErrorApi(res.status, datos?.mensaje || detalle || 'Algo salió mal', datos)
   return datos
 }

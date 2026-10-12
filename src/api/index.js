@@ -41,5 +41,5 @@ export const crm = {
 
 export const chat = {
   /** Mensaje para Shifu. Devuelve { respuesta, crm, vista?, pendiente? }; `pendiente` se reenvía en el siguiente mensaje para confirmar un borrado. */
-  enviar: (texto, contexto) => (HAY_SERVIDOR ? pedir('POST', '/chat', { texto, contexto }) : simulado.chat.enviar(texto, contexto)),
+  enviar: (texto, contexto) => (HAY_SERVIDOR ? pedir('POST', '/crm/chat', { texto, contexto }) : simulado.chat.enviar(texto, contexto)),
 }
