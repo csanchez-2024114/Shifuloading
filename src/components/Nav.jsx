@@ -98,7 +98,7 @@ export default function Nav() {
               Productos<ChevronDown />
             </button>
             <a href="#planes" className="nav-enlace" onClick={() => setAbierto(null)}>Precios</a>
-            <a href="#empresas" className="nav-enlace" onClick={() => setAbierto(null)}>Enterprise</a>
+            <a href="#planes" className="nav-enlace" onClick={() => setAbierto(null)}>Enterprise</a>
           </nav>
         </div>
         <div className="nav-der">

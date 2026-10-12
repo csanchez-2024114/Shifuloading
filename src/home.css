@@ -79,10 +79,6 @@ main { display: block; }
 .hero-enlace:hover { text-decoration: underline; }
 
 /* Miniatura flotante */
-.chip-video { position: fixed; right: 40px; bottom: 36px; z-index: 40; width: 148px; height: 84px; padding: 0; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; overflow: hidden; cursor: pointer; background: #0b1110; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
-.chip-video-arte { position: absolute; inset: 0; background: radial-gradient(70% 70% at 30% 30%, #c79a6b, transparent 70%), linear-gradient(135deg, #3b2d22, #12100e); opacity: .75; }
-.chip-video-texto { position: absolute; left: 10px; right: 10px; bottom: 8px; display: flex; gap: 6px; align-items: center; text-align: left; font: 600 11px/1.2 var(--fuente); color: #fff; }
-.chip-video-texto i { font-style: normal; font-size: 8px; }
 .modal-video { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .modal-video-caja { position: relative; width: min(920px, 100%); }
 .modal-video-x { position: absolute; right: -4px; top: -44px; background: none; border: 0; color: #fff; font-size: 34px; cursor: pointer; }
@@ -183,11 +179,7 @@ main { display: block; }
 .caso-foto i { position: absolute; left: 22%; bottom: -8%; width: 40%; height: 78%; border-radius: 50% 50% 8px 8px / 36% 36% 8px 8px; background: rgba(255,255,255,.28); }
 .caso-foto em { position: absolute; left: 14%; top: 18%; width: 22%; aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.2); }
 .caso-a { background: linear-gradient(135deg, #e9d7b8, #7da08b); } .caso-b { background: linear-gradient(135deg, #f1e9de, #b99a7a); } .caso-c { background: linear-gradient(135deg, #cfd6e6, #6c7cae); }
-.marcas { margin-top: 80px; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
-.marcas-pista { display: flex; gap: 70px; width: max-content; animation: desfila 38s linear infinite; font: 700 24px var(--fuente); letter-spacing: -0.02em; color: #e8ecea; }
-.marcas-pista span { white-space: nowrap; opacity: .9; }
-@keyframes desfila { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { .marcas-pista, .hub-etq, .canal, .hero-escena, .hub-centro { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hub-etq, .canal, .hero-escena, .hub-centro { animation: none; } }
 
 /* Apps */
 .sec-apps { background: linear-gradient(180deg, #04120d, #0d0a38 60%, #08082a); overflow: hidden; padding-bottom: 60px; }
@@ -228,17 +220,6 @@ main { display: block; }
 .globo-etq { display: inline-block; padding: 8px 12px; border: 1px solid rgba(34,211,166,.35); border-radius: 8px; color: var(--verde-vivo); font: 600 10px var(--fuente); letter-spacing: .06em; }
 
 /* Capital */
-.sec-capital { background: linear-gradient(180deg, #04120d, #0a2b21 50%, #04120d); }
-.cap-texto p { max-width: 460px; color: #a9bdb5; font-size: 15px; line-height: 1.55; }
-.cap-cuerpo { margin-top: 40px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 44px; align-items: center; }
-.cap-cita { position: relative; margin: 0; padding: 40px 36px 36px 190px; min-height: 280px; border-radius: 22px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
-.cap-foto { position: absolute; left: 24px; top: 24px; bottom: 24px; width: 140px; border-radius: 14px; background: linear-gradient(160deg, #6f8f84, #1d3a31); }
-.cap-cita blockquote { margin: 0 0 24px; font-size: clamp(20px, 2.2vw, 30px); line-height: 1.22; letter-spacing: -0.02em; }
-.cap-cita figcaption { font-size: 13.5px; color: #c4d3cc; line-height: 1.5; }
-.cap-datos { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
-.cap-datos li { padding-left: 18px; border-left: 2px solid var(--verde-vivo); }
-.cap-datos b { display: block; font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
-.cap-datos small { color: var(--atenuado); font-size: 13.5px; }
 
 /* Pasos */
 .sec-pasos { background: radial-gradient(60% 70% at 50% 0%, #11261f, #04120d 70%); }
@@ -253,26 +234,15 @@ main { display: block; }
 .pasos-lista b { font-size: clamp(24px, 3vw, 40px); font-weight: 400; letter-spacing: -0.03em; }
 
 /* Pie de página */
-.pie { background: #000; padding: 90px 90px 50px; border-top: 1px solid rgba(255,255,255,.08); }
-.pie-grid { display: grid; grid-template-columns: 1.1fr repeat(4, 1fr); gap: 36px; }
-.pie-col b { display: block; margin-bottom: 18px; font-size: 14.5px; }
-.pie-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.pie-col a { color: #8a9a94; font-size: 12.5px; } .pie-col a:hover { color: #fff; }
-.pie-base { margin-top: 110px; display: flex; align-items: center; gap: 36px; flex-wrap: wrap; color: #8a9a94; font-size: 12px; }
-.pie-legal { display: flex; gap: 26px; flex-wrap: wrap; } .pie-legal a:hover { color: #fff; }
-.pie-redes { margin-left: auto; display: flex; gap: 14px; } .pie-redes a { width: 32px; height: 32px; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; }
 
 /* Responsive */
 @media (max-width: 1000px) {
   .nav-barra { padding: 0 20px; height: 68px; } .nav-menu { display: none; } .nav-izq, .nav-der { gap: 18px; }
   .mega { margin: 0 12px; } .mega-prod .mega-cols, .mega-pie, .mega-porque, .mega-tarjetas { grid-template-columns: 1fr 1fr; } .mega-lado { border: 0; padding: 0; }
   .hero { padding: 38vh 20px 60px; } .hero-enlace { margin-left: 0; }
-  .sec { padding: 70px 20px; } .tres, .tiendas, .panel-chat-ia, .intl-panel, .cap-cuerpo, .pasos-cuerpo, .pie-grid { grid-template-columns: 1fr; }
+  .sec { padding: 70px 20px; } .tres, .tiendas, .panel-chat-ia, .intl-panel, .pasos-cuerpo { grid-template-columns: 1fr; }
   .intl-panel, .mejor-pago, .mejor-globo, .panel-chat-ia { padding: 26px; } .intl-mock { grid-template-columns: 1fr; } .intl-banderas { grid-auto-flow: column; justify-content: start; }
   .intl-prod em { right: 8px; } .apps-rejilla { grid-template-columns: repeat(6, 1fr); gap: 10px; } .mejor-globo { min-height: 0; padding-top: 240px; } .globo { left: 50%; margin-left: -30%; width: 60%; top: 4%; }
-  .cap-cita { padding: 200px 22px 24px; } .cap-foto { right: 22px; width: auto; height: 160px; bottom: auto; }
-  .pie { padding: 60px 20px 40px; } .pie-base { margin-top: 50px; } .pie-redes { margin-left: 0; }
-  .chip-video { right: 14px; bottom: 14px; width: 120px; height: 68px; }
 }
 
 /* Si la pantalla es baja, el menú grande se desplaza por dentro en vez de salirse. */
@@ -296,14 +266,12 @@ main { display: block; }
 .caso-a { background: url(/img/caso-1.webp) center / cover no-repeat; }
 .caso-b { background: url(/img/caso-2.webp) center / cover no-repeat; }
 .caso-c { background: url(/img/caso-3.webp) center / cover no-repeat; }
-.cap-foto { background: url(/img/capital-retrato.webp) center / cover no-repeat; }
 .pf1 { background: url(/img/pasos-1.webp) center / cover no-repeat; }
 .pf2 { background: url(/img/pasos-2.webp) center / cover no-repeat; }
 
 .mejor-globo { background: linear-gradient(90deg, rgba(4, 13, 16, .05) 0%, rgba(4, 13, 16, .35) 45%, rgba(4, 13, 16, .88) 100%), url(/img/globo.webp) left center / cover no-repeat; }
 .globo { display: none; }
 
-.chip-video-arte { background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.6)), url(/img/video-miniatura.webp) center / cover no-repeat; opacity: 1; }
 .modal-video-pantalla { background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.7)), url(/img/video-miniatura.webp) center / cover no-repeat; }
 
 .mega-arte.g1 { background: url(/img/menu-1.webp) center / cover no-repeat; }

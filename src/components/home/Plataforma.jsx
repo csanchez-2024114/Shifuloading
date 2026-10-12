@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Aparece } from './Secciones'
 
 const APPS = ['◈', '♪', '✦', '◉', '▣', '☰', '◐', '⬡', '✚', '◍', '▲', '❖', '☷', '◆', '✉', '⚑', '◎', '▤', '♣', '✿', '⌘', '☼', '◇', '▦']
@@ -77,29 +76,6 @@ export function Estadisticas() {
   )
 }
 
-export function Acompanamiento() {
-  return (
-    <section className="sec sec-capital" id="empresas">
-      <Aparece className="cap-texto">
-        <h2 className="titulo-sec">Te acompañamos en el cambio</h2>
-        <p>Pasar de Excel a un CRM no tiene por qué dar miedo. <a href="#migracion">Te ayudamos a migrar</a> tus contactos y tu historial.</p>
-      </Aparece>
-      <Aparece className="cap-cuerpo" retraso={100}>
-        <figure className="cap-cita">
-          <span className="cap-foto" aria-hidden="true" />
-          <blockquote>“Pasamos de Excel a Shifu en una tarde y dejamos de perder seguimientos. Hoy todo el equipo trabaja sobre los mismos datos.”</blockquote>
-          <figcaption><b>Jessica Rivas</b><br />Directora comercial, Marca Ejemplo</figcaption>
-        </figure>
-        <ul className="cap-datos">
-          <li><b>Migración guiada</b><small>Trae tus contactos y tu historial sin perder nada</small></li>
-          <li><b>Soporte en español</b><small>Personas reales que te ayudan cuando lo necesitas</small></li>
-          <li><b>Tus datos son tuyos</b><small>Expórtalos cuando quieras, sin letra pequeña</small></li>
-        </ul>
-      </Aparece>
-    </section>
-  )
-}
-
 export function Pasos() {
   return (
     <section className="sec sec-pasos">
@@ -112,7 +88,6 @@ export function Pasos() {
           <li><i>03</i><b>Conecta tus canales y empieza</b></li>
         </ol>
       </Aparece>
-      <div className="centro"><Link to="/login" className="btn-pildora btn-grande">Comenzar ya</Link></div>
     </section>
   )
 }

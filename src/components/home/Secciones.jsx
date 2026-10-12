@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
 
 /* Secciones del cuerpo de la página de inicio. Shifu sirve para crear CRMs con IA: todo el contenido (textos, nombres, cifras
  * y maquetas) es propio e inventado, dibujado con código para que se vea nítido en cualquier pantalla. */
@@ -170,7 +169,6 @@ const CASOS = [
   ['Para negocios con local', 'Un espacio de arte unificó sus visitas, ventas y contactos en un solo CRM, sin hojas de cálculo.', 'b'],
   ['Para equipos de ventas', 'Cada persona ve sus clientes, y el equipo trabaja sobre los mismos datos con metas claras.', 'c'],
 ]
-const MARCAS = ['NÓRDICA', 'Taller 9', 'UNTO', 'Café Brava', 'MONTE', 'Ríos & Co.', 'ALBA', 'Fénix']
 
 export function ParaTodos() {
   return (
@@ -183,12 +181,6 @@ export function ParaTodos() {
             <b>{t}</b><small>{d}</small>
           </Aparece>
         ))}
-      </div>
-      <div className="centro"><Link to="/login" className="btn-borde btn-grande">Elige el plan que más te convenga</Link></div>
-      <div className="marcas" aria-label="Negocios que usan Shifu">
-        <div className="marcas-pista">
-          {[...MARCAS, ...MARCAS].map((m, k) => <span key={k}>{m}</span>)}
-        </div>
       </div>
     </section>
   )
