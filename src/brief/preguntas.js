@@ -46,8 +46,8 @@ export const PREGUNTAS = [
     opciones: [o('excel', '📊', 'Excel o Sheets'), o('crm', '🧩', 'Otro CRM'), o('cuaderno', '📒', 'Cuaderno o notas'), o('nada', '🤷', 'Nada todavía')] },
 
   // ───────── 5 · Qué buscas ─────────
-  { id: 'objetivos', capitulo: 'Qué buscas', emoji: '🎯', tipo: 'varias', max: 3, requerido: true,
-    titulo: '¿Qué te gustaría lograr con Shifu?', sub: 'Elige hasta 3. Son los que pondremos primero.',
+  { id: 'objetivos', capitulo: 'Qué buscas', emoji: '🎯', tipo: 'varias', requerido: true,
+    titulo: '¿Qué te gustaría lograr con Shifu?', sub: 'Elige todos los que quieras. Pondremos primero los que marques.',
     opciones: [o('seguimientos', '🔔', 'No perder ningún seguimiento'), o('contactos', '🗂️', 'Ordenar mis contactos'), o('ia', '🤖', 'Que la IA responda y agende por mí'), o('reportes', '📊', 'Ver mi pipeline y reportes'),
       o('cotizaciones', '🧾', 'Enviar cotizaciones más rápido'), o('equipo', '👥', 'Trabajar en equipo'), o('integraciones', '🔗', 'Conectar WhatsApp y correo')] },
   { id: 'dolor', capitulo: 'Qué buscas', emoji: '💭', tipo: 'parrafo',

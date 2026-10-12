@@ -1,18 +1,30 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { auth } from '../api'
 import { FaApple, FaFacebook, FaWhatsapp } from 'react-icons/fa6'
 import { FcGoogle } from 'react-icons/fc'
 import { ClaveDeAcceso } from '../components/Iconos'
 import Logo from '../components/Logo'
 
-/* Pantalla de inicio de sesión. Por ahora es solo la pantalla: no se conecta a ningún servidor. */
+/* Pantalla de inicio de sesión. Primer paso: el correo. Si ya tiene cuenta entra a su CRM; si no, empieza por el cuestionario. */
 export default function LoginPage() {
   const [correo, setCorreo] = useState('')
   const [aviso, setAviso] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const nav = useNavigate()
 
-  const continuar = (e) => {
+  const continuar = async (e) => {
     e.preventDefault()
-    setAviso(correo.trim() ? '' : 'Escribe tu correo electrónico.')
+    if (!correo.trim()) { setAviso('Escribe tu correo electrónico.'); return }
+    if (enviando) return
+    setAviso(''); setEnviando(true)
+    try {
+      const r = await auth.continuarConCorreo(correo.trim())
+      nav(r?.existe ? '/mi-crm' : '/bienvenida')
+    } catch {
+      setAviso('No pudimos conectarnos. Inténtalo de nuevo en un momento.')
+      setEnviando(false)
+    }
   }
 
   return (

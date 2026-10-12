@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
-import { CLAVE, PREGUNTAS } from '../brief/preguntas'
+import { PREGUNTAS } from '../brief/preguntas'
+import { guardarBorrador, leerBorrador } from '../brief/borrador'
 import '../brief.css'
 
 /* Cuestionario de bienvenida: una pregunta por pantalla, con emojis, tarjetas para tocar y transiciones suaves.
  * Guarda lo respondido en el navegador (más adelante se conecta al servidor). Atajos: Enter continúa, 1-9 elige, ← vuelve. */
 
 const TOTAL = PREGUNTAS.length
-
-const leer = () => {
-  try { return JSON.parse(localStorage.getItem(CLAVE)) || null } catch { return null }
-}
-const guardar = (d) => { try { localStorage.setItem(CLAVE, JSON.stringify(d)) } catch { /* sin almacenamiento: se sigue sin guardar */ } }
 
 const vacio = (v) => v === undefined || v === null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && v.length === 0)
 
@@ -38,7 +34,7 @@ function Opcion({ op, n, activa, bloqueada, multiple, onClick }) {
 }
 
 export default function BriefPage() {
-  const guardado = useMemo(leer, [])
+  const guardado = useMemo(leerBorrador, [])
   const [idx, setIdx] = useState(guardado && !guardado.fin ? Math.min(guardado.idx || 0, TOTAL - 1) : 0)
   const [resp, setResp] = useState(guardado?.resp || {})
   const [fin, setFin] = useState(false)
@@ -50,7 +46,7 @@ export default function BriefPage() {
   const q = PREGUNTAS[idx]
   const pct = fin ? 100 : (idx / TOTAL) * 100
 
-  useEffect(() => { guardar({ idx, resp, fin }) }, [idx, resp, fin])
+  useEffect(() => { guardarBorrador({ idx, resp, fin }) }, [idx, resp, fin])
   // Al terminar, Shifu arma el CRM: se pasa a la pantalla de carga y de ahí al CRM.
   useEffect(() => { if (fin) nav('/mi-crm', { state: { cargar: true } }) }, [fin, nav])
   useEffect(() => () => clearTimeout(temporizador.current), [])
@@ -114,7 +110,7 @@ export default function BriefPage() {
       <div className="brief-prog" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}><i style={{ width: `${pct}%` }} /></div>
 
       <header className="brief-cab">
-        <Link to="/" aria-label="Shifu"><Logo height={26} /></Link>
+        <Link to="/" aria-label="Shifu"><Logo height={26} color="#14211d" /></Link>
         {!fin && <span className="brief-paso" aria-live="polite">{idx + 1} de {TOTAL}</span>}
         {!fin && <Link to="/" className="brief-omitir">Omitir por ahora</Link>}
       </header>

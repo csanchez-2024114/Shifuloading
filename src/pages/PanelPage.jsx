@@ -5,7 +5,8 @@ import {
   LuUsers, LuWorkflow,
 } from 'react-icons/lu'
 import ShifuAvatar from '../components/ShifuAvatar'
-import { CLAVE, recomendar } from '../brief/preguntas'
+import { recomendar } from '../brief/preguntas'
+import { leerBorrador } from '../brief/borrador'
 import '../panel.css'
 
 /* Pantalla principal del CRM de Shifu: saludo, anillo de la IA y 9 acciones. Se arma con lo que la persona contó en el cuestionario:
@@ -33,7 +34,6 @@ const ACCIONES = [
 
 const SUGERENCIAS = ['¿A quién debo contactar hoy?', '¿Qué me recomiendas hoy?', 'Crea una cotización nueva']
 
-const leer = () => { try { return JSON.parse(localStorage.getItem(CLAVE)) || {} } catch { return {} } }
 
 function saludoDelDia() {
   const h = new Date().getHours()
@@ -41,7 +41,7 @@ function saludoDelDia() {
 }
 
 export default function PanelPage() {
-  const resp = useMemo(() => leer().resp || {}, [])
+  const resp = useMemo(() => leerBorrador()?.resp || {}, [])
   const plan = useMemo(() => recomendar(resp), [resp])
   const claves = useMemo(() => new Set(plan.map((p) => p.clave)), [plan])
   const nombre = (resp.nombre || '').trim()

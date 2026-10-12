@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import ShifuAvatar from '../components/ShifuAvatar'
-import { CLAVE, etiqueta } from '../brief/preguntas'
-import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuRotateCcw, LuUpload, LuZap, LuSend, LuX } from 'react-icons/lu'
+import { chat as apiChat, crm as apiCrm } from '../api'
+import { etiqueta } from '../brief/preguntas'
+import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
+import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
+import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuRotateCcw, LuUpload, LuZap, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
 
@@ -12,58 +15,37 @@ import '../crm-extra.css'
  *   · Estructura: cómo está ordenado el negocio (contactos, trabajo del día a día e importación de Excel y notas).
  *   · Medición y equipo: cuánto se cobra, qué pasa y quién hace qué.
  *   · Automatizaciones: lo que Shifu hace solo.
- * Los datos son de ejemplo y se ajustan a lo respondido en el cuestionario. Lo que la persona agrega, cambia o elimina (con el chat
- * de Shifu o a mano) vive en el estado de esta página; cuando Shifu tenga servidor se guardará allí. */
+ * Esta pantalla no guarda nada por su cuenta: todo se pide y se cambia a través de `../api` (ver API.md). Cada cambio devuelve el
+ * CRM completo y actualizado, y la pantalla solo lo reemplaza. Los cobros todavía son de ejemplo (no hay contrato para ellos). */
 
-const leer = () => {
-  try { return JSON.parse(localStorage.getItem(CLAVE)) || null } catch { return null }
-}
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 const capitaliza = (s) => s.trim().replace(/\s+/g, ' ').replace(/(^|\s)(\p{L})/gu, (_, a, b) => a + b.toUpperCase())
 
-const NOMBRES = ['Ana Morales', 'Luis Pérez', 'Sofía Ríos', 'Marcos Díaz', 'Valeria Soto', 'Diego Castillo', 'Camila Vega', 'Jorge Luna',
-  'Paola Méndez', 'Andrés Cruz', 'Lucía Torres', 'Mateo Rojas', 'Elena Salas', 'Hugo Ibarra', 'Renata Paz', 'Iván Aguirre']
-const EQUIPO = ['Mariana Solís', 'Carlos Aguilar', 'Diana Hidalgo']
 const MONEDA = { gt: 'Q', mx: '$', co: '$', es: '€', us: '$', otro: '$' }
-const CARTERA = { k1: 40, k2: 120, k3: 600, k4: 1200 }
-const PERSONAS = { solo: 1, chico: 2, medio: 3, grande: 4 }
-const ETAPAS = ['Nuevo', 'En contacto', 'Interesado', 'Cliente']
+const COLORES = ['#7c5cff', '#22d3a6', '#f0587a', '#f5a623']
 
-/* Cada CRM nombra sus secciones con el lenguaje del rubro. Orden: contactos, cobros, trabajo, actividad y equipo. */
-const SECCIONES = {
-  servicios: ['Clientes', 'Facturación', 'Proyectos', 'Bitácora', 'Equipo'],
-  agencia: ['Clientes', 'Presupuestos y pagos', 'Campañas', 'Línea de tiempo', 'Talento'],
-  comercio: ['Compradores', 'Caja', 'Pedidos', 'Movimiento', 'Vendedores'],
-  salud: ['Pacientes', 'Pagos y consultas', 'Tratamientos', 'Historial', 'Especialistas'],
-  educacion: ['Alumnos', 'Mensualidades', 'Clases', 'Novedades', 'Docentes'],
-  tecnologia: ['Cuentas', 'Suscripciones', 'Desarrollo', 'Registro', 'Equipo técnico'],
-  inmobiliaria: ['Interesados', 'Comisiones y pagos', 'Propiedades', 'Visitas', 'Asesores'],
-  otro: ['Contactos', 'Cobros', 'Proyectos', 'Actividad', 'Equipo'],
-}
 const BASE = [
   { id: 'contactos', I: LuUsers, grupo: 0 }, { id: 'desarrollo', I: LuCode, grupo: 0 },
   { id: 'cobros', I: LuWallet, grupo: 1 }, { id: 'actividad', I: LuActivity, grupo: 1 }, { id: 'rrhh', I: LuIdCard, grupo: 1 },
 ]
-const ORDEN = { contactos: 0, cobros: 1, desarrollo: 2, actividad: 3, rrhh: 4 }
 const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
-const menuDe = (rubro, nombres) => [
-  ...BASE.map((m) => ({ ...m, t: nombres[m.id] || (SECCIONES[rubro] || SECCIONES.otro)[ORDEN[m.id]] })),
-  { id: 'importar', t: 'Importar datos', I: LuUpload, grupo: 0 },
-  { id: 'automatizaciones', t: 'Automatizaciones', I: LuZap, grupo: 2 },
+const menuDe = (rubro, secciones) => [
+  ...BASE.map((m) => ({ ...m, t: tituloSeccion(rubro, m.id, secciones) })),
+  { id: 'importar', t: tituloSeccion(rubro, 'importar'), I: LuUpload, grupo: 0 },
+  { id: 'automatizaciones', t: tituloSeccion(rubro, 'automatizaciones'), I: LuZap, grupo: 2 },
 ]
-
-let uid = 0
-const nuevoId = () => { uid += 1; return uid }
 
 /* ───────── Pantalla de carga ───────── */
 
-function Cargando({ pasos, onListo }) {
+function Cargando({ pasos, listo, onListo }) {
   const [hechos, setHechos] = useState(0)
   useEffect(() => {
+    const fin = hechos >= pasos.length
+    if (fin && !listo) return undefined // la animación terminó pero el CRM aún no llega: se espera
     const quieto = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const t = setTimeout(() => (hechos >= pasos.length ? onListo() : setHechos(hechos + 1)), hechos >= pasos.length ? 700 : quieto ? 250 : 1050)
+    const t = setTimeout(() => (fin ? onListo() : setHechos(hechos + 1)), fin ? 700 : quieto ? 250 : 1050)
     return () => clearTimeout(t)
-  }, [hechos, pasos.length, onListo])
+  }, [hechos, pasos.length, listo, onListo])
   const pct = Math.round((hechos / pasos.length) * 100)
   return (
     <div className="carga" role="status" aria-live="polite">
@@ -83,9 +65,20 @@ function Cargando({ pasos, onListo }) {
   )
 }
 
+function Fallo({ onReintentar }) {
+  return (
+    <div className="carga" role="alert">
+      <img className="carga-shifu" src="/img/shifu-cabeza.webp" alt="" width="110" height="110" />
+      <h1>No pudimos abrir tu CRM</h1>
+      <p className="carga-sub">Revisa tu conexión e inténtalo de nuevo. Tus respuestas del cuestionario siguen guardadas.</p>
+      <button type="button" className="btn-pildora btn-grande" onClick={onReintentar}>Reintentar</button>
+    </div>
+  )
+}
+
 /* ───────── Vistas ───────── */
 
-function Contactos({ d, lista, total, buscar, t, onBorrar }) {
+function Contactos({ lista, total, buscar, t, onBorrar }) {
   const q = norm(buscar)
   const vis = q ? lista.filter((f) => norm(f.n).includes(q)) : lista
   const por = (e) => lista.filter((c) => c.etapa === e).length
@@ -112,8 +105,8 @@ function Contactos({ d, lista, total, buscar, t, onBorrar }) {
   )
 }
 
-function Cobros({ d, t }) {
-  const m = d.moneda
+function Cobros({ moneda, t }) {
+  const m = moneda
   const filas = [['Ana Morales', 'Cotización #1042', 12000, 'Pagado'], ['Café Brava', 'Anticipo 50%', 4500, 'Pendiente'], ['Ríos & Co.', 'Cuota 2 de 3', 9800, 'Vencido'], ['Monte Verde', 'Cotización #1047', 28000, 'Pendiente'], ['Taller 9', 'Mensualidad', 3200, 'Pagado']]
   const suma = (e) => filas.filter((f) => f[3] === e).reduce((a, f) => a + f[2], 0)
   return (
@@ -134,17 +127,15 @@ function Cobros({ d, t }) {
   )
 }
 
-const COLS = [['porHacer', 'Por hacer'], ['enCurso', 'En curso'], ['hecho', 'Hecho']]
-
-function Desarrollo({ t, tareas, onAvanzar }) {
+function Desarrollo({ t, tareas, onMover }) {
   return (
     <>
       <div className="mc-cab"><div><h1>{t}</h1><p>Lo que está por hacer, en curso y terminado. Toca una tarea para pasarla a la siguiente columna.</p></div></div>
       <div className="mc-tablero">
-        {COLS.map(([k, titulo], c) => (
+        {COLUMNAS.map(([k, titulo], c) => (
           <div key={k} className="mc-col"><h2>{titulo}<i>{tareas[k].length}</i></h2>
             {tareas[k].map((x) => (
-              <button key={x.id} type="button" className="mc-tarea" onClick={() => onAvanzar(k, x)} title={c < 2 ? 'Pasar a la siguiente columna' : 'Volver a “Por hacer”'}>{x.t}</button>
+              <button key={x.id} type="button" className="mc-tarea" onClick={() => onMover(x, COLUMNAS[(c + 1) % COLUMNAS.length][0])} title={c < 2 ? 'Pasar a la siguiente columna' : 'Volver a “Por hacer”'}>{x.t}</button>
             ))}
             {!tareas[k].length && <p className="mc-vacio chico">Sin tareas</p>}
           </div>
@@ -163,16 +154,17 @@ function Actividad({ eventos, t }) {
   )
 }
 
-function Rrhh({ d, lista, total, t }) {
-  const n = (v) => lista.filter((c) => c.dueno === v).length + Math.round(d.base / d.vendedores.length)
+function Rrhh({ vendedores, lista, total, t }) {
+  const resto = Math.max(0, total - lista.length)
+  const n = (v) => lista.filter((c) => c.dueno === v).length + Math.round(resto / vendedores.length)
   return (
     <>
       <div className="mc-cab"><div><h1>{t}</h1><p>Tu gente y lo que le toca a cada quien. {total.toLocaleString('es')} contactos repartidos.</p></div></div>
       <div className="mc-equipo">
-        {d.vendedores.map((v, k) => (
-          <div key={v} className="mc-persona"><span className="mc-av grande" style={{ background: d.colores[k % d.colores.length] }}>{v[0]}</span><b>{v}</b><small>{k === 0 ? 'Administración' : 'Ventas'}</small><em>{n(v)} contactos</em></div>
+        {vendedores.map((v, k) => (
+          <div key={v} className="mc-persona"><span className="mc-av grande" style={{ background: COLORES[k % COLORES.length] }}>{v[0]}</span><b>{v}</b><small>{k === 0 ? 'Administración' : 'Ventas'}</small><em>{n(v)} contactos</em></div>
         ))}
-        {d.vendedores.length === 1 && <div className="mc-persona invita"><span aria-hidden="true">＋</span><b>Invita a tu equipo</b><small>Cuando crezcas, reparte clientes</small></div>}
+        {vendedores.length === 1 && <div className="mc-persona invita"><span aria-hidden="true">＋</span><b>Invita a tu equipo</b><small>Cuando crezcas, reparte clientes</small></div>}
       </div>
     </>
   )
@@ -186,7 +178,7 @@ function Automatizaciones({ autos, onAlternar }) {
         {autos.map((a) => (
           <li key={a.id} className={a.on ? 'on' : ''}>
             <div><span className="mc-pilar">{a.pilar}</span><b>{a.t}</b><small>{a.d}</small></div>
-            <button type="button" role="switch" aria-checked={a.on} aria-label={a.t} className="mc-switch" onClick={() => onAlternar(a.id)}><i /></button>
+            <button type="button" role="switch" aria-checked={a.on} aria-label={a.t} className="mc-switch" onClick={() => onAlternar(a)}><i /></button>
           </li>
         ))}
       </ul>
@@ -194,7 +186,8 @@ function Automatizaciones({ autos, onAlternar }) {
   )
 }
 
-/* Importar: lo que la persona ya tiene en Excel o en notas. Se pega el texto (copiar celdas de Excel funciona), o se sube un CSV o TXT. */
+/* Importar: lo que la persona ya tiene en Excel o en notas. Se pega el texto (copiar celdas de Excel funciona), o se sube un CSV o TXT.
+ * La lectura del texto se hace aquí, en el navegador; al confirmar se manda la lista de contactos ya limpia. */
 function leerTexto(texto) {
   const filas = []
   texto.split(/\r?\n/).forEach((linea, i) => {
@@ -214,6 +207,7 @@ function Importar({ existentes, onImportar, onVer }) {
   const [texto, setTexto] = useState('')
   const [nota, setNota] = useState('')
   const [hecho, setHecho] = useState(0)
+  const [enviando, setEnviando] = useState(false)
   const archivo = useRef(null)
   const filas = useMemo(() => {
     const ya = new Set(existentes.map((n) => norm(n)))
@@ -233,7 +227,12 @@ function Importar({ existentes, onImportar, onVer }) {
     lector.onerror = () => setNota('No pude leer ese archivo.')
     lector.readAsText(f)
   }
-  const importar = () => { onImportar(filas); setHecho(filas.length); setTexto(''); setNota('') }
+  const importar = async () => {
+    setEnviando(true)
+    const ok = await onImportar(filas)
+    setEnviando(false)
+    if (ok) { setHecho(filas.length); setTexto(''); setNota('') } else setNota('No se pudo importar. Inténtalo de nuevo.')
+  }
 
   return (
     <>
@@ -259,7 +258,7 @@ function Importar({ existentes, onImportar, onVer }) {
                 {filas.slice(0, 6).map((f) => <li key={f.n}><i className="mc-av peq">{f.n[0]}</i><b>{f.n}</b><small>{f.det || 'sin más datos'}</small></li>)}
                 {filas.length > 6 && <li className="mas">y {filas.length - 6} más…</li>}
               </ul>
-              <button type="button" className="btn-pildora" disabled={!filas.length} onClick={importar}>Importar {filas.length || ''} {filas.length === 1 ? 'contacto' : 'contactos'}</button>
+              <button type="button" className="btn-pildora" disabled={!filas.length || enviando} onClick={importar}>Importar {filas.length || ''} {filas.length === 1 ? 'contacto' : 'contactos'}</button>
             </>
           )}
         </div>
@@ -278,16 +277,16 @@ const SUGERENCIAS = [
   ['Estructura', 'Elimina a Luis Pérez'],
 ]
 
-function ChatShifu({ abierto, setAbierto, mensajes, escribiendo, onEnviar }) {
+function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar }) {
   const [txt, setTxt] = useState('')
   const fin = useRef(null)
   useEffect(() => { fin.current?.scrollIntoView?.({ block: 'end' }) }, [mensajes, escribiendo, abierto])
-  const enviar = (e) => { e?.preventDefault(); if (!txt.trim()) return; onEnviar(txt); setTxt('') }
+  const enviar = (e) => { e?.preventDefault(); if (!txt.trim() || escribiendo) return; onEnviar(txt); setTxt('') }
   const [pista, setPista] = useState(true)
   useEffect(() => { const t = setTimeout(() => setPista(false), 7000); return () => clearTimeout(t) }, [])
   // El chat va fuera de la página (en el body) para que siempre quede fijo en la esquina y no dependa de ningún contenedor.
   return createPortal(
-    <div className="mc-chat">
+    <div className="mc-chat" data-tema={tema}>
       {abierto && (
         <section className="mc-chat-panel" aria-label="Chat con Shifu">
           <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>Tu asistente del CRM</small></div>
@@ -300,11 +299,11 @@ function ChatShifu({ abierto, setAbierto, mensajes, escribiendo, onEnviar }) {
             <div ref={fin} />
           </div>
           <div className="mc-chat-sug" aria-label="Ideas para empezar">
-            {SUGERENCIAS.map(([p, s]) => <button key={s} type="button" onClick={() => onEnviar(s)}><em>{p}</em>{s}</button>)}
+            {SUGERENCIAS.map(([p, s]) => <button key={s} type="button" disabled={escribiendo} onClick={() => onEnviar(s)}><em>{p}</em>{s}</button>)}
           </div>
           <form onSubmit={enviar}>
             <input value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="Pídele a Shifu agregar, cambiar o quitar algo…" aria-label="Mensaje para Shifu" maxLength={300} />
-            <button type="submit" disabled={!txt.trim()} aria-label="Enviar"><LuSend /></button>
+            <button type="submit" disabled={!txt.trim() || escribiendo} aria-label="Enviar"><LuSend /></button>
           </form>
         </section>
       )}
@@ -319,181 +318,61 @@ function ChatShifu({ abierto, setAbierto, mensajes, escribiendo, onEnviar }) {
 
 /* ───────── Página ───────── */
 
+let idMensaje = 0
+const mensaje = (de, t) => { idMensaje += 1; return { id: idMensaje, de, t } }
+
 export default function CrmPage() {
   const nav = useNavigate()
   const { state } = useLocation()
-  const guardado = useMemo(leer, [])
-  const r = guardado?.resp
-  const [cargando, setCargando] = useState(!!state?.cargar)
+  const recienTerminado = !!state?.cargar
+  const borrador = useMemo(() => leerBorrador(), [])
+
+  const [crm, setCrm] = useState(null)
+  const [fallo, setFallo] = useState(false)
+  const [animando, setAnimando] = useState(recienTerminado)
   const [vista, setVista] = useState('contactos')
   const [buscar, setBuscar] = useState('')
   const [bienvenida, setBienvenida] = useState(true)
-  const [nombres, setNombres] = useState({})
+  // Tema claro u oscuro: preferencia de cada persona, se recuerda en el navegador.
+  const [tema, setTema] = useState(() => { try { return localStorage.getItem('shifu_tema') === 'claro' ? 'claro' : 'oscuro' } catch { return 'oscuro' } })
+  useEffect(() => {
+    try { localStorage.setItem('shifu_tema', tema) } catch { /* sin almacenamiento */ }
+    document.documentElement.style.colorScheme = tema === 'claro' ? 'light' : 'dark'
+    return () => { document.documentElement.style.colorScheme = '' }
+  }, [tema])
+  const [aviso, setAviso] = useState('')
+  const pedido = useRef(null)
+  const avisoT = useRef(null)
 
+  // Al entrar: si venimos del cuestionario se crea el CRM; si no, se pide el que ya existe. Se pide una sola vez (también con StrictMode).
+  const cargar = () => {
+    setFallo(false)
+    pedido.current = (recienTerminado && borrador?.resp ? apiCrm.crearDesdeBrief(borrador.resp) : apiCrm.obtener())
+    pedido.current.then((s) => {
+      if (s) { setCrm(s); return }
+      // Sin CRM no hay nada que mostrar: se vuelve al cuestionario (con las respuestas guardadas, pero sin marcarlo como terminado).
+      if (borrador) guardarBorrador({ ...borrador, fin: false })
+      nav('/bienvenida', { replace: true })
+    }).catch(() => setFallo(true))
+  }
+  useEffect(() => { if (!pedido.current) cargar() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => clearTimeout(avisoT.current), [])
+
+  const brief = crm?.brief || borrador?.resp
   const d = useMemo(() => {
-    if (!r) return null
-    const total = CARTERA[r.cartera] || 60
-    const personas = PERSONAS[r.equipo] || 1
+    if (!brief) return null
     return {
-      nombre: r.nombre || 'Mi negocio', total, base: Math.max(0, total - Math.min(total, 16)),
-      vendedores: ['Tú', ...EQUIPO, 'Ana Ruiz'].slice(0, personas),
-      colores: ['#7c5cff', '#22d3a6', '#f0587a', '#f5a623'],
-      canales: (r.canales?.length ? r.canales : ['whatsapp']).map((c) => etiqueta('canales', c)),
-      moneda: MONEDA[r.ubicacion?.pais] || '$',
-      rubro: r.rubro ? etiqueta('rubro', r.rubro) : 'tu negocio',
+      nombre: brief.nombre || 'Mi negocio',
+      canales: (brief.canales?.length ? brief.canales : ['whatsapp']).map((c) => etiqueta('canales', c)),
+      moneda: MONEDA[brief.ubicacion?.pais] || '$',
+      rubro: brief.rubro ? etiqueta('rubro', brief.rubro) : 'tu negocio',
     }
-  }, [r])
-
-  const [contactos, setContactos] = useState(() => (d ? Array.from({ length: Math.min(d.total, 16) }, (_, k) => ({
-    id: nuevoId(), n: NOMBRES[k % NOMBRES.length], canal: d.canales[k % d.canales.length], etapa: ETAPAS[k % 4], dueno: d.vendedores[k % d.vendedores.length], dias: (k % 6) + 1,
-  })) : []))
-  const [tareas, setTareas] = useState(() => ({
-    porHacer: ['Importar contactos', 'Definir etapas de venta', 'Plantilla de cotización'].map((t) => ({ id: nuevoId(), t })),
-    enCurso: ['Conectar WhatsApp', 'Invitar al equipo'].map((t) => ({ id: nuevoId(), t })),
-    hecho: ['Crear cuenta', 'Responder el cuestionario'].map((t) => ({ id: nuevoId(), t })),
-  }))
-  const [eventos, setEventos] = useState(() => (d ? [
-    ['🤖', 'Shifu creó tu CRM', 'hace un momento'], ['📥', `Se cargaron ${d.total.toLocaleString('es')} contactos de ejemplo`, 'hace un momento'],
-    ['🔔', 'Se activaron los recordatorios de seguimiento', 'hace 1 min'], ['💬', `Canales listos para conectar: ${d.canales.join(', ')}`, 'hace 1 min'], ['👋', 'Cuenta creada', 'hoy'],
-  ].map(([e, t, h]) => ({ id: nuevoId(), e, t, h })) : []))
-  const [autos, setAutos] = useState(() => {
-    if (!r) return []
-    const quiere = (v) => r.objetivos?.includes(v)
-    const canal = (v) => r.canales?.includes(v)
-    return [
-      { id: 'recordatorios', pilar: 'Estructura', t: 'Recordatorios de seguimiento', d: 'Te avisa cuando un contacto lleva 3 días sin respuesta.', on: quiere('seguimientos') || r.problemas?.includes('olvido') || false },
-      { id: 'bienvenida', pilar: 'Estructura', t: 'Bienvenida automática por WhatsApp', d: 'Responde al instante cuando alguien te escribe por primera vez.', on: canal('whatsapp') },
-      { id: 'contacto', pilar: 'Estructura', t: 'Crear el contacto desde cada mensaje', d: 'Shifu detecta quién te escribe y lo agrega con lo que pidió.', on: quiere('ia') },
-      { id: 'reparto', pilar: 'Medición y equipo', t: 'Repartir contactos nuevos entre el equipo', d: 'Cada contacto nuevo se asigna por turnos a tu equipo.', on: !!r.equipo && r.equipo !== 'solo' },
-      { id: 'vencidos', pilar: 'Medición y equipo', t: 'Aviso de cobros vencidos', d: 'Te avisa y le recuerda al cliente cuando un pago se atrasa.', on: false },
-      { id: 'resumen', pilar: 'Medición y equipo', t: 'Resumen semanal por correo', d: 'Cada lunes recibes cuánto vendiste, cuánto falta y quién avanzó más.', on: quiere('reportes') },
-    ]
-  })
-
-  const menu = useMemo(() => menuDe(r?.rubro, nombres), [r, nombres])
+  }, [brief])
+  const menu = useMemo(() => menuDe(brief?.rubro, crm?.secciones), [brief, crm?.secciones])
   const tit = (id) => menu.find((m) => m.id === id)?.t
-  const total = d ? d.base + contactos.length : 0
-
-  const registrar = (e, t) => setEventos((ev) => [{ id: nuevoId(), e, t, h: 'ahora' }, ...ev].slice(0, 30))
-  const agregarContactos = (filas, canal = 'Chat con Shifu') => {
-    setContactos((c) => [...filas.map((f) => ({ id: nuevoId(), n: f.n, det: f.det, canal, etapa: 'Nuevo', dueno: 'Tú', dias: 0 })), ...c])
-  }
-  const borrarContacto = (c) => { setContactos((l) => l.filter((x) => x.id !== c.id)); registrar('🗑️', `Eliminaste a ${c.n}`) }
-  const avanzarTarea = (col, x) => {
-    const sig = { porHacer: 'enCurso', enCurso: 'hecho', hecho: 'porHacer' }[col]
-    setTareas((t) => ({ ...t, [col]: t[col].filter((y) => y.id !== x.id), [sig]: [...t[sig], x] }))
-  }
-  const alternarAuto = (id) => {
-    const a = autos.find((x) => x.id === id)
-    setAutos((l) => l.map((x) => (x.id === id ? { ...x, on: !x.on } : x)))
-    registrar(a.on ? '⏸️' : '⚡', `${a.on ? 'Apagaste' : 'Activaste'}: ${a.t}`)
-  }
-
-  /* Chat: Shifu entiende frases sencillas para agregar, modificar y eliminar. Pide confirmación antes de borrar. */
-  const [chatAbierto, setChatAbierto] = useState(false)
-  const [mensajes, setMensajes] = useState(() => [{ id: nuevoId(), de: 'shifu', t: 'Hola 👋 Soy Shifu. Dime qué quieres agregar, cambiar o quitar de tu CRM. Si tienes datos en Excel o en notas, pásalos por “Importar datos”.' }])
-  const [escribiendo, setEscribiendo] = useState(false)
-  const pendiente = useRef(null)
-  const temporizador = useRef(null)
-  useEffect(() => () => clearTimeout(temporizador.current), [])
-
-  const buscarContacto = (q) => { const k = norm(q); return k ? contactos.find((c) => norm(c.n).includes(k)) : undefined }
-  const buscarSeccion = (q) => { const k = norm(q); return k ? menu.find((m) => norm(m.t).includes(k) || k.includes(norm(m.t))) : undefined }
-  const buscarEtapa = (q) => { const k = norm(q); return ETAPAS.find((e) => norm(e) === k || k.includes(norm(e).split(' ').pop())) }
-  const buscarTarea = (q) => { const k = norm(q); for (const [col] of COLS) { const x = tareas[col].find((y) => norm(y.t).includes(k)); if (x) return [col, x] } return null }
-
-  const entender = (crudo) => {
-    const texto = crudo.trim()
-    const t = norm(texto)
-
-    if (pendiente.current) {
-      const p = pendiente.current
-      pendiente.current = null
-      if (/^(si|claro|dale|confirmo|ok|adelante|borralo|eliminalo)/.test(t)) {
-        if (p.tipo === 'contacto') { borrarContacto(p.c); return `Listo, eliminé a ${p.c.n} de tu CRM.` }
-        setTareas((tt) => ({ ...tt, [p.col]: tt[p.col].filter((y) => y.id !== p.x.id) })); registrar('🗑️', `Eliminaste la tarea “${p.x.t}”`)
-        return `Listo, eliminé la tarea “${p.x.t}”.`
-      }
-      return 'Perfecto, no borré nada. 👍'
-    }
-
-    if (/(import|excel|notas|csv|hoja de calculo|sheets|archivo)/.test(t)) { setVista('importar'); return 'Claro. Te llevé a “Importar datos”: pega ahí tus notas o las celdas de tu Excel y yo las ordeno como contactos.' }
-
-    let m = t.match(/^(activa|enciende|prende|desactiva|apaga)r?\s+(?:la\s+|el\s+|las\s+|los\s+)?(.+)$/)
-    if (m) {
-      const k = norm(m[2]).split(' ').filter((w) => w.length > 3)
-      const a = autos.find((x) => k.some((w) => norm(x.t).includes(w.slice(0, 6))))
-      if (!a) return `No encontré esa automatización. Tienes: ${autos.map((x) => x.t.toLowerCase()).join(', ')}.`
-      const quiere = /^(activa|enciende|prende)/.test(m[1])
-      setAutos((l) => l.map((x) => (x.id === a.id ? { ...x, on: quiere } : x))); registrar(quiere ? '⚡' : '⏸️', `${quiere ? 'Activaste' : 'Apagaste'}: ${a.t}`); setVista('automatizaciones')
-      return `${quiere ? 'Activé' : 'Apagué'} “${a.t}”.`
-    }
-
-    m = texto.match(/^(?:renombra|renombrar|cambia(?:r)?(?:\s+el\s+nombre\s+de)?|mueve|pasa|modifica|actualiza|pon)\s+(?:la\s+secci[oó]n\s+|secci[oó]n\s+|la\s+etapa\s+de\s+|a\s+)?(.+?)\s+(?:a|por|como)\s+(.+)$/i)
-    if (m) {
-      const [, x, y] = m
-      const sec = buscarSeccion(x)
-      if (sec && !buscarContacto(x)) {
-        const nuevo = capitaliza(y).slice(0, 28)
-        setNombres((n) => ({ ...n, [sec.id]: nuevo })); registrar('✏️', `Renombraste “${sec.t}” a “${nuevo}”`)
-        return `Hecho: ahora la sección se llama “${nuevo}”.`
-      }
-      const c = buscarContacto(x)
-      if (c) {
-        const et = buscarEtapa(y)
-        if (et) { setContactos((l) => l.map((z) => (z.id === c.id ? { ...z, etapa: et, dias: 0 } : z))); registrar('🔁', `${c.n} pasó a “${et}”`); setVista('contactos'); return `Listo: ${c.n} ahora está en “${et}”.` }
-        const nuevo = capitaliza(y).slice(0, 40)
-        setContactos((l) => l.map((z) => (z.id === c.id ? { ...z, n: nuevo } : z))); registrar('✏️', `${c.n} ahora se llama ${nuevo}`); setVista('contactos')
-        return `Listo, cambié el nombre de ${c.n} a ${nuevo}.`
-      }
-      return `No encontré “${x}” ni como sección ni como contacto. ¿Me das el nombre tal como aparece?`
-    }
-
-    m = texto.match(/^(?:elimina(?:r)?|borra(?:r)?|quita(?:r)?|saca(?:r)?|remueve)\s+(?:a\s+|al\s+|el\s+|la\s+)?(.+)$/i)
-    if (m) {
-      const tarea = m[1].match(/^tarea\s*:?\s*(.+)$/i)
-      if (tarea) {
-        const hit = buscarTarea(tarea[1])
-        if (!hit) return `No encontré la tarea “${tarea[1]}”.`
-        pendiente.current = { tipo: 'tarea', col: hit[0], x: hit[1] }
-        return `¿Seguro que quieres eliminar la tarea “${hit[1].t}”? Responde “sí” para confirmar.`
-      }
-      const c = buscarContacto(m[1].replace(/^(contacto|cliente|paciente|alumno|comprador|interesado|cuenta)\s+/i, ''))
-      if (!c) return `No encuentro a “${m[1]}”. Escríbelo como aparece en tu lista.`
-      pendiente.current = { tipo: 'contacto', c }
-      return `¿Seguro que quieres eliminar a ${c.n}? Responde “sí” para confirmar.`
-    }
-
-    m = texto.match(/^(?:agrega(?:r)?|a[ñn]ade|a[ñn]adir|crea(?:r)?|registra(?:r)?|anota(?:r)?|suma(?:r)?|nuevo|nueva)\s+(.+)$/i)
-    if (m) {
-      const tarea = m[1].match(/^(?:la\s+|una\s+)?tarea\s*:?\s*(.+)$/i)
-      if (tarea) {
-        const nombre = tarea[1].trim().replace(/^./, (c) => c.toUpperCase()).slice(0, 60)
-        setTareas((tt) => ({ ...tt, porHacer: [...tt.porHacer, { id: nuevoId(), t: nombre }] })); registrar('✅', `Agregaste la tarea “${nombre}”`); setVista('desarrollo')
-        return `Anoté la tarea “${nombre}” en “Por hacer”.`
-      }
-      const nombre = capitaliza(m[1].replace(/^(?:a\s+|al\s+|un\s+|una\s+|el\s+|la\s+)?(?:contacto|cliente|paciente|alumno|comprador|interesado|cuenta|prospecto)?\s*(?:llamad[oa]\s+)?/i, '')).slice(0, 40)
-      if (nombre.length < 2) return '¿Cómo se llama? Por ejemplo: “Agrega a Laura Gómez”.'
-      if (buscarContacto(nombre)?.n.toLowerCase() === nombre.toLowerCase()) return `${nombre} ya está en tu lista.`
-      agregarContactos([{ n: nombre }]); registrar('➕', `Agregaste a ${nombre}`); setVista('contactos')
-      return `Listo, agregué a ${nombre} en “${tit('contactos')}”, en la etapa “Nuevo”.`
-    }
-
-    if (/^(hola|buenas|hey|ayuda|que puedes|qué puedes)/.test(t)) return 'Puedo agregar contactos y tareas, cambiarlos de etapa o de nombre, renombrar secciones, activar automatizaciones y eliminar lo que ya no uses (siempre te pido confirmación).'
-    return 'Aún no entendí eso. Prueba con: “Agrega a Laura Gómez”, “Renombra Cobros a Facturación”, “Mueve a Ana Morales a Cliente”, “Activa los recordatorios” o “Elimina a Luis Pérez”.'
-  }
-
-  const enviar = (texto) => {
-    setMensajes((l) => [...l, { id: nuevoId(), de: 'yo', t: texto.trim() }])
-    const respuesta = entender(texto)
-    setEscribiendo(true)
-    clearTimeout(temporizador.current)
-    temporizador.current = setTimeout(() => { setEscribiendo(false); setMensajes((l) => [...l, { id: nuevoId(), de: 'shifu', t: respuesta }]) }, 550)
-  }
-
   const pasos = useMemo(() => {
     if (!d) return []
-    const obj = r.objetivos?.[0] ? etiqueta('objetivos', r.objetivos[0]) : null
+    const obj = brief.objetivos?.[0] ? etiqueta('objetivos', brief.objetivos[0]) : null
     return [
       `Leyendo lo que nos contaste de ${d.nombre}`,
       `Preparando un CRM para ${d.rubro.toLowerCase()}`,
@@ -502,23 +381,57 @@ export default function CrmPage() {
       'Cargando datos de ejemplo para que lo pruebes',
       'Dando los últimos toques',
     ]
-  }, [d, r])
+  }, [d, brief])
 
-  // Sin respuestas guardadas no hay nada que armar: se manda al cuestionario.
-  if (!d) return <Navigate to="/bienvenida" replace />
-  if (cargando) return <Cargando pasos={pasos} onListo={() => { setCargando(false); nav('/mi-crm', { replace: true, state: null }) }} />
+  /* Cada cambio se manda al servidor y la pantalla se queda con el CRM que devuelve. Si falla, se avisa y no se cambia nada. */
+  const avisar = (m) => { setAviso(m); clearTimeout(avisoT.current); avisoT.current = setTimeout(() => setAviso(''), 3500) }
+  const aplicar = async (peticion) => {
+    try { setCrm(await peticion()); return true } catch { avisar('No se pudo guardar el cambio. Inténtalo de nuevo.'); return false }
+  }
 
-  const rehacer = () => { try { localStorage.removeItem(CLAVE) } catch { /* sin almacenamiento */ } nav('/bienvenida') }
+  /* Chat */
+  const [chatAbierto, setChatAbierto] = useState(false)
+  const [mensajes, setMensajes] = useState(() => [mensaje('shifu', 'Hola 👋 Soy Shifu. Dime qué quieres agregar, cambiar o quitar de tu CRM. Si tienes datos en Excel o en notas, pásalos por “Importar datos”.')])
+  const [escribiendo, setEscribiendo] = useState(false)
+  const pendiente = useRef(null)
+  const enviar = async (texto) => {
+    const t = texto.trim()
+    if (!t) return
+    setMensajes((l) => [...l, mensaje('yo', t)])
+    setEscribiendo(true)
+    try {
+      const r = await apiChat.enviar(t, { pendiente: pendiente.current })
+      pendiente.current = r.pendiente || null
+      if (r.crm) setCrm(r.crm)
+      if (r.vista) setVista(r.vista)
+      setMensajes((l) => [...l, mensaje('shifu', r.respuesta)])
+    } catch {
+      setMensajes((l) => [...l, mensaje('shifu', 'No pude conectarme con el servidor. Inténtalo de nuevo en un momento.')])
+    } finally { setEscribiendo(false) }
+  }
+
+  if (fallo) return <Fallo onReintentar={() => { pedido.current = null; cargar() }} />
+  if (animando && d) return <Cargando pasos={pasos} listo={!!crm} onListo={() => { setAnimando(false); nav('/mi-crm', { replace: true, state: null }) }} />
+  if (!crm || !d) return <div className="carga" role="status"><p className="carga-sub">Abriendo tu CRM…</p></div>
+
+  const rehacer = async () => {
+    if (await aplicar(async () => { await apiCrm.reiniciar(); return crm })) { borrarBorrador(); nav('/bienvenida') }
+  }
   const ir = (id) => { setVista(id); setBuscar('') }
+  const vendedores = crm.vendedores
 
   return (
-    <div className="mc">
+    <div className="mc" data-tema={tema}>
       <header className="mc-top">
         <Link to="/" aria-label="Shifu"><Logo height={24} /></Link>
         <span className="mc-negocio">{d.nombre}</span>
         <label className="mc-buscar"><LuSearch aria-hidden="true" />
           <input type="search" placeholder="Buscar en todo el espacio…" value={buscar} onChange={(e) => { setBuscar(e.target.value); if (e.target.value) setVista('contactos') }} aria-label="Buscar" />
         </label>
+        <button type="button" className="mc-tema" role="switch" aria-checked={tema === 'claro'} aria-label="Modo claro" title={tema === 'claro' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+          onClick={() => setTema(tema === 'claro' ? 'oscuro' : 'claro')}>
+          <span className={tema === 'claro' ? 'on' : ''}><LuSun aria-hidden="true" /></span><span className={tema === 'oscuro' ? 'on' : ''}><LuMoon aria-hidden="true" /></span>
+        </button>
         <button type="button" className="mc-camp" aria-label="Avisos"><LuBell /><i>3</i></button>
         <span className="mc-yo" aria-hidden="true">{d.nombre[0].toUpperCase()}</span>
       </header>
@@ -542,24 +455,25 @@ export default function CrmPage() {
           {bienvenida && (
             <aside className="mc-shifu" role="status">
               <ShifuAvatar size={40} />
-              <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, {d.total.toLocaleString('es')} contactos de ejemplo y tus canales ({d.canales.join(', ')}). Pídeme cambios desde el chat de abajo a la derecha.</p>
+              <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, {crm.totalContactos.toLocaleString('es')} contactos de ejemplo y tus canales ({d.canales.join(', ')}). Pídeme cambios desde el chat de abajo a la derecha.</p>
               <button type="button" onClick={() => setBienvenida(false)} aria-label="Cerrar">✕</button>
             </aside>
           )}
-          {vista === 'contactos' && <Contactos d={d} lista={contactos} total={total} buscar={buscar} t={tit('contactos')} onBorrar={borrarContacto} />}
-          {vista === 'desarrollo' && <Desarrollo t={tit('desarrollo')} tareas={tareas} onAvanzar={avanzarTarea} />}
+          {vista === 'contactos' && <Contactos lista={crm.contactos} total={crm.totalContactos} buscar={buscar} t={tit('contactos')} onBorrar={(c) => aplicar(() => apiCrm.contactosEliminar(c.id))} />}
+          {vista === 'desarrollo' && <Desarrollo t={tit('desarrollo')} tareas={crm.tareas} onMover={(x, destino) => aplicar(() => apiCrm.tareasMover(x.id, destino))} />}
           {vista === 'importar' && (
-            <Importar existentes={contactos.map((c) => c.n)} onVer={() => ir('contactos')}
-              onImportar={(filas) => { agregarContactos(filas, 'Importado'); registrar('📥', `Importaste ${filas.length} ${filas.length === 1 ? 'contacto' : 'contactos'} desde tus notas o Excel`) }} />
+            <Importar existentes={crm.contactos.map((c) => c.n)} onVer={() => ir('contactos')}
+              onImportar={(filas) => aplicar(() => apiCrm.contactosCrear(filas, 'Importado', `Importaste ${filas.length} ${filas.length === 1 ? 'contacto' : 'contactos'} desde tus notas o Excel`))} />
           )}
-          {vista === 'cobros' && <Cobros d={d} t={tit('cobros')} />}
-          {vista === 'actividad' && <Actividad eventos={eventos} t={tit('actividad')} />}
-          {vista === 'rrhh' && <Rrhh d={d} lista={contactos} total={total} t={tit('rrhh')} />}
-          {vista === 'automatizaciones' && <Automatizaciones autos={autos} onAlternar={alternarAuto} />}
+          {vista === 'cobros' && <Cobros moneda={d.moneda} t={tit('cobros')} />}
+          {vista === 'actividad' && <Actividad eventos={crm.eventos} t={tit('actividad')} />}
+          {vista === 'rrhh' && <Rrhh vendedores={vendedores} lista={crm.contactos} total={crm.totalContactos} t={tit('rrhh')} />}
+          {vista === 'automatizaciones' && <Automatizaciones autos={crm.automatizaciones} onAlternar={(a) => aplicar(() => apiCrm.automatizacionFijar(a.id, !a.on))} />}
         </main>
       </div>
 
-      <ChatShifu abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} />
+      {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
+      <ChatShifu tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} />
     </div>
   )
 }
