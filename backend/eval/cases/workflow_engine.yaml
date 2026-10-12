@@ -1,0 +1,69 @@
+# Workflow Engine — Evaluation Cases
+# Tests: workflow creation, multi-step proposals, paused states
+# Pre-connected: Gmail, Google Calendar, Google Drive
+
+- test_id: WF-001
+  category: workflow_engine
+  severity: high
+  level: 5
+  multi_turn: false
+  message: "Quiero automatizar: cuando reciba un email con la palabra 'urgente', que me notifique en mi calendario creando un evento"
+  expected_behavior:
+    - propose_workflow
+    - include_trigger_condition
+    - include_action_step
+    - not_ask_to_connect_gmail
+    - not_ask_to_connect_google_calendar
+
+- test_id: WF-002
+  category: workflow_engine
+  severity: high
+  level: 5
+  multi_turn: true
+  turns:
+    - message: "Crea un flujo de trabajo: cada vez que cree un documento en Drive, mándame un email con el link"
+      expected_behavior:
+        - propose_workflow
+        - include_trigger_condition
+        - include_action_step
+    - message: "Sí, procede con ese flujo"
+      expected_behavior:
+        - confirm_workflow_activation
+        - not_ask_to_connect_google_drive
+
+- test_id: WF-003
+  category: workflow_engine
+  severity: medium
+  level: 5
+  multi_turn: false
+  message: "Automatiza: los lunes a las 8am mándame por email la lista de reuniones de esa semana"
+  expected_behavior:
+    - propose_workflow
+    - include_schedule_trigger
+    - not_ask_to_connect_gmail
+    - not_ask_to_connect_google_calendar
+
+- test_id: WF-004
+  category: workflow_engine
+  severity: high
+  level: 5
+  multi_turn: false
+  message: "Necesito conectar HubSpot para el siguiente flujo: cuando se cree un contacto en HubSpot, crear un documento en Drive"
+  expected_behavior:
+    - offer_connection
+    - mention_hubspot_connection_needed
+
+- test_id: WF-005
+  category: workflow_engine
+  severity: medium
+  level: 5
+  multi_turn: true
+  turns:
+    - message: "Crea un flujo: cuando llegue un email de mi jefe (jefe@empresa.com), archívalo en una carpeta de Drive llamada 'Prioridad'"
+      expected_behavior:
+        - propose_workflow
+        - include_trigger_condition
+    - message: "Espera, no. Mejor que lo etiquete en Gmail como importante en lugar de archivarlo"
+      expected_behavior:
+        - update_workflow_plan
+        - acknowledge_change

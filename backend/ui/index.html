@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shifu Chat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav id="side" hidden>
+  <div class="side-head"><strong>Conversaciones</strong><button id="newConv" class="link">+ Nueva</button></div>
+  <div id="convId" title="Clic para copiar el id"></div>
+  <div id="convStats"></div>
+  <div id="convList"></div>
+  <div class="side-head"><strong>Avisos</strong></div>
+  <div id="noticeList"></div>
+  <div class="side-head"><strong>Lo que Shifu recuerda</strong></div>
+  <div id="memList"></div>
+</nav>
+<main>
+  <section id="auth">
+    <h1>Shifu</h1>
+    <form id="authForm">
+      <div id="nameFields" hidden>
+        <input id="name" placeholder="Nombre" minlength="2">
+        <input id="last_name" placeholder="Apellido" minlength="2">
+      </div>
+      <input id="email" type="email" placeholder="Correo" required>
+      <input id="password" type="password" placeholder="Contraseña (8+, letras y números)" minlength="8" required>
+      <button id="submitBtn">Entrar</button>
+      <button type="button" id="toggle" class="link">Crear cuenta nueva</button>
+      <p id="authError" class="error"></p>
+    </form>
+  </section>
+
+  <section id="chat" hidden>
+    <header>
+      <strong>Shifu</strong>
+      <span id="status"></span>
+      <label><input type="checkbox" id="traceOn" checked> Trazas</label>
+      <label title="No muestra la respuesta hasta que el evaluador la apruebe"><input type="checkbox" id="holdOn" checked> Calidad primero</label>
+      <a href="metrics.html" class="link" style="font-size:.85em">Métricas</a>
+      <button id="logout" class="link">Salir</button>
+    </header>
+    <div id="log"></div>
+    <div id="attached"></div>
+    <form id="msgForm">
+      <input id="attach" type="file" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.pptx,.csv,.json,.txt,.md,.msg,.png,.jpg,.jpeg,.webp">
+      <button type="button" id="attachBtn" title="Adjuntar documentos o imágenes">📎</button>
+      <input id="msg" placeholder="Escribe un mensaje…" autocomplete="off" autofocus>
+      <button>Enviar</button>
+    </form>
+  </section>
+</main>
+<aside id="trace" hidden>
+  <h2>Centinelas del turno</h2><div id="sentinelLog"></div>
+  <h2>Trazas internas</h2><div id="traceLog"></div>
+</aside>
+<script src="app.js"></script>
+</body>
+</html>

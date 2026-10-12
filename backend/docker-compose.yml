@@ -1,0 +1,60 @@
+# ============================================================
+# DESARROLLO LOCAL
+#
+# Solo API (por defecto):
+#   docker-compose up --build
+#
+# API + Worker:
+#   docker-compose --profile worker up --build
+#
+# Solo Worker:
+#   docker-compose --profile worker up worker --build
+# ============================================================
+
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      target: api
+    container_name: fastapi_api
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 5000 --reload
+    restart: unless-stopped
+
+  worker:
+    profiles: ["worker"]
+    build:
+      context: .
+      target: worker
+    container_name: fastapi_worker
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: python -m worker.worker
+    restart: unless-stopped
+  mongo:
+    image: mongo:6.0
+    container_name: shifu_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: shifuai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo_data:

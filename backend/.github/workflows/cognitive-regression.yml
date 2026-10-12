@@ -1,0 +1,30 @@
+name: Cognitive Regression
+
+on:
+  pull_request:
+    branches: [master, agente-estable-v3]
+    paths:
+      - "app/agent/**"
+      - "eval/**"
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+      SHIFUDEV_MODE: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run cognitive regression
+        run: python -m eval.run_eval --fail-delta 0.05

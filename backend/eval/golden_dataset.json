@@ -1,0 +1,208 @@
+[
+  {
+    "id": "gc-001",
+    "category": "pure_chat",
+    "input": "hola, ¿qué puedes hacer?",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "expected_requirement_level": null,
+    "tags": ["greeting", "onboarding"]
+  },
+  {
+    "id": "gc-002",
+    "category": "pure_chat",
+    "input": "¿cuánto es 15% de 340?",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "expected_requirement_level": null,
+    "tags": ["math", "no_tools"]
+  },
+  {
+    "id": "gc-003",
+    "category": "pure_chat",
+    "input": "qué hora es en Tokyo ahorita?",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "expected_requirement_level": null,
+    "tags": ["temporal", "timezone"]
+  },
+  {
+    "id": "gc-004",
+    "category": "catalog_list",
+    "input": "¿qué apps puedo conectar?",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": "list_available",
+    "expected_requirement_level": null,
+    "tags": ["catalog", "discovery"]
+  },
+  {
+    "id": "gc-005",
+    "category": "catalog_list",
+    "input": "muéstrame mis integraciones conectadas",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": "list_connected",
+    "expected_requirement_level": null,
+    "tags": ["catalog", "connected_apps"]
+  },
+  {
+    "id": "gc-006",
+    "category": "single_app",
+    "input": "envía un email a juan@empresa.com con el asunto 'Reunión mañana'",
+    "expected_apps_involved": ["gmail"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["gmail", "send_email"]
+  },
+  {
+    "id": "gc-007",
+    "category": "single_app",
+    "input": "lista mis últimos 5 correos",
+    "expected_apps_involved": ["gmail"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["gmail", "list_emails"]
+  },
+  {
+    "id": "gc-008",
+    "category": "single_app",
+    "input": "crea una tarea en ClickUp: 'Revisar propuesta cliente' en el proyecto Marketing",
+    "expected_apps_involved": ["clickup"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["clickup", "create_task"]
+  },
+  {
+    "id": "gc-009",
+    "category": "single_app",
+    "input": "muéstrame mis tareas pendientes en Asana",
+    "expected_apps_involved": ["asana"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["asana", "list_tasks"]
+  },
+  {
+    "id": "gc-010",
+    "category": "single_app",
+    "input": "abre una nueva página en Notion llamada 'Ideas Q3'",
+    "expected_apps_involved": ["notion"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["notion", "create_page"]
+  },
+  {
+    "id": "gc-011",
+    "category": "multi_app",
+    "input": "toma los emails de hoy y crea tareas en ClickUp por cada uno",
+    "expected_apps_involved": ["gmail", "clickup"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["multi_app", "gmail", "clickup", "workflow"]
+  },
+  {
+    "id": "gc-012",
+    "category": "multi_app",
+    "input": "cuando alguien comente en Slack #ventas agrega una fila en Google Sheets",
+    "expected_apps_involved": ["slack", "google_sheets"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["multi_app", "slack", "sheets", "workflow"]
+  },
+  {
+    "id": "gc-013",
+    "category": "research",
+    "input": "cuáles son las últimas noticias sobre inteligencia artificial en Guatemala?",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": true,
+    "expected_catalog_query_mode": null,
+    "tags": ["research", "news", "location_aware"]
+  },
+  {
+    "id": "gc-014",
+    "category": "research",
+    "input": "qué pasó ayer en la bolsa de valores?",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": true,
+    "expected_catalog_query_mode": null,
+    "tags": ["research", "finance", "time_sensitive"]
+  },
+  {
+    "id": "gc-015",
+    "category": "research",
+    "input": "¿cuál es el precio del dólar hoy?",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": true,
+    "expected_catalog_query_mode": null,
+    "tags": ["research", "finance", "fact_verification"]
+  },
+  {
+    "id": "gc-016",
+    "category": "scheduling",
+    "input": "recuérdame revisar el pipeline de ventas cada lunes a las 9am",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "expected_schedule_context_type": "weekly",
+    "tags": ["scheduling", "cron"]
+  },
+  {
+    "id": "gc-017",
+    "category": "closing",
+    "input": "gracias, hasta luego",
+    "expected_apps_involved": [],
+    "expected_is_closing": true,
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["closing", "goodbye"]
+  },
+  {
+    "id": "gc-018",
+    "category": "closing",
+    "input": "ok ya no necesito nada más, chao",
+    "expected_apps_involved": [],
+    "expected_is_closing": true,
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["closing", "goodbye"]
+  },
+  {
+    "id": "gc-019",
+    "category": "intent_resolution",
+    "input": "manda un whats a Pedro diciéndole que llegó el pago",
+    "expected_apps_involved": ["whatsapp"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["whatsapp", "slang", "intent_resolution"]
+  },
+  {
+    "id": "gc-020",
+    "category": "intent_resolution",
+    "input": "sube esto a las nubes de google",
+    "expected_apps_involved": ["google_drive"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["drive", "slang", "intent_resolution"]
+  },
+  {
+    "id": "gc-021",
+    "category": "multi_app",
+    "input": "cuando llegue un email de facturas, súbelo a Drive y crea una fila en Sheets",
+    "expected_apps_involved": ["gmail", "google_drive", "google_sheets"],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["multi_app", "gmail", "drive", "sheets", "trigger"]
+  },
+  {
+    "id": "gc-022",
+    "category": "pure_chat",
+    "input": "explícame qué es un webhook",
+    "expected_apps_involved": [],
+    "expected_needs_external_info": false,
+    "expected_catalog_query_mode": null,
+    "tags": ["explanation", "technical", "no_tools"]
+  }
+]

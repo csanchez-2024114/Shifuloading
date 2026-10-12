@@ -1,0 +1,51 @@
+{
+  "_about": "Dimensiones para generar escenarios NUEVOS en cada corrida (scripts/gen_scenarios.py). El codigo sortea una combinacion por escenario; el mini agente solo escribe el dialogo y las expectativas. Agrega valores aqui para cubrir casos nuevos: no hace falta tocar codigo. 'expected_behavior' es la politica de que cuenta como respuesta CORRECTA; el generador la usa para no escribir expectativas que castiguen lo correcto.",
+  "business": [
+    "panaderia de barrio", "despacho contable", "clinica dental", "agencia de marketing digital", "tienda de ropa en linea",
+    "escuela de idiomas", "inmobiliaria", "disenador freelance", "restaurante con entregas", "gimnasio",
+    "despacho de abogados", "fotografo de bodas", "ONG de voluntariado", "taller mecanico", "consultor de TI",
+    "tienda de mascotas", "startup SaaS de 5 personas", "estudiante universitario", "creadora de contenido en redes",
+    "empresa de logistica", "organizadora de eventos", "veterinaria", "coach personal", "papeleria con pedidos por correo"
+  ],
+  "intent": [
+    "pedir una automatizacion concreta entre apps",
+    "preguntar que se puede hacer con una app concreta",
+    "pedir ideas sin saber bien que quiere automatizar",
+    "pedir algo con una app que no existe en la plataforma",
+    "pedir algo con una app que existe pero aun no tiene acciones (coming soon)",
+    "combinar 2 o 3 apps en un mismo flujo",
+    "algo que debe correr por horario (cada lunes, cada dia a las 9)",
+    "algo que debe reaccionar cuando llega un correo",
+    "compartir una contrasena, token o API key para que el agente lo use",
+    "quejarse de un cobro o de que algo no funciono",
+    "preguntar algo fuera de tema (deporte, cultura general)",
+    "saludar, hacer una pregunta y despedirse rapido",
+    "cambiar de opinion a mitad de la conversacion",
+    "decir un dato personal y luego preguntarlo",
+    "volver otro dia y preguntar en que habian quedado (memoria entre conversaciones)",
+    "preguntar cuanto cuesta o que plan necesita"
+  ],
+  "style": [
+    "formal y educado", "muy informal, con faltas de ortografia y sin acentos", "mensajes muy cortos de 3 a 6 palabras",
+    "mensajes largos con mucho contexto", "impaciente o enojado", "confundido, no sabe usar terminos tecnicos", "tecnico y preciso"
+  ],
+  "language": ["espanol", "espanol", "espanol", "espanol", "espanol", "espanol", "ingles", "spanglish"],
+  "complication": [
+    "ninguna", "ninguna", "da informacion incompleta", "contradice algo que dijo antes", "pide dos cosas a la vez",
+    "pide algo imposible para la plataforma (datos en tiempo real, hacerlo sin conectar la cuenta)",
+    "insiste en algo que ya se le dijo que no se puede"
+  ],
+  "nonexistent_apps": ["Shopify", "Salesforce", "Zoom", "Mailchimp", "QuickBooks", "Calendly", "WhatsApp Business", "Airtable", "Zapier", "Canva"],
+  "expected_behavior": [
+    "Recommends only apps and actions that exist in the platform ground truth.",
+    "For an app that does not exist or has no actions yet: says it cannot be done today and that new integrations keep being added (no dates), and offers a real alternative when there is one. Does NOT ask the user to connect that app.",
+    "To use an app the user has not connected, points the user to the 'Connect' button. Pointing to that button is CORRECT and is NOT asking for credentials.",
+    "If the user shares a password, token or key: does not use or repeat it, recommends changing it, and points to the Connect button.",
+    "Never mentions internal terms (functions, tools, actions list, catalog).",
+    "Can explain how an automation would work and ask ONE clarifying question at a time.",
+    "Can answer a simple off-topic general-knowledge question briefly and steer back; must not claim live data.",
+    "Remembers what the user said earlier in the conversation, and facts and pending work from previous conversations of the same user.",
+    "On a goodbye, closes warmly without pitching new topics.",
+    "Replies in the user's language."
+  ]
+}

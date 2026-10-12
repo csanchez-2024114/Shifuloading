@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Métricas del agente</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="mx">
+  <div class="bar">
+    <strong>Métricas del agente</strong>
+    <select id="days" aria-label="Días">
+      <option value="1">1 día</option><option value="7" selected>7 días</option>
+      <option value="30">30 días</option><option value="90">90 días</option>
+    </select>
+    <a href="index.html" class="link">← Chat</a>
+    <span id="msg" class="note"></span>
+  </div>
+  <h2>Por versión</h2><div class="tw" id="byVersion"></div>
+  <h2>Por día</h2><div class="tw" id="byDay"></div>
+  <h2>Últimos 👎 con comentario</h2><div class="tw" id="down"></div>
+</div>
+<script src="metrics.js"></script>
+</body>
+</html>

@@ -1,0 +1,586 @@
+{
+  "_about": "Casos de memoria para scripts/eval_memory.py (estilo LongMemEval, en nuestro dominio). Cada caso: un usuario, una o varias sesiones (conversaciones). Turnos: {plant, key} = el usuario dice un dato; {filler: N} = N turnos de un usuario simulado que reacciona al agente (alarga la conversacion); {probe, gold, ability, about} = pregunta con respuesta correcta. ability: extraction | multi_session | update | temporal | abstention. 'about' liga la pregunta con el plant (para medir la distancia en turnos).",
+  "cases": [
+    {
+      "id": "larga_25",
+      "title": "Conversacion larga: datos sembrados al inicio, preguntados al final",
+      "persona": "Lucia, duena de una panaderia, tutea, escribe mensajes cortos",
+      "goal": "armar una automatizacion para que los pedidos que llegan por Gmail queden registrados en una hoja de Google Sheets y le llegue un resumen semanal",
+      "sessions": [
+        {
+          "turns": [
+            {
+              "plant": "hola! tengo una panaderia y quiero organizar los pedidos que me llegan por correo",
+              "key": "negocio"
+            },
+            {
+              "plant": "la hoja donde llevo todo se llama Pedidos Pan 2026",
+              "key": "hoja"
+            },
+            {
+              "plant": "el resumen lo necesito siempre los jueves en la tarde",
+              "key": "dia"
+            },
+            {
+              "filler": 8
+            },
+            {
+              "probe": "oye como se llamaba la hoja que te dije?",
+              "gold": "Pedidos Pan 2026",
+              "ability": "extraction",
+              "about": "hoja"
+            },
+            {
+              "filler": 5
+            },
+            {
+              "probe": "y que dia te dije que necesito el resumen?",
+              "gold": "los jueves (en la tarde)",
+              "ability": "extraction",
+              "about": "dia"
+            },
+            {
+              "filler": 5
+            },
+            {
+              "probe": "recuerdame a que me dedico y en que hoja guardamos los pedidos",
+              "gold": "tiene una panaderia; la hoja es Pedidos Pan 2026",
+              "ability": "extraction",
+              "about": "hoja"
+            },
+            {
+              "probe": "y cual es el numero de telefono de mi panaderia que te pase?",
+              "gold": "nunca dio un telefono: debe decir que no lo sabe / no se lo dio",
+              "ability": "abstention"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cambio_herramienta",
+      "title": "El usuario cambia un dato a mitad de la conversacion",
+      "persona": "Marco, contador independiente, formal",
+      "goal": "automatizar un reporte mensual de gastos a partir de los correos con facturas",
+      "sessions": [
+        {
+          "turns": [
+            {
+              "plant": "Buenas tardes. Soy contador independiente y llevo los gastos de mis clientes en Google Sheets.",
+              "key": "herramienta"
+            },
+            {
+              "filler": 7
+            },
+            {
+              "plant": "Una aclaracion: desde esta semana deje Google Sheets, ahora todo lo llevo en Excel.",
+              "key": "herramienta"
+            },
+            {
+              "filler": 8
+            },
+            {
+              "probe": "Para confirmar: en que herramienta llevo los gastos actualmente?",
+              "gold": "Excel (antes usaba Google Sheets)",
+              "ability": "update",
+              "about": "herramienta"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cuatro_sesiones",
+      "title": "Cuatro conversaciones en dias distintos",
+      "persona": "Sofia, organizadora de eventos, informal",
+      "goal": "ir automatizando partes de su trabajo con sus clientes",
+      "sessions": [
+        {
+          "turns": [
+            {
+              "plant": "hola, organizo bodas y quiero que cada solicitud que me llega por gmail quede en una hoja de sheets",
+              "key": "tarea1"
+            },
+            {
+              "filler": 2
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola de nuevo! ahora quiero otra cosa: un recordatorio cada lunes con los eventos de la semana",
+              "key": "tarea2"
+            },
+            {
+              "filler": 2
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "oye ya no organizo bodas, ahora solo hago eventos corporativos",
+              "key": "negocio"
+            },
+            {
+              "filler": 2
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "probe": "hola! que automatizaciones teniamos pendientes?",
+              "gold": "registrar solicitudes de Gmail en una hoja de Sheets y un recordatorio cada lunes con los eventos de la semana",
+              "ability": "multi_session",
+              "about": "tarea1"
+            },
+            {
+              "probe": "y que tipo de eventos organizo?",
+              "gold": "eventos corporativos",
+              "ability": "update",
+              "about": "negocio"
+            },
+            {
+              "probe": "cual de las dos automatizaciones te pedi primero?",
+              "gold": "la de registrar las solicitudes de Gmail en Sheets",
+              "ability": "temporal",
+              "about": "tarea1"
+            },
+            {
+              "probe": "cuantos empleados te dije que tengo?",
+              "gold": "nunca lo dijo: debe decir que no lo sabe",
+              "ability": "abstention"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seis_sesiones",
+      "title": "Mas de 3 conversaciones: la tarea de la primera se pregunta en la sexta",
+      "persona": "Diego, veterinario, directo",
+      "goal": "automatizar tareas de su clinica",
+      "sessions": [
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero que cada cita que me llega por correo quede anotada en una hoja que se llama Citas Vet",
+              "key": "tarea1"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, ahora quiero mandar un correo de agradecimiento a cada cliente despues de su cita"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero un resumen semanal de mis correos sin leer"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero guardar en drive los archivos adjuntos de los resultados de laboratorio"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero una alerta cuando un cliente escriba la palabra urgente"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "probe": "hola, como se llamaba la hoja de las citas que te dije la primera vez?",
+              "gold": "Citas Vet",
+              "ability": "multi_session",
+              "about": "tarea1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "detalle_conversacion",
+      "title": "Un detalle de la conversacion que no es un dato estable del usuario",
+      "persona": "Ana, asistente administrativa, amable",
+      "goal": "preparar una automatizacion que envie por correo un reporte trimestral",
+      "sessions": [
+        {
+          "turns": [
+            {
+              "plant": "hola, el reporte sale de una hoja que se llama Nomina Q4 y se lo mando a mi jefa, Carmen Ruiz",
+              "key": "detalle"
+            },
+            {
+              "filler": 12
+            },
+            {
+              "probe": "perdon, a quien te dije que le mando el reporte y de que hoja sale?",
+              "gold": "a Carmen Ruiz; de la hoja Nomina Q4",
+              "ability": "extraction",
+              "about": "detalle"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "distractor",
+      "title": "Dos hojas con nombres parecidos",
+      "persona": "Pablo, tienda de bicicletas, informal",
+      "goal": "automatizar el control de inventario y de ventas",
+      "sessions": [
+        {
+          "turns": [
+            {
+              "plant": "las ventas las apunto en la hoja Ventas Bici 2025",
+              "key": "ventas"
+            },
+            {
+              "filler": 4
+            },
+            {
+              "plant": "y el inventario lo llevo en otra hoja, Inventario Bici 2026",
+              "key": "inventario"
+            },
+            {
+              "filler": 6
+            },
+            {
+              "probe": "en que hoja te dije que llevo las ventas?",
+              "gold": "Ventas Bici 2025",
+              "ability": "extraction",
+              "about": "ventas"
+            },
+            {
+              "probe": "y el inventario?",
+              "gold": "Inventario Bici 2026",
+              "ability": "extraction",
+              "about": "inventario"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "larga_50",
+      "title": "Conversacion de 50 turnos: datos del inicio preguntados muy tarde",
+      "persona": "Rocio, duena de una floreria, informal y conversadora",
+      "goal": "automatizar los pedidos que llegan por Gmail, su registro en Sheets, recordatorios de entrega y un resumen semanal",
+      "sessions": [
+        {
+          "turns": [
+            {
+              "plant": "hola! tengo una floreria que se llama Flores Rocio y quiero ordenar los pedidos que me llegan por gmail",
+              "key": "negocio"
+            },
+            {
+              "plant": "la hoja donde anoto todo se llama Pedidos Florales 2026",
+              "key": "hoja"
+            },
+            {
+              "plant": "las entregas las hace mi sobrino Tomas, a el le tienen que llegar los avisos",
+              "key": "repartidor"
+            },
+            {
+              "filler": 22
+            },
+            {
+              "probe": "oye a quien te dije que le tienen que llegar los avisos de entrega?",
+              "gold": "a Tomas (su sobrino, el repartidor)",
+              "ability": "extraction",
+              "about": "repartidor"
+            },
+            {
+              "filler": 12
+            },
+            {
+              "probe": "y como se llama la hoja donde anoto los pedidos?",
+              "gold": "Pedidos Florales 2026",
+              "ability": "extraction",
+              "about": "hoja"
+            },
+            {
+              "filler": 8
+            },
+            {
+              "probe": "para terminar: como se llama mi floreria, en que hoja anoto y quien hace las entregas?",
+              "gold": "Flores Rocio; Pedidos Florales 2026; Tomas",
+              "ability": "extraction",
+              "about": "negocio"
+            },
+            {
+              "probe": "y cual es la direccion de mi local que te pase?",
+              "gold": "nunca la dio: debe decir que no la sabe",
+              "ability": "abstention"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "doce_sesiones",
+      "title": "Doce conversaciones: la tarea de la sesion 1 y la de la 3 se preguntan en la sesion 12",
+      "persona": "Lupita, duena de una panaderia pequena, informal",
+      "goal": "ir automatizando las tareas de su panaderia con Gmail, Sheets y Drive",
+      "sessions": [
+        {
+          "turns": [
+            {
+              "plant": "hola! tengo una panaderia y esta semana tengo que preparar el catalogo de invierno y mandarselo a mi proveedor, Harinas del Norte",
+              "key": "catalogo"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero que me llegue un recordatorio cada viernes para pedir la levadura"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola de nuevo, empece a llevar los pedidos de navidad en una hoja de Sheets que se llama Pedidos Navidad",
+              "key": "pedidos_navidad"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola! quiero llevar en Drive un registro de las facturas de gas y luz"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero un correo aviso cuando me llegue una resena de una estrella en Google"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero un resumen de mis ventas del fin de semana cada lunes"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero anotar en una hoja las cotizaciones que mando a los restaurantes"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero un correo de agradecimiento automatico para los clientes que compran por primera vez"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero organizar en Drive las fotos de mis productos para la tienda en linea"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero un recordatorio el primer dia de cada mes para pagar el alquiler del local"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "plant": "hola, quiero una hoja con el consumo semanal de harina y azucar para saber cuanto comprar"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "turns": [
+            {
+              "probe": "hola! te acuerdas que tenia que mandarle a Harinas del Norte?",
+              "gold": "el catalogo de invierno",
+              "ability": "multi_session",
+              "about": "catalogo"
+            },
+            {
+              "probe": "como se llamaba la hoja donde llevo los pedidos de navidad?",
+              "gold": "Pedidos Navidad",
+              "ability": "multi_session",
+              "about": "pedidos_navidad"
+            },
+            {
+              "probe": "que banco te dije que uso?",
+              "gold": "nunca lo dijo: debe decir que no lo sabe",
+              "ability": "abstention"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compromiso_fecha",
+      "title": "Compromiso con fecha: el agente lo recuerda cuando vence (reloj simulado, necesita SHIFU_DEV_UI=1)",
+      "persona": "Ines, duena de una tienda de ropa, tutea, escribe mensajes cortos",
+      "goal": "ordenar la administracion de su tienda con ayuda del asistente",
+      "sessions": [
+        {
+          "now": "2026-10-12T15:00:00Z",
+          "turns": [
+            {
+              "plant": "tengo que entregar la nomina de mis 5 empleados el viernes",
+              "key": "nomina"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "now": "2026-10-14T15:00:00Z",
+          "turns": [
+            {
+              "plant": "hola de nuevo, quiero ordenar mis facturas de proveedores en una carpeta de Google Drive",
+              "key": "facturas"
+            },
+            {
+              "filler": 1
+            }
+          ]
+        },
+        {
+          "now": "2026-10-17T15:00:00Z",
+          "turns": [
+            {
+              "probe": "hola!",
+              "gold": "menciona por su cuenta la nomina que vencia el viernes (pregunta si ya la entrego)",
+              "ability": "temporal",
+              "about": "nomina"
+            },
+            {
+              "probe": "que tenia pendiente esta semana?",
+              "gold": "la nomina de los 5 empleados (era para el viernes)",
+              "ability": "multi_session",
+              "about": "nomina"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preferencia_respetada",
+      "title": "Preferencia dicha en una sesion: se RESPETA en la siguiente sin que la repita (v0.9.9)",
+      "persona": "Laura, dueña de una cafeteria, tutea, mensajes cortos",
+      "goal": "organizar los pedidos a proveedores de su cafeteria",
+      "sessions": [
+        {"turns": [
+          {"plant": "hola! una cosa antes de empezar: respondeme siempre en ingles aunque yo te escriba en español, estoy practicando", "key": "idioma"},
+          {"filler": 2}
+        ]},
+        {"turns": [
+          {"probe": "que me recomiendas automatizar primero en mi cafeteria?", "gold": "the reply is written in English (the user asked in an earlier conversation to always be answered in English)", "ability": "preference", "about": "idioma"}
+        ]}
+      ]
+    },
+    {
+      "id": "meta_dicha",
+      "title": "Meta dicha en el chat: se recuerda en otra sesion y se usa para proponer (v0.9.9)",
+      "persona": "Diego, vende suplementos por internet, directo",
+      "goal": "vender mas en su tienda en linea",
+      "sessions": [
+        {"turns": [
+          {"plant": "mi meta de este trimestre es duplicar las ventas de mi tienda en linea, hoy vendo unos 200 pedidos al mes", "key": "meta"},
+          {"filler": 2}
+        ]},
+        {"turns": [
+          {"probe": "hola de nuevo. en que me conviene enfocarme esta semana?", "gold": "relaciona la sugerencia con su meta de duplicar las ventas este trimestre (la menciona o parte de ella)", "ability": "goal", "about": "meta"},
+          {"probe": "cual era la meta que te conte?", "gold": "duplicar las ventas de su tienda en linea este trimestre (hoy ~200 pedidos al mes)", "ability": "goal", "about": "meta"}
+        ]}
+      ]
+    },
+    {
+      "id": "habito_observado",
+      "title": "Lo que el usuario HACE sin declararlo: siempre elige Gmail y rechaza lo demas (v0.9.9)",
+      "persona": "Sofia, organiza eventos, impaciente, mensajes muy cortos",
+      "goal": "avisar a sus clientes de cambios en sus eventos",
+      "sessions": [
+        {"turns": [
+          {"plant": "quiero avisarle a mis clientes que cambio la fecha del evento. mandalo por gmail", "key": "canal"},
+          {"plant": "no, por otro lado no. por gmail", "key": "canal"},
+          {"plant": "y el recordatorio de la semana que viene tambien, igual por gmail", "key": "canal"}
+        ]},
+        {"turns": [
+          {"probe": "tengo que avisar a mis clientes de una promocion nueva. como lo hacemos?", "gold": "propone enviarlo por Gmail (el canal que ella eligio las veces anteriores), sin ofrecerle primero otros canales", "ability": "observed", "about": "canal"}
+        ]}
+      ]
+    }
+  ]
+}

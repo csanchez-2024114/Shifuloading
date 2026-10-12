@@ -1,0 +1,621 @@
+<mxfile host="Electron">
+  <diagram id="sistema-nuevo" name="Sistema anterior vs nuevo">
+    <mxGraphModel dx="2203" dy="1706" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="old" parent="1" style="swimlane;startSize=30;rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=14;" value="SISTEMA ANTERIOR — agente_v3 (shifu_base_v1)" vertex="1">
+          <mxGeometry height="960" width="1100" as="geometry" />
+        </mxCell>
+        <mxCell id="o_start" parent="old" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="START" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="goal_resolver" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="goal_resolver" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="memory_retriever" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="memory_retriever" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="semantic_intake" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="semantic_intake" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="req_investigator" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="req_investigator" vertex="1">
+          <mxGeometry height="40" width="140" x="20" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="catalog_checker" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="catalog_checker" vertex="1">
+          <mxGeometry height="40" width="140" x="200" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_validator" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="auth_validator" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="document_analyzer" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="document_analyzer" vertex="1">
+          <mxGeometry height="40" width="140" x="520" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="tavily_subgraph" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="tavily_subgraph" vertex="1">
+          <mxGeometry height="40" width="140" x="700" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="tav" parent="old" style="swimlane;startSize=28;rounded=1;fillColor=#fffbe6;strokeColor=#d6b656;fontSize=11;" value="tavily_subgraph (timeout 45s)" vertex="1">
+          <mxGeometry height="150" width="190" x="890" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="tavily_searcher" parent="tav" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="tavily_searcher" vertex="1">
+          <mxGeometry height="36" width="140" x="25" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="research_curator" parent="tav" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="research_curator" vertex="1">
+          <mxGeometry height="36" width="140" x="25" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="bigtools_inspector" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="bigtools_inspector" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="workflow_planner" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="workflow_planner" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="responder" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="responder" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="response_evaluator" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="response_evaluator" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="memory_updater" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="memory_updater" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="o_end" parent="old" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="END" vertex="1">
+          <mxGeometry height="40" width="140" x="360" y="880" as="geometry" />
+        </mxCell>
+        <mxCell id="error_handler" parent="old" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="error_handler" vertex="1">
+          <mxGeometry height="40" width="140" x="700" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="old" source="o_start" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="goal_resolver">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="old" source="goal_resolver" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="memory_retriever">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="old" source="memory_retriever" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="semantic_intake">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="old" source="semantic_intake" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="req_investigator" value="req_level activo (no digress)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="old" source="semantic_intake" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="catalog_checker" value="fan-out paralelo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="old" source="semantic_intake" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="auth_validator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="old" source="semantic_intake" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="document_analyzer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="old" source="semantic_intake" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="tavily_subgraph">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="old" source="semantic_intake" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="responder" value="is_closing / cuenta elegida">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="old" source="req_investigator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="responder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="old" source="tavily_subgraph" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;" target="tav">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="old" source="tavily_searcher" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="research_curator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="old" source="catalog_checker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="bigtools_inspector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="old" source="auth_validator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="bigtools_inspector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="old" source="document_analyzer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="bigtools_inspector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="old" source="tavily_subgraph" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="bigtools_inspector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="old" source="bigtools_inspector" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="workflow_planner">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="old" source="workflow_planner" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="responder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="old" source="responder" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="response_evaluator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" edge="1" parent="old" source="response_evaluator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="responder" value="eval_feedback (máx 2)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="740" />
+              <mxPoint x="560" y="660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e21" edge="1" parent="old" source="response_evaluator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="memory_updater">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" edge="1" parent="old" source="memory_updater" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="o_end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" edge="1" parent="old" source="responder" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;strokeColor=#b85450;" target="error_handler" value="agent_error">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" edge="1" parent="old" source="bigtools_inspector" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#b85450;" target="error_handler">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e25" edge="1" parent="old" source="semantic_intake" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#b85450;" target="error_handler">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26" edge="1" parent="old" source="error_handler" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#b85450;" target="o_end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Usuario" vertex="1">
+          <mxGeometry height="60" width="30" x="1485" y="-140" as="geometry" />
+        </mxCell>
+        <mxCell id="new" parent="1" style="swimlane;startSize=30;rounded=1;fillColor=#e6f2ff;strokeColor=#3b7dd8;fontStyle=1;fontSize=14;" value="SISTEMA NUEVO" vertex="1">
+          <mxGeometry height="6280" width="2300" x="1250" as="geometry" />
+        </mxCell>
+        <mxCell id="n_start" parent="new" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="START" vertex="1">
+          <mxGeometry height="40" width="140" x="180" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="n1" parent="new" style="swimlane;startSize=30;rounded=1;fillColor=#ffffff;strokeColor=#3b7dd8;fontStyle=1;fontSize=13;" value="1 · prompt_refiner  (limpia, adapta el idioma y carga)" vertex="1">
+          <mxGeometry height="480" width="480" x="20" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="ctx" parent="n1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;context_collector&lt;/b&gt;&lt;br&gt;&lt;i&gt;metadata del turno · CÓDIGO&lt;/i&gt;" vertex="1">
+          <mxGeometry height="60" width="220" x="15" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="norm" parent="n1" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;normalizer&lt;/b&gt;&lt;br&gt;&lt;i&gt;ortografía, jerga, abreviaturas · solo si el texto parece sucio (por confirmar) · gpt-4.1-nano / 4o-mini&lt;/i&gt;" vertex="1">
+          <mxGeometry height="70" width="220" x="15" y="305" as="geometry" />
+        </mxCell>
+        <mxCell id="asm" parent="n1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;prompt_assembler&lt;/b&gt;&lt;br&gt;&lt;i&gt;texto limpio + metadata · CÓDIGO&lt;/i&gt;" vertex="1">
+          <mxGeometry height="60" width="220" x="15" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="lang_det" parent="n1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;language_detector&lt;/b&gt;&lt;br&gt;&lt;i&gt;idioma + confianza · CÓDIGO; con baja confianza usa el idioma de la conversación o del perfil&lt;/i&gt;" vertex="1">
+          <mxGeometry height="65" width="220" x="15" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="lang_ad" parent="n1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;language_adapter&lt;/b&gt;&lt;br&gt;&lt;i&gt;según language_policy: resumen en inglés (gloss) + literales, o traducción completa · modelo chico&lt;/i&gt;" vertex="1">
+          <mxGeometry height="80" width="220" x="15" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="la1" edge="1" parent="n1" source="ctx" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="lang_det" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="la2" edge="1" parent="n1" source="lang_det" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="lang_ad" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="la3" edge="1" parent="n1" source="lang_ad" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="norm" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="la4" edge="1" parent="n1" source="norm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="asm" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="guard" parent="n1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;input_guard&lt;/b&gt;&lt;br&gt;&lt;i&gt;MARCA, no bloquea: intento de manipular al agente (prompt-injection), datos sensibles, contenido no permitido · reglas + modelo chico. Bloquea solo casos obvios (p. ej. pedir el prompt del sistema)&lt;/i&gt;" vertex="1">
+          <mxGeometry height="140" width="210" x="255" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" edge="1" parent="n1" source="ctx" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="guard" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" edge="1" parent="n1" source="guard" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="asm" value="flags (injection_suspect, datos sensibles)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" parent="new" style="swimlane;startSize=30;rounded=1;fillColor=#ffffff;strokeColor=#3b7dd8;fontStyle=1;fontSize=13;" value="2 · intent_detector  (qué pide el usuario)" vertex="1">
+          <mxGeometry height="510" width="640" x="1100" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="coord" parent="n2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;intent_coordinator&lt;/b&gt;&lt;br&gt;&lt;i&gt;CÓDIGO: lanza los mini-agentes que el cerco permite según lo que marque el clasificador; cierre, saludo y cancelar los clasifica el modelo chico (en código solo el mensaje vacío)&lt;/i&gt;" vertex="1">
+          <mxGeometry height="65" width="320" x="160" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="inner" parent="n2" style="swimlane;startSize=26;rounded=1;fillColor=#f7fbff;strokeColor=#6c8ebf;fontSize=11;fontStyle=0;" value="mini-agentes (solo se lanzan los necesarios; los independientes en paralelo)" vertex="1">
+          <mxGeometry height="265" width="610" x="15" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="m_int" parent="inner" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;intent_classifier&lt;/b&gt;&lt;br&gt;&lt;i&gt;intención (ve el estado de flow activo) · gpt-4.1-mini&lt;/i&gt;" vertex="1">
+          <mxGeometry height="70" width="180" x="15" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="m_sch" parent="inner" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;schedule_parser&lt;/b&gt;&lt;br&gt;&lt;i&gt;'cada lunes' → cron · CÓDIGO (chrono_parser)&lt;/i&gt;" vertex="1">
+          <mxGeometry height="70" width="180" x="215" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="m_app" parent="inner" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;app_resolver&lt;/b&gt;&lt;br&gt;&lt;i&gt;recibe la intención · alias en CÓDIGO + nano si no resuelve&lt;/i&gt;" vertex="1">
+          <mxGeometry height="75" width="180" x="15" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="m_res" parent="inner" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;research_planner&lt;/b&gt;&lt;br&gt;&lt;i&gt;opcional · ¿web? consulta, ubicación, datos frescos · gpt-4.1-mini&lt;/i&gt;" vertex="1">
+          <mxGeometry height="75" width="180" x="215" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="m_doc" parent="inner" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;document_planner&lt;/b&gt;&lt;br&gt;&lt;i&gt;opcional · qa / compare / extract · gpt-4.1-mini&lt;/i&gt;" vertex="1">
+          <mxGeometry height="75" width="180" x="415" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="i1" edge="1" parent="inner" source="m_int" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="m_app" value="intención">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="i2" edge="1" parent="inner" source="m_int" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="m_res" value="si aplica">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="i3" edge="1" parent="inner" source="m_int" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="m_doc" value="si aplica">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mrg" parent="n2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;intent_merger&lt;/b&gt;&lt;br&gt;&lt;i&gt;junta resultados, valida el JSON · CÓDIGO&lt;/i&gt;" vertex="1">
+          <mxGeometry height="55" width="320" x="160" y="435" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" edge="1" parent="n2" source="coord" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="inner" value="lanza">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" edge="1" parent="n2" source="inner" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="mrg" value="resultados">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" parent="new" style="swimlane;startSize=30;rounded=1;fillColor=#ffffff;strokeColor=#3b7dd8;fontStyle=1;fontSize=13;" value="3 · router  (nodo con Command: decide qué ramas se ejecutan)" vertex="1">
+          <mxGeometry height="510" width="480" x="1800" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="r_tab" parent="n3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;allowed_routes&lt;/b&gt;&lt;br&gt;&lt;i&gt;el cerco: ramas, agentes y modelos permitidos por intención · CÓDIGO / datos editables&lt;/i&gt;" vertex="1">
+          <mxGeometry height="65" width="260" x="110" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r_dec" parent="n3" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" value="¿hay una sola opción permitida?" vertex="1">
+          <mxGeometry height="110" width="260" x="110" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="r_plan" parent="n3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;route_plan&lt;/b&gt;&lt;br&gt;&lt;i&gt;tareas con dependencias, urgencia, agente, modelo y esfuerzo · validado contra el cerco · CÓDIGO&lt;/i&gt;" vertex="1">
+          <mxGeometry height="65" width="200" x="20" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="r_llm" parent="n3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;router_llm&lt;/b&gt;&lt;br&gt;&lt;i&gt;elige dentro de lo permitido · gpt-4.1-mini (por probar)&lt;/i&gt;" vertex="1">
+          <mxGeometry height="65" width="190" x="270" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="r_ask" parent="n3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="&lt;b&gt;ask_clarification&lt;/b&gt;&lt;br&gt;&lt;i&gt;preguntar al usuario&lt;/i&gt;" vertex="1">
+          <mxGeometry height="55" width="190" x="270" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" edge="1" parent="n3" source="r_tab" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="r_dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" edge="1" parent="n3" source="r_dec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="r_plan" value="una opción">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" edge="1" parent="n3" source="r_dec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="r_llm" value="varias">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" edge="1" parent="n3" source="r_llm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="r_plan" value="elige">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b5" edge="1" parent="n3" source="r_llm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;strokeColor=#b85450;" target="r_ask" value="dudoso">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es1" edge="1" parent="new" source="n_start" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="n1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es3" edge="1" parent="new" source="n2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="n3" value="intent_result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nxt" parent="new" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;" value="4 · tareas del router, en un grafo con dependencias (en diseño, H1)&lt;br&gt;&lt;i&gt;modos: chat · act (acciones unitarias, catálogo de funciones) · flow (modo investigador) · lecturas: web, documentos, memoria&lt;/i&gt;" vertex="1">
+          <mxGeometry height="60" width="340" x="1870" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="es4" edge="1" parent="new" source="n3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="nxt" value="route_plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="noteA" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;1 · prompt_refiner — limpia, adapta el idioma y empieza a cargar&lt;/b&gt;&lt;br&gt;• Detecta el idioma y, según la tabla language_policy, decide si basta el original con un resumen en inglés (gloss) o si hay que traducir completo&lt;br&gt;• Corrige errores de escritura solo si el texto parece sucio (por confirmar)&lt;br&gt;• Arma el paquete de información que viajará al agente&lt;br&gt;• input_guard marca intentos de manipulación y datos sensibles; no bloquea salvo casos obvios&lt;br&gt;• NO decide intención ni ruta&lt;br&gt;• Código donde se pueda; modelo chico solo en los mini-agentes de idioma y limpieza" vertex="1">
+          <mxGeometry height="170" width="480" x="20" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="noteB" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Metadata que agrega context_collector&lt;/b&gt; (~0 ms, sin LLM)&lt;br&gt;• Fecha/hora UTC y local, día de semana, ¿horario laboral?&lt;br&gt;• Zona horaria y locale (formato de fecha, moneda)&lt;br&gt;• País/ciudad (perfil; IP solo de respaldo)&lt;br&gt;• Idioma detectado vs. preferido&lt;br&gt;• Canal (WS / SSE / WhatsApp) y dispositivo&lt;br&gt;• Apps conectadas y tools disponibles&lt;br&gt;• conversation_id, nº de turno, tiempo desde el último mensaje&lt;br&gt;• Meta activa (goal_id) y flujo abierto (req_level)&lt;br&gt;• Adjuntos: tipo, tamaño, páginas&lt;br&gt;• Últimos N mensajes · preferencias de tono&lt;br&gt;&lt;i&gt;Hoy ya existen en el estado: current_time_utc, user_timezone, user_location, user_country_code&lt;/i&gt;" vertex="1">
+          <mxGeometry height="300" width="480" x="20" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="noteC" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Qué se rescata de semantic_intake&lt;/b&gt;&lt;br&gt;• Atajos: cierre, saludo trivial, frases de cancelar (ahora los clasifica el modelo chico; en código solo el mensaje vacío)&lt;br&gt;• _classify_flow_action (continue / cancel / digress): la idea se conserva, pero ahora el router ve el estado de flow y arma las tareas&lt;br&gt;• Apps en 2 capas: alias determinista y LLM solo si no resuelve&lt;br&gt;• chrono_parser (horario → cron), sin LLM&lt;br&gt;• Ejes separados: catalog_query_mode y document_intent&lt;br&gt;• Reglas del prompt: needs_fact_verification, location_aware&lt;br&gt;• Resolución de cuenta pendiente ('la de trabajo')" vertex="1">
+          <mxGeometry height="230" width="310" x="1100" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="noteD" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Qué NO se rescata tal cual&lt;/b&gt;&lt;br&gt;• Una sola llamada (gpt-4o-mini, 600 tokens) con ~15 salidas → se parte en mini-agentes&lt;br&gt;• 7 intenciones, pero solo create_workflow se usa; las otras 6 no las lee ningún nodo&lt;br&gt;• Routing fijo (_route_from_intake, 3 reglas) y 4 ramas que se auto-saltan → lo reemplaza el router&lt;br&gt;&lt;br&gt;&lt;b&gt;Verificado en el código&lt;/b&gt;&lt;br&gt;• structured_prompt (inglés) lo consumen responder, workflow_planner, response_evaluator, bigtools_inspector y tavily_searcher (respaldo)&lt;br&gt;• needs_external_info, location_aware y needs_fact_verification → tavily_searcher&lt;br&gt;• catalog_query_mode → catalog_checker, auth_validator, responder, response_evaluator&lt;br&gt;• needs_document_context y document_intent → document_analyzer&lt;br&gt;• sentimiento y mood → responder" vertex="1">
+          <mxGeometry height="230" width="310" x="1430" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="noteE" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;3 · router — cómo decide&lt;/b&gt;&lt;br&gt;• Cerco en código: qué ramas, agentes y modelos están permitidos para cada intención (datos editables)&lt;br&gt;• Si hay una sola opción permitida se usa sin llamar al modelo; si hay varias, el modelo elige dentro de lo permitido&lt;br&gt;• Si no se entiende: ask_clarification en vez de adivinar&lt;br&gt;• Salida route_plan = lista de tareas (grafo con dependencias): cada una con modo (chat, act, flow o lectura), depends_on, orden de ejecución, agente, modelo y esfuerzo; el código valida (sin ciclos, dependencias existentes, tareas con efecto marcadas); grafo inválido → se sigue el orden del usuario; ask_clarification&lt;br&gt;• Se prueba con casos etiquetados: 'dada esta intención y este contexto, ¿qué ramas salen?'&lt;br&gt;• Agregar una rama nueva = editar el cerco (datos), no el detector" vertex="1">
+          <mxGeometry height="200" width="480" x="1800" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="noteF" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Modelos por pieza (precios por 1M tokens, de las páginas de OpenAI)&lt;/b&gt;&lt;br&gt;• gpt-4o-mini: $0.15 in / $0.60 out · 128K · corte oct 2023 · el más viejo&lt;br&gt;• gpt-4.1-mini: $0.40 in / $1.60 out · 1M · corte jun 2024 · sin razonamiento oculto&lt;br&gt;• gpt-5-mini: $0.25 in / $2.00 out · 400K · corte may 2024 · razonamiento&lt;br&gt;• gpt-4.1-nano: $0.10 / $0.40 · gpt-5-nano: $0.05 / $0.40 (de la captura; no revisé sus páginas)&lt;br&gt;&lt;br&gt;&lt;b&gt;Propuesta&lt;/b&gt;&lt;br&gt;• Router: el modelo elige dentro de lo permitido = gpt-4.1-mini (por probar)&lt;br&gt;• normalizer, app_resolver: gpt-4.1-nano o 4o-mini&lt;br&gt;• intent_classifier y planners: gpt-4.1-mini&lt;br&gt;• Casos ambiguos (reference_resolver, gap_detector): gpt-5-mini con esfuerzo mínimo" vertex="1">
+          <mxGeometry height="340" width="560" x="20" y="1810" as="geometry" />
+        </mxCell>
+        <mxCell id="noteG" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Costo estimado por 1,000 llamadas&lt;/b&gt; (supuesto mío: 800 tokens in, 100 out)&lt;br&gt;• gpt-4o-mini ~$0.18 · gpt-4.1-nano ~$0.12&lt;br&gt;• gpt-4.1-mini ~$0.48&lt;br&gt;• gpt-5-mini ~$0.40, ~$1.00 si gasta 300 tokens de razonamiento&lt;br&gt;• gpt-5-nano ~$0.08, ~$0.20 con ese razonamiento&lt;br&gt;&lt;br&gt;&lt;b&gt;Cuidado con gpt-5-*&lt;/b&gt; (de mi conocimiento; las páginas no lo confirman, verificar)&lt;br&gt;• No acepta temperature=0&lt;br&gt;• El razonamiento consume el tope de salida: con max_tokens=50 (flow_gate actual) puede salir vacío&lt;br&gt;&lt;br&gt;&lt;b&gt;Cómo decidir de verdad&lt;/b&gt;&lt;br&gt;Prueba con 30-50 mensajes reales con intención y ruta esperadas; comparar aciertos, latencia y costo por modelo" vertex="1">
+          <mxGeometry height="340" width="560" x="600" y="1810" as="geometry" />
+        </mxCell>
+        <mxCell id="noteH" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Riesgos de los mini-agentes&lt;/b&gt;&lt;br&gt;• Latencia: en serie se suma; los independientes en paralelo, el resto en código&lt;br&gt;• Contexto: un mini-agente que ve poco puede interpretar mal&lt;br&gt;• Fallo de uno: lo atrapa el centinela del nodo y, si no puede, lo escala al supervisor (ver 'Fallos')&lt;br&gt;• Escrituras concurrentes en LangGraph: campos distintos, o el coordinador escribe una sola vez&lt;br&gt;• El ahorro no está medido" vertex="1">
+          <mxGeometry height="340" width="560" x="1180" y="1810" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" parent="new" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" value="código puro (sin LLM)" vertex="1">
+          <mxGeometry height="30" width="150" x="20" y="2045" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="new" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" value="mini-agente (modelo chico)" vertex="1">
+          <mxGeometry height="30" width="170" x="190" y="2045" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="new" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" value="opcional (línea punteada)" vertex="1">
+          <mxGeometry height="30" width="170" x="380" y="2045" as="geometry" />
+        </mxCell>
+        <mxCell id="ln1" edge="1" parent="new" source="noteA" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" target="n1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ln2" edge="1" parent="new" source="noteB" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" target="n1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ln3" edge="1" parent="new" source="noteC" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" target="n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ln4" edge="1" parent="new" source="noteD" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" target="n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ln5" edge="1" parent="new" source="noteE" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" target="n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="noteI" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Mejoras de LangGraph a tener en cuenta&lt;/b&gt; (guía 'Thinking in LangGraph')&lt;br&gt;1. Router como nodo con Command(update={route_plan}, goto=ramas): actualiza el estado y enruta a la vez. Hoy _route_from_intake ya devuelve una lista de ramas; lo que falla es la regla fija.&lt;br&gt;2. Estado = datos crudos, no texto formateado: guardar original, texto limpio y campos extraídos; cada nodo arma su prompt. Hoy structured_prompt (inglés) y semantic_intake_debug son datos derivados. Aplica al refined_prompt del nodo 1.&lt;br&gt;3. Granularidad: mini-agentes con LLM y reintento propio = nodos separados o subgrafo (checkpoint, visibilidad, reintento independiente). Pasos de código puro dentro del coordinador. Con 5 LLM en un nodo con gather, un fallo repite los 5.&lt;br&gt;4. Subgrafos: usar modo por invocación (el default) en paralelo; por hilo no soporta llamadas paralelas. Patrón tavily_subgraph: llamarlo dentro de un nodo y devolver solo sus campos.&lt;br&gt;5. Escrituras paralelas: cada campo tiene su reducer; sin reducer se sobrescribe. Cada mini-agente escribe campos distintos o acumula con reducer de lista.&lt;br&gt;6. CachePolicy nativo en normalizer e intent_classifier en vez de un caché propio.&lt;br&gt;7. set_node_defaults: RetryPolicy por defecto del grafo; hoy builder_standard repite retry_policy en 7 nodos.&lt;br&gt;8. Esquemas privados: resultados intermedios de los mini-agentes fuera del input/output del grafo (ya usamos ShifuInputState / ShifuOutputState)." vertex="1">
+          <mxGeometry height="440" width="560" x="20" y="2230" as="geometry" />
+        </mxCell>
+        <mxCell id="noteJ" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Errores por tipo y patrones (guía de LangGraph)&lt;/b&gt;&lt;br&gt;• Transitorio (red, límite) → RetryPolicy: ya existe&lt;br&gt;• Recuperable por el LLM (JSON inválido) → guardar el error y reintentar, o valor por defecto (flow_gate cae en 'continue')&lt;br&gt;• Corregible por el usuario → ask_clarification: decidido preguntar desde el responder (cada mensaje ya es una invocación nueva), sin interrupt()&lt;br&gt;• Inesperado → la guía dice dejarlo subir; hoy _safe_node atrapa todo y lo convierte en agent_error, lo que oculta bugs. Ahora el centinela lo registra y lo escala al supervisor (nunca se oculta un fallo); falta decidir al implementar si algunos errores de programación deben dejarse subir&lt;br&gt;• Tras agotar reintentos → informe de fallo al supervisor (error_handler se reemplaza; T2 verifica la firma)&lt;br&gt;&lt;br&gt;&lt;b&gt;Patrones que ya coinciden con el diseño&lt;/b&gt;&lt;br&gt;• Routing = nodo 3 · Parallelization = nodo 2 · Evaluator-optimizer = response_evaluator&lt;br&gt;• Orchestrator-worker con Send: es el patrón de las tareas del router (el número de tareas no se conoce de antemano)" vertex="1">
+          <mxGeometry height="440" width="560" x="600" y="2230" as="geometry" />
+        </mxCell>
+        <mxCell id="noteK" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;PENDIENTES (se borra cada línea al resolverla)&lt;/b&gt;&lt;br&gt;&lt;b&gt;Nodos 1 a 3&lt;/b&gt;&lt;br&gt;1. Umbrales para subir un idioma a soporte completo (aciertos mínimos) y armar el kit de evaluación por idioma (30-50 mensajes)&lt;br&gt;&lt;b&gt;Contexto&lt;/b&gt;&lt;br&gt;&lt;b&gt;Modo investigador&lt;/b&gt;&lt;br&gt;10. Esquema del catálogo de funciones: propuesto en el sistema aparte (a la derecha); falta confirmarlo (pendiente F7)&lt;br&gt;&lt;b&gt;Verificar&lt;/b&gt;&lt;br&gt;16. Señales de cierre: las clasifica el modelo (principio de diseño); revisar el posible bug por subcadena solo para entender el sistema actual; origen de hora y ubicación&lt;br&gt;18. Elegir modelos con una prueba de 30-50 mensajes reales&lt;br&gt;19. Store de LangGraph: producción en Atlas (ya lo tienen). Local: probar la lógica con InMemoryStore o con un Atlas local en Docker (por comprobar). Falta verificar si su búsqueda usa solo similitud o también fecha e importancia&lt;br&gt;20. Memorias actuales: confirmar en Atlas cuántos documentos hay por colección, cuáles reciben escrituras nuevas y quién escribe el diario y la memoria semántica (probable worker de reflexión que no corre aquí); plan de migración de decisiones al Store&lt;br&gt;21. Retención de checkpoints (decidido: no borrar, se marca con un estado): medir el crecimiento real (bytes por conversación), fijar los plazos de los estados, detallar el borrado a petición del usuario (decidido que se borra: alcance por conversación o cuenta, todos los almacenes, confirmación y registro sin contenido) y ver si hace falta un nivel de almacenamiento más barato&lt;br&gt;23. Diseñar el ajuste de usuario 'cómo quieres que te hable' (tú / vos / usted / neutro; casual / profesional) y su valor inicial; prueba de dialectos con ~30 conversaciones por país revisadas por nativos (con prototipo)&lt;br&gt;24. Cómo se estima el esfuerzo de la tarea (el modelo estima dentro de lo permitido; falta definir qué entrada recibe y el valor seguro por defecto), regla de estabilidad del modelo para cuidar el caché y reintento con un nivel más alto&lt;br&gt;25. Medir el núcleo real (tokens y si el modelo sigue las reglas) y fijar los topes definitivos&lt;br&gt;&lt;b&gt;Huecos de diseño (no estaban listados)&lt;/b&gt;&lt;br&gt;H3. Transición del sistema anterior al nuevo (por ejemplo correr ambos grafos y cambiar de a poco)&lt;br&gt;&lt;b&gt;Inconsistencia por decidir&lt;/b&gt;&lt;br&gt;26. El modo investigador tiene topes fijos (presupuesto 10 + 2 por paso, 30 turnos duros) mientras act usa un presupuesto elástico que pregunta '¿sigo?': ¿se unifica y el presupuesto de flow también pregunta '¿sigo?' antes del tope absoluto?" vertex="1">
+          <mxGeometry height="860" width="560" x="1180" y="2230" as="geometry" />
+        </mxCell>
+        <mxCell id="req" parent="new" style="swimlane;startSize=30;rounded=1;fillColor=#f9f5ff;strokeColor=#9673a6;fontStyle=1;fontSize=13;" value="4a · modo investigador (req_flow) — estado interno del agente; el usuario solo ve una conversación normal" vertex="1">
+          <mxGeometry height="1340" width="1720" x="20" y="3410" as="geometry" />
+        </mxCell>
+        <mxCell id="mk0" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="1 · Entender" vertex="1">
+          <mxGeometry height="40" width="160" x="20" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="mk1" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="2 · Verificar apps" vertex="1">
+          <mxGeometry height="40" width="160" x="190" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="mk2" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="3 · Planear y confirmar" vertex="1">
+          <mxGeometry height="40" width="160" x="360" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="mk3" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="4 · Probar" vertex="1">
+          <mxGeometry height="40" width="160" x="530" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="mk4" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="5 · Agregar valor" vertex="1">
+          <mxGeometry height="40" width="160" x="700" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="mk5" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="6 · Finalizar" vertex="1">
+          <mxGeometry height="40" width="160" x="870" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="mk6" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="+ más (extensible)" vertex="1">
+          <mxGeometry height="40" width="160" x="1040" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="mktxt" parent="req" style="text;whiteSpace=wrap;html=1;fontSize=11;fontStyle=2;align=left;verticalAlign=middle;" value="marcadores internos: se calculan del estado del plan; avanzan, retroceden o se amplían" vertex="1">
+          <mxGeometry height="40" width="480" x="1220" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="entry" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" value="entrada: el router activa req_flow (intención create_workflow o flujo activo)" vertex="1">
+          <mxGeometry height="55" width="200" x="20" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="gath" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="evidence_gatherer&lt;br&gt;conversación, memoria, apps conectadas, catálogo (+ web si hace falta) · CÓDIGO / herramientas" vertex="1">
+          <mxGeometry height="70" width="240" x="290" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="draft" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="plan_drafter&lt;br&gt;actualiza el plan borrador con la evidencia · gpt-4.1-mini" vertex="1">
+          <mxGeometry height="70" width="240" x="590" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="valid" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="plan_validator&lt;br&gt;compara el borrador con los requisitos reales para construir el flujo → missing[] · CÓDIGO" vertex="1">
+          <mxGeometry height="70" width="240" x="890" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="dec" parent="req" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" value="¿el plan cumple la meta del usuario y los requisitos?" vertex="1">
+          <mxGeometry height="110" width="240" x="890" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="qpl" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="question_planner&lt;br&gt;elige la UNA pregunta más valiosa (cola) · modelo chico" vertex="1">
+          <mxGeometry height="70" width="240" x="590" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="ask" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" value="responder hace la pregunta; el usuario contesta en el chat normal" vertex="1">
+          <mxGeometry height="60" width="240" x="290" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="conf" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="plan_confirm&lt;br&gt;resumen en lenguaje natural y pide confirmación · modelo chico" vertex="1">
+          <mxGeometry height="70" width="240" x="890" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="pret" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="pre_test&lt;br&gt;crea el borrador (creating) y simula (dry-run) · CÓDIGO" vertex="1">
+          <mxGeometry height="70" width="240" x="890" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="val" parent="req" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="value_suggester&lt;br&gt;mejoras opcionales, una por turno · modelo chico" vertex="1">
+          <mxGeometry height="70" width="240" x="890" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="fin" parent="req" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="finalize&lt;br&gt;disparador, activar y limpiar el estado · CÓDIGO" vertex="1">
+          <mxGeometry height="70" width="240" x="890" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="endf" parent="req" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="FIN: workflow activo" vertex="1">
+          <mxGeometry height="40" width="140" x="940" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="k1" edge="1" parent="req" source="entry" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="gath" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k2" edge="1" parent="req" source="gath" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="draft" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k3" edge="1" parent="req" source="draft" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="valid" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k4" edge="1" parent="req" source="valid" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="dec" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k5" edge="1" parent="req" source="dec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="qpl" value="no: falta algo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k6" edge="1" parent="req" source="qpl" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="ask" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k7" edge="1" parent="req" source="ask" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="gath" value="respuesta del usuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k8" edge="1" parent="req" source="dec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="conf" value="sí">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k9" edge="1" parent="req" source="conf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="pret" value="confirma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k10" edge="1" parent="req" source="conf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="draft" value="rechaza: ajuste">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k11" edge="1" parent="req" source="pret" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="val" value="confirma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k12" edge="1" parent="req" source="pret" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="draft" value="falla o rechaza">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k13" edge="1" parent="req" source="val" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="fin" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k14" edge="1" parent="req" source="fin" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="endf" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wd" parent="req" style="swimlane;startSize=28;rounded=1;fillColor=#fff5f5;strokeColor=#b85450;fontSize=12;" value="flow_watchdog — cuida que el ciclo sea finito" vertex="1">
+          <mxGeometry height="720" width="500" x="1200" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="wc" parent="wd" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="guard_counters (CÓDIGO, cada turno, gratis)&lt;br&gt;turnos, intentos por nivel, pregunta repetida, oscilación A→B→A, estancamiento; presupuesto dinámico = base + k × (pasos y apps)" vertex="1">
+          <mxGeometry height="95" width="260" x="120" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="wdec" parent="wd" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" value="¿alarma?" vertex="1">
+          <mxGeometry height="100" width="260" x="120" y="175" as="geometry" />
+        </mxCell>
+        <mxCell id="wsup" parent="wd" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="flow_supervisor (mini-agente LLM, SOLO en alarma)&lt;br&gt;reformular la pregunta, asumir un valor por defecto, ofrecer plan parcial o salir" vertex="1">
+          <mxGeometry height="100" width="260" x="120" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="whard" parent="wd" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="tope duro (CÓDIGO)&lt;br&gt;ni el supervisor lo puede saltar" vertex="1">
+          <mxGeometry height="80" width="260" x="120" y="455" as="geometry" />
+        </mxCell>
+        <mxCell id="wexit" parent="wd" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="emergency_exit&lt;br&gt;resume lo recolectado, guarda borrador, ofrece continuar luego y limpia req_level" vertex="1">
+          <mxGeometry height="100" width="260" x="120" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="w1" edge="1" parent="wd" source="wc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="wdec" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w2" edge="1" parent="wd" source="wdec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="wsup" value="sí: alarma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w3" edge="1" parent="wd" source="wsup" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="wexit" value="salir">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w4" edge="1" parent="wd" source="whard" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="wexit" value="tope alcanzado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w5" edge="1" parent="wd" source="wc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="whard" value="siempre">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wno" parent="wd" style="text;whiteSpace=wrap;html=1;fontSize=11;fontStyle=2;align=left;verticalAlign=middle;" value="no → el ciclo sigue" vertex="1">
+          <mxGeometry height="30" width="100" x="395" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="w6" edge="1" parent="req" source="valid" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="wc" value="cada turno">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rn1" parent="req" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Qué cuenta como evidencia suficiente&lt;/b&gt;&lt;br&gt;• El plan mismo es la prueba: se actualiza con cada evidencia y se valida contra lo que de verdad hace falta para CONSTRUIR el flujo&lt;br&gt;• Por cada paso: app, acción, cuenta conectada, argumentos de la herramienta y disparador&lt;br&gt;• Lo que falte en el plan = las preguntas. Cuando no falta nada y el plan cumple la meta del usuario → confirmar&lt;br&gt;• El detective investiga antes de preguntar: conversación, memoria, apps conectadas, catálogo (y web si hace falta)&lt;br&gt;• Dependencia: hoy los pasos guardan solo nodeType y ningún argumento de herramienta (deuda anotada en CLAUDE.md, sin verificar). El validador necesita saber qué exige cada herramienta (app_tools_catalog / BIGTOOLS_REGISTRY, dos listas a mano)" vertex="1">
+          <mxGeometry height="370" width="400" x="20" y="950" as="geometry" />
+        </mxCell>
+        <mxCell id="rn2" parent="req" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Niveles = marcadores internos&lt;/b&gt;&lt;br&gt;• 6 por ahora, pueden agregarse más&lt;br&gt;• El usuario no los ve: solo una conversación normal; el responder redacta cada mensaje&lt;br&gt;• Propuesta: derivar el nivel del estado del plan (¿apps verificadas? ¿plan confirmado? ¿simulación hecha?) en vez de guardarlo a mano, así avanza y retrocede solo&lt;br&gt;• Retrocesos: el validador encuentra algo roto → vuelve a verificar o planear; el usuario rechaza el plan o falla la simulación → plan_drafter con el ajuste&lt;br&gt;• Hoy: casi lineal; solo 4→3 y repeticiones dentro de 2, 3 y 5" vertex="1">
+          <mxGeometry height="370" width="400" x="450" y="950" as="geometry" />
+        </mxCell>
+        <mxCell id="rn3" parent="req" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Quién cuida que no sea infinito (3 capas)&lt;/b&gt;&lt;br&gt;1. Contadores en código, cada turno, gratis: turnos totales, intentos por nivel, misma pregunta repetida (hash), oscilación A→B→A, estancamiento (requisitos cumplidos sin subir en N turnos)&lt;br&gt;2. flow_supervisor (mini-agente LLM) solo si salta una alarma: reformula, asume un valor por defecto, ofrece plan parcial o sale. Máximo una intervención por turno&lt;br&gt;3. Tope duro en código que ni el supervisor puede saltar → emergency_exit&lt;br&gt;• Presupuesto dinámico: un flujo complejo tiene más turnos que uno simple&lt;br&gt;&lt;b&gt;Valores acordados&lt;/b&gt; (propuestos, sin medir; ajustables):&lt;br&gt;• Presupuesto: 10 + 2 por paso del plan · tope duro: 30 turnos&lt;br&gt;• Intentos por nivel: 3 · misma pregunta: 2 veces&lt;br&gt;• Estancamiento: 3 turnos sin avance · oscilación: 2 idas y vueltas entre dos niveles&lt;br&gt;• Mejoras opcionales (nivel 5): máximo 3&lt;br&gt;• Caducidad del modo activo: 24 h; el borrador guardado no caduca&lt;br&gt;&lt;b&gt;Objetivo del supervisor:&lt;/b&gt; que el usuario no pase por escenarios incómodos cuando la IA no entiende. La salida de emergencia habla como una persona (qué entendió, qué falta, qué opciones hay), nunca como un error&lt;br&gt;• recursion_limit de LangGraph solo acota pasos dentro de un turno, no entre turnos: los contadores van en el estado" vertex="1">
+          <mxGeometry height="370" width="400" x="880" y="950" as="geometry" />
+        </mxCell>
+        <mxCell id="rn4" parent="req" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Salidas del modo investigador&lt;/b&gt;&lt;br&gt;• Normal: finalize&lt;br&gt;• El usuario cancela (lo ve el router)&lt;br&gt;• Cambia de tema (digress): pausa con caducidad de 24 h; el estado se conserva&lt;br&gt;• Alarma o tope: emergency_exit con borrador guardado" vertex="1">
+          <mxGeometry height="370" width="400" x="1310" y="950" as="geometry" />
+        </mxCell>
+        <mxCell id="noteOK" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=10;size=14;" value="&lt;b&gt;DECISIONES TOMADAS&lt;/b&gt; · Pipeline de nodos; cada nodo coordina mini-agentes y pasa su resultado al siguiente · Nodo 1 solo limpia el texto y empieza a cargar la info · Nodo 2 detecta la intención con el prompt ya limpio · Nodo 3 es un router dedicado: el cerco en código y el modelo elige dentro de él · req_investigator se conserva como modo investigador: ciclo finito, niveles internos que el usuario no ve · Evidencia suficiente = el plan armado cumple la meta y los requisitos para construir el flujo · Topes y supervisor de 3 capas (valores en la nota del watchdog) · Objetivo: evitar escenarios incómodos al usuario cuando la IA no entiende · Cargador de contexto como nodo propio (1b): núcleo pequeño y estable siempre, memorias solo cuando el router lo pida · Idiomas: política configurable por idioma (original + gloss en inglés por defecto; traducir completo en idiomas de pocos recursos o desconocidos); producto global; soporte completo al lanzar en español e inglés; agregar un idioma = una fila en la tabla + un kit de evaluación, sin tocar código · input_guard en el nodo 1: solo marca (bloquea únicamente casos obvios) · El agente podrá hacer acciones unitarias desde el chat, apoyado en un catálogo de funciones · Criterio de riesgo para acciones unitarias: se deriva del verbo CRUD de cada función + 'sale al exterior' + 'reversible' (leer = asumir y decir el supuesto; saliente = borrador y pedir un sí; eliminar o irreversible = preguntar) · Memoria de largo plazo en el Store de LangGraph (recuerdos escritos tras entregar la respuesta, por eventos, con puesta al día perezosa); historial reciente: últimas 4-6 mensajes literales · Ubicación y dialecto: al LLM solo país, zona horaria y hora local (ciudad solo en consultas locales; la IP nunca se guarda ni se envía); el dialecto se maneja con un ajuste de usuario más imitación leve · El router arma las tareas (con sus dependencias, agente, modelo y esfuerzo según el esfuerzo de la tarea) · Planes y límites de facturación quedan fuera del diseño por ahora · Nombres: se mantienen los provisionales (prompt_refiner, context_loader, intent_detector, router, req_flow) · Núcleo del contexto: identidad y reglas, perfil estable, apps conectadas (solo nombres) y meta activa; elástico con tope suave 800 y techo duro 1,500 tokens, bajando de nivel antes de crecer, techo cambiado solo por una persona, alerta y nunca recorte en silencio; orden para el caché (propuesto): parte global primero, luego la del usuario · Escritura de memoria: procedencia en cada recuerdo (lo recuperado nunca se vuelve a extraer), filtro antes de guardar (texto con forma de instrucción y datos sensibles), duplicados y conflictos (gana el más reciente con fecha de validez y razón del cambio), caducidad por archivo y no por borrado · Regla de trabajo: todo número propuesto lleva su métrica (plan de medición) · Sistema de funciones y conexiones: ver contenedor a la derecha · Las preguntas al usuario se hacen desde el responder (sin interrupt()): el estado queda en el checkpoint y la respuesta entra como mensaje nuevo · El detective (req_flow) usa solo memoria, apps conectadas, catálogo de funciones y web, y de las funciones solo las marcadas como lectura que no salen al exterior · Fallos: centinela en código en cada nodo + supervisor global (el modelo elige entre las acciones que el cerco permite) que reemplaza a error_handler; el supervisor de req_flow se queda aparte · Principio: el código define el cerco (permisos, seguridad, lógica de negocio) y el modelo elige dentro de él; ver tarjeta 'Principio de diseño' · _confirmed: el modelo clasifica; si falla, no confirmado en pasos con efecto (se repite la pregunta) y 'sí' por defecto, anotado como tal, en los que no lo tienen · Memorias actuales: metas y preferencias se quedan en sus colecciones; diario, semántica y decisiones se unifican en los recuerdos del Store · Checkpoints: no se borra nada; cada conversación lleva un estado (activa, inactiva, archivada); solo se borra si el usuario lo pide, y entonces se borra de verdad · Recuerdos: uno por conversación con etiquetas de tema y secciones fijas; se divide por tema solo si los datos lo piden · Ramas del nodo 4: el router arma un grafo de tareas con dependencias, orden por dependencias y conversación por turnos (mensajes finales y validados; la tarea pesada la espera el usuario; sin trabajador ni notificaciones); responder como compositor de un informe de turno de forma fija (las acciones de interfaz salen del mismo informe); evaluador como centinela con presupuesto compartido; sin límites fijos para el usuario (act es un bucle con frenos por patrón y presupuesto elástico que pregunta '¿sigo?'; flow es una tarea más que el router ve en el contexto)" vertex="1">
+          <mxGeometry height="84" width="1720" x="560" y="38" as="geometry" />
+        </mxCell>
+        <mxCell id="nctx" parent="new" style="swimlane;startSize=30;rounded=1;fillColor=#ffffff;strokeColor=#3b7dd8;fontStyle=1;fontSize=13;" value="1b · context_loader  (carga el contexto del turno)" vertex="1">
+          <mxGeometry height="470" width="480" x="560" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="cx_core" parent="nctx" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;core_pack&lt;/b&gt;&lt;br&gt;&lt;i&gt;identidad y reglas, perfil y preferencias estables, apps conectadas, meta activa · CÓDIGO · pequeño y estable, va primero (caché) · tope suave 800 y techo duro 1,500 tokens (por medir)&lt;/i&gt;" vertex="1">
+          <mxGeometry height="120" width="260" x="110" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="cx_hist" parent="nctx" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;history_loader&lt;/b&gt;&lt;br&gt;&lt;i&gt;últimos 4-6 mensajes del usuario sin recortar + el original además de la traducción · CÓDIGO&lt;/i&gt;" vertex="1">
+          <mxGeometry height="85" width="260" x="110" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="cx_mem" parent="nctx" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;memory_selector&lt;/b&gt;&lt;br&gt;&lt;i&gt;opcional · recuerdos relevantes en el Store de LangGraph (consulta limpia en inglés + original; fecha si la menciona) · lo activa el router, no corre siempre · modelo chico&lt;/i&gt;" vertex="1">
+          <mxGeometry height="95" width="260" x="110" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="cx_pack" parent="nctx" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;context_pack&lt;/b&gt;&lt;br&gt;&lt;i&gt;orden estable: núcleo → seleccionado → volátil (hora, ubicación) al final · CÓDIGO&lt;/i&gt;" vertex="1">
+          <mxGeometry height="55" width="260" x="110" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="cxa" edge="1" parent="nctx" source="cx_core" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="cx_pack" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cxb" edge="1" parent="nctx" source="cx_hist" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="cx_pack" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cxc" edge="1" parent="nctx" source="cx_mem" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;dashed=1;" target="cx_pack" value="si el router lo pide">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es2a" edge="1" parent="new" source="n1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="nctx" value="texto limpio + metadata">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es2b" edge="1" parent="new" source="nctx" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=10;" target="n2" value="context_pack">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="noteRisk" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;RIESGOS DEL CONTEXTO&lt;/b&gt; (investigación; las cifras salen de resúmenes automáticos de las páginas: no citarlas sin abrir la fuente)&lt;br&gt;• Perder el hilo en el modo investigador: los modelos rinden peor cuando la instrucción llega fragmentada en varios turnos, y repetir lo ya revelado ayuda poco (~15-20% según el resumen). → bloque de estado reescrito cada turno + evaluarlo&lt;br&gt;• Memoria que se contamina: reextraer texto del propio contexto recuperado llena la memoria de basura (Mem0 #4573). → no extraer de MEMORY CONTEXT, marcar la procedencia, puerta de calidad antes de guardar&lt;br&gt;• Memoria envenenada por inyección indirecta (Unit 42). → memorias entre delimitadores y tratadas como datos, rechazar texto con forma de instrucción&lt;br&gt;• Privacidad: una ubicación recordada se coló en una respuesta sin venir al caso. → inyectarla solo cuando la tarea lo requiera; no guardarla en memoria larga&lt;br&gt;• Demasiado contexto empeora la respuesta (context rot). → núcleo pequeño siempre; el resto bajo demanda&lt;br&gt;• El resumen pierde decisiones y restricciones (teléfono descompuesto). → resumen por secciones fijas, guardar siempre el crudo, marcar lo incierto&lt;br&gt;• Truncado silencioso cuando el prompt pasa el límite: el agente sigue sin sus instrucciones. → medir tokens y alertar&lt;br&gt;• Memoria obsoleta que contradice lo nuevo. → fecha de validez; gana la más reciente; archivo por falta de uso, no borrado&lt;br&gt;• Caché roto por datos volátiles al inicio o por herramientas que cambian. → orden estable; medir cached_tokens en las llamadas reales&lt;br&gt;• Traducción: pierde matiz y la búsqueda entre idiomas rinde peor (evidencia mixta; la recomendación es inferencia). → guardar original e inglés; recuperar con ambos&lt;br&gt;• Mini-agentes: seguros si solo leen o clasifican; el riesgo está en varios que deciden y escriben en paralelo sin ver al otro. → una sola escritura por turno&lt;br&gt;• Idiomas de pocos recursos: los modelos baratos (nano) fallan más y el costo en tokens sube por alfabeto. → política por idioma, traducción completa por defecto en idiomas desconocidos y posible modelo más fuerte" vertex="1">
+          <mxGeometry height="340" width="2260" x="20" y="3040" as="geometry" />
+        </mxCell>
+        <mxCell id="noteLang" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Política de idiomas (decidida)&lt;/b&gt;&lt;br&gt;• Sirve para CUALQUIER idioma; español e inglés eran solo ejemplos&lt;br&gt;• Tabla language_policy (dato editable): idioma → modo: 'original + gloss en inglés', 'traducir completo' o 'solo original'&lt;br&gt;• Idioma que no está en la tabla: traducir, conservando siempre el original (lo más seguro en idiomas de pocos recursos)&lt;br&gt;• Baja confianza del detector, mensajes de 1-3 palabras o idiomas mezclados: usar el idioma de la conversación o del perfil&lt;br&gt;• Siempre: los literales (nombres, correos, títulos, cuerpos de mensaje) se toman del original; los datos de apps no se traducen; el idioma de salida se fija con una instrucción explícita&lt;br&gt;• Producto global. Soporte completo al lanzar: español e inglés (decidido). La tabla crece por idioma, con datos reales cuando haya volumen&lt;br&gt;• Por medir: cobertura del detector, costo en tokens por alfabeto y rendimiento de los modelos baratos por idioma&lt;br&gt;&lt;br&gt;&lt;b&gt;Cómo agregar un idioma (propuesto)&lt;/b&gt;&lt;br&gt;1. Fila nueva en language_policy: modo 'traducir completo', estado 'mejor esfuerzo'&lt;br&gt;2. Correr el kit de evaluación del idioma (30-50 mensajes: intención y ruta, herramienta, argumentos literales, idioma de respuesta)&lt;br&gt;3. Si supera los umbrales (por definir) → modo 'original + gloss' y estado 'soporte completo'&lt;br&gt;4. Con volumen real, la instrumentación reemplaza al kit sintético&lt;br&gt;&lt;br&gt;&lt;b&gt;Propuesto con la investigación de SaaS (por confirmar, salvo los idiomas de lanzamiento)&lt;/b&gt;&lt;br&gt;• Candidatos a segunda ola, solo tras evaluación propia: portugués de Brasil, francés, alemán, italiano, japonés. El resto: mejor esfuerzo con un aviso una vez; idiomas de pocos recursos: traducir con respaldo en inglés&lt;br&gt;• Precedencia del idioma: ajuste explícito del usuario &gt; idioma del primer mensaje (con confianza) &gt; Accept-Language del navegador &gt; idioma por defecto. La IP no decide el idioma de respuesta&lt;br&gt;• Separar idioma de la interfaz, de la conversación y del contenido que se genera&lt;br&gt;• Fijar el idioma de salida en el prompt del sistema; el cambio a mitad de conversación solo si es explícito o muy claro (Intercom Fin detecta una vez por conversación; Claude sigue el último mensaje)&lt;br&gt;• Parámetros de herramientas en formato independiente del idioma (inglés o enumeraciones)&lt;br&gt;• Referencias: Salesforce Agentforce traduce la pregunta a inglés, busca en inglés y traduce la respuesta (como nuestro diseño); Zendesk usa el idioma por defecto si la detección es poco confiable&lt;br&gt;• Instrumentar desde el día uno, por idioma: idioma detectado y confianza, política aplicada, fallos de herramientas, rechazos del evaluador, feedback y abandono" vertex="1">
+          <mxGeometry height="720" width="520" x="1760" y="1810" as="geometry" />
+        </mxCell>
+        <mxCell id="noteCat" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Catálogo de funciones (decidido: existirá)&lt;/b&gt;&lt;br&gt;Una sola fuente de verdad; reemplaza las dos listas hechas a mano (providers y app_tools_catalog / BIGTOOLS_REGISTRY).&lt;br&gt;Cada función declara:&lt;br&gt;• nombre y descripción&lt;br&gt;• app y cuenta requerida&lt;br&gt;• parámetros con tipo y cuáles son obligatorios&lt;br&gt;• verbo CRUD (crear, leer, actualizar, eliminar) y dos marcas: 'sale al exterior' y 'reversible'&lt;br&gt;• política de confirmación (derivada, ver abajo)&lt;br&gt;• límites (ritmo, tiempo máximo)&lt;br&gt;&lt;b&gt;Política derivada de (verbo, sale al exterior, reversible)&lt;/b&gt;&lt;br&gt;• leer, o crear/actualizar interno y reversible → asumir y decir el supuesto&lt;br&gt;• sale al exterior (correo, invitación, mensaje, publicación) → borrador y pedir un sí&lt;br&gt;• eliminar, o cualquier cosa irreversible → preguntar (o mostrar lo que se borrará y pedir un sí)&lt;br&gt;La usan:&lt;br&gt;• el router (qué tareas armar)&lt;br&gt;• el modo act (validar parámetros y decidir si preguntar o asumir)&lt;br&gt;• el plan_validator del modo investigador (qué exige cada paso)&lt;br&gt;• el ejecutor de workflows&lt;br&gt;El esquema propuesto y el selector por búsqueda (no se cargan todas las definiciones) están en el sistema aparte de funciones" vertex="1">
+          <mxGeometry height="360" width="520" x="1760" y="2550" as="geometry" />
+        </mxCell>
+        <mxCell id="noteMem" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Memoria (decidido: LangGraph Store)&lt;/b&gt;&lt;br&gt;&lt;b&gt;Tres niveles&lt;/b&gt;&lt;br&gt;1. Reciente: últimas 4-6 mensajes del usuario literales (vista armada desde el checkpointer; no se borran del estado)&lt;br&gt;2. Resumen de la conversación en curso, por secciones fijas, cuando se alarga&lt;br&gt;3. Recuerdos entre conversaciones, en el Store de LangGraph&lt;br&gt;&lt;b&gt;Recuerdos&lt;/b&gt;&lt;br&gt;• Espacio (user_id, 'episodes'); secciones fijas: meta (id, usuario, conversación, período, idioma, estado abierto o cerrado, vigencia con qué lo reemplazó y por qué), temas, objetivo, hecho (id de la función y si salió bien o falló), decisiones y por qué, hechos dichos por el usuario, pendientes (quién y fecha), entidades en su idioma original, inciertos; procedencia por elemento (dicho por el usuario, resultado de función o inferido); texto crudo aparte y enlazado; embedding sobre objetivo, temas y decisiones (~100-200 tokens, hipótesis)&lt;br&gt;• Resumen de la conversación en curso: mismas secciones, se actualiza y reemplaza a los mensajes antiguos en la vista de contexto (los originales se conservan); se activa al pasar el presupuesto de contexto (cifra por medir)&lt;br&gt;• Prompt propio: texto en inglés con literales en su idioma; solo se extrae de lo que dijo el usuario y de las funciones ejecutadas, nunca de recuerdos recuperados ni de contenido leído de apps; lo dudoso va a inciertos; no se guardan textos con forma de instrucción&lt;br&gt;• Prueba con conversaciones etiquetadas: decisiones conservadas sobre las reales, datos inventados (meta cero), pendientes conservados&lt;br&gt;• Escritura sin trabajador de fondo (ver 'Escritor de recuerdos' abajo)&lt;br&gt;• Granularidad (decidido): un recuerdo por conversación con etiquetas de tema; se divide por tema solo si los datos lo piden (se mide el % de conversaciones con más de un tema y la precisión de recuperación en ellas); consolidación por tema más adelante&lt;br&gt;• Recuperación por relevancia y fecha ('ayer' se resuelve con la zona horaria del nodo 1); entran 2-3, entre delimitadores y declarados como datos&lt;br&gt;&lt;b&gt;Núcleo y reglas&lt;/b&gt;&lt;br&gt;• El núcleo del contexto es un perfil (documento con esquema estricto) en el Store&lt;br&gt;• Núcleo elástico: tope suave 800 y techo duro 1,500 tokens (por medir); bajar de nivel antes de crecer; solo una persona cambia el techo&lt;br&gt;• Prompt propio de resumen, no el gestor automático de LangMem; guardar el texto crudo aparte; marcar lo incierto; no extraer de lo ya recuperado&lt;br&gt;• El checkpointer de Mongo se mantiene (langgraph-checkpoint-mongodb 0.4.0 se conserva) con política de retención&lt;br&gt;• El Store de Mongo es un paquete aparte; agregarlo sube langchain-core de 1.4.0 a 1.6.7 y obliga a cambiar ese pin de requirements.txt y correr los tests&lt;br&gt;&lt;b&gt;Memorias actuales (decidido)&lt;/b&gt;&lt;br&gt;• Se quedan en sus colecciones las que el usuario edita y son estructuradas: metas (user_active_goals) y preferencias (memory_users_preferences); /me sigue igual y el perfil del núcleo se arma leyéndolas&lt;br&gt;• Lo que el agente genera (diario user_daily_diary, semántica user_semantic_memory, decisiones) se unifica en los recuerdos del Store con etiqueta de tipo; las decisiones traen embedding y se re-embeben (barato); diario y semántica solo se migran si alguien los sigue escribiendo, si no quedan de solo lectura&lt;br&gt;• Transición: memory_selector lee el Store y lo antiguo en paralelo, marca el origen y rankea junto; se deja de leer lo antiguo sin escrituras nuevas y con uso casi nulo (sin cifra hasta medir)&lt;br&gt;&lt;b&gt;Retención de checkpoints (decidido: no se borra nada)&lt;/b&gt;&lt;br&gt;• Cada conversación lleva un estado en una colección pequeña aparte (thread_id, estado, última actividad, nº de checkpoints, tamaño estimado): activa, inactiva, archivada; los checkpoints no se tocan ni se mueven&lt;br&gt;• El estado se calcula al leer a partir de la última actividad (sin trabajo programado); un mensaje nuevo devuelve la conversación a activa (reabrir funciona porque los datos siguen en su sitio)&lt;br&gt;• Plazos entre estados: hipótesis, sin cifra hasta medir&lt;br&gt;• Único borrado: cuando el usuario lo pide; son sus datos y se borran de verdad (decidido); alcance, almacenes y confirmación por detallar&lt;br&gt;&lt;b&gt;Escritor de recuerdos (decidido)&lt;/b&gt;&lt;br&gt;• Tres disparadores, sin trabajador aparte: (1) al terminar el turno, en el mismo proceso y después de entregar la respuesta (el usuario no espera), por eventos y no por reloj: 'recuerda que…', señal de cierre, o tamaño o número de turnos desde el último recuerdo (cifra por medir); (2) puesta al día perezosa: al iniciar una conversación nueva o volver a una vieja se resumen las anteriores que nunca se cerraron; (3) el checkpoint es la red de seguridad si el proceso se reinicia antes de escribir&lt;br&gt;• Clave del recuerdo = conversation_id; cada escritura actualiza el mismo recuerdo (idempotente, sin duplicados) y guarda covers_up_to (hasta qué mensaje cubre) para resumir solo lo nuevo&lt;br&gt;• Versiones: cada versión anterior se archiva en un espacio aparte del Store (coherente con 'no se borra nada'; un resumen de modelo chico puede empeorar con una actualización y así se puede volver atrás)&lt;br&gt;• Costo: el recuerdo puede escribirse tarde (la primera vez que el usuario vuelve)&lt;br&gt;• Por medir: tiempo entre el último mensaje y la escritura; conversaciones sin recuerdo pasado un tiempo y cuántas recupera la puesta al día; recuerdos perdidos por reinicio; duplicados (meta cero); actualizaciones que empeoran el recuerdo (muestra a mano); tamaño del archivo de versiones; latencia del turno (debe ser cero)" vertex="1">
+          <mxGeometry height="1175" width="500" x="560" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="noteGeo" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Ubicación, hora y dialecto (decidido)&lt;/b&gt;&lt;br&gt;• País y zona horaria: se derivan en el servidor (navegador primero, IP como respaldo) y se guardan como país (ISO-2) y zona IANA; el usuario puede editarlos. La IP no se guarda&lt;br&gt;• Al LLM solo van país, zona horaria y hora local ya calculada; la ciudad solo si la consulta es local; nunca IP ni coordenadas&lt;br&gt;• Dialecto: el agente entiende toda la jerga; responde claro y profesional; usa el pronombre del ajuste 'cómo quieres que te hable' (tú / vos / usted / neutro; casual / profesional), con valor inicial inferido del idioma del navegador con región; imita el vocabulario del usuario solo si él lo usa y de forma leve&lt;br&gt;&lt;b&gt;Propuesto (por confirmar)&lt;/b&gt;&lt;br&gt;• Guardar la zona IANA por usuario; en workflows, 'hora local + IANA' para recurrencias e instantes en UTC&lt;br&gt;• Logs: fuente de la señal (navegador, IP o manual), país y correcciones; nunca la IP&lt;br&gt;• Confirmar con un abogado local la postura de Brasil y Argentina sobre la IP como dato personal" vertex="1">
+          <mxGeometry height="230" width="640" x="1100" y="905" as="geometry" />
+        </mxCell>
+        <mxCell id="noteOut" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Fuera de alcance por ahora: planes y límites de facturación&lt;/b&gt;&lt;br&gt;Cuotas, modelos permitidos por plan y límites de uso no forman parte de este diseño. Si se implementan, serán una capa aparte que recorta el route_plan después de que el router decide; el router no los conoce." vertex="1">
+          <mxGeometry height="115" width="480" x="1800" y="1005" as="geometry" />
+        </mxCell>
+        <mxCell id="noteMed" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;PLAN DE MEDICIÓN&lt;/b&gt; (cada número propuesto es una hipótesis hasta medirlo)&lt;br&gt;&lt;b&gt;Instrumentación desde el día uno, por turno&lt;/b&gt;&lt;br&gt;• tokens por sección del prompt (núcleo, historial, memoria, datos)&lt;br&gt;• cached_tokens&lt;br&gt;• latencia por nodo y por mini-agente (p50 y p95)&lt;br&gt;• ruta, modelo y esfuerzo elegidos&lt;br&gt;• resultado del evaluador y reintentos&lt;br&gt;• idioma y política aplicada&lt;br&gt;• alarmas del watchdog y del presupuesto del núcleo&lt;br&gt;&lt;b&gt;Qué número, qué se mide, cuándo se ajusta&lt;/b&gt;&lt;br&gt;• Núcleo 800 / 1,500 tokens → tokens reales por usuario (p50, p95); % de turnos sobre el 80%; seguimiento de reglas en ~20 casos&lt;br&gt;• Historial 4-6 mensajes → casos con 'aguja' (dato del turno 2, cita literal) con 2, 4, 6 y 8 mensajes; tokens por turno&lt;br&gt;• Topes del modo investigador (10 + 2 por paso, 30 duro, 3 intentos, 2 repetidas, 3 sin avance, 2 oscilaciones, 3 mejoras) → turnos por flujo completado; % que llega a alarma, tope o salida de emergencia; % abandonado; ajustar al p90-p95 real&lt;br&gt;• Caducidad 24 h → tiempo entre respuestas del usuario; % que retoma después de 24 h&lt;br&gt;• Recuerdos 2-3 por turno → ¿entra el recuerdo relevante? (precisión de recuperación); % usado en la respuesta; auditoría de 50 recuerdos (basura, duplicados, contradicciones)&lt;br&gt;• Idiomas → por idioma: acierto de ruta, herramienta, literales exactos e idioma de respuesta (kit de 30-50 mensajes)&lt;br&gt;• Modelos por pieza y esfuerzo → acierto, latencia y costo por turno; % de escalaciones&lt;br&gt;• input_guard → falsos positivos y negativos con un conjunto de ataques y de mensajes legítimos&lt;br&gt;• Dialecto → ~30 conversaciones por país con revisión de nativos&lt;br&gt;&lt;b&gt;Regla de trabajo:&lt;/b&gt; todo número propuesto lleva su métrica; se decide con los datos del prototipo, no antes" vertex="1">
+          <mxGeometry height="880" width="520" x="1760" y="3410" as="geometry" />
+        </mxCell>
+        <mxCell id="noteSup" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Fallos: centinelas y supervisor (decidido)&lt;/b&gt;&lt;br&gt;• &lt;b&gt;Nivel 1, centinela en cada nodo (código, no LLM):&lt;/b&gt; parte del coordinador que atrapa los fallos de sus mini-agentes o funciones, intenta una recuperación local y, si no puede, escala. Entrega un informe de forma fija (nodo, mini-agente, código, reintentable, evidencia) y puede emitir avisos antes del fallo (idioma con baja confianza, salida truncada, función lenta). Base: _safe_node y RetryPolicy&lt;br&gt;• &lt;b&gt;Nivel 2, supervisor global:&lt;/b&gt; recibe los informes (reducer de lista, porque las ramas corren en paralelo) y decide el modelo entre las acciones que el cerco permite para ese tipo de fallo (los transitorios se reintentan en código); reemplaza a error_handler y hace recalcular solo la parte afectada&lt;br&gt;• Acciones permitidas por tipo de fallo: transitorio → reintenta; salida del LLM fuera de esquema → un reintento con el esfuerzo o modelo siguiente; auth_expired o missing_scope → sigue con lo demás y pide reconectar; función degradada o upstream_down → otra función equivalente o lo dice; invalid_input → vuelve al nodo que arma los argumentos o pregunta; el evaluador rechaza → recalcula con el comentario; no recuperable → respuesta honesta de qué falló y qué sí se pudo hacer&lt;br&gt;• Nunca se oculta un fallo: si se recupera, se registra igual.&lt;br&gt;• &lt;b&gt;Evaluador (decidido):&lt;/b&gt; El evaluador es un centinela más: si rechaza, emite un informe de fallo (response_rejected, con el comentario) y el supervisor decide (regenerar con el comentario, subir de modelo o preguntar al usuario); un solo presupuesto de recuperación por turno compartido entre reintentos de nodos, evaluador y supervisor (hoy son bucles independientes: RetryPolicy 3, evaluador 2); el evaluador recibe la evidencia (resultados de las tareas, investigación y recuerdos usados; hoy solo ve la intención y el texto, así que no puede detectar un resultado inventado); cada acción que la respuesta declare hecha debe corresponder a un resultado ok:true del registro de tareas (verificación en código, porque 'correo enviado' con la función fallida es el error más dañino); si el evaluador falla, se entrega solo si esa verificación pasó y se anota que no hubo evaluación del modelo (hoy deja pasar sin avisar). Por medir: tasa de rechazo y por qué criterio; rechazos por afirmar acciones no realizadas (meta: cero entregados); latencia que añade (visible al entregar validado); llamadas totales por turno con y sin presupuesto compartido; fallos del evaluador y entregas sin evaluar El supervisor de req_flow se queda aparte (vigila el avance entre turnos)&lt;br&gt;• &lt;b&gt;Por medir:&lt;/b&gt; % de fallos resueltos en el nodo frente a escalados; latencia del centinela (casi cero con código); avisos que anticiparon un fallo real; topes propuestos: 1 reintento local por nodo (hoy RetryPolicy permite 3) y 2 recuperaciones del supervisor por turno, a ajustar con la distribución real de intentos que sí resuelven" vertex="1">
+          <mxGeometry height="420" width="1100" x="20" y="4780" as="geometry" />
+        </mxCell>
+        <mxCell id="noteBase" parent="new" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Principio de diseño (decidido): el código define el cerco, el modelo elige dentro de él&lt;/b&gt;&lt;br&gt;• &lt;b&gt;Va en código (negocio y seguridad):&lt;/b&gt; permisos y scopes; qué funciones están disponibles; lo irreversible siempre se pregunta; privacidad y filtros de datos sensibles; esquemas y códigos de error del contrato; defensas contra instrucciones escondidas en datos leídos (no dependen de que el modelo las note)&lt;br&gt;• &lt;b&gt;Lo decide el modelo (interpretación):&lt;/b&gt; intención, ruta, qué función usar, cómo recuperarse de un fallo, si una respuesta ambigua es sí o no, el esfuerzo de la tarea, señales de cierre&lt;br&gt;• &lt;b&gt;Va en datos editables, no en código:&lt;/b&gt; tablas y números que cambian con la experiencia (language_policy, topes); se ajustan con las métricas sin desplegar&lt;br&gt;• &lt;b&gt;Mecánico, sigue en código:&lt;/b&gt; centinelas, reintentos de errores transitorios, canario, validación de esquemas&lt;br&gt;• El modelo elige de una lista cerrada con salida estructurada; si falla o duda, el cerco fija un valor seguro por defecto (en pasos con efecto: no confirmado)&lt;br&gt;• &lt;b&gt;Se paga:&lt;/b&gt; más llamadas por turno (latencia y costo sin medir), menos determinismo, y las decisiones se prueban con casos etiquetados, no con tests normales&lt;br&gt;• &lt;b&gt;Por medir:&lt;/b&gt; decisiones del modelo por turno, latencia p50 y p95 y costo por turno; acierto contra el conjunto etiquetado; % de veces que se cae al valor seguro; cada decisión se guarda con su razón (base para entrenar más adelante un modelo chico en las decisiones frecuentes; no se plantea ahora)" vertex="1">
+          <mxGeometry height="300" width="1100" x="1140" y="4780" as="geometry" />
+        </mxCell>
+        <mxCell id="eu" edge="1" parent="1" source="user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="n_start">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fn" parent="1" style="swimlane;startSize=30;rounded=1;fillColor=#f5f0ff;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="SISTEMA APARTE: funciones y conexiones (catálogo de apps · vault de credenciales · catálogo de funciones · canario)" vertex="1">
+          <mxGeometry height="2370" width="1320" x="3700" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_apps" parent="fn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;" value="&lt;b&gt;1. catalog_apps&lt;/b&gt;&lt;br&gt;Qué apps existen: tipo de autenticación, scopes y versión de API." vertex="1">
+          <mxGeometry height="140" width="290" x="20" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_vault" parent="fn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;" value="&lt;b&gt;2. Vault de credenciales&lt;/b&gt;&lt;br&gt;Por usuario, app y cuenta (multicuenta). Scopes concedidos y estado por cuenta. Una sola puerta: &lt;i&gt;get_connection&lt;/i&gt;. Recibe auth_expired y actualiza el estado de esa cuenta." vertex="1">
+          <mxGeometry height="140" width="290" x="340" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_cat" parent="fn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;" value="&lt;b&gt;3. Catálogo de funciones&lt;/b&gt;&lt;br&gt;Una ficha por función: id, versión, esquemas, verbo, marcas y scopes. Estado: borrador → en prueba → activa → degradada → obsoleta." vertex="1">
+          <mxGeometry height="140" width="290" x="660" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_exec" parent="fn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;" value="&lt;b&gt;Ejecución (chat o workflow)&lt;/b&gt;&lt;br&gt;Funciones disponibles = app con conexión activa + función activa + scopes cubiertos. El handler recibe la conexión ya lista." vertex="1">
+          <mxGeometry height="140" width="290" x="980" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fn_can" parent="fn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;" value="&lt;b&gt;Canario de salud&lt;/b&gt;&lt;br&gt;Prueba programada por API. Si falla, la función pasa a degradada y se avisa al dueño del workflow." vertex="1">
+          <mxGeometry height="110" width="290" x="660" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="fe1" edge="1" parent="fn" source="fn_apps" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;strokeColor=#666666;" target="fn_vault" value="conectar (OAuth)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe2" edge="1" parent="fn" source="fn_vault" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;strokeColor=#666666;" target="fn_cat" value="scopes y cuentas activas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe3" edge="1" parent="fn" source="fn_cat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;strokeColor=#666666;" target="fn_exec" value="funciones disponibles">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe4" edge="1" parent="fn" source="fn_exec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;strokeColor=#666666;" target="fn_can" value="resultado y fallos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fe5" edge="1" parent="fn" source="fn_can" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;strokeColor=#666666;" target="fn_cat" value="degradada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fnD" parent="fn" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Decidido&lt;/b&gt;&lt;br&gt;• Sistema aparte con 3 piezas (catálogo de apps, vault de credenciales, catálogo de funciones) más un canario de salud&lt;br&gt;• Cada función va versionada: las apps externas cambian y pueden romper los workflows de los clientes&lt;br&gt;• Las pruebas de cada función son por API (endpoint interno), opcionales y adaptables: con una cuenta o con las que el junior necesite; no se obliga a ningún mínimo&lt;br&gt;• El junior lleva su registro en Postman: una colección por app, exportada a doc/postman/{app}.json en el repositorio&lt;br&gt;• El vault ya soporta multicuenta y el diseño lo respeta: la conexión es usuario + app + cuenta&lt;br&gt;• &lt;b&gt;user_connected_accounts es el único almacén de credenciales&lt;/b&gt;; oauth_vault se considera sistema antiguo (clave por correo, una cuenta por proveedor). Que es antiguo es la lectura del usuario y del código; falta confirmarlo con los datos de Atlas (F1)&lt;br&gt;• HubSpot, Dropbox y Facebook se marcan multi_account: no al inicio; adaptarlos a multicuenta, uno por uno, queda a cargo de los juniors. Con qué cuenta y en qué orden: por medir (intentos de conectar una segunda cuenta de esas apps)&lt;br&gt;• Scopes: se guardan al conectar y de ahí sale la lista de funciones disponibles; en cada llamada no se consulta de antemano, y si la app responde con falta de permiso el handler devuelve missing_scope, que actualiza los scopes de esa cuenta y pide reconectar; el canario revalida los scopes de las cuentas de prueba. Se mide: missing_scope en uso real y cuántos no los habría previsto la lista guardada" vertex="1">
+          <mxGeometry height="375" width="640" x="20" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="fnP" parent="fn" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Propuesto por confirmar: contrato de función (lo que programan los juniors)&lt;/b&gt;&lt;br&gt;Ficha declarativa + handler&lt;br&gt;• &lt;b&gt;id&lt;/b&gt;: app.recurso.verbo (ej. gmail.message.send), en inglés, nunca se renombra&lt;br&gt;• &lt;b&gt;version&lt;/b&gt; del contrato (un cambio que rompe sube la mayor) y &lt;b&gt;upstream_api&lt;/b&gt; (versión de la API externa)&lt;br&gt;• verbo CRUD, 'sale al exterior' y 'reversible' (de ahí sale la política de confirmación)&lt;br&gt;• &lt;b&gt;auth&lt;/b&gt;: app, tipo de autenticación y scopes requeridos; &lt;b&gt;multi_account&lt;/b&gt;: sí o no&lt;br&gt;• input_schema y output_schema obligatorios&lt;br&gt;• descripción corta y neutra (sin instrucciones de enrutamiento) y al menos un ejemplo válido&lt;br&gt;• &lt;b&gt;status&lt;/b&gt;: borrador → en prueba → activa → degradada → obsoleta&lt;br&gt;&lt;b&gt;Resultado único&lt;/b&gt;: {ok, data} o {ok:false, error:{code, retryable, user_action}}&lt;br&gt;&lt;b&gt;Errores fijos&lt;/b&gt;: auth_expired, missing_scope, rate_limited, not_found, invalid_input, upstream_changed, upstream_down&lt;br&gt;&lt;b&gt;Handler&lt;/b&gt;: recibe la conexión ya lista y nunca toca el vault; el account_id lo inyecta quien ejecuta, no el modelo&lt;br&gt;&lt;b&gt;Plantilla (scaffold)&lt;/b&gt; que crea ficha, handler y test, con lista de 'listo cuando…'&lt;br&gt;&lt;b&gt;Fuente de verdad&lt;/b&gt;: fichas en el código, publicadas a Mongo en cada despliegue; en Mongo solo se cambia el status (apagar una función rota sin desplegar)" vertex="1">
+          <mxGeometry height="450" width="640" x="20" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="fnK" parent="fn" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Pendientes del sistema de funciones&lt;/b&gt;&lt;br&gt;F1. Migración a user_connected_accounts (ya decidido como único almacén): medir en Atlas cuántos usuarios están solo en oauth_vault; pasar los callbacks OAuth antiguos a guardar en el nuevo; lectura con respaldo durante la transición; script único de migración; retirar oauth_vault cuando las lecturas que caen en él lleguen a 0&lt;br&gt;F3. Confirmar con una prueba real los riesgos 3 a 6 del multicuenta&lt;br&gt;F4. Cuentas de prueba por app y cómo hacer pruebas de escritura seguras en cada una&lt;br&gt;F5. Migrar las más de 150 herramientas actuales a fichas (conteo exacto sin hacer; HubSpot trae unas 49); alias hacia el id estable&lt;br&gt;F7. Confirmar el contrato propuesto (campos, estados, errores, política de versiones, whoami opcional, fuente de verdad en el código)&lt;br&gt;F8. Corregir al implementar los riesgos 1 y 2 del multicuenta" vertex="1">
+          <mxGeometry height="290" width="640" x="20" y="1245" as="geometry" />
+        </mxCell>
+        <mxCell id="fnT" parent="fn" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Pruebas por API y registro en Postman&lt;/b&gt;&lt;br&gt;• POST /internal/functions/{id}/test (solo desarrollo y administración)&lt;br&gt;• Cuerpo: &lt;b&gt;input&lt;/b&gt; (opcional; por defecto los ejemplos de la ficha) y &lt;b&gt;account_ids&lt;/b&gt; (opcional; vacío = cuenta por defecto; una o varias = una ejecución y un resultado por cuenta). Sin mínimo&lt;br&gt;• Revisa la ficha, ejecuta la función y valida que la respuesta cumpla output_schema&lt;br&gt;• Lecturas: reales. Escrituras: el test crea su propio recurso y lo borra, o simulacro si la app no lo permite&lt;br&gt;• &lt;b&gt;whoami&lt;/b&gt; por app (opcional): si existe, el informe comprueba que respondió la cuenta pedida&lt;br&gt;• Casos de usuario con varias cuentas que se pueden probar: ninguna, una, varias sin elegir (debe pedir elegir), varias eligiendo una&lt;br&gt;&lt;b&gt;Postman&lt;/b&gt;: se importa /openapi.json; una colección por app y una carpeta por función (caso normal, entrada inválida, cuenta A o B o expirada, según lo que pruebe el junior) con respuestas de ejemplo guardadas; URL, token y account_id en variables de entorno que no se suben al repositorio; colección exportada a doc/postman/{app}.json&lt;br&gt;Opcional más adelante: correrlas solas con newman (no se plantea ahora)" vertex="1">
+          <mxGeometry height="420" width="620" x="680" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="fnV" parent="fn" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Versionado y canario (propuesto por confirmar)&lt;/b&gt;&lt;br&gt;• Un workflow guardado fija id + versión mayor; mientras haya workflows en la v1, la v1 sigue viva aunque exista la v2&lt;br&gt;• Función degradada: deja de ofrecerse en el chat y se marcan los workflows que la usan; nunca hay cambio automático de versión, se avisa al dueño&lt;br&gt;• Canario: la misma prueba por API corre sola (propuesta: lecturas cada día y escrituras en cada despliegue; por medir); si falla, la función pasa a degradada&lt;br&gt;• tool_outcome_log ya registra fallos en uso real y sirve como señal complementaria&lt;br&gt;• Con varias cuentas: estado, scopes, refresco y circuit breaker van por cuenta (clave del breaker = usuario + app + cuenta + función); los workflows guardan el account_id estable, nunca el correo" vertex="1">
+          <mxGeometry height="270" width="620" x="680" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="fnM" parent="fn" style="shape=note;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Riesgos del multicuenta actual (leído en el código, sin ejecutar)&lt;/b&gt;&lt;br&gt;1. refresh_google_token_v2 recibe account_id pero no lo usa en el filtro del update_one: el token nuevo de una cuenta puede guardarse en otra&lt;br&gt;2. El health check guarda el informe con clave provider y actualiza con update_many por proveedor: la segunda cuenta pisa a la primera y un estado (p. ej. revoked) se aplica a todas&lt;br&gt;3. El health check lee oauth_vault y el multicuenta vive en user_connected_accounts: dos almacenes que pueden contradecirse&lt;br&gt;4. Sin account_id, get_google_creds_from_v2 toma el primer documento activo&lt;br&gt;5. Circuit breaker y límite de uso por usuario + acción: una cuenta rota bloquea a la sana&lt;br&gt;6. selected_accounts guarda a veces el correo y a veces el account_id (por verificar qué recibe el ejecutor)&lt;br&gt;Solo 8 conectores usan account_id (Google, Gmail, Asana, ClickUp, Instagram); HubSpot, Dropbox y Facebook usan una sola cuenta por correo.&lt;br&gt;Los puntos 1 y 2 salen directos del código; del 3 al 6 falta confirmarlos con prueba real. El FakeDB de los tests ignora filtros con operadores: esta prueba debe correr contra Mongo real o mongomock." vertex="1">
+          <mxGeometry height="380" width="620" x="680" y="1110" as="geometry" />
+        </mxCell>
+        <mxCell id="fnMed" parent="fn" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" value="&lt;b&gt;Plan de medición del sistema de funciones&lt;/b&gt;&lt;br&gt;• Funciones en verde en el canario sobre el total; tiempo entre que la app externa cambia y se detecta; falsas alarmas del canario (con ellas se ajusta la frecuencia)&lt;br&gt;• Cuentas cruzadas: llamadas donde la cuenta pedida y la que respondió no coinciden (meta 0), solo donde existe whoami; reportar siempre la cobertura de whoami&lt;br&gt;• Funciones con colección exportada sobre el total; solicitudes por función (sin mínimo hasta ver una cifra realista)&lt;br&gt;• Workflows afectados por cada cambio externo; workflows fijados a una versión obsoleta" vertex="1">
+          <mxGeometry height="190" width="620" x="680" y="1510" as="geometry" />
+        </mxCell>
+        <mxCell id="fe6" edge="1" parent="1" source="noteCat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;fontSize=10;strokeColor=#666666;" target="fn" value="catálogo de funciones: sistema aparte">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      <mxCell id="noteTareas" value="&lt;b&gt;TAREAS PARA DESPUÉS (no son decisiones de diseño: verificación y ajuste al implementar)&lt;/b&gt;&lt;br&gt;&lt;b&gt;T1. Auditar y ajustar UTF-8 en todo el sistema&lt;/b&gt; (antes pendiente 17): buscar open sin encoding, encode y decode, json.dumps (ensure_ascii) y la salida de consola de Windows (mostró caracteres rotos al imprimir UTF-8); el objetivo es que todo el sistema use UTF-8 de forma consistente, con el trabajo interno en inglés y la salida en el idioma del usuario&lt;br&gt;&lt;b&gt;T3. Reproducir el problema del streamer&lt;/b&gt; (CLAUDE.md lo da como 'probable, sin reproducir': si el evaluador rechaza, el responder vuelve a transmitir y se acumulan dos versiones) y verificar la forma de emitir el texto validado desde un nodo posterior al evaluador&lt;br&gt;&lt;b&gt;T4. Verificar el transporte:&lt;/b&gt; que la tarea de escritura de recuerdos posterior a la respuesta no se cancele al cerrarse la conexión o terminar el proceso; tiempo máximo de la conexión (WebSocket y SSE, y del proxy si lo hay) frente a las tareas pesadas; qué pasa si el usuario cierra la conexión a mitad de una tarea (esperado: el checkpoint conserva el último paso completado y el registro de tareas permite retomar); y qué pasa si llega un segundo mensaje de la misma conversación mientras el primero sigue corriendo (propuesta: encolarlo)&lt;br&gt;&lt;b&gt;T5. Prototipo del selector con langgraph-bigtool:&lt;/b&gt; verificar que admite los filtros del cerco (función de recuperación personalizable), compatibilidad con langchain-core 1.4.0 (la instalación en seco no mostró conflictos, pero solo vi el final), instalación desde git con commit fijo o copia al repo (la release de PyPI falla con langgraph 1.2.4), función de recuperación propia con filtro por usuario, nodo propio que resuelva el handler por id, expulsión de selected_tool_ids y acierto de recuperación con modelos chicos&lt;br&gt;&lt;b&gt;T6. Revisar el responder actual bloque por bloque:&lt;/b&gt; pasar al núcleo estable el conocimiento ganado en sus ~12 bloques (p. ej. el rodeo para no decir 'no tengo acceso a tus cuentas', 'no digas ir a ajustes') sin perder ninguno, y armar el conjunto de turnos etiquetados para tono y contenido (comprobar que quitar _compute_mood no cambia cómo suena Shifu)&lt;br&gt;&lt;b&gt;T7. Portar la selección de cuenta de auth_validator:&lt;/b&gt; cuando hay dos o más cuentas activas de una app, el agente pregunta cuál usar y recuerda la elección (selected_accounts, available_accounts); get_connection debe conservar esa conversación&lt;br&gt;&lt;b&gt;T2. Verificar con un caso mínimo&lt;/b&gt; (antes pendiente 15): si Command(goto) acepta una lista de nodos; cómo queda la firma del manejo de errores al reemplazar error_handler por el supervisor; cómo se comporta CachePolicy con entradas que incluyen la hora" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" vertex="1" parent="new"><mxGeometry x="20" y="5230" width="1100" height="400" as="geometry" /></mxCell><mxCell id="noteTasks" value="&lt;b&gt;Ramas del nodo 4: grafo de tareas (decidido)&lt;/b&gt;&lt;br&gt;• Objetivo del usuario: que el agente cumpla todo lo que se le pide, aunque tarde más; trabajo en paralelo donde se pueda y que las tareas se crucen bien según el contexto (no un bot que ejecuta comandos)&lt;br&gt;• &lt;b&gt;La unidad es la tarea.&lt;/b&gt; El router (el modelo, dentro del cerco) descompone el mensaje en tareas; cada una lleva modo (chat, act, flow o lectura: web, documentos, memoria), depends_on, urgencia, agente, modelo y esfuerzo. Ayudantes y modos son lo mismo: tareas encadenables&lt;br&gt;• &lt;b&gt;Dependencias entre cualquier par:&lt;/b&gt; p. ej. 'busca a X y con eso arma la automatización': web_research es una tarea y flow depende de ella; su resultado entra como evidencia del detective, que así pregunta menos&lt;br&gt;• Independientes en paralelo (Send; cada tarea escribe en un espacio propio con clave por id); dependientes en secuencia; un solo responder al final junta todo, con una parte por tarea&lt;br&gt;• &lt;b&gt;Orden:&lt;/b&gt; las dependencias mandan; lo que no depende de nada y es rápido se hace primero y sale en el mismo mensaje; lo que necesita datos del usuario queda 'esperando' y se cierra con una pregunta abierta (p. ej. 'el clima de mañana es 29 grados; sobre la automatización de tu correo, ¿procedemos o quieres más datos del clima?')&lt;br&gt;• &lt;b&gt;Conversación por turnos, como un chat (decidido):&lt;/b&gt; cada mensaje del agente es final y validado y trae lo que ya está listo, el estado de lo que sigue y una pregunta abierta; los estados de avance ('buscando…') salen mientras tanto. Si la tarea es pesada (un workflow, una investigación larga), el usuario espera y ve el resultado en el mismo turno. Sin trabajador de fondo ni 'te aviso cuando termine'&lt;br&gt;• &lt;b&gt;Registro ligero de tareas&lt;/b&gt; en el checkpoint: solo las que esperan al usuario o quedaron interrumpidas o fallidas (las terminadas ya están en el historial y el resumen); el router y el responder lo leen; flow es el caso particular 'esperando al usuario'&lt;br&gt;• &lt;b&gt;Cerco en código:&lt;/b&gt; el grafo se valida (sin ciclos, dependencias existentes); si es inválido, se sigue el orden del usuario; las tareas que necesitan un sí se retienen y se pregunta una sola vez por todas, sin bloquear a las demás; escrituras sobre la misma app y cuenta en serie (hipótesis, se mide); un fallo no frena a las demás (supervisor); ningún tope fijo en lo que el usuario puede pedir (ver abajo)&lt;br&gt;• &lt;b&gt;Todo dinámico, sin límites fijos para el usuario:&lt;/b&gt; cuántas acciones encadena una tarea, cuántas tareas salen de un mensaje, cuánto paralelismo y cómo se mezclan los modos lo decide el modelo según lo que haga falta; lo fijo solo protege (permisos, confirmación de lo irreversible, límites reales de las apps, frenos de emergencia)&lt;br&gt;• &lt;b&gt;act es un bucle:&lt;/b&gt; el modelo elige la siguiente función, ve el resultado y sigue hasta cumplir la meta. Lo frenan señales y no un contador: misma llamada repetida, falla repetida, vaivén entre dos acciones, falta de avance (criterios del flow_watchdog). Presupuesto suave y elástico: al agotarse no se detiene en silencio ni se niega; pregunta '¿sigo?' y continúa si el usuario confirma. Freno de emergencia absoluto muy alto. Si el pedido es repetitivo o masivo, propone armarlo como workflow (sugiere, no rechaza)&lt;br&gt;• &lt;b&gt;flow es una tarea más&lt;/b&gt; (su estado vive en el checkpoint): en cada mensaje el router lo ve en el contexto y arma el grafo; si el mensaje responde a flow, lo continúa; si se sale del tema, lanza otras tareas y flow queda pausado con su caducidad; si trae las dos cosas, hace ambas. Reemplaza al clasificador continue / cancel / digress y a la regla de saltar las demás ramas mientras flow está activo&lt;br&gt;• &lt;b&gt;Por medir:&lt;/b&gt; tiempo hasta el primer resultado útil y tiempo total; cumplimiento (tareas pedidas frente a completadas bien); dependencias mal detectadas contra un conjunto etiquetado y % de grafos inválidos; tareas que tardan más que la conexión (si es alto, revisar el transporte y el presupuesto); preguntas que flow evita gracias a la evidencia previa; tareas por mensaje (p95); conflictos de escritura y límites de ritmo; costo por mensaje; chequeos '¿sigo?' que se disparan y % de usuarios que dicen sí (si casi todos, el presupuesto está bajo); frenos por patrón (falsos positivos y negativos con un conjunto etiquetado); acciones por tarea (p95); abandono tras un chequeo; mensajes donde el router mezcló flow con otras tareas y si lo hizo bien" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" vertex="1" parent="new"><mxGeometry x="1140" y="5230" width="1100" height="610" as="geometry" /></mxCell><mxCell id="fnSel" value="&lt;b&gt;Selector de funciones por búsqueda (requisito decidido; librería por probar)&lt;/b&gt;&lt;br&gt;• Con ~100 apps y ~150 funciones por app (~15,000) las herramientas &lt;b&gt;no se inyectan en los prompts&lt;/b&gt; de los agentes: se buscan bajo demanda y entran solo 3 a 5 candidatas con nombre y descripción corta; el esquema completo, solo el de la elegida&lt;br&gt;• El cerco filtra antes (código): app con conexión activa, función activa, scopes cubiertos; si el usuario nombró una app, se filtra por ella (app_resolver)&lt;br&gt;• Las fichas se indexan en el Store de LangGraph al publicarse, con embeddings (descripción, verbo, recurso, app, ejemplos)&lt;br&gt;• Si ninguna candidata sirve, el modelo busca de nuevo dentro del presupuesto; si sigue sin haber, lo dice y propone una alternativa; las búsquedas sin resultado se registran como demanda de funciones nuevas&lt;br&gt;• &lt;b&gt;Librería (por decidir, T5):&lt;/b&gt; el usuario quiere partir de langgraph-bigtool, que no inyecta las herramientas en los prompts: el agente tiene una herramienta de búsqueda en el Store que devuelve ids y solo esas se ejecutan. Verificado el 2026-10-06: versión 0.0.3 (3-jun-2025), la última release publicada (0.0.3) es de junio de 2025 (~16 meses), pero el repo sigue con actividad: último commit hace 2 semanas (subida automática de dependencias), 60 commits, 5 colaboradores, 11 issues (captura del usuario, 2026-10-06), 557 estrellas, licencia MIT (archivo LICENSE del paquete, © 2025 LangChain; el campo de PyPI está vacío), ejemplo de demostración con ~50 herramientas en memoria. Propuesta: prototipo con la librería y medir; si no admite los filtros del cerco o el acierto es bajo, implementar el patrón propio. Camino acordado: prototipo T5 con instalación desde git con commit fijo; si el prototipo confirma que el patrón sirve, copiar el código al repo (MIT, con su nota de licencia) y adaptarlo&lt;br&gt;• Código leído del paquete (0.0.3, ~300 líneas, 3 archivos): create_agent arma un bucle agent → select_tools → tools; el modelo recibe solo la herramienta de búsqueda y, tras cada búsqueda, llm.bind_tools([búsqueda, *seleccionadas]) (verificado: solo las seleccionadas entran al prompt); la búsqueda es store.search(namespace_prefix, query, limit, filter) (semántica, con embeddings del Store), limit=2 por defecto, y el modelo escribe la consulta; se puede reemplazar con retrieve_tools_function (devuelve ids). A resolver: filter y namespace son fijos al construir (filtrar por usuario exige la función propia); tool_registry es un dict de herramientas ya construidas y ToolNode las recibe todas al compilar (con ~15,000 y conexiones por usuario conviene un nodo propio que resuelva el handler por id en tiempo de ejecución); selected_tool_ids solo crece (sin expulsión); no hay confirmación, presupuesto ni informe de fallos; usa Send por llamada (relacionado con T2); los módulos que importa existen en el langgraph instalado, PERO la release 0.0.3 llama a ToolNode.inject_tool_args, que en langgraph 1.2.4 ya no existe (solo _inject_tool_args); la rama main lo corrige con getattr (commit de hace 7 meses, 'handle ToolNode inject_tool_args rename in langgraph 1.x') y esa corrección no está en la release de PyPI: instalar 0.0.3 de PyPI fallaría al ejecutar la primera herramienta (inferido del código y de una comprobación de atributos; no lo ejecuté). Hay que instalar desde git con un commit fijo o copiar el código al repo&lt;br&gt;• Evidencia (Anthropic, citas de su artículo): 49% a 74% y 79.5% a 88.1% con tool search en evaluaciones internas de MCP; 3-5 herramientas (~3K tokens) por búsqueda; ~85% menos tokens (77K a 8.7K). El 'umbral de 30-50 herramientas' no está en la fuente primaria y se retiró. Son pruebas de Anthropic con sus modelos: con modelos chicos se mide&lt;br&gt;• &lt;b&gt;Por medir:&lt;/b&gt; acierto de recuperación (la función correcta entre las candidatas, con conjunto etiquetado); búsquedas repetidas y sin resultado; tokens de la sección de funciones; elecciones equivocadas" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" vertex="1" parent="fn"><mxGeometry x="20" y="1560" width="640" height="780" as="geometry" /></mxCell><mxCell id="noteResp" value="&lt;b&gt;Responder: compositor de un informe de turno (decidido)&lt;/b&gt;&lt;br&gt;• Hoy (leído): ensamblador de prompt con ~12 bloques condicionales en orden fijo, con instrucciones en prosa; decide qué decir con reglas en código (_aggregate, _build_error_context, _compute_mood); texto y botones de la interfaz acoplados (los mensajes dicen 'el botón ya está debajo' y otro código los genera); requirement_level se calcula aquí y lo consume memory_updater; transmite con el tag shifu-chat&lt;br&gt;• &lt;b&gt;Nuevo:&lt;/b&gt; el responder recibe un informe de turno de forma fija: tareas (estado y resultado), informe de fallos del supervisor, lo que espera respuesta y las acciones de interfaz necesarias; el modelo decide tono y orden; las reglas de estilo van una sola vez en el núcleo estable&lt;br&gt;• Los códigos de error del contrato se traducen en datos editables (el hecho a comunicar y la acción de interfaz asociada), no en prosa en código&lt;br&gt;• &lt;b&gt;Una sola fuente de acciones de interfaz:&lt;/b&gt; los botones se derivan del mismo informe y el responder recibe la lista de lo que se mostrará&lt;br&gt;• Orden para el caché: primero lo estable (identidad, reglas, núcleo), al final lo volátil (informe del turno, hora)&lt;br&gt;• Estructura de la respuesta: lo ya hecho, el estado de lo que sigue y una pregunta abierta (una sola y agrupada si hay varias confirmaciones); una parte por tarea&lt;br&gt;• Desaparecen planning_trace, tool_mapping, missing_variables y requirement_level: los datos que faltan salen de validar el esquema de la función y llegan como tarea 'esperando al usuario' con la lista de parámetros; el guardado de recuerdos ya se dispara por eventos; el texto sale por el nodo emisor posterior al evaluador&lt;br&gt;• Se conserva user_sentiment como dato de entrada y el modelo decide el tono (_compute_mood se quita), a comprobar con el conjunto etiquetado (T6)&lt;br&gt;• &lt;b&gt;Por medir:&lt;/b&gt; acierto de tono y contenido con turnos etiquetados; respuestas que contradicen el informe (meta cero); tokens del prompt y % cacheado; divergencias entre texto y botones mostrados; frecuencia de cada código de error y claridad de su plantilla" style="shape=note;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;fontSize=11;size=14;" vertex="1" parent="new"><mxGeometry x="20" y="5870" width="1100" height="380" as="geometry" /></mxCell></root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

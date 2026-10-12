@@ -1,0 +1,66 @@
+# Memory System — Evaluation Cases
+# Tests: name recall, preference persistence, multi-turn context continuity
+
+- test_id: MS-001
+  category: memory_system
+  severity: high
+  level: 4
+  multi_turn: true
+  turns:
+    - message: "Me llamo Sofía y trabajo en marketing digital"
+      expected_behavior:
+        - acknowledge_name
+        - intent_profile_update
+    - message: "¿Cómo me llamo y en qué trabajo?"
+      expected_behavior:
+        - recall_name_correctly
+        - recall_job_correctly
+
+- test_id: MS-002
+  category: memory_system
+  severity: medium
+  level: 4
+  multi_turn: true
+  turns:
+    - message: "Prefiero que me respondas siempre en español"
+      expected_behavior:
+        - acknowledge_preference
+    - message: "What's the weather like today?"
+      expected_behavior:
+        - respond_in_spanish
+
+- test_id: MS-003
+  category: memory_system
+  severity: high
+  level: 4
+  multi_turn: true
+  turns:
+    - message: "Estoy trabajando en un proyecto de lanzamiento de producto para Q4"
+      expected_behavior:
+        - acknowledge_project_context
+    - message: "¿En qué proyecto estoy trabajando?"
+      expected_behavior:
+        - recall_project_context
+
+- test_id: MS-004
+  category: memory_system
+  severity: medium
+  level: 4
+  multi_turn: true
+  turns:
+    - message: "Mi empresa se llama TechVentures y tenemos 50 empleados"
+      expected_behavior:
+        - acknowledge_company_info
+    - message: "¿Cómo se llama mi empresa?"
+      expected_behavior:
+        - recall_company_name
+
+- test_id: MS-005
+  category: memory_system
+  severity: high
+  level: 2
+  multi_turn: false
+  message: "¿Qué información tienes sobre mí?"
+  expected_behavior:
+    - describe_user_profile_or_state_no_info
+    - not_require_connection

@@ -1,0 +1,533 @@
+{
+  "auth": {
+    "bearer": [
+      {
+        "key": "token",
+        "type": "string",
+        "value": "{{token}}"
+      }
+    ],
+    "type": "bearer"
+  },
+  "info": {
+    "_postman_id": "5ee505fb-87c5-54b8-9e48-4ee561339ecd",
+    "description": "Pruebas por API de las funciones de brevo (autenticacion: api_key, API v3). Generada por scripts/export_postman.py. Guarda tus respuestas de ejemplo en cada solicitud y re-exporta.",
+    "name": "Shifu · funciones · brevo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"login ok\", function () { pm.response.to.have.status(200); });",
+              "pm.environment.set(\"token\", pm.response.json().access_token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "id": "5ca45a75-f3f6-5396-b33d-d34f85ea573f",
+      "name": "0 · Login (guarda el token en el entorno)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          },
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "method": "POST",
+        "url": {
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ],
+          "raw": "{{baseUrl}}/api/v1/auth/login"
+        }
+      },
+      "response": []
+    },
+    {
+      "id": "ee1305e8-e256-5427-9683-3e491c9578f3",
+      "item": [
+        {
+          "id": "3c06e58b-2be2-5dcd-bbf1-9e2dc7e362e0",
+          "name": "Ver ficha",
+          "request": {
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.account.get"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.account.get"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "33d8eca8-add6-59f0-a8f8-402d380964f2",
+          "name": "Caso normal (ejemplo de la ficha)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {}\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.account.get",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.account.get/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "f1917394-e404-5e47-a79e-1ae0124503c7",
+          "name": "Cuenta A ({{account_id_brevo_a}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {},\n  \"account_ids\": [\n    \"{{account_id_brevo_a}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.account.get",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.account.get/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "bc61c0d2-f580-5ad8-ae03-86b06270e90e",
+          "name": "Cuenta B ({{account_id_brevo_b}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {},\n  \"account_ids\": [\n    \"{{account_id_brevo_b}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.account.get",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.account.get/test"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "brevo.account.get (v1)"
+    },
+    {
+      "id": "afb196b4-7335-5cea-9b07-0a17f87d5fe8",
+      "item": [
+        {
+          "id": "cfac1e26-5abe-588f-8a83-1675a4447c52",
+          "name": "Ver ficha",
+          "request": {
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.contacts.list"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.contacts.list"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "1f459ca0-8e84-5c35-8ad7-e0a01cd32135",
+          "name": "Caso normal (ejemplo de la ficha)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"limit\": 2\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.contacts.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.contacts.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "7044acce-5321-5a84-863f-f4a74f4c9346",
+          "name": "Entrada invalida (debe dar invalid_input)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"limit\": \"no-es-un-numero\"\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.contacts.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.contacts.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "59cbc2a6-d70c-57da-a2f5-3c0191d565e9",
+          "name": "Cuenta A ({{account_id_brevo_a}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"limit\": 2\n  },\n  \"account_ids\": [\n    \"{{account_id_brevo_a}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.contacts.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.contacts.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "fd12abb6-593c-587f-b2b4-83921931ac8b",
+          "name": "Cuenta B ({{account_id_brevo_b}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"limit\": 2\n  },\n  \"account_ids\": [\n    \"{{account_id_brevo_b}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.contacts.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.contacts.list/test"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "brevo.contacts.list (v1)"
+    },
+    {
+      "id": "9ff83a1c-eaa7-5362-a0ed-a3aab654bb13",
+      "item": [
+        {
+          "id": "a9e217a5-1aaf-5b6e-80a0-322dc531bfe9",
+          "name": "Ver ficha",
+          "request": {
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.templates.list"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.templates.list"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "40abae0b-90c0-5503-9280-89a86b42a665",
+          "name": "Caso normal (ejemplo de la ficha)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"only_active\": true\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.templates.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.templates.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "96be4177-c799-50ce-8eb4-e9443f7a8fdc",
+          "name": "Entrada invalida (debe dar invalid_input)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"limit\": \"no-es-un-numero\"\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.templates.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.templates.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "c8e86c2e-0d14-545a-8164-fc3fdb94630c",
+          "name": "Cuenta A ({{account_id_brevo_a}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"only_active\": true\n  },\n  \"account_ids\": [\n    \"{{account_id_brevo_a}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.templates.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.templates.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "e6a93f4c-843e-5eb7-a577-50bd1b40550d",
+          "name": "Cuenta B ({{account_id_brevo_b}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"only_active\": true\n  },\n  \"account_ids\": [\n    \"{{account_id_brevo_b}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "brevo.templates.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/brevo.templates.list/test"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "brevo.templates.list (v1)"
+    }
+  ]
+}

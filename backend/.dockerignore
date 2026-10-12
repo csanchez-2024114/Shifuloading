@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv
+ambiente*
+env
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Tests and docs
+test
+tests
+helpers
+*.md
+README*
+
+# Local environment files
+.env
+example.env
+
+# Editor and tooling
+.vscode
+.idea
+
+# Build and packaging artifacts
+dist
+build
+*.egg-info
+*.whl
+
+# Node
+node_modules
+package-lock.json
+
+# Data
+data
+datasets
+models
+checkpoints
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# Binary assets not needed at runtime
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# OS
+.DS_Store
+

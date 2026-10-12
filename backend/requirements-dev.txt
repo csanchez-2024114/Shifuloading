@@ -1,0 +1,4 @@
+# Dependencias solo de desarrollo y pruebas (se suman a requirements.txt)
+-r requirements.txt
+mongomock-motor==0.0.36   # Mongo simulado con filtros reales ($in, $ne...); el FakeDB de test/agente_v3 los ignora
+mongomock==4.3.0

@@ -1,0 +1,159 @@
+# Decision Engine — Evaluation Cases
+# Test account: gallodelacruz1977@gmail.com
+# Pre-connected apps: Gmail, Google Calendar, Google Drive
+# NOT connected: Slack, Notion, HubSpot, and others
+
+- test_id: DE-001
+  category: decision_engine
+  severity: high
+  level: 2
+  multi_turn: false
+  message: "¿Qué puedes hacer?"
+  expected_behavior:
+    - describe_capabilities
+    - not_require_connection
+
+- test_id: DE-002
+  category: decision_engine
+  severity: high
+  level: 2
+  multi_turn: false
+  message: "Conecta Slack"
+  expected_behavior:
+    - offer_connection
+    - not_execute_action
+
+- test_id: DE-003
+  category: decision_engine
+  severity: critical
+  level: 2
+  multi_turn: false
+  message: "Manda un email a juan@test.com diciéndole que mañana es la reunión"
+  expected_behavior:
+    - intent_execute_send
+    - not_ask_to_connect_gmail
+
+- test_id: DE-004
+  category: decision_engine
+  severity: medium
+  level: 2
+  multi_turn: false
+  message: "Hola, ¿cómo estás?"
+  expected_behavior:
+    - friendly_response
+    - not_require_connection
+
+- test_id: DE-005
+  category: decision_engine
+  severity: medium
+  level: 2
+  multi_turn: false
+  message: "Mi nombre es Carlos y soy CEO de una startup"
+  expected_behavior:
+    - acknowledge_name
+    - intent_profile_update
+
+- test_id: DE-006
+  category: decision_engine
+  severity: high
+  level: 2
+  multi_turn: false
+  message: "Automatiza esto: cuando llegue un email importante, crea un documento en Drive con el resumen"
+  expected_behavior:
+    - intent_workflow_create
+    - propose_workflow
+
+- test_id: DE-007
+  category: decision_engine
+  severity: high
+  level: 2
+  multi_turn: false
+  message: "Agenda una reunión mañana a las 3pm con el equipo"
+  expected_behavior:
+    - intent_execute_schedule
+    - not_ask_to_connect_google_calendar
+
+- test_id: DE-008
+  category: decision_engine
+  severity: high
+  level: 2
+  multi_turn: false
+  message: "¿Qué puedes hacer con Gmail?"
+  expected_behavior:
+    - explain_gmail_capabilities
+    - not_require_connection
+    - not_ask_to_connect_gmail
+
+- test_id: DE-009
+  category: decision_engine
+  severity: medium
+  level: 2
+  multi_turn: false
+  message: "Elimina el documento 'Borrador de propuesta' de Drive"
+  expected_behavior:
+    - intent_execute_delete
+    - confirm_before_delete
+
+- test_id: DE-010
+  category: decision_engine
+  severity: medium
+  level: 2
+  multi_turn: false
+  message: "Busca en mis emails algo relacionado con la factura de marzo"
+  expected_behavior:
+    - intent_execute_search
+    - not_ask_to_connect_gmail
+
+- test_id: DE-011
+  category: decision_engine
+  severity: high
+  level: 4
+  multi_turn: true
+  turns:
+    - message: "Mi nombre es Rodrigo"
+      expected_behavior:
+        - acknowledge_name
+    - message: "¿Cómo me llamo?"
+      expected_behavior:
+        - recall_name_correctly
+
+- test_id: DE-012
+  category: decision_engine
+  severity: medium
+  level: 2
+  multi_turn: false
+  message: "Crea un documento en Drive que se llame 'Plan de ventas Q3'"
+  expected_behavior:
+    - intent_execute_write
+    - not_ask_to_connect_google_drive
+
+- test_id: DE-013
+  category: decision_engine
+  severity: medium
+  level: 2
+  multi_turn: false
+  message: "¿Cómo conecto Slack a la plataforma?"
+  expected_behavior:
+    - explain_connection_process
+    - not_execute_action
+
+- test_id: DE-014
+  category: decision_engine
+  severity: high
+  level: 2
+  multi_turn: false
+  message: "Necesito conectar Notion para organizar mis proyectos"
+  expected_behavior:
+    - offer_connection
+    - intent_connect
+
+- test_id: DE-015
+  category: decision_engine
+  severity: medium
+  level: 2
+  multi_turn: false
+  message: "Crea un flujo: cada lunes a las 9am mándame un email con el resumen de la semana anterior"
+  expected_behavior:
+    - intent_workflow_create
+    - propose_workflow
+    - not_ask_to_connect_gmail

@@ -1,0 +1,533 @@
+{
+  "auth": {
+    "bearer": [
+      {
+        "key": "token",
+        "type": "string",
+        "value": "{{token}}"
+      }
+    ],
+    "type": "bearer"
+  },
+  "info": {
+    "_postman_id": "202ddcc6-6c21-5c43-b266-b0f8a03adcc5",
+    "description": "Pruebas por API de las funciones de dropbox (autenticacion: oauth2_code, API 2). Generada por scripts/export_postman.py. Guarda tus respuestas de ejemplo en cada solicitud y re-exporta.",
+    "name": "Shifu · funciones · dropbox",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"login ok\", function () { pm.response.to.have.status(200); });",
+              "pm.environment.set(\"token\", pm.response.json().access_token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "id": "76c4e6b1-8a04-529b-b002-33f5d1992676",
+      "name": "0 · Login (guarda el token en el entorno)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          },
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "method": "POST",
+        "url": {
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ],
+          "raw": "{{baseUrl}}/api/v1/auth/login"
+        }
+      },
+      "response": []
+    },
+    {
+      "id": "a0338cf0-3c03-5c57-aceb-5722c44742fc",
+      "item": [
+        {
+          "id": "d71c0593-cde8-539f-b0b6-acf4438d5f8c",
+          "name": "Ver ficha",
+          "request": {
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.account.get"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.account.get"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "11e97691-df39-545c-87e0-bd599f1a3af3",
+          "name": "Caso normal (ejemplo de la ficha)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {}\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.account.get",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.account.get/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "3b0b9800-cc39-5e6c-b546-73f4782a0d09",
+          "name": "Cuenta A ({{account_id_dropbox_a}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {},\n  \"account_ids\": [\n    \"{{account_id_dropbox_a}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.account.get",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.account.get/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "5f0d100e-8263-5f9b-8184-45e41d81243f",
+          "name": "Cuenta B ({{account_id_dropbox_b}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {},\n  \"account_ids\": [\n    \"{{account_id_dropbox_b}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.account.get",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.account.get/test"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "dropbox.account.get (v1)"
+    },
+    {
+      "id": "b7e7ef57-2ded-5717-a29d-2fe4ae724f1a",
+      "item": [
+        {
+          "id": "b1d95136-1c57-53e1-9336-ca31e668dfe2",
+          "name": "Ver ficha",
+          "request": {
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.list"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.list"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "822e46fa-5362-53b1-a8cc-0a041edb7b72",
+          "name": "Caso normal (ejemplo de la ficha)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"path\": \"\",\n    \"limit\": 2\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "b426c641-9c78-5c4f-9824-2a83376e60fa",
+          "name": "Entrada invalida (debe dar invalid_input)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"path\": 12345\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "4ee0dbf9-a7e3-576c-891d-cae136d93890",
+          "name": "Cuenta A ({{account_id_dropbox_a}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"path\": \"\",\n    \"limit\": 2\n  },\n  \"account_ids\": [\n    \"{{account_id_dropbox_a}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.list/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "71059ada-93bb-5a99-bdf6-f5d46bfa9408",
+          "name": "Cuenta B ({{account_id_dropbox_b}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"path\": \"\",\n    \"limit\": 2\n  },\n  \"account_ids\": [\n    \"{{account_id_dropbox_b}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.list",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.list/test"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "dropbox.files.list (v1)"
+    },
+    {
+      "id": "561d2a49-393a-5949-a2a3-fd50f352de96",
+      "item": [
+        {
+          "id": "e6fdadb5-5a49-5c46-92c9-c18b241173b9",
+          "name": "Ver ficha",
+          "request": {
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.search"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.search"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "60a749e7-12f3-5a55-bf44-3bcfc14a5674",
+          "name": "Caso normal (ejemplo de la ficha)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"query\": \"factura\"\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.search",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.search/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "f96ed5c8-e851-5122-bfac-acb6247cd6ba",
+          "name": "Entrada invalida (debe dar invalid_input)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"query\": 12345\n  }\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.search",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.search/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "86a0b10a-cdc9-5308-9099-91fd28c792b4",
+          "name": "Cuenta A ({{account_id_dropbox_a}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"query\": \"factura\"\n  },\n  \"account_ids\": [\n    \"{{account_id_dropbox_a}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.search",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.search/test"
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "975b8184-2edd-544b-83d8-2422863fb9b8",
+          "name": "Cuenta B ({{account_id_dropbox_b}})",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\n  \"input\": {\n    \"query\": \"factura\"\n  },\n  \"account_ids\": [\n    \"{{account_id_dropbox_b}}\"\n  ]\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "internal",
+                "functions",
+                "dropbox.files.search",
+                "test"
+              ],
+              "raw": "{{baseUrl}}/internal/functions/dropbox.files.search/test"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "dropbox.files.search (v1)"
+    }
+  ]
+}

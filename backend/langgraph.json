@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "shifu_agent": "app.agent.shifu_base_v1.graph.builder_standard:v3_graph"
+  },
+  "env": ".env"
+}

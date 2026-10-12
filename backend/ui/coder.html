@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shifu · mini agente de código</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px system-ui, sans-serif; background:#f5f5f7; color:#1d1d1f; }
+  main { display:grid; grid-template-columns:200px 340px 1fr; gap:12px; padding:12px; height:100vh; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; height:auto; } #result { height:70vh; } }
+  section { display:flex; flex-direction:column; gap:8px; min-height:0; }
+  .card, textarea, pre, iframe { border:1px solid #d2d2d7; border-radius:8px; background:#fff; }
+  textarea { padding:10px; font:inherit; min-height:80px; width:100%; }
+  pre { margin:0; padding:10px; overflow:auto; font:12px ui-monospace, Consolas, monospace; white-space:pre-wrap; }
+  #result { flex:1; min-height:0; display:flex; }
+  #result > * { flex:1; width:100%; }
+  body.full #result { position:fixed; inset:0; z-index:5; }
+  body.full #result > * { border-radius:0; border:0; }
+  body.full #big { position:fixed; right:12px; bottom:12px; z-index:6; }
+  #list, #log { flex:1; overflow:auto; display:flex; flex-direction:column; gap:6px; }
+  .item { padding:8px; cursor:pointer; }
+  .item.on { border-color:#0071e3; }
+  .item small { color:#6e6e73; display:block; }
+  button { padding:7px 12px; border:0; border-radius:8px; background:#0071e3; color:#fff; cursor:pointer; }
+  button.soft { background:#e8e8ed; color:#1d1d1f; }
+  button:disabled { opacity:.5; }
+  .row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  #status { color:#6e6e73; }
+  .bad { color:#c00 !important; }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <b>Proyectos</b>
+    <button id="new">+ Nuevo</button>
+    <div id="list"></div>
+  </section>
+  <section>
+    <b id="title">Proyecto nuevo</b>
+    <div id="log"></div>
+    <textarea id="text" placeholder="Pide algo: «un juego de la culebrita», «una landing para mi pastelería». Después pide cambios: «que vaya más rápido cada 5 puntos», «agrega una sección de precios»."></textarea>
+    <input id="attach" type="file" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.pptx,.csv,.json,.txt,.md,.png,.jpg,.jpeg,.webp">
+    <div class="row"><button id="go">Enviar</button><button class="soft" id="attachBtn" title="Una imagen de referencia o un documento con el contenido">📎 Adjuntar</button><span id="status"></span></div>
+  </section>
+  <section>
+    <div class="row">
+      <button class="soft" id="big">Pantalla completa</button>
+      <button class="soft" id="view">Ver código</button>
+      <button class="soft" id="undo">Deshacer último cambio</button>
+      <button class="soft" id="save">Descargar</button>
+      <button class="soft" id="del">Borrar proyecto</button>
+    </div>
+    <div id="result"><pre>Aquí aparece lo que el agente construya.</pre></div>
+  </section>
+</main>
+<script>
+const API = "/api/v1", MAX_FIXES = 2, $ = id => document.getElementById(id);
+const LIBS = `<script src="https://unpkg.com/react@18.3.1/umd/react.development.js"><\/script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"><\/script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"><\/script>`;
+const HEAD = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><body style="margin:0"><div id="root"></div>${LIBS}`;
+// Lo que el codigo generado encuentra ya hecho. useLoop y useKeys existen porque el modelo escribia mal el reloj y el
+// teclado de los juegos (leian estado viejo: la culebra no veia la comida ni el fin del juego). Montar la app tambien
+// es nuestro: el modelo a veces llama a ReactDOM.render por su cuenta y quedaba montada dos veces.
+const RUNTIME = `
+  // Van dentro de React y tambien sueltos: el modelo a veces los saca de React y a veces olvida sacar los suyos.
+  // Sin const sueltos aqui: chocarian con el "const { useState } = React" del codigo generado.
+  React.useLoop = (fn, ms) => { const f = React.useRef(fn); f.current = fn;
+    React.useEffect(() => { if (ms == null) return; const id = setInterval(() => f.current(), ms); return () => clearInterval(id); }, [ms]); };
+  React.useKeys = fn => { const f = React.useRef(fn); f.current = fn;
+    React.useEffect(() => { const h = e => { if (e.key.startsWith("Arrow") || e.key === " ") e.preventDefault(); f.current(e.key, e); };
+      addEventListener("keydown", h); return () => removeEventListener("keydown", h); }, []); };
+  Object.assign(window, React);
+  window.__root = ReactDOM.createRoot(document.getElementById("root"));
+  ReactDOM.render = () => {}; ReactDOM.createRoot = () => ({ render() {} });`;
+// El codigo generado corre en un iframe sin acceso a esta pagina (sandbox sin allow-same-origin): no puede leer el token.
+const FRAME = `${HEAD}<script>
+  const fail = e => parent.postMessage({ coderError: String(e && e.message || e) }, "*");
+  onerror = m => fail(m); onunhandledrejection = e => fail(e.reason);${RUNTIME}
+  onmessage = e => { try {
+    window.IMAGES = e.data.images;  // nombre de archivo -> data URL: las imagenes que subio el usuario
+    (0, eval)(Babel.transform(e.data.code + "\\n__root.render(React.createElement(App));", { presets: ["react"] }).code);
+  } catch (err) { fail(err); } };
+  parent.postMessage({ coderReady: true }, "*");
+<\/script></body>`;
+// La misma pagina, suelta: un .html que se abre con doble clic, sin Shifu.
+const standalone = (code, images) => `${HEAD}<script>${RUNTIME}
+  window.IMAGES = ${JSON.stringify(images).replace(/</g, "\\u003c")};<\/script><script type="text/babel" data-presets="react">
+${code.replace(/<\/script/g, "<\\/script")}
+__root.render(<App />);
+<\/script></body>`;
+
+// ponytail: los proyectos viven en localStorage de este navegador; pasarlos a Mongo cuando haga falta verlos desde otro equipo.
+// Proyecto = { id, name, kind, images: [{ file_id, name }], versions: [{ text, code, output, ok, notes }] }; cada pedido
+// agrega una version (eso da el deshacer). De las imagenes se guarda solo el id: los bytes se piden al servidor al dibujar.
+let projects = [], cur = null, fixes = 0, frame = null, showCode = false;
+try { projects = JSON.parse(localStorage.getItem("coder_projects") || "[]"); } catch {}
+const persist = () => { try { localStorage.setItem("coder_projects", JSON.stringify(projects)); } catch {} };
+const tip = () => cur && cur.versions[cur.versions.length - 1];
+const el = (tag, cls, text) => { const e = document.createElement(tag); e.className = cls || ""; e.textContent = text || ""; return e; };
+const status = (t, bad) => { $("status").textContent = t; $("status").className = bad ? "bad" : ""; };
+
+function render() {
+  $("list").replaceChildren(...projects.map(p => {
+    const d = el("div", "card item" + (p === cur ? " on" : ""), p.name);
+    d.append(el("small", "", `${p.kind} · ${p.versions.length} versión(es)`));
+    d.onclick = () => { cur = p; showCode = false; render(); };
+    return d;
+  }));
+  $("title").textContent = cur ? cur.name : "Proyecto nuevo";
+  $("log").replaceChildren(...(cur ? cur.versions : []).map((v, i) => {
+    const d = el("div", "card item", `${i + 1}. ${v.text}`);
+    d.append(el("small", v.ok ? "" : "bad", v.ok ? v.notes : "falló: " + v.output.slice(-200)));
+    return d;
+  }));
+  $("log").scrollTop = 1e9;
+  const v = tip();
+  frame = null;
+  if (!v) return $("result").replaceChildren(el("pre", "", "Aquí aparece lo que el agente construya."));
+  if (showCode || cur.kind !== "react") return $("result").replaceChildren(el("pre", "", showCode ? v.code : v.output));
+  frame = document.createElement("iframe");
+  frame.sandbox = "allow-scripts"; frame.srcdoc = FRAME;
+  $("result").replaceChildren(frame);
+}
+
+// Imagenes del proyecto como { nombre: data URL }. El iframe no tiene el token, asi que las pide esta pagina y se las pasa.
+const urlCache = {};
+async function imagesOf(p) {
+  const out = {};
+  for (const f of (p && p.images) || []) {
+    if (!urlCache[f.file_id]) {
+      const r = await fetch(`${API}/files/${f.file_id}`, { headers: { Authorization: `Bearer ${localStorage.getItem("shifu_token")}` } });
+      if (!r.ok) continue;  // borrada o de otra cuenta: la pagina se dibuja sin ella
+      const ext = f.name.split(".").pop().toLowerCase();
+      const blob = new Blob([await r.arrayBuffer()], { type: `image/${ext === "jpg" ? "jpeg" : ext}` });
+      urlCache[f.file_id] = await new Promise(done => { const fr = new FileReader(); fr.onload = () => done(fr.result); fr.readAsDataURL(blob); });
+    }
+    out[f.name] = urlCache[f.file_id];
+  }
+  return out;
+}
+
+async function ask(body) {
+  const r = await fetch(`${API}/dev/coder`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("shifu_token")}` }, body: JSON.stringify(body) });
+  if (r.status === 401) throw new Error("Sin sesión: entra primero en /ui/flow.html y vuelve.");
+  if (!r.ok) throw new Error(`Error ${r.status}`);
+  return r.json();
+}
+
+// fix = el error que dio la ultima version en el navegador: la correccion la reemplaza, no cuenta como pedido nuevo.
+async function send(text, fix) {
+  $("go").disabled = true; status(fix ? "Corrigiendo un error…" : "Trabajando…");
+  try {
+    // Las imagenes que el proyecto ya tenia van solo por nombre; las nuevas van como archivo para que el modelo las vea.
+    const prev = tip(), known = ((cur && cur.images) || []).map(f => f.name);
+    const j = await ask({ text, code: prev ? prev.code : "", error: fix || "", files: attached.map(f => f.file_id), image_names: known });
+    const v = { text, code: j.code, output: j.output, ok: j.ok, notes: j.notes };
+    if (!cur) { cur = { id: Date.now(), name: text.slice(0, 40), kind: j.kind, images: [], versions: [] }; projects.unshift(cur); }
+    if (!fix) {  // la correccion de un error vuelve a mandar los mismos adjuntos
+      cur.images = [...(cur.images || []), ...attached.filter(f => f.kind === "image").map(f => ({ file_id: f.file_id, name: f.name }))];
+      attached = [];
+    }
+    if (fix) cur.versions[cur.versions.length - 1] = v; else cur.versions.push(v);
+    persist(); showCode = false; render();
+    status(j.kind === "python" ? `Python ${j.ok ? "pasó" : "FALLÓ"} en ${j.attempts} intento(s)` : "Listo", !j.ok);
+    if (!fix) $("text").value = "";
+  } catch (e) { status(e.message, true); }
+  $("go").disabled = false;
+}
+
+addEventListener("message", e => {
+  if (!frame || e.source !== frame.contentWindow) return;
+  if (e.data.coderReady) { const f = frame, code = tip().code; imagesOf(cur).then(images => f.contentWindow.postMessage({ code, images }, "*")); }
+  if (e.data.coderError && !frame.failed) {  // React avisa del mismo error varias veces: se atiende una por iframe
+    frame.failed = true;
+    if (fixes++ < MAX_FIXES) send(tip().text, e.data.coderError);
+    else { tip().ok = false; tip().output = e.data.coderError; persist(); status(`Falló tras ${MAX_FIXES} correcciones: ${e.data.coderError}`, true); }
+  }
+});
+
+// Adjuntos: se suben primero (POST /files) y el pedido lleva solo sus file_id.
+let attached = [];
+$("attachBtn").onclick = () => $("attach").click();
+$("attach").onchange = async () => {
+  for (const file of $("attach").files) {
+    const form = new FormData(); form.append("file", file);
+    const r = await fetch(`${API}/files/`, { method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem("shifu_token")}` }, body: form });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) attached.push(j);
+    status(r.ok ? "Adjuntos: " + attached.map(f => f.name).join(", ") : `${file.name}: ${j.detail || r.status}`, !r.ok);
+  }
+  $("attach").value = "";
+};
+$("go").onclick =() => { const t = $("text").value.trim(); if (t) { fixes = 0; send(t); } };
+$("new").onclick = () => { cur = null; render(); $("text").focus(); };
+// Pantalla completa dentro de esta pagina: abrirlo en otra pestaña le daria al codigo generado acceso al token.
+$("big").onclick = () => { $("big").textContent = document.body.classList.toggle("full") ? "Salir de pantalla completa" : "Pantalla completa"; };
+$("view").onclick =() => { showCode = !showCode; fixes = MAX_FIXES; render(); };
+$("undo").onclick = () => { if (!cur || cur.versions.length < 2) return; cur.versions.pop(); persist(); fixes = MAX_FIXES; render(); };
+$("del").onclick = () => { if (!cur || !confirm(`¿Borrar «${cur.name}»?`)) return; projects = projects.filter(p => p !== cur); cur = null; persist(); render(); };
+$("save").onclick = async () => {
+  const v = tip(); if (!v) return;
+  const react = cur.kind === "react", a = document.createElement("a");
+  // El .html lleva las imagenes dentro: se abre solo, sin Shifu y sin internet para las fotos.
+  a.href = URL.createObjectURL(new Blob([react ? standalone(v.code, await imagesOf(cur)) : v.code], { type: react ? "text/html" : "text/x-python" }));
+  a.download = react ? "pagina.html" : "main.py"; a.click();
+};
+render();
+</script>
+</body>
+</html>

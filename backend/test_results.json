@@ -1,0 +1,242 @@
+[
+  {
+    "test": "T1 Login",
+    "status": "PASS",
+    "detail": "user_id=6a075a949cc2..."
+  },
+  {
+    "test": "T2 Health",
+    "status": "PASS",
+    "detail": "status=healthy"
+  },
+  {
+    "test": "T3 Gmail connected (via /me)",
+    "status": "PASS",
+    "detail": "Integration keys: ['Gmail']"
+  },
+  {
+    "test": "T4 Phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T4 UI_ACTION stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T4 Proposes workflow ideas",
+    "status": "PASS",
+    "detail": "Found 3 idea signals"
+  },
+  {
+    "test": "T4 One-question rule",
+    "status": "PASS",
+    "detail": "1 question mark(s)"
+  },
+  {
+    "test": "T4 No tool names exposed",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T5 Phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T5 Single question asked",
+    "status": "PASS",
+    "detail": "1 question mark(s)"
+  },
+  {
+    "test": "T5 GATE A (no early build)",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 1 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 1 one-question rule",
+    "status": "PASS",
+    "detail": "1 '?' — ¿Te gustaría que los correos se guarden en la hoja \"Leads 2026\"?"
+  },
+  {
+    "test": "T6 Turn 2 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 2 one-question rule",
+    "status": "PASS",
+    "detail": "1 '?' — Es genial que quieras crear la hoja \"Leads Capturados\". ¿Con qué frecuencia quieres que se revisen los correos de leads "
+  },
+  {
+    "test": "T6 Turn 3 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 3 one-question rule",
+    "status": "PASS",
+    "detail": "1 '?' — ¿Quieres que la hoja se llame \"Leads Capturados\" o \"Leads 2026\"?"
+  },
+  {
+    "test": "T6 Turn 4 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 4 one-question rule",
+    "status": "PASS",
+    "detail": "1 '?' — Parece que hubo un pequeño error al guardar la información. ¿Podrías describir nuevamente cómo te gustaría que se config"
+  },
+  {
+    "test": "T6 Turn 5 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 5 one-question rule",
+    "status": "PASS",
+    "detail": "0 '?' — Parece que estamos avanzando bien con la automatización para capturar los leads en Google Sheets. Si necesitas ayuda con"
+  },
+  {
+    "test": "T6 Turn 6 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 6 one-question rule",
+    "status": "PASS",
+    "detail": "0 '?' — Estoy aquí para ayudarte con la automatización de los leads y cualquier otra cosa que necesites. Si tienes más preguntas"
+  },
+  {
+    "test": "T6 Turn 7 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 7 one-question rule",
+    "status": "PASS",
+    "detail": "1 '?' — Parece que hubo un pequeño error al procesar la información. ¿Podrías describir nuevamente cómo te gustaría que se confi"
+  },
+  {
+    "test": "T6 Turn 8 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 8 one-question rule",
+    "status": "PASS",
+    "detail": "1 '?' — Parece que hubo un pequeño error al procesar la información. ¿Podrías describir nuevamente cómo te gustaría que se confi"
+  },
+  {
+    "test": "T6 Turn 9 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 9 one-question rule",
+    "status": "PASS",
+    "detail": "1 '?' — Estamos listos para crear la automatización para guardar los leads en Google Sheets. ¿Qué tipo de salida final deseas, c"
+  },
+  {
+    "test": "T6 Turn 10 phase tag stripped",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T6 Turn 10 one-question rule",
+    "status": "PASS",
+    "detail": "0 '?' — Estamos en el proceso de configurar la automatización para capturar los leads en Google Sheets. Si tienes alguna otra so"
+  },
+  {
+    "test": "T6 Final Plan reached",
+    "status": "FAIL",
+    "detail": "Exhausted all turns without reaching final plan"
+  },
+  {
+    "test": "T7 GATE A enforced",
+    "status": "PASS",
+    "detail": "Still asking questions: ¿Qué tipo de información te gustaría que se registrara en Google Sheets desde tus correos de Gmail?"
+  },
+  {
+    "test": "T11 Ping/Pong",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T10 Token streaming",
+    "status": "PASS",
+    "detail": "113 chunks received"
+  },
+  {
+    "test": "T10 Done.text clean",
+    "status": "PASS",
+    "detail": ""
+  },
+  {
+    "test": "T10 Suggestions",
+    "status": "PASS",
+    "detail": "4 suggestions: ['Listar mis correos más recientes', 'Enviar un correo a un contacto']"
+  },
+  {
+    "test": "T10 Tool events received",
+    "status": "INFO",
+    "detail": "No tool_start events (may be expected for greeting)"
+  },
+  {
+    "test": "T9 auth_required for Notion",
+    "status": "PASS",
+    "detail": "action={'type': 'auth_required', 'provider': 'notion', 'login_path': '/auth/notion/start', 'label': 'Conectar Notion', 'payload': {}, 'resume_token': ''}"
+  },
+  {
+    "test": "T9 Agent responded (not crashed)",
+    "status": "PASS",
+    "detail": "Para conectar Notion con tus tareas de Gmail, primero necesitas autorizar la integración. Haz clic en el botón a continuación para proceder.\n\n```\n\n```"
+  },
+  {
+    "test": "T8 Final Plan reached via WS",
+    "status": "PASS",
+    "detail": "Build completed on explicit approval (no prior UI_ACTION signal)"
+  },
+  {
+    "test": "T8 crear_workflow called",
+    "status": "PASS",
+    "detail": "tools seen: ['crear_workflow', 'agregar_paso_workflow', 'agregar_paso_workflow', 'crear_workflow', 'agregar_paso_workflow', 'agregar_paso_workflow', 'agregar_paso_workflow', 'crear_workflow', 'agregar_paso_workflow', 'confirmar_workflow', 'programar_workflow', 'crear_workflow', 'crear_workflow', 'agregar_paso_workflow', 'confirmar_workflow', 'programar_workflow', 'confirmar_workflow', 'crear_workflow', 'agregar_paso_workflow', 'confirmar_workflow', 'programar_workflow', 'confirmar_workflow', 'crear_workflow', 'agregar_paso_workflow', 'confirmar_workflow', 'programar_workflow']"
+  },
+  {
+    "test": "T8 workflow_built UI_ACTION emitted",
+    "status": "FAIL",
+    "detail": "ui_actions=[]"
+  },
+  {
+    "test": "T8 Done event received",
+    "status": "PASS",
+    "detail": "El flujo de trabajo **'Captura de Leads en Sheets'** ha sido creado y programado para revisar correos cada 15 minutos. ¡Todo está listo! 🎉 \n\n¿Hay algo"
+  },
+  {
+    "test": "T12 List workflows",
+    "status": "PASS",
+    "detail": "7 workflow(s) found"
+  },
+  {
+    "test": "T12 Get single workflow",
+    "status": "PASS",
+    "detail": "id=6a10773e4287 status=success"
+  },
+  {
+    "test": "T12 Manual run triggered",
+    "status": "INFO",
+    "detail": "Workflow status 'success' — run requires active/paused/requires_attention"
+  },
+  {
+    "test": "T13 No leaks in REST answers",
+    "status": "PASS",
+    "detail": "Checked 0 responses"
+  }
+]

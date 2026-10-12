@@ -1,0 +1,8 @@
+{
+  "_source": "https://developers.openai.com/api/docs/pricing — tier ESTANDAR (no Batch/Flex/Priority), consultado el 2026-10-10. Los precios cambian: verificar antes de presupuestar.",
+  "usd_per_1m_tokens": {
+    "gpt-4o-mini":            {"input": 0.15, "cached_input": 0.075, "output": 0.60},
+    "gpt-4.1-nano":           {"input": 0.10, "cached_input": 0.025, "output": 0.40},
+    "text-embedding-3-small": {"input": 0.02, "cached_input": 0.02,  "output": 0.0}
+  }
+}

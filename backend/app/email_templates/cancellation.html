@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancelación de Suscripción — HyperShifu</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #233FC9 0%, #6687FF 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        .header p {
+            font-size: 14px;
+            opacity: 0.95;
+        }
+        .header-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding: 50px 35px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .cancellation-message {
+            background-color: #fff3e0;
+            border-left: 4px solid #FF9800;
+            padding: 18px 25px;
+            margin: 30px 0;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        .cancellation-message i {
+            margin-right: 12px;
+            color: #FF9800;
+        }
+        .status-section {
+            margin: 45px 0;
+        }
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #233FC9;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+        .section-title i {
+            margin-right: 10px;
+        }
+        .status-details {
+            background-color: #f8f9ff;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #e3f2fd;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 500;
+            color: #666;
+        }
+        .detail-label i {
+            margin-right: 8px;
+            color: #233FC9;
+            width: 16px;
+        }
+        .detail-value {
+            font-weight: 600;
+            color: #333;
+        }
+        .benefits-retention {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f0f7ff 100%);
+            border: 2px solid #233FC9;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        .benefits-retention-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #233FC9;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .benefits-retention-title i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        .retention-text {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #555;
+        }
+        .highlight {
+            color: #233FC9;
+            font-weight: 600;
+        }
+        .timeline {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #fafafa;
+            border-radius: 8px;
+        }
+        .timeline-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+        .timeline-icon {
+            width: 30px;
+            height: 30px;
+            background: #233FC9;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        .timeline-content {
+            flex: 1;
+        }
+        .timeline-label {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+        .timeline-date {
+            font-size: 13px;
+            color: #666;
+        }
+        .support-box {
+            background-color: #fff8e1;
+            border-left: 4px solid #FFC107;
+            padding: 20px 25px;
+            margin: 45px 0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #856404;
+            line-height: 1.8;
+        }
+        .support-box i {
+            margin-right: 12px;
+            color: #FFC107;
+        }
+        .support-box strong {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .reactivation-box {
+            background-color: #f3e5f5;
+            border-left: 4px solid #9C27B0;
+            padding: 20px 25px;
+            margin: 30px 0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #6a1b9a;
+            line-height: 1.8;
+        }
+        .reactivation-box i {
+            margin-right: 12px;
+            color: #9C27B0;
+        }
+        .reactivation-box strong {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .footer {
+            background-color: #f8f9ff;
+            padding: 40px 35px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #e0e0e0;
+        }
+        .footer-text {
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+        .footer-brand {
+            color: #233FC9;
+            font-weight: 700;
+        }
+        .signature {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-style: italic;
+            color: #666;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-icon">
+                <i class="fas fa-ban"></i>
+            </div>
+            <h1>Cancelación de Suscripción</h1>
+            <p>Tu plan ha sido cancelado</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Greeting -->
+            <div class="greeting">
+                Hola <span class="highlight">{{user_name}}</span>,
+                <br><br>
+                Te confirma que tu suscripción a <span class="highlight">HyperShifu {{plan}}</span> ha sido cancelada exitosamente.
+            </div>
+
+            <!-- Cancellation Message -->
+            <div class="cancellation-message">
+                <i class="fas fa-exclamation-circle"></i><strong>La cancelación es efectiva y ha sido procesada.</strong>
+            </div>
+
+            <!-- Status Section -->
+            <div class="status-section">
+                <div class="section-title">
+                    <i class="fas fa-info-circle"></i>Estado de tu Suscripción
+                </div>
+                <div class="status-details">
+                    <div class="detail-row">
+                        <span class="detail-label"><i class="fas fa-cube"></i>Plan Cancelado:</span>
+                        <span class="detail-value">{{plan}}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label"><i class="fas fa-calendar"></i>Fecha de Cancelación:</span>
+                        <span class="detail-value">{{cancellation_date}}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label"><i class="fas fa-clock"></i>Acceso Disponible Hasta:</span>
+                        <span class="detail-value">{{benefits_until_date}}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Benefits Retention -->
+            <div class="benefits-retention">
+                <div class="benefits-retention-title">
+                    <i class="fas fa-gift"></i>Tus Beneficios se Mantienen
+                </div>
+                <div class="retention-text">
+                    <strong>No te preocupes:</strong> Aunque tu suscripción ha sido cancelada, continuarás teniendo acceso a <strong>todos los beneficios y características</strong> de tu plan <span class="highlight">{{plan}}</span> hasta el <span class="highlight">{{benefits_until_date}}</span>, incluido el próximo ciclo de facturación.
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-icon">✓</div>
+                    <div class="timeline-content">
+                        <div class="timeline-label">Cancelación Procesada</div>
+                        <div class="timeline-date">{{cancellation_date}}</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-icon">✓</div>
+                    <div class="timeline-content">
+                        <div class="timeline-label">Acceso Completo hasta el Final del Ciclo</div>
+                        <div class="timeline-date">Hasta {{benefits_until_date}}</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-icon">•</div>
+                    <div class="timeline-content">
+                        <div class="timeline-label">Sin Cobros Futuros</div>
+                        <div class="timeline-date">No se realizarán cobros después de {{benefits_until_date}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reactivation Info -->
+            <div class="reactivation-box">
+                <i class="fas fa-redo"></i><strong>¿Cambio de Idea?</strong>
+                Puedes reactivar tu suscripción en cualquier momento antes de {{benefits_until_date}}. Todos tus datos y configuración se mantendrán intactos.
+            </div>
+
+            <!-- Support Info -->
+            <div class="support-box">
+                <i class="fas fa-headset"></i><strong>¿Tienes Dudas?</strong>
+                Si tienes preguntas sobre tu cancelación o necesitas soporte, contáctanos en <span class="highlight">support@hypershifu.com</span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">
+                <span class="footer-brand">Hyper Shifu</span><br>
+                La plataforma inteligente para automatizar tus procesos<br>
+                <br>
+                Este correo contiene información sobre el estado de tu suscripción.
+            </div>
+            <div class="signature">
+                <i class="fas fa-heart"></i> — El equipo de HyperShifu
+            </div>
+        </div>
+    </div>
+</body>
+</html>
