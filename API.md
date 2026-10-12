@@ -19,7 +19,10 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 
 | Método y ruta | Cuerpo | Respuesta |
 |---|---|---|
-| `POST /auth/correo` | `{ correo }` | `{ existe: boolean, token?: string }` (token solo si ya tiene cuenta) |
+| `POST /auth/register` | `{ name, last_name, email, password }` (contraseña: 8+ con letra y número) | `201 { user, access_token, refresh_token }` · `400` si la cuenta ya existe |
+| `POST /auth/login` | `{ email, password }` | `{ user, access_token, refresh_token }` · `401 { detail }` si no coincide |
+| `POST /auth/refresh` | `{ refresh_token }` | `{ access_token, refresh_token }` (el anterior queda invalidado) |
+| `POST /auth/logout` | `{ refresh_token }` + token de acceso | `{ success }` |
 | `GET /crm` | — | CRM · `404` si no tiene |
 | `POST /crm` | `{ brief }` (respuestas del cuestionario, ver abajo) | CRM nuevo, armado por Shifu a partir del brief |
 | `DELETE /crm` | — | `204` (para repetir el cuestionario) |
@@ -74,7 +77,7 @@ El avance del cuestionario se guarda en el navegador mientras se contesta; solo 
 
 El módulo de CRM ya existe en `backend/app/crm` y `backend/app/routes/crm` (colección `crm_workspaces`, un documento por persona) y implementa todas las rutas de `/crm` de arriba. Sus pruebas están en `backend/test/crm` (`pytest test/crm`). Todas las rutas exigen el token del usuario (`Authorization: Bearer ...`) y solo ven su propio CRM. El chat de `/crm/chat` es por reglas (sin IA) hasta que se conecte el agente.
 
-Todavía no existe en el servidor `POST /auth/correo`: el backend inicia sesión con correo y contraseña (`/api/v1/auth/login` y `/register`) y la pantalla de login solo pide el correo. Hay que decidir cómo se unen.
+**Sesión.** La interfaz usa las rutas `/auth/*` que ya trae el backend (correo y contraseña). El token de acceso va en `Authorization: Bearer ...`; si una petición responde `401`, la interfaz pide otro con `/auth/refresh` (una sola vez, aunque fallen varias a la vez) y repite la petición; si tampoco se puede, borra la sesión y manda a `/login`. Flujo de una persona nueva: cuestionario → crear cuenta (`/registro`) → `POST /crm` con sus respuestas. Una persona que vuelve: `/login` (correo, luego contraseña) → su CRM. Sin `VITE_API_URL` no hay cuentas y todo esto se salta.
 
 ## Pendiente de definir en el servidor
 
@@ -82,4 +85,4 @@ Todavía no existe en el servidor `POST /auth/correo`: el backend inicia sesión
 - Lectura de la captura por un modelo de visión: hoy el servidor la recibe y acusa recibo, pero no la interpreta.
 - Pantalla `/panel` (asistente de inicio): su chat sigue respondiendo con texto fijo; falta conectarlo a `POST /chat`.
 - Lectura de archivos `.xlsx` (hoy se pega o se sube CSV/TXT y se interpreta en el navegador).
-- Inicio de sesión completo (contraseña, Google, etc.): hoy solo existe el primer paso por correo.
+- Entrar con Google, Apple, Facebook, WhatsApp o clave de acceso (los botones del login todavía no hacen nada) y recuperar contraseña (el backend ya tiene `/auth/forgot-password` y `/auth/reset-password`, falta la pantalla).

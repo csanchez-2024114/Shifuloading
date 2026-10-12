@@ -18,6 +18,8 @@ const pausa = (ms) => new Promise((r) => setTimeout(r, ms))
 export const auth = {
   /* El correo no existe todavía: se manda a crear su CRM. */
   continuarConCorreo: async () => ({ existe: false }),
+  /* Sin servidor no hay cuentas: entrar siempre "funciona". */
+  iniciarSesion: async () => ({ nombre: '', apellido: '', correo: '' }),
 }
 
 export const crm = {

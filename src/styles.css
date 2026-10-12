@@ -225,3 +225,15 @@ button { font-family: inherit; cursor: pointer; }
 .av-shifu { flex: none; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(255,255,255,.14); background: #fff; }
 .fila-shifu { align-self: flex-start; display: flex; align-items: flex-end; gap: 8px; max-width: 94%; animation: entra .35s ease both; }
 .fila-shifu .burbuja { align-self: auto; max-width: none; animation: none; }
+
+/* Contraseña, correo fijo y registro (misma tarjeta del inicio de sesión) */
+.login-clave { position: relative; }
+.login-clave .login-input { padding-right: 76px; }
+.login-clave button { position: absolute; right: 4px; top: 2px; height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #005bd3; font: 600 12.5px var(--fuente); cursor: pointer; }
+.login-clave button:hover { background: rgba(0, 91, 211, .08); }
+.login-correo-fijo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; padding: 8px 10px; border-radius: 8px; background: var(--gris-campo); font-size: 13.5px; color: #303030; }
+.login-correo-fijo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.login-correo-fijo button { flex: none; border: 0; background: transparent; color: #005bd3; font: 600 12.5px var(--fuente); cursor: pointer; }
+.login-fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.login-ayuda-campo { margin: -2px 0 12px; font-size: 12px; color: #616161; }
+.login-btn-oscuro:disabled { opacity: .6; cursor: progress; }

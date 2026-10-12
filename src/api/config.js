@@ -2,3 +2,5 @@
 export const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 export const HAY_SERVIDOR = API_URL !== ''
 export const CLAVE_TOKEN = 'shifu_token'
+export const CLAVE_REFRESCO = 'shifu_refresco'
+export const CLAVE_USUARIO = 'shifu_usuario'

@@ -142,3 +142,9 @@
 .mc-tema:hover { border-color: rgba(var(--ink), .3); }
 
 .mc-av.peq { color: var(--tx); }
+
+/* Cerrar sesión (con servidor) */
+.mc-rehacer.mc-salir { margin-top: 4px; flex-wrap: wrap; }
+.mc-salir small { flex-basis: 100%; margin-left: 24px; color: var(--tx3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.mc-rehacer { margin-top: auto; }
+.mc-rehacer + .mc-salir { margin-top: 4px; }

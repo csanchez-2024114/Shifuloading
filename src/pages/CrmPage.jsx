@@ -4,11 +4,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import ShifuAvatar from '../components/ShifuAvatar'
 import { SelectorCaptura, capturarRegion, imagenDeArchivo } from '../components/CapturaPantalla'
-import { chat as apiChat, crm as apiCrm } from '../api'
+import { HAY_SERVIDOR, auth, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuRotateCcw, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
+import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuRotateCcw, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
 import '../crm-captura.css'
@@ -466,6 +466,9 @@ export default function CrmPage() {
   if (animando && d) return <Cargando pasos={pasos} listo={!!crm} onListo={() => { setAnimando(false); nav('/mi-crm', { replace: true, state: null }) }} />
   if (!crm || !d) return <div className="carga" role="status"><p className="carga-sub">Abriendo tu CRM…</p></div>
 
+  const salir = async () => { await auth.cerrarSesion(); nav('/login', { replace: true }) }
+  const yo = auth.usuario()
+  const inicial = (yo?.nombre || d.nombre)[0].toUpperCase()
   const rehacer = async () => {
     if (await aplicar(async () => { await apiCrm.reiniciar(); return crm })) { borrarBorrador(); nav('/bienvenida') }
   }
@@ -485,7 +488,7 @@ export default function CrmPage() {
           <span className={tema === 'claro' ? 'on' : ''}><LuSun aria-hidden="true" /></span><span className={tema === 'oscuro' ? 'on' : ''}><LuMoon aria-hidden="true" /></span>
         </button>
         <button type="button" className="mc-camp" aria-label="Avisos"><LuBell /><i>3</i></button>
-        <span className="mc-yo" aria-hidden="true">{d.nombre[0].toUpperCase()}</span>
+        <span className="mc-yo" title={yo?.correo || d.nombre} aria-hidden="true">{inicial}</span>
       </header>
 
       <div className="mc-cuerpo">
@@ -501,6 +504,7 @@ export default function CrmPage() {
             </div>
           ))}
           <button type="button" className="mc-rehacer" onClick={rehacer}><LuRotateCcw aria-hidden="true" /> Repetir cuestionario</button>
+          {HAY_SERVIDOR && <button type="button" className="mc-rehacer mc-salir" onClick={salir}><LuLogOut aria-hidden="true" /> Cerrar sesión{yo?.correo ? <small>{yo.correo}</small> : null}</button>}
         </nav>
 
         <main className="mc-main">

@@ -1,4 +1,4 @@
-import { HAY_SERVIDOR } from './config'
+import { CLAVE_USUARIO, HAY_SERVIDOR } from './config'
 import { ErrorApi, pedir, token } from './http'
 import * as simulado from './mock/servidor'
 
@@ -6,17 +6,42 @@ import * as simulado from './mock/servidor'
  * todo pasa por aquí. Cada función tiene dos caminos, el servidor real (rutas descritas en API.md) o el simulado.
  * Todas las funciones del CRM devuelven el CRM completo y actualizado, para que la pantalla solo lo reemplace. */
 
-export { ErrorApi }
+export { ErrorApi, HAY_SERVIDOR }
+
+const leerUsuario = () => { try { return JSON.parse(localStorage.getItem(CLAVE_USUARIO)) || null } catch { return null } }
+const guardarUsuario = (u) => { try { localStorage.setItem(CLAVE_USUARIO, JSON.stringify(u)) } catch { /* sin almacenamiento */ } }
+
+/** Guarda la sesión que devuelve el servidor al entrar o registrarse: { user, access_token, refresh_token }. */
+function abrirSesion(r) {
+  token.guardar({ acceso: r.access_token, refresco: r.refresh_token })
+  guardarUsuario({ nombre: r.user?.name || '', apellido: r.user?.last_name || '', correo: r.user?.email || '' })
+  return leerUsuario()
+}
 
 export const auth = {
-  /** Primer paso del inicio de sesión. Devuelve { existe } y, si el correo ya tiene cuenta, { token }. */
-  async continuarConCorreo(correo) {
-    if (!HAY_SERVIDOR) return simulado.auth.continuarConCorreo(correo)
-    const r = await pedir('POST', '/auth/correo', { correo })
-    if (r?.token) token.guardar(r.token)
-    return r
+  /** ¿Hay una sesión abierta? Sin servidor no hay cuentas, así que siempre se considera que sí. */
+  haySesion: () => !HAY_SERVIDOR || !!token.acceso() || !!token.refresco(),
+  /** La persona con sesión: { nombre, apellido, correo } o null. */
+  usuario: leerUsuario,
+  /** Entrar con correo y contraseña. */
+  async iniciarSesion({ correo, clave }) {
+    if (!HAY_SERVIDOR) return simulado.auth.iniciarSesion()
+    return abrirSesion(await pedir('POST', '/auth/login', { email: correo, password: clave }, { publico: true }))
   },
-  cerrarSesion() { token.borrar() },
+  /** Crear la cuenta (queda con la sesión abierta). */
+  async registrar({ nombre, apellido, correo, clave }) {
+    if (!HAY_SERVIDOR) return simulado.auth.iniciarSesion()
+    return abrirSesion(await pedir('POST', '/auth/register', { name: nombre, last_name: apellido, email: correo, password: clave }, { publico: true }))
+  },
+  /** Primer paso del inicio de sesión en el servidor simulado (que no tiene contraseñas). */
+  continuarConCorreo: (correo) => simulado.auth.continuarConCorreo(correo),
+  /** Cierra la sesión aquí y en el servidor (si el servidor falla, igual se cierra aquí). */
+  async cerrarSesion() {
+    const r = token.refresco()
+    if (HAY_SERVIDOR && r) { try { await pedir('POST', '/auth/logout', { refresh_token: r }) } catch { /* ya se cierra igual */ } }
+    token.borrar()
+    try { localStorage.removeItem(CLAVE_USUARIO) } catch { /* sin almacenamiento */ }
+  },
 }
 
 export const crm = {

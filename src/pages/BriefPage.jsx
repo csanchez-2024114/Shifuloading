@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
+import { auth } from '../api'
 import { PREGUNTAS } from '../brief/preguntas'
 import { guardarBorrador, leerBorrador } from '../brief/borrador'
 import '../brief.css'
@@ -47,8 +48,8 @@ export default function BriefPage() {
   const pct = fin ? 100 : (idx / TOTAL) * 100
 
   useEffect(() => { guardarBorrador({ idx, resp, fin }) }, [idx, resp, fin])
-  // Al terminar, Shifu arma el CRM: se pasa a la pantalla de carga y de ahí al CRM.
-  useEffect(() => { if (fin) nav('/mi-crm', { state: { cargar: true } }) }, [fin, nav])
+  // Al terminar, Shifu arma el CRM: se pasa a la pantalla de carga y de ahí al CRM. Con servidor y sin cuenta, antes se crea la cuenta.
+  useEffect(() => { if (fin) nav(auth.haySesion() ? '/mi-crm' : '/registro', { state: { cargar: true } }) }, [fin, nav])
   useEffect(() => () => clearTimeout(temporizador.current), [])
   useEffect(() => { pantalla.current?.focus({ preventScroll: true }) }, [idx, fin])
 
