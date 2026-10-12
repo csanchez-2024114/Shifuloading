@@ -37,7 +37,15 @@ export const crm = {
 
 export const chat = {
   enviar: async (texto, contexto) => {
-    const r = responder(actual(), texto, contexto?.pendiente)
+    const sinTexto = !texto.trim()
+    const r = sinTexto ? { crm: actual(), respuesta: '' } : responder(actual(), texto, contexto?.pendiente)
+    // Sin la IA conectada no se puede leer la imagen: se recibe, se avisa y se actúa solo con lo que la persona escribió.
+    if (contexto?.imagen) {
+      const donde = contexto.seccion ? ` de “${contexto.seccion}”` : ''
+      r.respuesta = sinTexto
+        ? `📸 Recibí tu captura${donde}. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.`
+        : `📸 Recibí tu captura${donde}. ${r.respuesta}`
+    }
     guardar(r.crm)
     await pausa(550)
     return r

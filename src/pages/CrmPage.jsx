@@ -3,13 +3,15 @@ import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import ShifuAvatar from '../components/ShifuAvatar'
+import { SelectorCaptura, capturarRegion, imagenDeArchivo } from '../components/CapturaPantalla'
 import { chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuRotateCcw, LuUpload, LuZap, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
+import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuRotateCcw, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
+import '../crm-captura.css'
 
 /* El CRM básico que Shifu arma al terminar el cuestionario, con el tema oscuro de Shifu. Todo gira en torno a tres ideas:
  *   · Estructura: cómo está ordenado el negocio (contactos, trabajo del día a día e importación de Excel y notas).
@@ -279,21 +281,55 @@ const SUGERENCIAS = [
 
 function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar }) {
   const [txt, setTxt] = useState('')
+  const [imagen, setImagen] = useState(null) // captura o imagen pegada, lista para mandar con el mensaje
+  const [eligiendo, setEligiendo] = useState(false)
+  const [capturando, setCapturando] = useState(false)
+  const [errorImg, setErrorImg] = useState('')
+  // Consejo de la cámara: sale cada vez que se abre el chat y se va al tocar la cámara, al cerrarlo o a los 12 segundos.
+  const [consejo, setConsejo] = useState(false)
+  const cerrarConsejo = () => setConsejo(false)
+  useEffect(() => {
+    if (!abierto) { setConsejo(false); return undefined }
+    setConsejo(true)
+    const t = setTimeout(() => setConsejo(false), 12000)
+    return () => clearTimeout(t)
+  }, [abierto])
   const fin = useRef(null)
+  const campo = useRef(null)
   useEffect(() => { fin.current?.scrollIntoView?.({ block: 'end' }) }, [mensajes, escribiendo, abierto])
-  const enviar = (e) => { e?.preventDefault(); if (!txt.trim() || escribiendo) return; onEnviar(txt); setTxt('') }
+  const enviar = (e) => {
+    e?.preventDefault()
+    if ((!txt.trim() && !imagen) || escribiendo) return
+    onEnviar(txt, imagen); setTxt(''); setImagen(null); setErrorImg('')
+  }
   const [pista, setPista] = useState(true)
   useEffect(() => { const t = setTimeout(() => setPista(false), 7000); return () => clearTimeout(t) }, [])
+
+  const elegida = async (region) => {
+    setEligiendo(false); setCapturando(true); setErrorImg('')
+    await new Promise((r) => setTimeout(r, 60)) // deja que la capa del selector desaparezca antes de dibujar
+    try { setImagen(await capturarRegion(region)) } catch { setErrorImg('No pude tomar la captura. Inténtalo de nuevo o pega una imagen.') }
+    setCapturando(false)
+    setTimeout(() => campo.current?.focus(), 0)
+  }
+  const pegar = async (e) => {
+    const archivo = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith('image/'))
+    if (!archivo) return
+    e.preventDefault()
+    try { setImagen(await imagenDeArchivo(archivo)); setErrorImg('') } catch { setErrorImg('No pude usar esa imagen.') }
+  }
+
   // El chat va fuera de la página (en el body) para que siempre quede fijo en la esquina y no dependa de ningún contenedor.
   return createPortal(
     <div className="mc-chat" data-tema={tema}>
       {abierto && (
-        <section className="mc-chat-panel" aria-label="Chat con Shifu">
+        <section className="mc-chat-panel" aria-label="Chat con Shifu" hidden={eligiendo || capturando}>
           <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>Tu asistente del CRM</small></div>
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
-              <div key={m.id} className={`cb ${m.de}`}>{m.de === 'shifu' && <ShifuAvatar size={26} />}<p>{m.t}</p></div>
+              <div key={m.id} className={`cb ${m.de}`}>{m.de === 'shifu' && <ShifuAvatar size={26} />}
+                <p>{m.imagen && <img className="cb-img" src={m.imagen} alt="Captura enviada a Shifu" />}{m.t}</p></div>
             ))}
             {escribiendo && <div className="cb shifu"><ShifuAvatar size={26} /><p className="puntos" aria-label="Shifu está escribiendo"><i /><i /><i /></p></div>}
             <div ref={fin} />
@@ -301,16 +337,32 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar 
           <div className="mc-chat-sug" aria-label="Ideas para empezar">
             {SUGERENCIAS.map(([p, s]) => <button key={s} type="button" disabled={escribiendo} onClick={() => onEnviar(s)}><em>{p}</em>{s}</button>)}
           </div>
+          {(imagen || errorImg) && (
+            <div className="mc-adjunto" role="status">
+              {imagen && <img src={imagen.url} alt="Captura lista para enviar" />}
+              <span>{imagen ? 'Captura lista. Cuéntale a Shifu qué quieres hacer con esto.' : errorImg}</span>
+              <button type="button" onClick={() => { setImagen(null); setErrorImg('') }} aria-label="Quitar la captura"><LuX /></button>
+            </div>
+          )}
+          {consejo && !imagen && !errorImg && (
+            <div className="mc-consejo" role="note">
+              <button type="button" className="mc-consejo-x" onClick={cerrarConsejo} aria-label="Cerrar el consejo"><LuX /></button>
+              <p><b>📸 ¿Quieres mostrarme algo?</b> Toca la cámara, elige una parte de la pantalla y dime qué quieres cambiar ahí.</p>
+            </div>
+          )}
           <form onSubmit={enviar}>
-            <input value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="Pídele a Shifu agregar, cambiar o quitar algo…" aria-label="Mensaje para Shifu" maxLength={300} />
-            <button type="submit" disabled={!txt.trim() || escribiendo} aria-label="Enviar"><LuSend /></button>
+            <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); setEligiendo(true) }} disabled={escribiendo} aria-label="Capturar una parte de la pantalla" title="Capturar una parte de la pantalla"><LuCamera /></button>
+            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres hacer con esta captura…' : 'Escribe, captura o pega una imagen…'} aria-label="Mensaje para Shifu" maxLength={300} />
+            <button type="submit" disabled={(!txt.trim() && !imagen) || escribiendo} aria-label="Enviar"><LuSend /></button>
           </form>
         </section>
       )}
-      <button type="button" className={`mc-chat-btn ${abierto ? 'abierto' : ''}`} onClick={() => setAbierto(!abierto)} aria-expanded={abierto} aria-label={abierto ? 'Cerrar el chat con Shifu' : 'Abrir el chat con Shifu'}>
+      <button type="button" className={`mc-chat-btn ${abierto ? 'abierto' : ''}`} onClick={() => setAbierto(!abierto)} aria-expanded={abierto} aria-label={abierto ? 'Cerrar el chat con Shifu' : 'Abrir el chat con Shifu'} hidden={eligiendo || capturando}>
         {abierto ? <LuX /> : <><ShifuAvatar size={46} /><i className="punto" /></>}
       </button>
       {!abierto && pista && <span className="mc-chat-hint">¿Qué cambiamos hoy?</span>}
+      {eligiendo && <SelectorCaptura onElegir={elegida} onCancelar={() => setEligiendo(false)} />}
+      {capturando && <div className="mc-captura mc-captura-espera" role="status">Tomando la captura…</div>}
     </div>,
     document.body,
   )
@@ -319,7 +371,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar 
 /* ───────── Página ───────── */
 
 let idMensaje = 0
-const mensaje = (de, t) => { idMensaje += 1; return { id: idMensaje, de, t } }
+const mensaje = (de, t, imagen) => { idMensaje += 1; return { id: idMensaje, de, t, imagen } }
 
 export default function CrmPage() {
   const nav = useNavigate()
@@ -394,13 +446,13 @@ export default function CrmPage() {
   const [mensajes, setMensajes] = useState(() => [mensaje('shifu', 'Hola 👋 Soy Shifu. Dime qué quieres agregar, cambiar o quitar de tu CRM. Si tienes datos en Excel o en notas, pásalos por “Importar datos”.')])
   const [escribiendo, setEscribiendo] = useState(false)
   const pendiente = useRef(null)
-  const enviar = async (texto) => {
+  const enviar = async (texto, imagen) => {
     const t = texto.trim()
-    if (!t) return
-    setMensajes((l) => [...l, mensaje('yo', t)])
+    if (!t && !imagen) return
+    setMensajes((l) => [...l, mensaje('yo', t, imagen?.url)])
     setEscribiendo(true)
     try {
-      const r = await apiChat.enviar(t, { pendiente: pendiente.current })
+      const r = await apiChat.enviar(t, { pendiente: pendiente.current, imagen: imagen?.url, seccion: tit(vista) })
       pendiente.current = r.pendiente || null
       if (r.crm) setCrm(r.crm)
       if (r.vista) setVista(r.vista)

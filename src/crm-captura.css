@@ -1,0 +1,29 @@
+/* Captura de pantalla para el chat de Shifu */
+.mc-chat-panel[hidden], .mc-chat-btn[hidden] { display: none; }
+.mc-chat-panel form .mc-chat-cam { background: rgba(var(--ink), .1); color: var(--tx); }
+.mc-chat-panel form .mc-chat-cam:hover { background: rgba(var(--ink), .18); }
+.cb p .cb-img { display: block; width: 100%; max-width: 240px; margin: 0 0 6px; border-radius: 10px; border: 1px solid rgba(var(--ink), .2); }
+.mc-adjunto { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--linea); background: rgba(34, 211, 166, .08); font-size: 12.5px; color: var(--tx2); }
+.mc-adjunto img { flex: none; width: 54px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid var(--linea); }
+.mc-adjunto span { flex: 1; line-height: 1.3; }
+.mc-adjunto button { flex: none; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(var(--ink), .1); color: var(--tx); }
+
+.mc-captura { position: fixed; inset: 0; z-index: 100; cursor: crosshair; touch-action: none; user-select: none; background: rgba(5, 8, 7, .45); }
+.mc-captura-caja { position: fixed; border: 2px solid #22d3a6; border-radius: 4px; background: transparent; box-shadow: 0 0 0 100vmax rgba(5, 8, 7, .55); pointer-events: none; }
+.mc-captura-caja span { position: absolute; left: 0; top: -26px; padding: 3px 8px; border-radius: 6px; background: #22d3a6; color: #04130e; font: 700 11.5px var(--fuente); white-space: nowrap; }
+.mc-captura-barra { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 24px); padding: 10px 14px; border-radius: 16px; background: #0d1413; border: 1px solid rgba(255,255,255,.2); color: #fff; font: 14px var(--fuente); cursor: default; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
+.mc-captura-barra button { padding: 7px 14px; border: 0; border-radius: 999px; background: #22d3a6; color: #04130e; font: 700 13px var(--fuente); }
+.mc-captura-barra button.sec { background: rgba(255,255,255,.12); color: #fff; }
+.mc-captura-barra small { color: #98a0aa; font-size: 12px; }
+.mc-captura-espera { display: flex; align-items: center; justify-content: center; cursor: progress; color: #fff; font: 600 16px var(--fuente); }
+@media (max-width: 640px) { .mc-captura-barra small { display: none; } }
+
+/* Burbuja que explica la cámara al abrir el chat */
+.mc-chat-panel { position: relative; }
+.mc-consejo { position: absolute; left: 12px; bottom: 70px; z-index: 3; width: min(272px, calc(100% - 24px)); padding: 12px 34px 12px 14px; border-radius: 16px 16px 16px 4px; background: var(--on-bg); color: var(--on-tx); box-shadow: 0 10px 28px rgba(var(--sombra), .35); animation: consejo-entra .45s .35s cubic-bezier(.3, 1.5, .5, 1) both; }
+.mc-consejo::after { content: ""; position: absolute; left: 14px; bottom: -6px; width: 14px; height: 14px; background: var(--on-bg); transform: rotate(45deg); border-radius: 3px; }
+.mc-consejo p { margin: 0; font-size: 13px; line-height: 1.4; }
+.mc-consejo b { display: block; margin-bottom: 2px; font-size: 13.5px; }
+.mc-consejo-x { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(var(--sombra), .12); color: var(--on-tx); font-size: 13px; }
+@keyframes consejo-entra { from { opacity: 0; transform: translateY(10px) scale(.92); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mc-consejo { animation: none; } }

@@ -31,7 +31,7 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `DELETE /crm/tareas/:id` | — | CRM |
 | `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM |
 | `PUT /crm/secciones/:id` | `{ nombre }` (renombra una sección) | CRM |
-| `POST /chat` | `{ texto, contexto?: { pendiente? } }` | `{ respuesta, crm, vista?, pendiente? }` |
+| `POST /chat` | `{ texto, contexto?: { pendiente?, imagen?, seccion? } }` | `{ respuesta, crm, vista?, pendiente? }` |
 
 ### Chat
 
@@ -41,6 +41,8 @@ El chat flotante manda lo que escribe la persona. El servidor (con la IA de Shif
 - `crm`: el CRM ya con los cambios aplicados.
 - `vista` (opcional): sección que conviene abrir (`contactos`, `desarrollo`, `importar`, `automatizaciones`…).
 - `pendiente` (opcional): si antes de borrar pide confirmación, devuelve aquí lo que quedó por confirmar. La interfaz lo reenvía tal cual en `contexto.pendiente` con el siguiente mensaje ("sí" confirma, cualquier otra cosa cancela).
+
+**Capturas de pantalla.** En el chat, la persona puede elegir una parte de la pantalla (botón de la cámara), pegar una imagen o ambas, y escribir qué quiere hacer ("quiero una columna aquí"). Llega en `contexto.imagen` como imagen JPEG en base64 (`data:image/jpeg;base64,...`, hasta 1400 px de ancho) y `contexto.seccion` con el nombre de la sección que tenía abierta. `texto` puede venir vacío si solo mandó la imagen: la IA debe preguntar qué quiere hacer. Hoy el servidor simulado solo acusa recibo (no lee imágenes); el servidor real debe pasarla al modelo de visión junto con el texto.
 
 La lógica de ejemplo está en `src/api/mock/chat.js`.
 
