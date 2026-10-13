@@ -27,6 +27,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.limiter import limiter
+from app.crm import agente
 from app.crm import operaciones as op
 from app.crm import repositorio as repo
 from app.crm.chat import responder, sanear_pendiente
@@ -117,7 +118,13 @@ class SeccionNombre(_Texto):
     nombre: str = Field(..., min_length=1, max_length=28)
 
 
+class MensajePrevio(_Texto):
+    de: str = Field(..., pattern="^(yo|shifu)$")
+    t: str = Field(..., max_length=300)
+
+
 class ContextoChat(_Texto):
+    historial: list[MensajePrevio] = Field(default_factory=list, max_length=8)  # últimos mensajes, para entender "y también a Pedro"
     pendiente: Optional[dict[str, Any]] = None
     imagen: Optional[str] = Field(None, max_length=MAX_IMAGEN)
     seccion: Optional[str] = Field(None, max_length=40)
@@ -219,6 +226,29 @@ async def renombrar_seccion(seccion_id: str, request: Request, datos: SeccionNom
 
 # ───────── Chat ─────────
 
+async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool):
+    """Resuelve un mensaje del chat. Con IA si se puede (y no hay un borrado por confirmar); si no, con las reglas.
+    El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite)."""
+    for _ in range(3):
+        doc = await repo.obtener(db, user_id)
+        if doc is None:
+            raise op.ErrorCrm(404, "Todavía no tienes un CRM. Responde el cuestionario para crearlo.")
+        r = None
+        if texto and not pendiente and agente.activo():
+            try:
+                r = await agente.responder(doc, texto, historial, con_captura=con_captura)
+            except Exception:  # sin saldo, tiempo agotado, clave inválida…: se sigue con las reglas
+                logger.warning("El agente del CRM falló; se usan las reglas.", exc_info=True)
+        if r is None:
+            r = {**(responder(doc, texto, pendiente) if texto else {"doc": doc, "respuesta": ""}), "modo": "reglas"}
+        if r["doc"] is doc:
+            return doc, r
+        guardado = await repo.guardar_version(db, user_id, r["doc"], doc["version"])
+        if guardado:
+            return guardado, r
+    raise op.ErrorCrm(409, "Tu CRM cambió mientras guardábamos. Inténtalo de nuevo.")
+
+
 @router.post("/chat")
 @limiter.limit("60/minute")
 async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(get_current_user)):
@@ -228,14 +258,9 @@ async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(ge
         return JSONResponse({"mensaje": "Escribe algo o adjunta una captura."}, status_code=422)
 
     pendiente = sanear_pendiente(ctx.pendiente)
-    resultado: dict = {}
-
-    def cambiar(doc: dict) -> dict:
-        resultado.update(responder(doc, datos.texto, pendiente) if datos.texto else {"doc": doc, "respuesta": ""})
-        return resultado["doc"]
-
+    historial = [m.model_dump() for m in ctx.historial]
     try:
-        doc = await repo.actualizar(request.app.state.db, user["id"], cambiar)
+        doc, resultado = await _turno_de_chat(request.app.state.db, user["id"], datos.texto, pendiente, historial, bool(imagen))
     except op.ErrorCrm as e:
         return _error(e)
 
@@ -245,7 +270,7 @@ async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(ge
         donde = f" de “{ctx.seccion}”" if ctx.seccion else ""
         respuesta = (f"📸 Recibí tu captura{donde}. {respuesta}" if datos.texto
                      else f"📸 Recibí tu captura{donde}. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.")
-    salida = {"respuesta": respuesta, "crm": vista_crm(doc)}
+    salida = {"respuesta": respuesta, "crm": vista_crm(doc), "modo": resultado.get("modo", "reglas")}
     for clave in ("vista", "pendiente"):
         if resultado.get(clave):
             salida[clave] = resultado[clave]

@@ -286,7 +286,7 @@ function sugerenciasDe(contactos) {
   return primero ? [...base, ['Medición', `Mueve a ${primero} a Cliente`], ['Estructura', `Elimina a ${primero}`]] : base
 }
 
-function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias }) {
+function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo }) {
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null) // captura o imagen pegada, lista para mandar con el mensaje
   const [eligiendo, setEligiendo] = useState(false)
@@ -331,7 +331,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
     <div className="mc-chat" data-tema={tema}>
       {abierto && (
         <section className="mc-chat-panel" aria-label="Chat con Shifu" hidden={eligiendo || capturando}>
-          <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>Tu asistente del CRM</small></div>
+          <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>{modo === 'reglas' ? 'Modo básico · la IA no está disponible' : 'Tu asistente del CRM'}</small></div>
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
@@ -452,6 +452,7 @@ export default function CrmPage() {
   const [chatAbierto, setChatAbierto] = useState(false)
   const [mensajes, setMensajes] = useState(() => [mensaje('shifu', 'Hola 👋 Soy Shifu. Dime qué quieres agregar, cambiar o quitar de tu CRM. Si tienes datos en Excel o en notas, pásalos por “Importar datos”.')])
   const [escribiendo, setEscribiendo] = useState(false)
+  const [modo, setModo] = useState('ia') // "ia" o "reglas" (si la IA no pudo contestar)
   const pendiente = useRef(null)
   const enviar = async (texto, imagen) => {
     const t = texto.trim()
@@ -459,8 +460,10 @@ export default function CrmPage() {
     setMensajes((l) => [...l, mensaje('yo', t, imagen?.url)])
     setEscribiendo(true)
     try {
-      const r = await apiChat.enviar(t, { pendiente: pendiente.current, imagen: imagen?.url, seccion: tit(vista) })
+      const historial = mensajes.slice(-6).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 300) }))
+      const r = await apiChat.enviar(t, { pendiente: pendiente.current, imagen: imagen?.url, seccion: tit(vista), historial })
       pendiente.current = r.pendiente || null
+      if (r.modo) setModo(r.modo)
       if (r.crm) setCrm(r.crm)
       if (r.vista) setVista(r.vista)
       setMensajes((l) => [...l, mensaje('shifu', r.respuesta)])
@@ -536,7 +539,7 @@ export default function CrmPage() {
       </div>
 
       {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
-      <ChatShifu sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} />
+      <ChatShifu modo={modo} sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} />
     </div>
   )
 }

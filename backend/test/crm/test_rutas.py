@@ -33,7 +33,7 @@ finally:
         else:
             sys.modules[_k] = _v
 
-from app.crm import repositorio as repo  # noqa: E402
+from app.crm import agente, repositorio as repo  # noqa: E402
 from app.crm.generador import generar  # noqa: E402
 from app.crm.operaciones import ErrorCrm  # noqa: E402
 
@@ -92,6 +92,12 @@ class _FakeDb:
 
     def __getitem__(self, nombre):
         return self.cols.setdefault(nombre, _Coleccion())
+
+
+@pytest.fixture(autouse=True)
+def sin_ia_real(monkeypatch):
+    """Estas pruebas nunca deben llamar al OpenAI de verdad (el .env del backend trae una clave real y se carga solo)."""
+    monkeypatch.setenv("CRM_IA", "0")
 
 
 @pytest.fixture
@@ -292,3 +298,108 @@ async def test_si_la_operacion_no_cambia_nada_no_se_escribe(db):
     await repo.reemplazar(db, "u1", generar("u1", BRIEF))
     doc = await repo.actualizar(db, "u1", lambda d: d)
     assert doc["version"] == 1
+
+
+# ───────── Chat con IA (el agente se reemplaza por uno falso: no hay llamadas reales) ─────────
+
+def _con_ia(monkeypatch, funcion):
+    monkeypatch.setattr(agente, "activo", lambda: True)
+    monkeypatch.setattr(agente, "responder", funcion)
+
+
+def test_el_chat_usa_la_ia_cuando_esta_disponible(cli, monkeypatch):
+    crear(cli)
+    visto = {}
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None):
+        visto.update(texto=texto, historial=historial, captura=con_captura)
+        from app.crm import operaciones as op
+        return {"doc": op.contactos_crear(doc, [{"n": "Pedro Castillo"}], "Chat con Shifu"), "respuesta": "Agregué a Pedro Castillo.", "modo": "ia", "vista": "contactos"}
+
+    _con_ia(monkeypatch, falso)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "mete a pedro", "contexto": {"historial": [{"de": "yo", "t": "hola"}, {"de": "shifu", "t": "¿en qué te ayudo?"}]}}, headers=H).json()
+    assert r["modo"] == "ia" and r["respuesta"] == "Agregué a Pedro Castillo." and r["vista"] == "contactos"
+    assert r["crm"]["contactos"][0]["n"] == "Pedro Castillo" and r["crm"]["totalContactos"] == 1  # y quedó guardado
+    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 1
+    assert visto["texto"] == "mete a pedro" and len(visto["historial"]) == 2 and visto["captura"] is False
+
+
+def test_si_la_ia_falla_el_chat_sigue_con_las_reglas(cli, monkeypatch):
+    crear(cli)
+
+    async def roto(*_a, **_k):
+        raise RuntimeError("insufficient_quota")
+
+    _con_ia(monkeypatch, roto)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H).json()
+    assert r["modo"] == "reglas" and r["crm"]["contactos"][0]["n"] == "Laura Gómez"
+
+
+def test_confirmar_un_borrado_nunca_pasa_por_la_ia(cli, monkeypatch):
+    crear(cli)
+    cid = con_contactos(cli)["contactos"][0]["id"]
+    llamadas = []
+
+    async def no_debe_llamarse(*_a, **_k):
+        llamadas.append(1)
+        raise AssertionError("la IA no debe resolver confirmaciones")
+
+    _con_ia(monkeypatch, no_debe_llamarse)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "sí", "contexto": {"pendiente": {"tipo": "contacto", "id": cid}}}, headers=H).json()
+    assert llamadas == [] and r["modo"] == "reglas" and r["crm"]["totalContactos"] == 2
+
+
+def test_la_captura_sin_texto_no_llama_a_la_ia(cli, monkeypatch):
+    crear(cli)
+    llamadas = []
+
+    async def falso(*_a, **_k):
+        llamadas.append(1)
+        return {"doc": {}, "respuesta": "", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "", "contexto": {"imagen": "data:image/jpeg;base64,/9j/4AAQ", "seccion": "Pacientes"}}, headers=H).json()
+    assert llamadas == [] and "Recibí tu captura" in r["respuesta"]
+
+
+def test_la_ia_recibe_la_captura_como_aviso_junto_con_el_texto(cli, monkeypatch):
+    crear(cli)
+    visto = {}
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None):
+        visto["captura"] = con_captura
+        return {"doc": doc, "respuesta": "Listo.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "mira esto", "contexto": {"imagen": "data:image/jpeg;base64,/9j/4AAQ"}}, headers=H).json()
+    assert visto["captura"] is True and r["respuesta"].startswith("📸 Recibí tu captura") and r["modo"] == "ia"
+
+
+def test_el_historial_del_chat_se_valida(cli):
+    crear(cli)
+    muchos = [{"de": "yo", "t": "x"}] * 9
+    assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": muchos}}, headers=H).status_code == 422
+    assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "otro", "t": "x"}]}}, headers=H).status_code == 422
+    assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "yo", "t": "x" * 301}]}}, headers=H).status_code == 422
+
+
+def test_sin_clave_el_chat_responde_con_reglas_y_lo_dice(cli):
+    crear(cli)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "hola"}, headers=H).json()
+    assert r["modo"] == "reglas"
+
+
+def test_si_otra_pestana_cambia_el_crm_mientras_la_ia_piensa_se_repite(cli, db, monkeypatch):
+    crear(cli)
+    veces = []
+
+    async def lento(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None):
+        from app.crm import operaciones as op
+        veces.append(doc["version"])
+        if len(veces) == 1:  # mientras "piensa", otra pestaña guarda
+            db["crm_workspaces"].docs[0]["version"] += 1
+        return {"doc": op.tareas_crear(doc, "Revisar", None), "respuesta": "Listo.", "modo": "ia"}
+
+    _con_ia(monkeypatch, lento)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "agrega una tarea"}, headers=H).json()
+    assert veces == [1, 2] and r["crm"]["tareas"]["porHacer"][0]["t"] == "Revisar" and len(r["crm"]["tareas"]["porHacer"]) == 1

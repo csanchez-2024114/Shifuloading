@@ -31,6 +31,13 @@ async def borrar(db, user_id: str) -> None:
     await _col(db).delete_one({"user_id": user_id})
 
 
+async def guardar_version(db, user_id: str, nuevo: dict, version_base: int) -> dict | None:
+    """Guarda `nuevo` solo si el CRM sigue en `version_base`. Devuelve lo guardado, o None si alguien lo cambió en medio."""
+    nuevo = {**nuevo, "version": version_base + 1, "updated_at": ahora_utc()}
+    res = await _col(db).replace_one({"user_id": user_id, "version": version_base}, nuevo)
+    return nuevo if res.matched_count == 1 else None
+
+
 async def actualizar(db, user_id: str, cambiar: Callable[[dict], dict]) -> dict:
     """Aplica `cambiar(doc) -> doc_nuevo`. Si devuelve el mismo objeto no se escribe nada."""
     for _ in range(INTENTOS):
