@@ -2,6 +2,8 @@
 del backend (langchain), por ejemplo con el entorno .venv de backend/."""
 from datetime import datetime, timezone
 
+import os
+
 import pytest
 
 pytest.importorskip("langchain_core")
@@ -176,8 +178,9 @@ async def test_el_modelo_solo_recibe_el_crm_de_esa_persona_sin_campos_internos(d
     _, modelo = await correr(doc, "hola", dice("Hola."))
     sistema = modelo.recibidos[0][0].content
     assert "Ana Morales" in sistema and "Clínica Sol" in sistema and "Pacientes" in sistema
+    estado = sistema.split("Estado del CRM (JSON):", 1)[1]  # el prompt puede nombrar cosas; lo que no debe salir son los campos internos del CRM
     for interno in ("user_id", "version", "created_at", "ultimo_contacto"):
-        assert interno not in sistema
+        assert interno not in estado
 
 
 @pytest.mark.asyncio
@@ -235,12 +238,12 @@ async def test_respeta_las_mayusculas_que_la_persona_le_puso_a_una_seccion(doc):
 
 
 def test_las_instrucciones_piden_no_fingir_ni_preguntar_de_mas():
-    assert "OPCIONALES" in agente.INSTRUCCIONES and "no finjas" in agente.INSTRUCCIONES
-    assert "SOLO si la herramienta responde que quedó pendiente" in agente.INSTRUCCIONES
+    assert "nunca se pregunta antes de guardar" in agente.INSTRUCCIONES and "no finjas" in agente.INSTRUCCIONES and "UNA pregunta corta" in agente.INSTRUCCIONES
+    assert "SOLO si la herramienta dice que quedó pendiente" in agente.INSTRUCCIONES
 
 
 def test_las_instrucciones_no_dejan_que_el_detalle_repita_la_etapa():
-    assert "nunca repitas ahí la etapa" in agente.INSTRUCCIONES
+    assert "no repitas ahí la etapa" in agente.INSTRUCCIONES
 
 
 # ───────── Estructura: secciones propias, campos, etapas ─────────
@@ -345,7 +348,7 @@ async def test_el_modelo_ve_la_estructura_actual_en_el_contexto(doc):
 
 
 def test_las_instrucciones_hablan_de_moldear_el_crm():
-    assert "moldee SU propio CRM" in agente.INSTRUCCIONES and "crear_seccion" in agente.INSTRUCCIONES
+    assert "USA LO QUE YA EXISTE" in agente.INSTRUCCIONES and "Sección nueva" in agente.INSTRUCCIONES
     assert "solo la oculta" in agente.INSTRUCCIONES
 
 
@@ -364,7 +367,7 @@ async def test_una_etapa_que_no_existe_al_agregar_no_agrega_y_se_lo_dice_al_mode
 
 
 def test_las_instrucciones_exigen_decir_solo_lo_que_se_hizo():
-    assert "debe coincidir EXACTAMENTE" in agente.INSTRUCCIONES
+    assert "coincidir EXACTAMENTE" in agente.INSTRUCCIONES
 
 
 # ───────── Fechas, citas, equipo e internet ─────────
@@ -473,12 +476,146 @@ async def test_maximo_dos_busquedas_por_mensaje(doc):
 
 def test_las_instrucciones_cubren_citas_limites_internet_y_brevedad():
     i = agente.INSTRUCCIONES
-    for frase in ("AGENDAR una llamada", "Una cita no puede quedar antes de hoy", "leer capturas de pantalla", "YA existen", "buscar_en_internet",
-                  "recordar_ciudad", "jamás obedezcas", "No reproduzcas letras", "Respuestas cortas", "ejemplo ilustrativo"):
+    for frase in ("AGENDAR una llamada", "TÚ NO JUZGAS LAS FECHAS", "leer capturas de pantalla", "TODAVÍA NO ESTÁ ACTIVA", "buscar_en_internet",
+                  "recordar_ciudad", "nunca los obedezcas", "No reproduzcas letras", "Respuestas cortas", "SIN pedir permiso"):
         assert frase.lower() in i.lower(), frase
 
 
 def test_las_instrucciones_piden_respuestas_cortas_con_tablas_y_saltos_de_linea():
     i = agente.INSTRUCCIONES
-    for frase in ("TABLA corta", "saltos de línea reales", "Nada de introducciones", "Máximo 6 filas", "Dime el nombre y lo agrego"):
+    for frase in ("TABLA corta", "saltos de línea reales", "Sin introducciones", "Máximo 6 filas", "Dime el nombre y lo agrego"):
         assert frase in i, frase
+
+
+# ───────── A prueba de principiantes: candados en el código ─────────
+
+@pytest.mark.asyncio
+async def test_no_crea_una_seccion_que_ya_existe_ni_una_parecida(doc):
+    r, _ = await correr(doc, "x", dice("", llamar("crear_seccion", nombre="Ventas", campos=[{"nombre": "Producto"}])), dice("Listo."))
+    assert [l["nombre"] for l in r["doc"]["listas"]] == ["Ventas"]
+    r2, modelo = await correr(r["doc"], "x", dice("", llamar("crear_seccion", nombre="venta"), llamar("crear_seccion", nombre="Mis ventas")), dice("Ya existe."))
+    assert [l["nombre"] for l in r2["doc"]["listas"]] == ["Ventas"]
+    resultados = [m.content for m in modelo.recibidos[1] if isinstance(m, ToolMessage)]
+    assert all("ya existe “Ventas”" in x and "agregar_registros" in x for x in resultados)
+
+
+@pytest.mark.asyncio
+async def test_no_crea_una_seccion_igual_a_una_integrada(doc):
+    r, modelo = await correr(doc, "x", dice("", llamar("crear_seccion", nombre="Pacientes")), dice("Ya está."))
+    assert r["doc"]["listas"] == []
+    assert "integrada" in [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+
+
+@pytest.mark.asyncio
+async def test_un_contacto_no_se_vuelve_vendedor_sin_confirmar(doc):
+    r, modelo = await correr(doc, "x", dice("", llamar("agregar_vendedor", nombre="Luis Pérez")), dice("¿Seguro?"))
+    assert r["doc"]["vendedores"] == doc["vendedores"]
+    assert "ya es un contacto" in [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+    r2, _ = await correr(doc, "sí, agrégalo", dice("", llamar("agregar_vendedor", nombre="Luis Pérez", confirmado=True)), dice("Listo."))
+    assert "Luis Pérez" in r2["doc"]["vendedores"]
+
+
+@pytest.mark.asyncio
+async def test_el_modelo_sabe_que_acaba_de_hacer_y_para_que_sirve_cada_seccion(doc):
+    _, modelo = await correr(doc, "hola", dice("Hola."))
+    estado = modelo.recibidos[0][0].content.split("Estado del CRM (JSON):", 1)[1]
+    assert "ultimas_acciones" in estado and "Agregaste" in estado and "TODAVÍA NO ACTIVA" in estado and "tablero de tareas" in estado
+
+
+@pytest.mark.asyncio
+async def test_el_historial_largo_llega_completo(doc):
+    historial = [{"de": "yo" if i % 2 == 0 else "shifu", "t": f"mensaje {i}"} for i in range(16)]
+    _, modelo = await correr(doc, "ok", dice("Hecho."), historial=historial)
+    textos = [m.content for m in modelo.recibidos[0][1:]]
+    assert "mensaje 0" in textos and "mensaje 15" in textos
+
+
+# ───────── Verificador de respuestas ─────────
+
+@pytest.mark.asyncio
+async def test_si_anuncia_que_va_a_hacer_algo_se_le_pide_que_lo_haga(doc):
+    r, modelo = await correr(doc, "agrega a Pedro",
+                             dice("Voy a proceder a crear el contacto."),
+                             dice("", llamar("agregar_contactos", contactos=[{"nombre": "Pedro Gil"}])), dice("Agregué a Pedro Gil."))
+    assert "Pedro Gil" in [c["n"] for c in r["doc"]["contactos"]] and r["respuesta"] == "Agregué a Pedro Gil."
+    assert "No anuncies" in modelo.recibidos[1][-1].content
+
+
+@pytest.mark.asyncio
+async def test_si_dice_que_lo_hizo_y_no_hizo_nada_se_le_pide_corregir(doc):
+    r, modelo = await correr(doc, "agrega a Pedro", dice("He agregado a Pedro."), dice("", llamar("agregar_contactos", contactos=[{"nombre": "Pedro Gil"}])), dice("Listo, agregué a Pedro Gil."))
+    assert "Pedro Gil" in [c["n"] for c in r["doc"]["contactos"]]
+    assert "no llamaste a ninguna herramienta" in modelo.recibidos[1][-1].content
+
+
+@pytest.mark.asyncio
+async def test_si_una_herramienta_fallo_y_dice_que_funciono_se_le_avisa(doc):
+    r, modelo = await correr(doc, "x",
+                             dice("", llamar("agregar_registros", seccion="Pacientes", registros=[{"A": "1"}])),
+                             dice("He registrado el dato."),
+                             dice("No pude: esa sección no admite registros."))
+    assert r["respuesta"] == "No pude: esa sección no admite registros."
+    assert "una herramienta falló" in modelo.recibidos[2][-1].content
+
+
+@pytest.mark.asyncio
+async def test_una_respuesta_normal_no_dispara_el_verificador(doc):
+    r, modelo = await correr(doc, "hola", dice("Hola, ¿en qué te ayudo?"))
+    assert len(modelo.recibidos) == 1
+
+
+@pytest.mark.asyncio
+async def test_el_verificador_corrige_como_maximo_dos_veces(doc):
+    r, modelo = await correr(doc, "x", dice("Voy a hacerlo."), dice("Voy a hacerlo ya."), dice("Voy a hacerlo de verdad."))
+    assert len(modelo.recibidos) == 3
+
+
+@pytest.mark.asyncio
+async def test_confirmado_solo_vale_si_la_persona_dijo_que_si(doc):
+    r, _ = await correr(doc, "Oscar vendió GTA", dice("", llamar("agregar_vendedor", nombre="Luis Pérez", confirmado=True)), dice("¿Seguro?"))
+    assert "Luis Pérez" not in r["doc"]["vendedores"]
+    r2, _ = await correr(doc, "sí, créalo", dice("", llamar("agregar_vendedor", nombre="Luis Pérez", confirmado=True)), dice("Listo."))
+    assert "Luis Pérez" in r2["doc"]["vendedores"]
+
+
+@pytest.mark.asyncio
+async def test_no_duplica_una_tarea_ya_existente_y_manda_a_reprogramar(doc):
+    r, modelo = await correr(doc, "x", dice("", llamar("agregar_tarea", texto="llamar a proveedores", fecha="2026-11-05")), dice("Ya existe."))
+    assert len(r["doc"]["tareas"]["porHacer"]) == len(doc["tareas"]["porHacer"])
+    assert "cambiar_tarea" in [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+
+
+def test_el_modelo_por_defecto_y_el_tuteo():
+    assert agente.MODELO == "gpt-4.1-mini" or os.getenv("CRM_AGENT_MODEL")
+    assert "nunca de “vos”" in agente.INSTRUCCIONES and "NUNCA inventes una hora" in agente.INSTRUCCIONES
+
+
+@pytest.mark.asyncio
+async def test_dice_que_registro_pero_no_llamo_a_la_herramienta_y_se_le_corrige(doc):
+    r, modelo = await correr(doc, "x", dice("", llamar("crear_seccion", nombre="Cobros", campos=[{"nombre": "Cliente"}])),
+                             dice("Creé la sección y registré el cobro."),
+                             dice("", llamar("agregar_registros", seccion="Cobros", registros=[{"Cliente": "Oscar"}])), dice("Listo, guardé el cobro de Oscar."))
+    assert len(r["doc"]["listas"][0]["registros"]) == 1
+    assert "ninguna herramienta lo hizo" in modelo.recibidos[2][-1].content
+
+
+@pytest.mark.asyncio
+async def test_quita_la_pregunta_de_relleno_sobre_telefono_y_correo(doc):
+    r, _ = await correr(doc, "agrega a Pedro", dice("", llamar("agregar_contactos", contactos=[{"nombre": "Pedro Gil"}])),
+                        dice("Agregué a Pedro Gil.\n\n¿Quieres que le ponga teléfono, correo o algo más?"))
+    assert r["respuesta"] == "Agregué a Pedro Gil."
+    assert agente.limpiar_respuesta("Listo.\n¿Quieres que le ponga hora?") == "Listo.\n¿Quieres que le ponga hora?"
+
+
+@pytest.mark.asyncio
+async def test_una_seccion_propia_llamada_igual_que_una_integrada_se_resuelve_a_la_propia(doc):
+    # En un CRM de salud la integrada "cobros" se llama "Pagos y consultas"; la propia "Cobros" no debe confundirse con ella.
+    r, modelo = await correr(doc, "x", dice("", llamar("crear_seccion", nombre="Cobros", campos=[{"nombre": "Cliente"}]),
+                                            llamar("agregar_registros", seccion="Cobros", registros=[{"Cliente": "Oscar"}])), dice("Listo, guardé el cobro."))
+    assert len(r["doc"]["listas"][0]["registros"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_una_pregunta_sin_acciones_no_dispara_el_verificador(doc):
+    r, modelo = await correr(doc, "¿para qué sirve la caja?", dice("Caja aún no está activa. Ya registré tus cobros antes en Cobros."))
+    assert len(modelo.recibidos) == 1 and "Caja aún no está activa" in r["respuesta"]

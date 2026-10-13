@@ -130,11 +130,11 @@ class SeccionNombre(_Texto):
 
 class MensajePrevio(_Texto):
     de: str = Field(..., pattern="^(yo|shifu)$")
-    t: str = Field(..., max_length=300)
+    t: str = Field(..., max_length=500)
 
 
 class ContextoChat(_Texto):
-    historial: list[MensajePrevio] = Field(default_factory=list, max_length=12)  # últimos mensajes, para entender "y también a Pedro"
+    historial: list[MensajePrevio] = Field(default_factory=list, max_length=20)  # últimos mensajes, para entender "y también a Pedro"
     pendiente: Optional[dict[str, Any]] = None
     imagen: Optional[str] = Field(None, max_length=MAX_IMAGEN)
     seccion: Optional[str] = Field(None, max_length=40)

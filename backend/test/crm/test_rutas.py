@@ -252,7 +252,7 @@ def test_chat_con_captura(cli):
 def test_chat_validaciones(cli):
     crear(cli)
     assert cli.post("/api/v1/crm/chat", json={"texto": ""}, headers=H).status_code == 422
-    assert cli.post("/api/v1/crm/chat", json={"texto": "x" * 301}, headers=H).status_code == 422
+    assert cli.post("/api/v1/crm/chat", json={"texto": "x" * 501}, headers=H).status_code == 422
     # un "archivo" que no es imagen no cuenta como captura
     assert cli.post("/api/v1/crm/chat", json={"texto": "", "contexto": {"imagen": "data:text/html;base64,AAAA"}}, headers=H).status_code == 422
     # un pendiente falso se ignora en vez de borrar algo
@@ -377,10 +377,10 @@ def test_la_ia_recibe_la_captura_como_aviso_junto_con_el_texto(cli, monkeypatch)
 
 def test_el_historial_del_chat_se_valida(cli):
     crear(cli)
-    muchos = [{"de": "yo", "t": "x"}] * 13
+    muchos = [{"de": "yo", "t": "x"}] * 21
     assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": muchos}}, headers=H).status_code == 422
     assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "otro", "t": "x"}]}}, headers=H).status_code == 422
-    assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "yo", "t": "x" * 301}]}}, headers=H).status_code == 422
+    assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "yo", "t": "x" * 501}]}}, headers=H).status_code == 422
 
 
 def test_sin_clave_el_chat_responde_con_reglas_y_lo_dice(cli):

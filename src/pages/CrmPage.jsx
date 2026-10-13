@@ -533,7 +533,7 @@ export default function CrmPage() {
     setMensajes((l) => [...l, mensaje('yo', t, imagen?.url)])
     setEscribiendo(true)
     try {
-      const historial = mensajes.slice(-10).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 300) }))
+      const historial = mensajes.slice(-16).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 500) }))
       const r = await apiChat.enviar(t, { pendiente: pendiente.current, imagen: imagen?.url, seccion: tit(vista), historial })
       pendiente.current = r.pendiente || null
       if (r.modo) setModo(r.modo)
