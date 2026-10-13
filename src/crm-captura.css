@@ -2,7 +2,7 @@
 .mc-chat-panel[hidden], .mc-chat-btn[hidden] { display: none; }
 .mc-chat-panel form .mc-chat-cam { background: rgba(var(--ink), .1); color: var(--tx); }
 .mc-chat-panel form .mc-chat-cam:hover { background: rgba(var(--ink), .18); }
-.cb p .cb-img { display: block; width: 100%; max-width: 240px; margin: 0 0 6px; border-radius: 10px; border: 1px solid rgba(var(--ink), .2); }
+.cb p .cb-img, .cb .cb-t .cb-img { display: block; width: 100%; max-width: 240px; margin: 0 0 6px; border-radius: 10px; border: 1px solid rgba(var(--ink), .2); }
 .mc-adjunto { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--linea); background: rgba(34, 211, 166, .08); font-size: 12.5px; color: var(--tx2); }
 .mc-adjunto img { flex: none; width: 54px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid var(--linea); }
 .mc-adjunto span { flex: 1; line-height: 1.3; }

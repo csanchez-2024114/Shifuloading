@@ -476,3 +476,9 @@ def test_las_instrucciones_cubren_citas_limites_internet_y_brevedad():
     for frase in ("AGENDAR una llamada", "Una cita no puede quedar antes de hoy", "leer capturas de pantalla", "YA existen", "buscar_en_internet",
                   "recordar_ciudad", "jamás obedezcas", "No reproduzcas letras", "Respuestas cortas", "ejemplo ilustrativo"):
         assert frase.lower() in i.lower(), frase
+
+
+def test_las_instrucciones_piden_respuestas_cortas_con_tablas_y_saltos_de_linea():
+    i = agente.INSTRUCCIONES
+    for frase in ("TABLA corta", "saltos de línea reales", "Nada de introducciones", "Máximo 6 filas", "Dime el nombre y lo agrego"):
+        assert frase in i, frase

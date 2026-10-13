@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import ShifuAvatar from '../components/ShifuAvatar'
+import TextoChat from '../components/TextoChat'
 import { SelectorCaptura, capturarRegion, imagenDeArchivo } from '../components/CapturaPantalla'
 import { HAY_SERVIDOR, auth, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
@@ -407,7 +408,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
               <div key={m.id} className={`cb ${m.de}`}>{m.de === 'shifu' && <ShifuAvatar size={26} />}
-                <p>{m.imagen && <img className="cb-img" src={m.imagen} alt="Captura enviada a Shifu" />}{m.t}</p></div>
+                <div className="cb-t">{m.imagen && <img className="cb-img" src={m.imagen} alt="Captura enviada a Shifu" />}{m.de === 'shifu' ? <TextoChat texto={m.t} /> : m.t}</div></div>
             ))}
             {escribiendo && <div className="cb shifu"><ShifuAvatar size={26} /><p className="puntos" aria-label="Shifu está escribiendo"><i /><i /><i /></p></div>}
             <div ref={fin} />

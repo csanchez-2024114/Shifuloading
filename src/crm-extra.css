@@ -71,10 +71,18 @@
 .mc-chat-panel .av-shifu { flex: none; border-radius: 50%; }
 .mc-chat-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 16px; }
 .cb { display: flex; align-items: flex-end; gap: 8px; max-width: 88%; animation: entra-mc .25s ease both; }
-.cb p { margin: 0; padding: 10px 13px; border-radius: 16px; font-size: 14px; line-height: 1.4; }
-.cb.shifu p { background: var(--burbuja); border-bottom-left-radius: 4px; }
+.cb p, .cb .cb-t { margin: 0; padding: 10px 13px; border-radius: 16px; font-size: 14px; line-height: 1.4; }
+.cb.shifu p, .cb.shifu .cb-t { background: var(--burbuja); border-bottom-left-radius: 4px; }
 .cb.yo { align-self: flex-end; }
-.cb.yo p { background: #2f5bff; border-bottom-right-radius: 4px; }
+.cb.yo p, .cb.yo .cb-t { background: #2f5bff; border-bottom-right-radius: 4px; }
+.cb .cb-t .tc-p { display: block; }
+.cb .cb-t .tc-p + .tc-p, .cb .cb-t .tc-p + .tc-lista, .cb .cb-t .tc-lista + .tc-p, .cb .cb-t .tc-tabla-caja + .tc-p, .cb .cb-t .tc-p + .tc-tabla-caja { margin-top: 6px; }
+.tc-lista { margin: 4px 0; padding-left: 20px; display: grid; gap: 3px; }
+.tc-tabla-caja { margin: 6px 0; overflow-x: auto; border: 1px solid var(--linea); border-radius: 10px; }
+.tc-tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tc-tabla th, .tc-tabla td { padding: 6px 9px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--linea); }
+.tc-tabla th { font-weight: 700; color: var(--verde); background: rgba(var(--ink), .05); white-space: nowrap; }
+.tc-tabla tr:last-child td { border-bottom: 0; }
 .cb .puntos { display: flex; gap: 4px; padding: 14px; }
 .puntos i { width: 6px; height: 6px; border-radius: 50%; background: var(--tx3); animation: salta 1s infinite; }
 .puntos i:nth-child(2) { animation-delay: .15s; }
@@ -132,7 +140,7 @@
 .mc-chat[data-tema="claro"] .mc-chat-hint { box-shadow: 0 6px 18px rgba(20, 33, 29, .2); }
 .mc-chat[data-tema="claro"] .mc-chat-btn.abierto { box-shadow: 0 8px 22px rgba(20, 33, 29, .2), 0 0 0 1px var(--linea); }
 /* Textos sobre fondos de color: siempre blancos, en cualquier tema */
-.mc-camp i, .mc-yo, .cb.yo p { color: #fff; }
+.mc-camp i, .mc-yo, .cb.yo p, .cb.yo .cb-t { color: #fff; }
 .mc-camp { color: var(--azul-t); }
 .mc-chat-btn .av-shifu { background: #14211d; }
 
