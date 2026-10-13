@@ -83,6 +83,12 @@
 .brief-omitir-q:hover { color: var(--tinta); }
 
 /* Shifu saluda en la primera pregunta (reemplaza al emoji) */
+.brief-puntos { display: flex; gap: 8px; margin-top: 18px; }
+.brief-puntos i { width: 10px; height: 10px; border-radius: 50%; background: #22d3a6; animation: brief-salta 1s infinite; }
+.brief-puntos i:nth-child(2) { animation-delay: .15s; }
+.brief-puntos i:nth-child(3) { animation-delay: .3s; }
+@keyframes brief-salta { 40% { transform: translateY(-6px); opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .brief-puntos i { animation: none; } }
 .emoji-mascota { display: block; width: auto; height: clamp(110px, 16vw, 150px); margin: 14px 0 0; filter: drop-shadow(0 12px 16px rgba(20, 33, 29, .18)); user-select: none; }
 
 @media (prefers-reduced-motion: reduce) {

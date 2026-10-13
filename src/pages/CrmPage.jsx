@@ -545,6 +545,20 @@ export default function CrmPage() {
     } finally { setEscribiendo(false) }
   }
 
+  // Recién creado con IA: el chat se abre solo y cuenta cómo armó el CRM, para que la persona lo ajuste hablando.
+  const saludado = useRef(false)
+  useEffect(() => {
+    if (!crm?.resumenIA || saludado.current || !recienTerminado) return
+    saludado.current = true
+    setMensajes([mensaje('shifu', `Hola 👋 Soy Shifu. ${crm.resumenIA}
+
+Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
+- «agrega a Pedro»
+- «quita la sección de proveedores»
+- «agrega un campo de cumpleaños a los contactos»`)])
+    setChatAbierto(true)
+  }, [crm, recienTerminado])
+
   if (fallo) return <Fallo onReintentar={() => { pedido.current = null; cargar() }} />
   if (animando && d) return <Cargando pasos={pasos} listo={!!crm} onListo={() => { setAnimando(false); nav('/mi-crm', { replace: true, state: null }) }} />
   if (!crm || !d) return <div className="carga" role="status"><p className="carga-sub">Abriendo tu CRM…</p></div>

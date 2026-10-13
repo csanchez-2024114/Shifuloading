@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
-import { auth } from '../api'
+import { auth, crm as apiCrm } from '../api'
 import { PREGUNTAS } from '../brief/preguntas'
 import { guardarBorrador, leerBorrador } from '../brief/borrador'
 import '../brief.css'
@@ -9,7 +9,17 @@ import '../brief.css'
 /* Cuestionario de bienvenida: una pregunta por pantalla, con emojis, tarjetas para tocar y transiciones suaves.
  * Guarda lo respondido en el navegador (más adelante se conecta al servidor). Atajos: Enter continúa, 1-9 elige, ← vuelve. */
 
-const TOTAL = PREGUNTAS.length
+/* Las preguntas fijas, con las que la IA agrega después de «dolor», cuando ya sabe de qué trata el negocio. */
+const I_DOLOR = PREGUNTAS.findIndex((p) => p.id === 'dolor')
+const construir = (extra) => [...PREGUNTAS.slice(0, I_DOLOR + 1), ...extra, ...PREGUNTAS.slice(I_DOLOR + 1)]
+/* Si cambia algo de esto, las preguntas de la IA ya no corresponden y se piden de nuevo. */
+const claveDe = (r) => JSON.stringify([r.rubro, r.que_vendes, r.dolor, r.problemas, r.objetivos, r.canales, r.ciclo, r.equipo, r.herramientas])
+const adaptar = (p) => ({ id: p.id, capitulo: 'Para conocer tu negocio', emoji: p.emoji || '🧩', tipo: p.tipo, titulo: p.titulo, sub: p.sub, opciones: p.opciones || [], requerido: false })
+const respuestaDe = (p, v) => {
+  if (p.tipo === 'parrafo') return String(v || '').trim().slice(0, 300)
+  const lista = Array.isArray(v) ? v : v ? [v] : []
+  return lista.map((x) => p.opciones.find((o) => o.v === x)?.t).filter(Boolean).join(', ').slice(0, 300)
+}
 
 const vacio = (v) => v === undefined || v === null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && v.length === 0)
 
@@ -36,6 +46,11 @@ function Opcion({ op, n, activa, bloqueada, multiple, onClick }) {
 
 export default function BriefPage() {
   const guardado = useMemo(leerBorrador, [])
+  const [extra, setExtra] = useState(() => guardado?.extra || [])
+  const [extraDe, setExtraDe] = useState(() => guardado?.extraDe || '')
+  const [pensando, setPensando] = useState(false)
+  const lista = useMemo(() => construir(extra), [extra])
+  const TOTAL = lista.length
   const [idx, setIdx] = useState(guardado && !guardado.fin ? Math.min(guardado.idx || 0, TOTAL - 1) : 0)
   const [resp, setResp] = useState(guardado?.resp || {})
   const [fin, setFin] = useState(false)
@@ -44,10 +59,10 @@ export default function BriefPage() {
   const temporizador = useRef(null)
   const pantalla = useRef(null)
 
-  const q = PREGUNTAS[idx]
+  const q = lista[idx]
   const pct = fin ? 100 : (idx / TOTAL) * 100
 
-  useEffect(() => { guardarBorrador({ idx, resp, fin }) }, [idx, resp, fin])
+  useEffect(() => { guardarBorrador({ idx, resp, fin, extra, extraDe }) }, [idx, resp, fin, extra, extraDe])
   // Al terminar, Shifu arma el CRM: se pasa a la pantalla de carga y de ahí al CRM. Con servidor y sin cuenta, antes se crea la cuenta.
   useEffect(() => { if (fin) nav(auth.haySesion() ? '/mi-crm' : '/registro', { state: { cargar: true } }) }, [fin, nav])
   useEffect(() => () => clearTimeout(temporizador.current), [])
@@ -57,7 +72,27 @@ export default function BriefPage() {
   // Las actualizaciones que dependen del valor anterior van como función, para que dos toques seguidos no se pisen.
   const cambiar = (id, fn) => setResp((r) => ({ ...r, [id]: fn(r[id]) }))
   const ir = (n, d) => { clearTimeout(temporizador.current); setDir(d); setIdx(n) }
-  const siguiente = () => { if (idx >= TOTAL - 1) { setDir('der'); setFin(true) } else ir(idx + 1, 'der') }
+  // Al terminar se guardan, con palabras, las respuestas a las preguntas que hizo la IA: con ellas se arma el CRM.
+  const terminar = () => {
+    setResp((r) => ({ ...r, seguimiento: extra.map((p) => ({ pregunta: p.titulo, respuesta: respuestaDe(p, r[p.id]) })).filter((s) => s.respuesta) }))
+    setDir('der'); setFin(true)
+  }
+  // Con lo que ya contó (sobre todo qué vende), la IA escribe las preguntas propias de ese negocio. Si tarda o falla, se sigue con las fijas.
+  const pedirSeguimiento = async () => {
+    setPensando(true)
+    const clave = claveDe(resp)
+    let preguntas = []
+    try {
+      const r = await Promise.race([apiCrm.seguimiento(resp), new Promise((_, no) => setTimeout(() => no(new Error('tarde')), 20000))])
+      preguntas = (r?.preguntas || []).map(adaptar)
+    } catch { /* sin preguntas extra */ }
+    setExtra(preguntas); setExtraDe(clave); setPensando(false); ir(idx + 1, 'der')
+  }
+  const siguiente = () => {
+    if (pensando) return
+    if (q.id === 'dolor' && claveDe(resp) !== extraDe) { pedirSeguimiento(); return }
+    if (idx >= TOTAL - 1) terminar(); else ir(idx + 1, 'der')
+  }
   const atras = () => { if (idx > 0) ir(idx - 1, 'izq') }
   const puede = valido(q, resp)
 
@@ -65,7 +100,7 @@ export default function BriefPage() {
     poner(q.id, v)
     if (q.tipo === 'una') {
       clearTimeout(temporizador.current)
-      temporizador.current = setTimeout(() => { if (idx >= TOTAL - 1) { setDir('der'); setFin(true) } else ir(idx + 1, 'der') }, 360)
+      temporizador.current = setTimeout(() => { if (idx >= TOTAL - 1) terminar(); else ir(idx + 1, 'der') }, 360)
     }
   }
   const alternar = (v) => cambiar(q.id, (prev) => {
@@ -117,7 +152,15 @@ export default function BriefPage() {
       </header>
 
       <main className="brief-main">
-        {!fin && (
+        {!fin && pensando && (
+          <section className="pantalla foco entra-der brief-pensando" role="status" aria-live="polite">
+            <div className="emoji" aria-hidden="true">✨</div>
+            <h1>Shifu está pensando qué más preguntarte</h1>
+            <p className="sub">Para armar un CRM distinto al de cualquier otro negocio, quiere conocer mejor el tuyo.</p>
+            <p className="brief-puntos" aria-hidden="true"><i /><i /><i /></p>
+          </section>
+        )}
+        {!fin && !pensando && (
           <section key={idx} ref={pantalla} tabIndex={-1} className={`pantalla foco entra-${dir}`} aria-labelledby="brief-titulo">
             <span className="chip-cap">{q.capitulo}</span>
             {q.id === 'nombre'

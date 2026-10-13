@@ -59,4 +59,5 @@ def vista_crm(doc: dict, ahora: datetime | None = None) -> dict:
         "eventos": [{"id": e["id"], "e": e["e"], "t": e["t"], "h": hace(e["ts"], ahora)} for e in doc["eventos"]],
         "automatizaciones": doc["automatizaciones"],
         "secciones": doc["secciones"],
+        "resumenIA": doc.get("resumen_ia"),
     }

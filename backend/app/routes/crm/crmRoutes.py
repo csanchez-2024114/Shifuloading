@@ -7,7 +7,8 @@ Errores: `{"mensaje": "..."}` con el código HTTP que corresponda.
 
 Endpoints (relativos al prefijo):
   GET    ""                       — El CRM (404 si todavía no tiene uno)
-  POST   ""                       — Crea el CRM a partir del cuestionario (reemplaza el anterior)
+  POST   ""                       — Crea el CRM a partir del cuestionario; la IA diseña etapas, campos y secciones (reemplaza el anterior)
+  POST   /seguimiento             — Preguntas de seguimiento que la IA hace según el negocio (sin sesión, con límite)
   DELETE ""                       — Lo borra (para repetir el cuestionario)
   POST   /contactos               — Alta de uno o varios contactos
   PATCH  /contactos/{id}          — Cambia nombre, etapa, canal, responsable o detalle
@@ -31,6 +32,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.limiter import limiter
 from app.crm import agente
+from app.crm import diseno
 from app.crm import estructura as est
 from app.crm import operaciones as op
 from app.crm import repositorio as repo
@@ -56,6 +58,11 @@ class Ubicacion(_Texto):
     ciudad: Optional[str] = Field(None, max_length=60)
 
 
+class Seguimiento(_Texto):
+    pregunta: str = Field(..., max_length=140)
+    respuesta: str = Field(..., max_length=300)
+
+
 class BriefEntrada(_Texto):
     """Respuestas del cuestionario. Lo desconocido se ignora; todo tiene tope de tamaño."""
     model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
@@ -71,6 +78,8 @@ class BriefEntrada(_Texto):
     herramientas: list[str] = Field(default_factory=list, max_length=20)
     objetivos: list[str] = Field(default_factory=list, max_length=20)
     dolor: Optional[str] = Field(None, max_length=300)
+    que_vendes: Optional[str] = Field(None, max_length=200)
+    seguimiento: list[Seguimiento] = Field(default_factory=list, max_length=4)  # preguntas que la IA hizo según el negocio, con sus respuestas
     armado: Optional[str] = Field(None, max_length=30)
     autonomia: Optional[str] = Field(None, max_length=30)
     presupuesto: Optional[str] = Field(None, max_length=30)
@@ -84,6 +93,10 @@ class BriefEntrada(_Texto):
 
 
 class CrearCrm(BaseModel):
+    brief: BriefEntrada
+
+
+class PedirSeguimiento(BaseModel):
     brief: BriefEntrada
 
 
@@ -173,9 +186,21 @@ async def obtener_crm(request: Request, user: dict = Depends(get_current_user)):
 @router.post("", status_code=201)
 async def crear_crm(request: Request, datos: CrearCrm, user: dict = Depends(get_current_user)):
     brief = datos.brief.model_dump(exclude_none=True)
-    doc = generar(user["id"], brief)
+    doc = await diseno.disenar(generar(user["id"], brief), brief)  # la IA arma la estructura a la medida; sin IA queda la plantilla base
     await repo.reemplazar(request.app.state.db, user["id"], doc)
     return JSONResponse(vista_crm(doc), status_code=201)
+
+
+@router.post("/seguimiento")
+@limiter.limit("12/hour")
+async def preguntas_de_seguimiento(request: Request, datos: PedirSeguimiento):
+    """Preguntas que la IA hace según lo que la persona ya contó (el cuestionario ocurre antes de crear la cuenta, por eso no pide sesión:
+    va limitada por IP y por tope diario)."""
+    brief = datos.brief.model_dump(exclude_none=True)
+    if not brief.get("rubro"):
+        return JSONResponse({"mensaje": "Falta el tipo de negocio."}, status_code=422)
+    preguntas, modo = await diseno.preguntas_de_seguimiento(brief)
+    return {"preguntas": preguntas, "modo": modo}
 
 
 @router.delete("", status_code=204)

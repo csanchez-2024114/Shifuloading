@@ -255,6 +255,11 @@ async def lifespan(app: FastAPI):
     """Inicialización y cierre de recursos sin bloqueos."""
     logger.info(" Iniciando HyperShifu Backend...")
 
+    # El CRM con IA importa langchain (en frío tarda decenas de segundos): se adelanta en segundo plano para que nadie lo espere.
+    import threading as _hilo
+    from app.crm import diseno as _diseno_crm
+    _hilo.Thread(target=_diseno_crm.precalentar, daemon=True, name="precalentar-crm").start()
+
     # 1. Validación de Seguridad Crítica
     if not Config.SECRET_KEY or Config.SECRET_KEY == "mysecretkey":
         if Config.ENVIRONMENT == "production":

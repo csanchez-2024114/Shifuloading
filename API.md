@@ -29,6 +29,7 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `POST /crm/contactos` | `{ filas: [{ n, det?, extra? }], canal, texto? }` | CRM (alta de uno o varios; `texto` es la frase que queda en Actividad) |
 | `PATCH /crm/contactos/:id` | campos a cambiar (`etapa`, `n`, `dueno`…) | CRM |
 | `DELETE /crm/contactos/:id` | — | CRM |
+| `POST /crm/seguimiento` | `{ brief }` (sin sesión; limitado por IP) | `{ preguntas: [{ id, tipo: "una"\|"varias"\|"parrafo", titulo, emoji, sub, opciones: [{ v, e, t }] }], modo: "ia"\|"base" }`: preguntas propias del negocio que la IA hace tras las generales |
 | `POST /crm/tareas` | `{ t }` | CRM (entra en la columna `porHacer`) |
 | `PATCH /crm/tareas/:id` | `{ columna: "porHacer" \| "enCurso" \| "hecho" }` | CRM |
 | `DELETE /crm/tareas/:id` | — | CRM |
@@ -85,6 +86,8 @@ Lo que borra datos (un contacto, una tarea, un registro, un campo o una sección
 La respuesta de `/crm/chat` incluye `modo`: `"ia"` o `"reglas"` (si la IA no está disponible por falta de saldo, clave o tiempo, contesta con reglas básicas que no cambian la estructura). `contexto.historial` (hasta 8 `{de: "yo"|"shifu", t}`) permite entender "y también a Pedro".
 
 ## Brief (respuestas del cuestionario)
+
+Además: `que_vendes` (texto libre: qué vende o qué servicio da) y `seguimiento: [{ pregunta, respuesta }]` (hasta 4, las preguntas que hizo la IA con lo que contestó). Con todo eso, `POST /crm` hace que la IA diseñe etapas, campos de contacto, secciones propias y nombres a la medida; el resumen de lo que armó llega en `resumenIA`. Si la IA no está disponible, el CRM nace con la plantilla base.
 
 Las preguntas y los valores posibles están en `src/brief/preguntas.js`. Forma: `nombre`, `ubicacion: { pais, ciudad? }`, `rubro`, `tiempo`, `canales[]`, `cartera`, `ciclo`, `problemas[]`, `equipo`, `herramientas[]`, `objetivos[]` (sin límite), `dolor`, `armado`, `autonomia`, `presupuesto`.
 El avance del cuestionario se guarda en el navegador mientras se contesta; solo al terminar viaja al servidor con `POST /crm`.

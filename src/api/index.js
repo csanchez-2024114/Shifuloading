@@ -53,6 +53,8 @@ export const crm = {
   /** Crea el CRM a partir de las respuestas del cuestionario. */
   crearDesdeBrief: (brief) => (HAY_SERVIDOR ? pedir('POST', '/crm', { brief }) : simulado.crm.crearDesdeBrief(brief)),
   reiniciar: () => (HAY_SERVIDOR ? pedir('DELETE', '/crm') : simulado.crm.reiniciar()),
+  /** Preguntas que la IA hace según lo que la persona ya contó de su negocio (sin servidor no hay: se sigue con las fijas). */
+  seguimiento: (brief) => (HAY_SERVIDOR ? pedir('POST', '/crm/seguimiento', { brief }) : Promise.resolve({ preguntas: [], modo: 'base' })),
 
   contactosCrear: (filas, canal, texto) => (HAY_SERVIDOR ? pedir('POST', '/crm/contactos', { filas, canal, texto }) : simulado.crm.contactosCrear(filas, canal, texto)),
   contactosActualizar: (id, cambios) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/contactos/${id}`, cambios) : simulado.crm.contactosActualizar(id, cambios)),

@@ -526,3 +526,70 @@ def test_confirmar_el_borrado_de_una_seccion_propia_por_el_chat(cli, db):
     l2 = _con_lista(db, "Otra")
     r = cli.post("/api/v1/crm/chat", json={"texto": "sí", "contexto": {"pendiente": {"tipo": "lista", "id": "l_inventada"}}}, headers=H).json()
     assert len(r["crm"]["listas"]) == 1 and l2["id"] == r["crm"]["listas"][0]["id"]
+
+
+# ───────── La IA diseña el CRM desde el cuestionario ─────────
+
+def test_las_preguntas_de_seguimiento_no_piden_sesion_y_usan_las_del_rubro_sin_ia(cli):
+    r = cli.post("/api/v1/crm/seguimiento", json={"brief": {"rubro": "tecnologia", "nombre": "Nube Sur"}})
+    assert r.status_code == 200 and r.json()["modo"] == "base" and r.json()["preguntas"]
+    p = r.json()["preguntas"][0]
+    assert {"id", "tipo", "titulo", "emoji", "opciones"} <= set(p)
+
+
+def test_las_preguntas_de_seguimiento_exigen_el_rubro_y_validan_el_cuestionario(cli):
+    assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"nombre": "Sin rubro"}}).status_code == 422
+    assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"rubro": "comercio", "que_vendes": "x" * 201}}).status_code == 422
+    assert cli.post("/api/v1/crm/seguimiento", json={}).status_code == 422
+
+
+def test_el_cuestionario_acepta_que_vende_y_las_respuestas_de_seguimiento(cli):
+    brief = {**BRIEF, "que_vendes": "pan por encargo", "seguimiento": [{"pregunta": "¿Haces entregas?", "respuesta": "A domicilio, En el local"}]}
+    r = crear(cli, brief=brief)
+    assert r.status_code == 201
+    assert r.json()["brief"]["que_vendes"] == "pan por encargo" and r.json()["brief"]["seguimiento"][0]["respuesta"] == "A domicilio, En el local"
+    assert r.json()["resumenIA"] is None  # sin IA no hay resumen: la plantilla base no inventa nada
+    muchas = {**BRIEF, "seguimiento": [{"pregunta": "p", "respuesta": "r"}] * 5}
+    assert crear(cli, brief=muchas).status_code == 422
+
+
+def test_con_ia_el_crm_nace_con_la_estructura_que_diseno(cli, monkeypatch):
+    import json as _json
+    from langchain_core.messages import AIMessage
+    from app.crm import diseno
+
+    propuesta = {"resumen": "Armé tu CRM para tus pedidos.", "etapas": ["Consulta", "Pedido", "Entregado"], "campos_contacto": [{"nombre": "Cumpleaños", "tipo": "fecha"}],
+                 "secciones": [{"nombre": "Proveedores", "campos": [{"nombre": "Nombre"}, {"nombre": "Teléfono"}]}], "nombres": {"rrhh": "Mi equipo"}, "automatizaciones": ["recordatorios"]}
+
+    class Falso:
+        async def ainvoke(self, _m):
+            return AIMessage(content=_json.dumps(propuesta, ensure_ascii=False))
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-prueba")
+    monkeypatch.setenv("CRM_IA", "1")
+    monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+    monkeypatch.setattr(diseno, "_modelo", lambda: Falso())
+    r = crear(cli).json()
+    assert r["etapas"] == ["Consulta", "Pedido", "Entregado"] and [c["nombre"] for c in r["camposContacto"]] == ["Cumpleaños"]
+    assert [l["nombre"] for l in r["listas"]] == ["Proveedores"] and r["secciones"]["rrhh"] == "Mi equipo"
+    assert r["resumenIA"] == "Armé tu CRM para tus pedidos." and r["totalContactos"] == 0
+    # y queda guardado: al pedirlo de nuevo sigue igual
+    assert cli.get("/api/v1/crm", headers=H).json()["resumenIA"] == "Armé tu CRM para tus pedidos."
+
+
+def test_si_la_ia_falla_al_crear_el_crm_se_crea_igual_con_la_plantilla(cli, monkeypatch):
+    from app.crm import diseno
+
+    class Roto:
+        async def ainvoke(self, _m):
+            raise RuntimeError("Error code: 429 - insufficient_quota")
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-prueba")
+    monkeypatch.setenv("CRM_IA", "1")
+    monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+    monkeypatch.setattr(diseno, "_modelo", lambda: Roto())
+    try:
+        r = crear(cli)
+        assert r.status_code == 201 and r.json()["listas"] == [] and r.json()["etapas"] == ["Nuevo", "En contacto", "Interesado", "Cliente"]
+    finally:
+        monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
