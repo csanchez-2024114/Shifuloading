@@ -197,6 +197,9 @@ function Cobros({ moneda, t }) {
   )
 }
 
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const fechaCorta = (iso) => { const [a, m, d] = iso.split('-').map(Number); return `${d} ${MESES_CORTOS[m - 1]} ${a}` }
+
 function Desarrollo({ t, tareas, onMover }) {
   return (
     <>
@@ -205,7 +208,10 @@ function Desarrollo({ t, tareas, onMover }) {
         {COLUMNAS.map(([k, titulo], c) => (
           <div key={k} className="mc-col"><h2>{titulo}<i>{tareas[k].length}</i></h2>
             {tareas[k].map((x) => (
-              <button key={x.id} type="button" className="mc-tarea" onClick={() => onMover(x, COLUMNAS[(c + 1) % COLUMNAS.length][0])} title={c < 2 ? 'Pasar a la siguiente columna' : 'Volver a “Por hacer”'}>{x.t}</button>
+              <button key={x.id} type="button" className="mc-tarea" onClick={() => onMover(x, COLUMNAS[(c + 1) % COLUMNAS.length][0])} title={c < 2 ? 'Pasar a la siguiente columna' : 'Volver a “Por hacer”'}>
+                {x.t}
+                {(x.vence || x.contacto) && <small className="mc-tarea-meta">{x.vence && `📅 ${fechaCorta(x.vence)}${x.hora ? ` · ${x.hora}` : ''}`}{x.vence && x.contacto && ' · '}{x.contacto && `👤 ${x.contacto}`}</small>}
+              </button>
             ))}
             {!tareas[k].length && <p className="mc-vacio chico">Sin tareas</p>}
           </div>
@@ -526,7 +532,7 @@ export default function CrmPage() {
     setMensajes((l) => [...l, mensaje('yo', t, imagen?.url)])
     setEscribiendo(true)
     try {
-      const historial = mensajes.slice(-6).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 300) }))
+      const historial = mensajes.slice(-10).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 300) }))
       const r = await apiChat.enviar(t, { pendiente: pendiente.current, imagen: imagen?.url, seccion: tit(vista), historial })
       pendiente.current = r.pendiente || null
       if (r.modo) setModo(r.modo)

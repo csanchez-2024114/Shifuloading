@@ -134,7 +134,7 @@ class MensajePrevio(_Texto):
 
 
 class ContextoChat(_Texto):
-    historial: list[MensajePrevio] = Field(default_factory=list, max_length=8)  # últimos mensajes, para entender "y también a Pedro"
+    historial: list[MensajePrevio] = Field(default_factory=list, max_length=12)  # últimos mensajes, para entender "y también a Pedro"
     pendiente: Optional[dict[str, Any]] = None
     imagen: Optional[str] = Field(None, max_length=MAX_IMAGEN)
     seccion: Optional[str] = Field(None, max_length=40)
@@ -297,8 +297,8 @@ async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(ge
     if imagen:
         # La imagen todavía no se lee (falta conectar el modelo de visión): se acusa recibo y se actúa con el texto.
         donde = f" de “{ctx.seccion}”" if ctx.seccion else ""
-        respuesta = (f"📸 Recibí tu captura{donde}. {respuesta}" if datos.texto
-                     else f"📸 Recibí tu captura{donde}. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.")
+        respuesta = (f"📸 Recibí tu captura{donde}, pero todavía no puedo leer imágenes: me guío por lo que escribiste. {respuesta}" if datos.texto
+                     else f"📸 Recibí tu captura{donde}, pero todavía no puedo leer imágenes. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.")
     salida = {"respuesta": respuesta, "crm": vista_crm(doc), "modo": resultado.get("modo", "reglas")}
     for clave in ("vista", "pendiente"):
         if resultado.get(clave):

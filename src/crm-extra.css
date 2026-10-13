@@ -15,6 +15,7 @@
 
 /* Tareas */
 .mc-tarea { width: 100%; text-align: left; color: var(--tx); font-family: var(--fuente); cursor: pointer; transition: border-color .2s, transform .15s; }
+.mc-tarea-meta { display: block; margin-top: 4px; font-size: 11.5px; color: var(--gris); }
 .mc-tarea:hover { border-color: rgba(34, 211, 166, .5); }
 .mc-tarea:active { transform: scale(.98); }
 

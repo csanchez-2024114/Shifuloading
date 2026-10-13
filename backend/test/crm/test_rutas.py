@@ -377,7 +377,7 @@ def test_la_ia_recibe_la_captura_como_aviso_junto_con_el_texto(cli, monkeypatch)
 
 def test_el_historial_del_chat_se_valida(cli):
     crear(cli)
-    muchos = [{"de": "yo", "t": "x"}] * 9
+    muchos = [{"de": "yo", "t": "x"}] * 13
     assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": muchos}}, headers=H).status_code == 422
     assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "otro", "t": "x"}]}}, headers=H).status_code == 422
     assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "yo", "t": "x" * 301}]}}, headers=H).status_code == 422

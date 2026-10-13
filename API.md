@@ -65,7 +65,7 @@ La lógica de ejemplo está en `src/api/mock/chat.js`.
   "listas": [{ "id": "l_ab12cd34", "nombre": "Proveedores", "campos": [{ "id": "f_…", "nombre": "Nombre", "tipo": "texto" }],
                "registros": [{ "id": "", "valores": { "<idCampo>": "valor" } }] }],
   "vendedores": ["Tú", "Mariana Solís"],
-  "tareas": { "porHacer": [{ "id": "", "t": "" }], "enCurso": [], "hecho": [] },
+  "tareas": { "porHacer": [{ "id": "", "t": "", "vence": "2026-11-02", "hora": "16:00", "contacto": "Nombre" }], "enCurso": [], "hecho": [] },  // vence, hora y contacto son opcionales (las pone el chat al agendar)
   "eventos": [{ "id": "", "e": "➕", "t": "Agregaste a Ana Morales", "h": "ahora" }],
   "automatizaciones": [{ "id": "recordatorios", "pilar": "Estructura", "t": "", "d": "", "on": true }],
   "secciones": { "contactos": "Pacientes" }

@@ -27,8 +27,21 @@ def hace(ts: datetime, ahora: datetime) -> str:
     return f"hace {dias} {'día' if dias == 1 else 'días'}"
 
 
+def _tarea(x: dict, nombres: dict[str, str]) -> dict:
+    """La tarea tal como la ve el frontend: con su fecha, hora y el nombre del contacto si los tiene."""
+    salida = {"id": x["id"], "t": x["t"]}
+    if x.get("vence"):
+        salida["vence"] = x["vence"]
+        if x.get("hora"):
+            salida["hora"] = x["hora"]
+    if x.get("contacto_id") in nombres:
+        salida["contacto"] = nombres[x["contacto_id"]]
+    return salida
+
+
 def vista_crm(doc: dict, ahora: datetime | None = None) -> dict:
     ahora = ahora or ahora_utc()
+    nombres = {c["id"]: c["n"] for c in doc["contactos"]}
     return {
         "brief": doc["brief"],
         "totalContactos": doc["total_contactos"],
@@ -42,7 +55,7 @@ def vista_crm(doc: dict, ahora: datetime | None = None) -> dict:
         "listas": [{"id": l["id"], "nombre": l["nombre"], "campos": l["campos"],
                     "registros": [{"id": r["id"], "valores": r["valores"]} for r in l["registros"]]} for l in doc["listas"]],
         "vendedores": doc["vendedores"],
-        "tareas": doc["tareas"],
+        "tareas": {col: [_tarea(x, nombres) for x in lista] for col, lista in doc["tareas"].items()},
         "eventos": [{"id": e["id"], "e": e["e"], "t": e["t"], "h": hace(e["ts"], ahora)} for e in doc["eventos"]],
         "automatizaciones": doc["automatizaciones"],
         "secciones": doc["secciones"],

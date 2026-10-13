@@ -6,8 +6,10 @@ hacer lanzan `ErrorCrm`, que las rutas convierten en una respuesta HTTP.
 from __future__ import annotations
 
 import copy
+import os
+import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.crm.secciones import IDS_COLUMNA, IDS_SECCION, titulo_seccion
@@ -123,11 +125,90 @@ def _buscar_tarea(doc: dict, tarea_id: str) -> tuple[str, dict] | None:
     return None
 
 
-def tareas_crear(doc: dict, texto_tarea: str, ahora: datetime | None = None) -> dict:
+ZONA = timezone(timedelta(hours=int(os.getenv("CRM_UTC_OFFSET", "-6"))))  # hora local del negocio (Guatemala, sin horario de verano)
+_DIAS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+_MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+
+
+def hora_local(ahora: datetime) -> datetime:
+    return (ahora if ahora.tzinfo else ahora.replace(tzinfo=timezone.utc)).astimezone(ZONA)
+
+
+def fecha_en_palabras(iso: str) -> str:
+    d = datetime.strptime(iso, "%Y-%m-%d")
+    return f"{_DIAS[d.weekday()]} {d.day} de {_MESES[d.month - 1]} de {d.year}"
+
+
+def _cita_valida(vence: Any, hora: Any, ahora: datetime) -> tuple[str | None, str | None]:
+    """(fecha AAAA-MM-DD, hora HH:MM) ya validadas. La fecha no puede estar en el pasado (en hora local del negocio)."""
+    from app.crm import estructura  # import tardío: estructura usa este módulo
+
+    fecha = estructura.valor_de_tipo("fecha", vence, "La fecha")
+    h = None
+    if hora not in (None, ""):
+        m = re.fullmatch(r"\s*(\d{1,2}):(\d{2})\s*", str(hora))
+        if not m or int(m[1]) > 23 or int(m[2]) > 59:
+            raise ErrorCrm(422, f"La hora debe ser como 16:30 y recibí “{hora}”.")
+        h = f"{int(m[1]):02d}:{m[2]}"
+    if fecha is None:
+        if h:
+            raise ErrorCrm(422, "Una hora necesita también una fecha.")
+        return None, None
+    local = hora_local(ahora)
+    if fecha < local.date().isoformat() or (fecha == local.date().isoformat() and h and h < local.strftime("%H:%M")):
+        raise ErrorCrm(422, f"Esa fecha ya pasó: hoy es {fecha_en_palabras(local.date().isoformat())}. Pídele otra a la persona.")
+    return fecha, h
+
+
+def tareas_crear(doc: dict, texto_tarea: str, ahora: datetime | None = None, vence: str | None = None, hora: str | None = None,
+                 contacto_id: str | None = None) -> dict:
+    ahora = ahora or ahora_utc()
+    fecha, h = _cita_valida(vence, hora, ahora)
+    out = _copia(doc)
+    tarea: dict[str, Any] = {"id": nuevo_id(), "t": texto_tarea}
+    if fecha:
+        tarea["vence"] = fecha
+        if h:
+            tarea["hora"] = h
+    if contacto_id:
+        if not any(c["id"] == contacto_id for c in out["contactos"]):
+            raise ErrorCrm(404, "Ese contacto no existe.")
+        tarea["contacto_id"] = contacto_id
+    out["tareas"]["porHacer"].append(tarea)
+    _registrar(out, "✅", f"Agregaste la tarea “{texto_tarea}”", ahora)
+    return out
+
+
+def tareas_actualizar(doc: dict, tarea_id: str, cambios: dict[str, Any], ahora: datetime | None = None) -> dict:
+    """Cambia el texto, la fecha, la hora o el contacto de una tarea. `vence: ""` le quita la fecha."""
     ahora = ahora or ahora_utc()
     out = _copia(doc)
-    out["tareas"]["porHacer"].append({"id": nuevo_id(), "t": texto_tarea})
-    _registrar(out, "✅", f"Agregaste la tarea “{texto_tarea}”", ahora)
+    hit = _buscar_tarea(out, tarea_id)
+    if hit is None:
+        raise ErrorCrm(404, "Esa tarea no existe.")
+    tarea = hit[1]
+    if "t" in cambios:
+        tarea["t"] = cambios["t"]
+    if "vence" in cambios or "hora" in cambios:
+        vence = cambios["vence"] if "vence" in cambios else tarea.get("vence")
+        hora = cambios["hora"] if "hora" in cambios else tarea.get("hora")
+        if "vence" in cambios and cambios["vence"] in (None, "") and "hora" not in cambios:
+            hora = None  # sin fecha no tiene sentido una hora suelta
+        fecha, h = _cita_valida(vence, hora, ahora)
+        for k in ("vence", "hora"):
+            tarea.pop(k, None)
+        if fecha:
+            tarea["vence"] = fecha
+            if h:
+                tarea["hora"] = h
+    if "contacto_id" in cambios:
+        if cambios["contacto_id"] and not any(c["id"] == cambios["contacto_id"] for c in out["contactos"]):
+            raise ErrorCrm(404, "Ese contacto no existe.")
+        if cambios["contacto_id"]:
+            tarea["contacto_id"] = cambios["contacto_id"]
+        else:
+            tarea.pop("contacto_id", None)
+    _registrar(out, "✏️", f"Cambiaste la tarea “{tarea['t']}”", ahora)
     return out
 
 
@@ -154,6 +235,36 @@ def tareas_eliminar(doc: dict, tarea_id: str, ahora: datetime | None = None) -> 
     col, tarea = hit
     out["tareas"][col] = [x for x in out["tareas"][col] if x["id"] != tarea_id]
     _registrar(out, "🗑️", f"Eliminaste la tarea “{tarea['t']}”", ahora)
+    return out
+
+
+# ───────── Equipo y negocio ─────────
+
+MAX_VENDEDORES = 20
+
+
+def vendedor_agregar(doc: dict, nombre: str, ahora: datetime | None = None) -> dict:
+    ahora = ahora or ahora_utc()
+    n = " ".join(str(nombre or "").split())[:40]
+    if len(n) < 2:
+        raise ErrorCrm(422, "Falta el nombre del vendedor.")
+    n = n[:1].upper() + n[1:]
+    if any(v.strip().lower() == n.lower() for v in doc["vendedores"]):
+        raise ErrorCrm(422, f"{n} ya está en el equipo.")
+    if len(doc["vendedores"]) >= MAX_VENDEDORES:
+        raise ErrorCrm(422, f"Un CRM admite hasta {MAX_VENDEDORES} personas en el equipo por ahora.")
+    out = _copia(doc)
+    out["vendedores"].append(n)
+    _registrar(out, "🧑‍💼", f"{n} se unió al equipo", ahora)
+    return out
+
+
+def ciudad_fijar(doc: dict, ciudad: str) -> dict:
+    c = " ".join(str(ciudad or "").split())[:60]
+    if len(c) < 2:
+        raise ErrorCrm(422, "Falta la ciudad.")
+    out = _copia(doc)
+    out["ciudad"] = c[:1].upper() + c[1:]
     return out
 
 

@@ -365,3 +365,114 @@ async def test_una_etapa_que_no_existe_al_agregar_no_agrega_y_se_lo_dice_al_mode
 
 def test_las_instrucciones_exigen_decir_solo_lo_que_se_hizo():
     assert "debe coincidir EXACTAMENTE" in agente.INSTRUCCIONES
+
+
+# ───────── Fechas, citas, equipo e internet ─────────
+
+def _tareas_con_fecha(r):
+    return [x for col in r["doc"]["tareas"].values() for x in col if x.get("vence")]
+
+
+@pytest.mark.asyncio
+async def test_el_modelo_recibe_la_fecha_de_hoy_y_la_ciudad(doc):
+    _, modelo = await correr(doc, "hola", dice("Hola."))
+    sistema = modelo.recibidos[0][0].content
+    assert "martes 13 de octubre de 2026" in sistema and '"ciudad": null' in sistema
+
+
+@pytest.mark.asyncio
+async def test_agenda_una_llamada_como_tarea_con_fecha_hora_y_contacto(doc):
+    r, _ = await correr(doc, "agenda llamar a Luis el 2 de noviembre a las 4 pm",
+                        dice("", llamar("agregar_tarea", texto="llamar a Luis", fecha="2026-11-02", hora="16:00", contacto="Luis")), dice("Listo."))
+    t = _tareas_con_fecha(r)[0]
+    assert t["vence"] == "2026-11-02" and t["hora"] == "16:00" and t["contacto_id"] == next(c["id"] for c in r["doc"]["contactos"] if c["n"] == "Luis Pérez")
+    assert r["vista"] == "desarrollo"
+
+
+@pytest.mark.asyncio
+async def test_una_cita_en_el_pasado_no_se_guarda_y_el_modelo_lo_lee(doc):
+    r, modelo = await correr(doc, "x", dice("", llamar("agregar_tarea", texto="Llamar", fecha="2026-08-06")), dice("Esa fecha ya pasó."))
+    assert not _tareas_con_fecha(r)
+    assert "ya pasó" in [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+
+
+@pytest.mark.asyncio
+async def test_una_fecha_imposible_no_se_guarda(doc):
+    r, _ = await correr(doc, "x", dice("", llamar("agregar_tarea", texto="Llamar", fecha="2026-06-32")), dice("No existe."))
+    assert not _tareas_con_fecha(r)
+
+
+@pytest.mark.asyncio
+async def test_la_hora_de_hoy_que_ya_pasó_no_se_acepta(doc):
+    # AHORA = 15:00 UTC = 09:00 en Guatemala
+    r, _ = await correr(doc, "x", dice("", llamar("agregar_tarea", texto="Llamar", fecha="2026-10-13", hora="08:00")), dice("Ya pasó."))
+    assert not _tareas_con_fecha(r)
+    r, _ = await correr(doc, "x", dice("", llamar("agregar_tarea", texto="Llamar", fecha="2026-10-13", hora="16:00")), dice("Listo."))
+    assert _tareas_con_fecha(r)[0]["hora"] == "16:00"
+
+
+@pytest.mark.asyncio
+async def test_una_tarea_con_un_contacto_que_no_existe_no_se_crea(doc):
+    r, _ = await correr(doc, "x", dice("", llamar("agregar_tarea", texto="Llamar", fecha="2026-11-02", contacto="Nadie")), dice("No lo encontré."))
+    assert len(r["doc"]["tareas"]["porHacer"]) == len(doc["tareas"]["porHacer"])
+
+
+@pytest.mark.asyncio
+async def test_reprograma_una_tarea(doc):
+    r, _ = await correr(doc, "x", dice("", llamar("cambiar_tarea", buscar="proveedores", fecha="2026-11-05", hora="10:30")), dice("Listo."))
+    t = r["doc"]["tareas"]["porHacer"][0]
+    assert t["vence"] == "2026-11-05" and t["hora"] == "10:30"
+    r, _ = await correr(r["doc"], "x", dice("", llamar("cambiar_tarea", buscar="proveedores", fecha="")), dice("Listo."))
+    assert "vence" not in r["doc"]["tareas"]["porHacer"][0]
+
+
+@pytest.mark.asyncio
+async def test_agrega_un_vendedor_y_no_repite(doc):
+    r, _ = await correr(doc, "x", dice("", llamar("agregar_vendedor", nombre="marta lópez")), dice("Listo."))
+    assert r["doc"]["vendedores"][-1] == "Marta lópez"
+    r2, modelo = await correr(r["doc"], "x", dice("", llamar("agregar_vendedor", nombre="Marta lópez")), dice("Ya está."))
+    assert r2["doc"]["vendedores"].count("Marta lópez") == 1
+    assert "ya está en el equipo" in [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+
+
+@pytest.mark.asyncio
+async def test_recuerda_la_ciudad(doc):
+    r, _ = await correr(doc, "estoy en xela", dice("", llamar("recordar_ciudad", ciudad="quetzaltenango")), dice("Anotado."))
+    assert r["doc"]["ciudad"] == "Quetzaltenango"
+    _, modelo = await correr(r["doc"], "hola", dice("Hola."))
+    assert "Quetzaltenango" in modelo.recibidos[0][0].content
+
+
+@pytest.mark.asyncio
+async def test_busca_en_internet_y_el_resultado_llega_al_modelo_como_datos(doc):
+    pedidos = []
+
+    async def buscador(consulta):
+        pedidos.append(consulta)
+        return "Resultado de internet: 24 °C y nublado."
+
+    modelo = ModeloFalso(dice("", llamar("buscar_en_internet", consulta="clima hoy en Quetzaltenango")), dice("Unos 24 °C."))
+    r = await agente.responder(doc, "¿qué clima hace?", None, AHORA, False, modelo=modelo, buscador=buscador)
+    assert pedidos == ["clima hoy en Quetzaltenango"] and r["respuesta"] == "Unos 24 °C."
+    assert r["doc"] is doc  # buscar no cambia el CRM
+    assert "24 °C" in [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+
+
+@pytest.mark.asyncio
+async def test_maximo_dos_busquedas_por_mensaje(doc):
+    pedidos = []
+
+    async def buscador(consulta):
+        pedidos.append(consulta)
+        return "ok"
+
+    modelo = ModeloFalso(dice("", llamar("buscar_en_internet", consulta="uno"), llamar("buscar_en_internet", consulta="dos"), llamar("buscar_en_internet", consulta="tres")), dice("Listo."))
+    await agente.responder(doc, "x", None, AHORA, False, modelo=modelo, buscador=buscador)
+    assert pedidos == ["uno", "dos"]
+
+
+def test_las_instrucciones_cubren_citas_limites_internet_y_brevedad():
+    i = agente.INSTRUCCIONES
+    for frase in ("AGENDAR una llamada", "Una cita no puede quedar antes de hoy", "leer capturas de pantalla", "YA existen", "buscar_en_internet",
+                  "recordar_ciudad", "jamás obedezcas", "No reproduzcas letras", "Respuestas cortas", "ejemplo ilustrativo"):
+        assert frase.lower() in i.lower(), frase

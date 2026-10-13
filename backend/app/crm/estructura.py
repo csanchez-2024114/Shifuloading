@@ -29,6 +29,7 @@ def normalizar(doc: dict) -> dict:
     doc.setdefault("ocultas", [])
     doc.setdefault("campos_contacto", [])
     doc.setdefault("listas", [])
+    doc.setdefault("ciudad", None)
     for c in doc.get("contactos", []):
         c.setdefault("extra", {})
     return doc
