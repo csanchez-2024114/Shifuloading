@@ -200,3 +200,6 @@ eval_results/
 
 # archivos que suben los usuarios (FILE_STORAGE=local)
 /uploads/
+
+# Copias que deja scripts/limpiar_datos_ejemplo.py antes de tocar la base
+copia_crm_antes_de_limpiar_*.json
