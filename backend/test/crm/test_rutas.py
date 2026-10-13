@@ -111,6 +111,11 @@ def crear(cli, usuario="u1", brief=BRIEF):
     return cli.post("/api/v1/crm", json={"brief": brief}, headers={"X-Usuario": usuario})
 
 
+def con_contactos(cli, usuario="u1", nombres=("Ana Morales", "Luis Pérez", "Sofía Ríos")):
+    """El CRM nace vacío: las pruebas que necesitan contactos los agregan igual que lo haría la persona."""
+    return cli.post("/api/v1/crm/contactos", json={"filas": [{"n": n} for n in nombres], "canal": "WhatsApp"}, headers={"X-Usuario": usuario}).json()
+
+
 H = {"X-Usuario": "u1"}
 
 
@@ -123,9 +128,13 @@ def test_crear_y_obtener(cli):
     r = crear(cli)
     assert r.status_code == 201
     crm = r.json()
-    assert crm["totalContactos"] == 120 and crm["brief"]["nombre"] == "Clínica Sol"
+    assert crm["brief"]["nombre"] == "Clínica Sol"
+    # nace vacío: nada de contactos, equipo, tareas ni actividad inventados
+    assert crm["totalContactos"] == 0 and crm["contactos"] == [] and crm["vendedores"] == ["Tú"]
+    assert crm["tareas"] == {"porHacer": [], "enCurso": [], "hecho": []}
+    assert [e["t"] for e in crm["eventos"]] == ["Shifu creó tu CRM"]
     again = cli.get("/api/v1/crm", headers=H).json()
-    assert again["contactos"][0]["n"] == crm["contactos"][0]["n"]
+    assert again["brief"] == crm["brief"] and again["totalContactos"] == 0
     assert all(isinstance(e["h"], str) for e in again["eventos"])  # las fechas guardadas sin zona horaria no rompen la vista
 
 
@@ -140,9 +149,9 @@ def test_el_brief_se_limpia_y_se_acota(cli):
 
 def test_volver_a_crear_reemplaza_el_crm(cli, db):
     crear(cli)
-    cli.post("/api/v1/crm/contactos", json={"filas": [{"n": "Laura"}], "canal": "Chat"}, headers=H)
+    assert con_contactos(cli)["totalContactos"] == 3
     crear(cli, brief={**BRIEF, "cartera": "k1"})
-    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 40
+    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 0
     assert len(db["crm_workspaces"].docs) == 1
 
 
@@ -154,12 +163,13 @@ def test_borrar_crm(cli):
 
 def test_cada_persona_ve_solo_su_crm(cli):
     crear(cli, "u1")
+    cid = con_contactos(cli, "u1")["contactos"][0]["id"]
     assert cli.get("/api/v1/crm", headers={"X-Usuario": "u2"}).status_code == 404
     crear(cli, "u2", {**BRIEF, "nombre": "Otro"})
-    cid = cli.get("/api/v1/crm", headers=H).json()["contactos"][0]["id"]
-    # u2 no puede tocar un contacto de u1 aunque conozca su id
+    # u2 no puede tocar un contacto de u1 aunque conozca su id, ni ve los suyos en su CRM
     assert cli.delete(f"/api/v1/crm/contactos/{cid}", headers={"X-Usuario": "u2"}).status_code == 404
-    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 120
+    assert cli.get("/api/v1/crm", headers={"X-Usuario": "u2"}).json()["contactos"] == []
+    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 3
 
 
 def test_sin_crm_las_operaciones_dan_404(cli):
@@ -172,17 +182,17 @@ def test_contactos_alta_cambio_y_baja(cli):
     r = cli.post("/api/v1/crm/contactos", json={"filas": [{"n": "Laura Gómez", "det": "5555"}], "canal": "Importado", "texto": "Importaste 1 contacto"}, headers=H)
     assert r.status_code == 201
     crm = r.json()
-    assert crm["totalContactos"] == 121 and crm["contactos"][0]["det"] == "5555" and crm["eventos"][0]["t"] == "Importaste 1 contacto"
+    assert crm["totalContactos"] == 1 and crm["contactos"][0]["det"] == "5555" and crm["eventos"][0]["t"] == "Importaste 1 contacto"
     cid = crm["contactos"][0]["id"]
     crm = cli.patch(f"/api/v1/crm/contactos/{cid}", json={"etapa": "Cliente"}, headers=H).json()
     assert crm["contactos"][0]["etapa"] == "Cliente"
     crm = cli.delete(f"/api/v1/crm/contactos/{cid}", headers=H).json()
-    assert crm["totalContactos"] == 120 and all(c["id"] != cid for c in crm["contactos"])
+    assert crm["totalContactos"] == 0 and all(c["id"] != cid for c in crm["contactos"])
 
 
 def test_validaciones_de_contactos(cli):
     crear(cli)
-    cid = cli.get("/api/v1/crm", headers=H).json()["contactos"][0]["id"]
+    cid = con_contactos(cli)["contactos"][0]["id"]
     assert cli.post("/api/v1/crm/contactos", json={"filas": [], "canal": "x"}, headers=H).status_code == 422
     assert cli.post("/api/v1/crm/contactos", json={"filas": [{"n": ""}], "canal": "x"}, headers=H).status_code == 422
     assert cli.post("/api/v1/crm/contactos", json={"filas": [{"n": "a"}] * 301, "canal": "x"}, headers=H).status_code == 422
@@ -217,11 +227,11 @@ def test_automatizaciones_y_secciones(cli):
 def test_chat_completo_con_confirmacion_de_borrado(cli):
     crear(cli)
     r = cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H).json()
-    assert r["vista"] == "contactos" and r["crm"]["contactos"][0]["n"] == "Laura Gómez"
+    assert r["vista"] == "contactos" and r["crm"]["contactos"][0]["n"] == "Laura Gómez" and r["crm"]["totalContactos"] == 1
     r = cli.post("/api/v1/crm/chat", json={"texto": "Elimina a Laura Gómez"}, headers=H).json()
-    assert "pendiente" in r and r["crm"]["totalContactos"] == 121  # todavía no se borró
+    assert "pendiente" in r and r["crm"]["totalContactos"] == 1  # todavía no se borró
     r = cli.post("/api/v1/crm/chat", json={"texto": "sí", "contexto": {"pendiente": r["pendiente"]}}, headers=H).json()
-    assert r["crm"]["totalContactos"] == 120 and "pendiente" not in r
+    assert r["crm"]["totalContactos"] == 0 and "pendiente" not in r
 
 
 def test_chat_con_captura(cli):
@@ -241,7 +251,7 @@ def test_chat_validaciones(cli):
     assert cli.post("/api/v1/crm/chat", json={"texto": "", "contexto": {"imagen": "data:text/html;base64,AAAA"}}, headers=H).status_code == 422
     # un pendiente falso se ignora en vez de borrar algo
     r = cli.post("/api/v1/crm/chat", json={"texto": "sí", "contexto": {"pendiente": {"tipo": "contacto", "id": "../x", "extra": 1}}}, headers=H)
-    assert r.status_code == 200 and r.json()["crm"]["totalContactos"] == 120
+    assert r.status_code == 200 and r.json()["crm"]["totalContactos"] == 0
 
 
 @pytest.mark.asyncio

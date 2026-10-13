@@ -94,5 +94,5 @@ export function responder(crm, crudo, pendiente) {
   }
 
   if (/^(hola|buenas|hey|ayuda|que puedes)/.test(t)) return salida('Puedo agregar contactos y tareas, cambiarlos de etapa o de nombre, renombrar secciones, activar automatizaciones y eliminar lo que ya no uses (siempre te pido confirmación).')
-  return salida('Aún no entendí eso. Prueba con: “Agrega a Laura Gómez”, “Renombra Cobros a Facturación”, “Mueve a Ana Morales a Cliente”, “Activa los recordatorios” o “Elimina a Luis Pérez”.')
+  return salida('Aún no entendí eso. Prueba con: “Agrega a Laura Gómez”, “Renombra Cobros a Facturación”, “Mueve a [nombre] a Cliente”, “Activa los recordatorios” o “Elimina a [nombre]”.')
 }

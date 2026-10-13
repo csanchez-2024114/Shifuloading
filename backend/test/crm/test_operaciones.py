@@ -13,23 +13,33 @@ BRIEF = {"nombre": "Clínica Sol", "rubro": "salud", "cartera": "k2", "equipo": 
          "canales": ["whatsapp", "correo"], "objetivos": ["seguimientos", "ia"], "ubicacion": {"pais": "gt"}}
 
 
+NOMBRES = ["Ana Morales", "Luis Pérez", "Sofía Ríos", "Marcos Díaz", "Valeria Soto"]
+
+
 @pytest.fixture
 def doc():
-    return generar("u1", BRIEF, AHORA)
+    """Un CRM con algo de trabajo ya hecho por la persona (el CRM nuevo nace vacío: aquí se le agregan contactos y tareas)."""
+    d = generar("u1", BRIEF, AHORA)
+    d = op.contactos_crear(d, [{"n": n} for n in NOMBRES], "WhatsApp", ahora=AHORA - timedelta(days=3))
+    d = op.tareas_crear(d, "Importar contactos", AHORA)
+    return op.tareas_crear(d, "Definir etapas de venta", AHORA)
 
 
-def test_generar_respeta_el_cuestionario(doc):
-    assert doc["total_contactos"] == 120 and len(doc["contactos"]) == 16
-    assert doc["vendedores"] == ["Tú", "Mariana Solís"]
-    activas = {a["id"] for a in doc["automatizaciones"] if a["on"]}
-    assert activas == {"recordatorios", "bienvenida", "contacto", "reparto"}
-    assert {c["canal"] for c in doc["contactos"]} == {"WhatsApp", "Correo"}
-
-
-def test_generar_cartera_chica_no_inventa_contactos_de_mas():
-    d = generar("u1", {"cartera": "k1"}, AHORA)
-    assert d["total_contactos"] == 40 and len(d["contactos"]) == 16
+def test_un_crm_nuevo_nace_vacio():
+    d = generar("u1", BRIEF, AHORA)
+    assert d["total_contactos"] == 0 and d["contactos"] == []
     assert d["vendedores"] == ["Tú"]
+    assert d["tareas"] == {"porHacer": [], "enCurso": [], "hecho": []}
+    assert [e["t"] for e in d["eventos"]] == ["Shifu creó tu CRM"]
+
+
+def test_lo_unico_que_sale_del_cuestionario_son_las_automatizaciones():
+    d = generar("u1", BRIEF, AHORA)
+    activas = {a["id"] for a in d["automatizaciones"] if a["on"]}
+    assert activas == {"recordatorios", "bienvenida", "contacto", "reparto"}
+    # la cartera y el equipo contados no inventan contactos ni personas
+    grande = generar("u1", {"cartera": "k4", "equipo": "grande"}, AHORA)
+    assert grande["contactos"] == [] and grande["total_contactos"] == 0 and grande["vendedores"] == ["Tú"]
 
 
 def test_las_operaciones_no_modifican_el_original(doc):
@@ -40,14 +50,14 @@ def test_las_operaciones_no_modifican_el_original(doc):
 
 def test_crear_contacto_suma_total_y_deja_rastro(doc):
     nuevo = op.contactos_crear(doc, [{"n": "Laura Gómez", "det": "5555-1234"}], "Chat", ahora=AHORA)
-    assert nuevo["total_contactos"] == 121
+    assert nuevo["total_contactos"] == doc["total_contactos"] + 1
     assert nuevo["contactos"][0]["n"] == "Laura Gómez" and nuevo["contactos"][0]["etapa"] == "Nuevo"
     assert nuevo["eventos"][0]["t"] == "Agregaste a Laura Gómez"
 
 
 def test_importar_varios_contactos_en_un_solo_evento(doc):
     nuevo = op.contactos_crear(doc, [{"n": "A"}, {"n": "B"}, {"n": "C"}], "Importado", "Importaste 3 contactos", AHORA)
-    assert nuevo["total_contactos"] == 123 and nuevo["eventos"][0]["t"] == "Importaste 3 contactos"
+    assert nuevo["total_contactos"] == doc["total_contactos"] + 3 and nuevo["eventos"][0]["t"] == "Importaste 3 contactos"
 
 
 def test_tope_de_contactos(doc):
@@ -84,7 +94,7 @@ def test_contacto_inexistente_es_404(doc):
 def test_eliminar_contacto_resta_total(doc):
     cid = doc["contactos"][3]["id"]
     nuevo = op.contactos_eliminar(doc, cid, AHORA)
-    assert nuevo["total_contactos"] == 119 and all(c["id"] != cid for c in nuevo["contactos"])
+    assert nuevo["total_contactos"] == doc["total_contactos"] - 1 and all(c["id"] != cid for c in nuevo["contactos"])
 
 
 def test_tareas_crear_mover_eliminar(doc):

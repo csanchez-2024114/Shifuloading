@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from app.crm import operaciones as op
 from app.crm.chat import responder, sanear_pendiente
 from app.crm.generador import generar
 
@@ -12,7 +13,10 @@ BRIEF = {"nombre": "Clínica Sol", "rubro": "salud", "cartera": "k2", "equipo": 
 
 @pytest.fixture
 def doc():
-    return generar("u1", BRIEF, AHORA)
+    """Un CRM con contactos y tareas ya creados por la persona (el CRM nuevo nace vacío)."""
+    d = generar("u1", BRIEF, AHORA)
+    d = op.contactos_crear(d, [{"n": n} for n in ["Ana Morales", "Luis Pérez", "Sofía Ríos"]], "WhatsApp", ahora=AHORA)
+    return op.tareas_crear(d, "Importar contactos", AHORA)
 
 
 def dice(doc, texto, pendiente=None):
@@ -21,7 +25,7 @@ def dice(doc, texto, pendiente=None):
 
 def test_agregar_contacto(doc):
     r = dice(doc, "Agrega a laura gómez")
-    assert r["doc"]["contactos"][0]["n"] == "Laura Gómez" and r["doc"]["total_contactos"] == 121
+    assert r["doc"]["contactos"][0]["n"] == "Laura Gómez" and r["doc"]["total_contactos"] == doc["total_contactos"] + 1
     assert "Pacientes" in r["respuesta"] and r["vista"] == "contactos"
 
 
@@ -71,7 +75,7 @@ def test_eliminar_pide_confirmacion_y_no_borra_hasta_el_si(doc):
     r = dice(doc, "Elimina a Luis Pérez")
     assert r["doc"] is doc and "¿Seguro" in r["respuesta"] and r["pendiente"]["tipo"] == "contacto"
     ok = dice(doc, "sí", r["pendiente"])
-    assert all(c["n"] != "Luis Pérez" for c in ok["doc"]["contactos"]) and ok["doc"]["total_contactos"] == 119
+    assert all(c["n"] != "Luis Pérez" for c in ok["doc"]["contactos"]) and ok["doc"]["total_contactos"] == doc["total_contactos"] - 1
 
 
 def test_cualquier_otra_cosa_cancela_el_borrado(doc):

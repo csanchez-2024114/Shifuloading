@@ -80,18 +80,25 @@ function Fallo({ onReintentar }) {
 
 /* ───────── Vistas ───────── */
 
-function Contactos({ lista, total, buscar, t, onBorrar }) {
+function Contactos({ lista, total, buscar, t, onBorrar, onImportar }) {
   const q = norm(buscar)
   const vis = q ? lista.filter((f) => norm(f.n).includes(q)) : lista
   const por = (e) => lista.filter((c) => c.etapa === e).length
   return (
     <>
-      <div className="mc-cab"><div><h1>{t}</h1><p>{total.toLocaleString('es')} en total. Aquí ves un adelanto de los primeros; los que agregues o importes aparecen arriba.</p></div></div>
+      <div className="mc-cab"><div><h1>{t}</h1><p>{total === 0 ? 'Todavía no tienes ninguno.' : `${total.toLocaleString('es')} en total.`}</p></div></div>
       <div className="mc-kpis c4k">
         <div><small>En total</small><strong>{total.toLocaleString('es')}</strong></div>
         {ETAPAS.slice(1).map((e) => <div key={e}><small>{e}</small><strong>{por(e)}</strong></div>)}
       </div>
-      <div className="mc-tabla" role="table">
+      {total === 0 && (
+        <div className="mc-vacio-grande">
+          <b>Aquí aparecerán tus {t.toLowerCase()}</b>
+          <p>Pídele a Shifu en el chat que agregue el primero (por ejemplo, “Agrega a Laura Gómez”) o trae de una vez los que ya tienes en un Excel o en tus notas.</p>
+          <button type="button" className="btn-pildora" onClick={onImportar}>Importar desde Excel o notas</button>
+        </div>
+      )}
+      {total > 0 && <div className="mc-tabla" role="table">
         <div className="mc-fila cab" role="row"><span>Nombre</span><span>Canal</span><span>Etapa</span><span>Responsable</span><span>Último contacto</span></div>
         {vis.map((f) => (
           <div key={f.id} className="mc-fila" role="row">
@@ -102,28 +109,25 @@ function Contactos({ lista, total, buscar, t, onBorrar }) {
           </div>
         ))}
         {!vis.length && <p className="mc-vacio">Nada coincide con “{buscar}”.</p>}
-      </div>
+      </div>}
     </>
   )
 }
 
 function Cobros({ moneda, t }) {
+  // Todavía no hay módulo de cobros en el servidor: se muestra vacío, sin cifras de ejemplo.
   const m = moneda
-  const filas = [['Ana Morales', 'Cotización #1042', 12000, 'Pagado'], ['Café Brava', 'Anticipo 50%', 4500, 'Pendiente'], ['Ríos & Co.', 'Cuota 2 de 3', 9800, 'Vencido'], ['Monte Verde', 'Cotización #1047', 28000, 'Pendiente'], ['Taller 9', 'Mensualidad', 3200, 'Pagado']]
-  const suma = (e) => filas.filter((f) => f[3] === e).reduce((a, f) => a + f[2], 0)
   return (
     <>
-      <div className="mc-cab"><div><h1>{t}</h1><p>Lo que has cobrado y lo que falta por cobrar. Datos de ejemplo.</p></div></div>
+      <div className="mc-cab"><div><h1>{t}</h1><p>Lo que has cobrado y lo que falta por cobrar.</p></div></div>
       <div className="mc-kpis">
-        <div><small>Cobrado</small><strong>{m}{suma('Pagado').toLocaleString('es')}</strong></div>
-        <div><small>Por cobrar</small><strong>{m}{suma('Pendiente').toLocaleString('es')}</strong></div>
-        <div className="alerta"><small>Vencido</small><strong>{m}{suma('Vencido').toLocaleString('es')}</strong></div>
+        <div><small>Cobrado</small><strong>{m}0</strong></div>
+        <div><small>Por cobrar</small><strong>{m}0</strong></div>
+        <div className="alerta"><small>Vencido</small><strong>{m}0</strong></div>
       </div>
-      <div className="mc-tabla" role="table">
-        <div className="mc-fila cab c4" role="row"><span>Cliente</span><span>Concepto</span><span>Monto</span><span>Estado</span></div>
-        {filas.map(([c, tt, v, e]) => (
-          <div key={c} className="mc-fila c4" role="row"><span><i className="mc-av peq">{c[0]}</i>{c}</span><span>{tt}</span><span>{m}{v.toLocaleString('es')}</span><span><em className={`mc-estado ${e.toLowerCase()}`}>{e}</em></span></div>
-        ))}
+      <div className="mc-vacio-grande">
+        <b>Aún no hay cobros registrados</b>
+        <p>Cuando conectemos tus cobros, aquí verás lo que te pagaron y lo que está pendiente.</p>
       </div>
     </>
   )
@@ -271,15 +275,18 @@ function Importar({ existentes, onImportar, onVer }) {
 
 /* ───────── Chat con Shifu ───────── */
 
-const SUGERENCIAS = [
-  ['Estructura', 'Agrega a Laura Gómez'],
-  ['Estructura', 'Agrega la tarea llamar a proveedores'],
-  ['Medición', 'Mueve a Ana Morales a Cliente'],
-  ['Automatización', 'Activa los recordatorios'],
-  ['Estructura', 'Elimina a Luis Pérez'],
-]
+/** Ideas para el chat. Las que nombran a un contacto usan uno que de verdad existe; si no hay ninguno, solo salen las generales. */
+function sugerenciasDe(contactos) {
+  const base = [
+    ['Estructura', 'Agrega a Laura Gómez'],
+    ['Estructura', 'Agrega la tarea llamar a proveedores'],
+    ['Automatización', 'Activa los recordatorios'],
+  ]
+  const primero = contactos[0]?.n
+  return primero ? [...base, ['Medición', `Mueve a ${primero} a Cliente`], ['Estructura', `Elimina a ${primero}`]] : base
+}
 
-function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar }) {
+function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias }) {
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null) // captura o imagen pegada, lista para mandar con el mensaje
   const [eligiendo, setEligiendo] = useState(false)
@@ -335,7 +342,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar 
             <div ref={fin} />
           </div>
           <div className="mc-chat-sug" aria-label="Ideas para empezar">
-            {SUGERENCIAS.map(([p, s]) => <button key={s} type="button" disabled={escribiendo} onClick={() => onEnviar(s)}><em>{p}</em>{s}</button>)}
+            {sugerencias.map(([p, s]) => <button key={s} type="button" disabled={escribiendo} onClick={() => onEnviar(s)}><em>{p}</em>{s}</button>)}
           </div>
           {(imagen || errorImg) && (
             <div className="mc-adjunto" role="status">
@@ -430,7 +437,7 @@ export default function CrmPage() {
       `Preparando un CRM para ${d.rubro.toLowerCase()}`,
       `Dejando listos tus canales: ${d.canales.slice(0, 2).join(' y ')}`,
       obj ? `Poniendo primero: ${obj.toLowerCase()}` : 'Ordenando tus secciones',
-      'Cargando datos de ejemplo para que lo pruebes',
+      'Preparando tus secciones y automatizaciones',
       'Dando los últimos toques',
     ]
   }, [d, brief])
@@ -487,7 +494,7 @@ export default function CrmPage() {
           onClick={() => setTema(tema === 'claro' ? 'oscuro' : 'claro')}>
           <span className={tema === 'claro' ? 'on' : ''}><LuSun aria-hidden="true" /></span><span className={tema === 'oscuro' ? 'on' : ''}><LuMoon aria-hidden="true" /></span>
         </button>
-        <button type="button" className="mc-camp" aria-label="Avisos"><LuBell /><i>3</i></button>
+        <button type="button" className="mc-camp" aria-label="Avisos"><LuBell /></button>
         <span className="mc-yo" title={yo?.correo || d.nombre} aria-hidden="true">{inicial}</span>
       </header>
 
@@ -511,11 +518,11 @@ export default function CrmPage() {
           {bienvenida && (
             <aside className="mc-shifu" role="status">
               <ShifuAvatar size={40} />
-              <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, {crm.totalContactos.toLocaleString('es')} contactos de ejemplo y tus canales ({d.canales.join(', ')}). Pídeme cambios desde el chat de abajo a la derecha.</p>
+              <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, listo para tus canales ({d.canales.join(', ')}). Empieza por tus contactos: pídemelo en el chat de abajo a la derecha o impórtalos desde tu Excel o tus notas.</p>
               <button type="button" onClick={() => setBienvenida(false)} aria-label="Cerrar">✕</button>
             </aside>
           )}
-          {vista === 'contactos' && <Contactos lista={crm.contactos} total={crm.totalContactos} buscar={buscar} t={tit('contactos')} onBorrar={(c) => aplicar(() => apiCrm.contactosEliminar(c.id))} />}
+          {vista === 'contactos' && <Contactos lista={crm.contactos} total={crm.totalContactos} buscar={buscar} t={tit('contactos')} onBorrar={(c) => aplicar(() => apiCrm.contactosEliminar(c.id))} onImportar={() => ir('importar')} />}
           {vista === 'desarrollo' && <Desarrollo t={tit('desarrollo')} tareas={crm.tareas} onMover={(x, destino) => aplicar(() => apiCrm.tareasMover(x.id, destino))} />}
           {vista === 'importar' && (
             <Importar existentes={crm.contactos.map((c) => c.n)} onVer={() => ir('contactos')}
@@ -529,7 +536,7 @@ export default function CrmPage() {
       </div>
 
       {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
-      <ChatShifu tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} />
+      <ChatShifu sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} />
     </div>
   )
 }

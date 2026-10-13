@@ -148,3 +148,9 @@
 .mc-salir small { flex-basis: 100%; margin-left: 24px; color: var(--tx3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
 .mc-rehacer { margin-top: auto; }
 .mc-rehacer + .mc-salir { margin-top: 4px; }
+
+
+/* Estado vacío: lo que se ve antes de tener datos */
+.mc-vacio-grande { display: grid; justify-items: center; gap: 10px; margin-top: 18px; padding: 44px 24px; border: 1.5px dashed var(--linea); border-radius: 16px; background: var(--panel); text-align: center; }
+.mc-vacio-grande b { font-size: 17px; }
+.mc-vacio-grande p { max-width: 460px; margin: 0 0 6px; color: var(--tx3); font-size: 14px; line-height: 1.5; }
