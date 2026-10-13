@@ -44,6 +44,12 @@ def dice(texto="", *llamadas):
     return AIMessage(content=texto, tool_calls=list(llamadas))
 
 
+@pytest.fixture(autouse=True)
+def sin_pausa(monkeypatch):
+    """Que un fallo simulado en otra prueba no deje la IA en pausa en esta."""
+    monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+
+
 @pytest.fixture
 def doc():
     d = generar("u1", BRIEF, AHORA)
@@ -126,7 +132,7 @@ async def test_solo_un_borrado_pendiente_a_la_vez(doc):
 async def test_renombra_secciones_y_abre_otra(doc):
     r, _ = await correr(doc, "x", dice("", llamar("renombrar_seccion", seccion="Historial", nombre="bitácora clínica"), llamar("abrir_seccion", seccion="Automatizaciones")),
                         dice("Listo."))
-    assert r["doc"]["secciones"]["actividad"] == "Bitácora Clínica" and r["vista"] == "automatizaciones"
+    assert r["doc"]["secciones"]["actividad"] == "Bitácora clínica" and r["vista"] == "automatizaciones"
 
 
 @pytest.mark.asyncio
@@ -201,3 +207,37 @@ def test_el_agente_se_apaga_sin_clave_o_con_la_bandera(monkeypatch):
     assert agente.activo() is True
     monkeypatch.setenv("CRM_IA", "0")
     assert agente.activo() is False
+
+
+def test_tras_un_fallo_la_ia_se_pausa_y_luego_vuelve(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-prueba")
+    monkeypatch.delenv("CRM_IA", raising=False)
+    assert agente.activo() is True
+    agente.marcar_fallo(RuntimeError("Error code: 429 - insufficient_quota"))
+    assert agente.activo() is False  # sin saldo: no se insiste mensaje tras mensaje
+    assert agente._pausa_hasta - __import__("time").monotonic() > agente.PAUSA_PASAJERA  # pausa larga: no se arregla sola
+    monkeypatch.setattr(agente, "_pausa_hasta", 0.0)  # pasó el tiempo
+    assert agente.activo() is True
+
+
+def test_un_fallo_pasajero_pausa_menos(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-prueba")
+    monkeypatch.delenv("CRM_IA", raising=False)
+    agente.marcar_fallo(TimeoutError("Request timed out"))
+    restante = agente._pausa_hasta - __import__("time").monotonic()
+    assert 0 < restante <= agente.PAUSA_PASAJERA
+
+
+@pytest.mark.asyncio
+async def test_respeta_las_mayusculas_que_la_persona_le_puso_a_una_seccion(doc):
+    r, _ = await correr(doc, "x", dice("", llamar("renombrar_seccion", seccion="Pacientes", nombre="  mis   pacientes VIP ")), dice("Listo."))
+    assert r["doc"]["secciones"]["contactos"] == "Mis pacientes VIP"
+
+
+def test_las_instrucciones_piden_no_fingir_ni_preguntar_de_mas():
+    assert "OPCIONALES" in agente.INSTRUCCIONES and "no finjas" in agente.INSTRUCCIONES
+    assert "SOLO si la herramienta responde que quedó pendiente" in agente.INSTRUCCIONES
+
+
+def test_las_instrucciones_no_dejan_que_el_detalle_repita_la_etapa():
+    assert "nunca repitas ahí la etapa" in agente.INSTRUCCIONES

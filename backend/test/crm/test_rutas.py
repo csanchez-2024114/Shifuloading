@@ -403,3 +403,24 @@ def test_si_otra_pestana_cambia_el_crm_mientras_la_ia_piensa_se_repite(cli, db, 
     _con_ia(monkeypatch, lento)
     r = cli.post("/api/v1/crm/chat", json={"texto": "agrega una tarea"}, headers=H).json()
     assert veces == [1, 2] and r["crm"]["tareas"]["porHacer"][0]["t"] == "Revisar" and len(r["crm"]["tareas"]["porHacer"]) == 1
+
+
+def test_tras_un_fallo_de_la_ia_el_siguiente_mensaje_no_la_vuelve_a_intentar(cli, monkeypatch):
+    crear(cli)
+    llamadas = []
+
+    async def sin_saldo(*_a, **_k):
+        llamadas.append(1)
+        raise RuntimeError("Error code: 429 - insufficient_quota")
+
+    monkeypatch.setattr(agente, "responder", sin_saldo)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-prueba")
+    monkeypatch.setenv("CRM_IA", "1")
+    monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+    try:
+        r1 = cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H).json()
+        r2 = cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Pedro Castillo"}, headers=H).json()
+        assert r1["modo"] == "reglas" and r2["modo"] == "reglas" and r2["crm"]["totalContactos"] == 2
+        assert llamadas == [1]  # el segundo mensaje ni siquiera intentó con la IA
+    finally:
+        monkeypatch.setattr(agente, "_pausa_hasta", 0.0)

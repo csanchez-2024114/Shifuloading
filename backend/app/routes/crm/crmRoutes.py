@@ -237,8 +237,9 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
         if texto and not pendiente and agente.activo():
             try:
                 r = await agente.responder(doc, texto, historial, con_captura=con_captura)
-            except Exception:  # sin saldo, tiempo agotado, clave inválida…: se sigue con las reglas
-                logger.warning("El agente del CRM falló; se usan las reglas.", exc_info=True)
+            except Exception as e:  # sin saldo, tiempo agotado, clave inválida…: se sigue con las reglas
+                agente.marcar_fallo(e)
+                logger.warning("El agente del CRM falló; se usan las reglas un rato: %s", type(e).__name__)
         if r is None:
             r = {**(responder(doc, texto, pendiente) if texto else {"doc": doc, "respuesta": ""}), "modo": "reglas"}
         if r["doc"] is doc:
