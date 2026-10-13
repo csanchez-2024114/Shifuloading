@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Callable
 
 from app.core.constants import Collections
+from app.crm.estructura import normalizar
 from app.crm.operaciones import ErrorCrm, ahora_utc
 
 INTENTOS = 4
@@ -18,7 +19,8 @@ def _col(db):
 
 
 async def obtener(db, user_id: str) -> dict | None:
-    return await _col(db).find_one({"user_id": user_id}, {"_id": 0})
+    doc = await _col(db).find_one({"user_id": user_id}, {"_id": 0})
+    return normalizar(doc) if doc else None
 
 
 async def reemplazar(db, user_id: str, doc: dict) -> dict:

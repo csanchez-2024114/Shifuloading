@@ -92,7 +92,7 @@
 
 /* Tablas */
 .mc-tabla { margin-top: 18px; border: 1px solid var(--linea); border-radius: 14px; overflow: hidden; }
-.mc-fila { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1.2fr 1fr; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--linea); font-size: 13.5px; }
+.mc-fila { display: grid; grid-template-columns: var(--cols, 1.6fr 1fr 1fr 1.2fr 1fr); align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--linea); font-size: 13.5px; }
 .mc-fila.c4 { grid-template-columns: 1.6fr 1.4fr 1fr 1fr; }
 .mc-fila.cab { border-top: 0; background: rgba(var(--ink),.05); color: var(--gris); font-size: 12px; font-weight: 600; }
 .mc-fila > span:first-child { display: flex; align-items: center; gap: 10px; }

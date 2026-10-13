@@ -424,3 +424,105 @@ def test_tras_un_fallo_de_la_ia_el_siguiente_mensaje_no_la_vuelve_a_intentar(cli
         assert llamadas == [1]  # el segundo mensaje ni siquiera intentó con la IA
     finally:
         monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+
+
+# ───────── Estructura: secciones propias, etapas y campos ─────────
+
+def _con_lista(db, nombre="Proveedores", campos=None):
+    """Aplica una operación de estructura directo en la base falsa (en la app real la hace la IA por el chat)."""
+    from app.crm import estructura as est
+    doc = db["crm_workspaces"].docs[0]
+    nuevo = est.lista_crear(doc, nombre, campos or [{"nombre": "Nombre"}, {"nombre": "Deuda", "tipo": "numero"}])
+    nuevo["version"] = doc["version"] + 1
+    db["crm_workspaces"].docs[0] = nuevo
+    return nuevo["listas"][-1]
+
+
+def test_un_crm_viejo_sin_los_campos_nuevos_se_sigue_pudiendo_abrir(cli, db):
+    crear(cli)
+    for k in ("etapas", "ocultas", "campos_contacto", "listas"):
+        db["crm_workspaces"].docs[0].pop(k, None)
+    r = cli.get("/api/v1/crm", headers=H).json()
+    assert r["etapas"] == ["Nuevo", "En contacto", "Interesado", "Cliente"] and r["listas"] == [] and r["ocultas"] == [] and r["camposContacto"] == []
+
+
+def test_registros_de_una_seccion_propia_por_las_rutas(cli, db):
+    crear(cli)
+    l = _con_lista(db)
+    nombre, deuda = (c["id"] for c in l["campos"])
+    r = cli.post(f"/api/v1/crm/listas/{l['id']}/registros", json={"valores": {nombre: "Ferretería Díaz", deuda: "1,200"}}, headers=H)
+    assert r.status_code == 201
+    reg = r.json()["listas"][0]["registros"][0]
+    assert reg["valores"] == {nombre: "Ferretería Díaz", deuda: 1200}
+    r = cli.patch(f"/api/v1/crm/listas/{l['id']}/registros/{reg['id']}", json={"valores": {deuda: 900}}, headers=H).json()
+    assert r["listas"][0]["registros"][0]["valores"][deuda] == 900
+    r = cli.delete(f"/api/v1/crm/listas/{l['id']}/registros/{reg['id']}", headers=H).json()
+    assert r["listas"][0]["registros"] == []
+
+
+def test_validaciones_de_registros(cli, db):
+    crear(cli)
+    l = _con_lista(db)
+    nombre, deuda = (c["id"] for c in l["campos"])
+    url = f"/api/v1/crm/listas/{l['id']}/registros"
+    assert cli.post(url, json={"valores": {deuda: "mucho"}}, headers=H).status_code == 422
+    assert cli.post(url, json={"valores": {"f_inventado": "x"}}, headers=H).status_code == 422
+    assert cli.post(url, json={"valores": {}}, headers=H).status_code == 422
+    assert cli.post("/api/v1/crm/listas/l_no/registros", json={"valores": {nombre: "x"}}, headers=H).status_code == 404
+    assert cli.patch(f"{url}/no-existe", json={"valores": {nombre: "x"}}, headers=H).status_code == 404
+    assert cli.delete(f"{url}/no-existe", headers=H).status_code == 404
+    assert cli.post(url, json={"valores": {c: "x" for c in [f"c{i}" for i in range(20)]}}, headers=H).status_code == 422  # demasiados campos
+
+
+def test_los_registros_son_de_cada_persona(cli, db):
+    crear(cli, "u1")
+    l = _con_lista(db)
+    crear(cli, "u2")
+    assert cli.post(f"/api/v1/crm/listas/{l['id']}/registros", json={"valores": {l["campos"][0]["id"]: "x"}}, headers={"X-Usuario": "u2"}).status_code == 404
+
+
+def test_campos_extra_de_los_contactos_por_las_rutas(cli, db):
+    from app.crm import estructura as est
+    crear(cli)
+    cid_contacto = con_contactos(cli)["contactos"][0]["id"]
+    doc = db["crm_workspaces"].docs[0]
+    nuevo = est.campo_agregar(doc, "contactos", "Teléfono", "texto")
+    nuevo["version"] = doc["version"] + 1
+    db["crm_workspaces"].docs[0] = nuevo
+    cid = nuevo["campos_contacto"][0]["id"]
+    r = cli.patch(f"/api/v1/crm/contactos/{cid_contacto}", json={"extra": {cid: "5555-1234"}}, headers=H).json()
+    assert r["contactos"][0]["extra"] == {cid: "5555-1234"} and r["camposContacto"][0]["nombre"] == "Teléfono"
+    assert cli.patch(f"/api/v1/crm/contactos/{cid_contacto}", json={"extra": {"f_inventado": "x"}}, headers=H).status_code == 422
+    r = cli.post("/api/v1/crm/contactos", json={"filas": [{"n": "Pedro", "extra": {cid: "4444"}}], "canal": "Chat"}, headers=H).json()
+    assert r["contactos"][0]["extra"] == {cid: "4444"}
+
+
+def test_las_etapas_propias_valen_para_las_rutas_de_contactos(cli, db):
+    from app.crm import estructura as est
+    crear(cli)
+    cid = con_contactos(cli)["contactos"][0]["id"]
+    doc = db["crm_workspaces"].docs[0]
+    nuevo = est.etapas_definir(doc, ["Prospecto", "Cotización", "Cliente"])
+    nuevo["version"] = doc["version"] + 1
+    db["crm_workspaces"].docs[0] = nuevo
+    assert cli.patch(f"/api/v1/crm/contactos/{cid}", json={"etapa": "Nuevo"}, headers=H).status_code == 422
+    r = cli.patch(f"/api/v1/crm/contactos/{cid}", json={"etapa": "Cotización"}, headers=H).json()
+    assert r["etapas"] == ["Prospecto", "Cotización", "Cliente"] and r["contactos"][0]["etapa"] == "Cotización"
+
+
+def test_renombrar_una_seccion_propia_por_la_ruta(cli, db):
+    crear(cli)
+    l = _con_lista(db)
+    r = cli.put(f"/api/v1/crm/secciones/{l['id']}", json={"nombre": "Mis proveedores"}, headers=H).json()
+    assert r["listas"][0]["nombre"] == "Mis proveedores"
+
+
+def test_confirmar_el_borrado_de_una_seccion_propia_por_el_chat(cli, db):
+    crear(cli)
+    l = _con_lista(db)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "sí", "contexto": {"pendiente": {"tipo": "lista", "id": l["id"]}}}, headers=H).json()
+    assert r["crm"]["listas"] == [] and r["modo"] == "reglas"
+    # un pendiente con otra persona o inventado no borra nada
+    l2 = _con_lista(db, "Otra")
+    r = cli.post("/api/v1/crm/chat", json={"texto": "sí", "contexto": {"pendiente": {"tipo": "lista", "id": "l_inventada"}}}, headers=H).json()
+    assert len(r["crm"]["listas"]) == 1 and l2["id"] == r["crm"]["listas"][0]["id"]

@@ -8,7 +8,7 @@ import { HAY_SERVIDOR, auth, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuRotateCcw, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
+import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
 import '../crm-captura.css'
@@ -31,11 +31,14 @@ const BASE = [
   { id: 'cobros', I: LuWallet, grupo: 1 }, { id: 'actividad', I: LuActivity, grupo: 1 }, { id: 'rrhh', I: LuIdCard, grupo: 1 },
 ]
 const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
-const menuDe = (rubro, secciones) => [
+const menuDe = (rubro, secciones, ocultas = [], listas = []) => [
   ...BASE.map((m) => ({ ...m, t: tituloSeccion(rubro, m.id, secciones) })),
   { id: 'importar', t: tituloSeccion(rubro, 'importar'), I: LuUpload, grupo: 0 },
   { id: 'automatizaciones', t: tituloSeccion(rubro, 'automatizaciones'), I: LuZap, grupo: 2 },
-]
+].filter((m) => !ocultas.includes(m.id)).concat(listas.map((l) => ({ id: l.id, t: l.nombre, I: LuTable, grupo: 0, propia: true })))
+
+/** Cómo se ve el valor de un campo según su tipo. */
+const verValor = (tipo, v) => (v === undefined || v === null || v === '' ? '—' : tipo === 'fecha' ? String(v).split('-').reverse().join('/') : tipo === 'numero' ? Number(v).toLocaleString('es') : String(v))
 
 /* ───────── Pantalla de carga ───────── */
 
@@ -80,16 +83,17 @@ function Fallo({ onReintentar }) {
 
 /* ───────── Vistas ───────── */
 
-function Contactos({ lista, total, buscar, t, onBorrar, onImportar }) {
+function Contactos({ lista, total, buscar, t, onBorrar, onImportar, etapas, campos }) {
   const q = norm(buscar)
   const vis = q ? lista.filter((f) => norm(f.n).includes(q)) : lista
   const por = (e) => lista.filter((c) => c.etapa === e).length
+  const cols = { '--cols': `1.6fr 1fr 1fr 1.2fr ${campos.map(() => '1fr').join(' ')} 1fr`.replace(/\s+/g, ' ') }
   return (
     <>
       <div className="mc-cab"><div><h1>{t}</h1><p>{total === 0 ? 'Todavía no tienes ninguno.' : `${total.toLocaleString('es')} en total.`}</p></div></div>
-      <div className="mc-kpis c4k">
+      <div className="mc-kpis c4k" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
         <div><small>En total</small><strong>{total.toLocaleString('es')}</strong></div>
-        {ETAPAS.slice(1).map((e) => <div key={e}><small>{e}</small><strong>{por(e)}</strong></div>)}
+        {etapas.map((e) => <div key={e}><small>{e}</small><strong>{por(e)}</strong></div>)}
       </div>
       {total === 0 && (
         <div className="mc-vacio-grande">
@@ -99,17 +103,77 @@ function Contactos({ lista, total, buscar, t, onBorrar, onImportar }) {
         </div>
       )}
       {total > 0 && <div className="mc-tabla" role="table">
-        <div className="mc-fila cab" role="row"><span>Nombre</span><span>Canal</span><span>Etapa</span><span>Responsable</span><span>Último contacto</span></div>
+        <div className="mc-fila cab" role="row" style={cols}><span>Nombre</span><span>Canal</span><span>Etapa</span><span>Responsable</span>{campos.map((c) => <span key={c.id}>{c.nombre}</span>)}<span>Último contacto</span></div>
         {vis.map((f) => (
-          <div key={f.id} className="mc-fila" role="row">
+          <div key={f.id} className="mc-fila" role="row" style={cols}>
             <span><i className="mc-av peq">{f.n[0]}</i><span className="mc-nom">{f.n}{f.det && <small>{f.det}</small>}</span></span>
             <span>{f.canal}</span><span><em className="mc-estado">{f.etapa}</em></span><span>{f.dueno}</span>
+            {campos.map((c) => <span key={c.id}>{verValor(c.tipo, f.extra?.[c.id])}</span>)}
             <span className="mc-ultimo">{f.dias === 0 ? 'hoy' : `hace ${f.dias} ${f.dias === 1 ? 'día' : 'días'}`}
               <button type="button" className="mc-x" aria-label={`Eliminar a ${f.n}`} onClick={() => onBorrar(f)}><LuX /></button></span>
           </div>
         ))}
         {!vis.length && <p className="mc-vacio">Nada coincide con “{buscar}”.</p>}
       </div>}
+    </>
+  )
+}
+
+/** Una sección propia: una tabla con los campos que la persona (o Shifu) definió. La estructura se cambia por el chat. */
+function Lista({ lista, onAgregar, onBorrar }) {
+  const [abierto, setAbierto] = useState(false)
+  const [vals, setVals] = useState({})
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const cols = { '--cols': `${lista.campos.map(() => 'minmax(0, 1fr)').join(' ')} 36px` }
+  const enviar = async (e) => {
+    e.preventDefault()
+    const llenos = Object.fromEntries(Object.entries(vals).filter(([, v]) => String(v ?? '').trim() !== ''))
+    if (!Object.keys(llenos).length) { setError('Escribe al menos un valor.'); return }
+    setEnviando(true)
+    const ok = await onAgregar(lista.id, llenos)
+    setEnviando(false)
+    if (ok) { setVals({}); setError(''); setAbierto(false) } else setError('No se pudo guardar. Revisa los valores.')
+  }
+  const nuevo = () => { setError(''); setVals({}); setAbierto(true) }
+  return (
+    <>
+      <div className="mc-cab">
+        <div><h1>{lista.nombre}</h1><p>{lista.registros.length === 0 ? 'Todavía no tiene registros.' : `${lista.registros.length.toLocaleString('es')} ${lista.registros.length === 1 ? 'registro' : 'registros'}.`} Para cambiar los campos o quitar la sección, pídeselo a Shifu en el chat.</p></div>
+        {!abierto && <button type="button" className="btn-pildora" onClick={nuevo}><LuPlus aria-hidden="true" /> Agregar</button>}
+      </div>
+      {abierto && (
+        <form className="mc-form-registro" onSubmit={enviar} noValidate>
+          {lista.campos.map((c) => (
+            <label key={c.id}>{c.nombre}
+              <input type={c.tipo === 'numero' ? 'text' : c.tipo === 'fecha' ? 'date' : 'text'} inputMode={c.tipo === 'numero' ? 'decimal' : undefined} maxLength={200}
+                value={vals[c.id] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [c.id]: e.target.value }))} />
+            </label>
+          ))}
+          {error && <p className="mc-form-error" role="alert">{error}</p>}
+          <div className="mc-form-acciones">
+            <button type="submit" className="btn-pildora" disabled={enviando}>{enviando ? 'Guardando…' : 'Guardar'}</button>
+            <button type="button" className="mc-link" onClick={() => setAbierto(false)}>Cancelar</button>
+          </div>
+        </form>
+      )}
+      {lista.registros.length === 0 && !abierto && (
+        <div className="mc-vacio-grande">
+          <b>Esta sección está vacía</b>
+          <p>Pídele a Shifu que agregue el primero (por ejemplo, “agrega a {lista.nombre.toLowerCase()} …”) o usa el botón Agregar.</p>
+        </div>
+      )}
+      {lista.registros.length > 0 && (
+        <div className="mc-tabla" role="table">
+          <div className="mc-fila cab" role="row" style={cols}>{lista.campos.map((c) => <span key={c.id}>{c.nombre}</span>)}<span /></div>
+          {lista.registros.map((r) => (
+            <div key={r.id} className="mc-fila" role="row" style={cols}>
+              {lista.campos.map((c) => <span key={c.id}>{verValor(c.tipo, r.valores[c.id])}</span>)}
+              <span><button type="button" className="mc-x" aria-label="Eliminar este registro" onClick={() => onBorrar(lista.id, r.id)}><LuX /></button></span>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   )
 }
@@ -279,7 +343,8 @@ function Importar({ existentes, onImportar, onVer }) {
 function sugerenciasDe(contactos) {
   const base = [
     ['Estructura', 'Agrega a Laura Gómez'],
-    ['Estructura', 'Agrega la tarea llamar a proveedores'],
+    ['Estructura', 'Crea una sección para mis proveedores'],
+    ['Estructura', 'Cambia las etapas a Prospecto, Cotización y Cliente'],
     ['Automatización', 'Activa los recordatorios'],
   ]
   const primero = contactos[0]?.n
@@ -427,8 +492,9 @@ export default function CrmPage() {
       rubro: brief.rubro ? etiqueta('rubro', brief.rubro) : 'tu negocio',
     }
   }, [brief])
-  const menu = useMemo(() => menuDe(brief?.rubro, crm?.secciones), [brief, crm?.secciones])
+  const menu = useMemo(() => menuDe(brief?.rubro, crm?.secciones, crm?.ocultas, crm?.listas), [brief, crm?.secciones, crm?.ocultas, crm?.listas])
   const tit = (id) => menu.find((m) => m.id === id)?.t
+  useEffect(() => { if (crm && menu.length && !menu.some((m) => m.id === vista)) setVista(menu[0].id) }, [crm, menu, vista])
   const pasos = useMemo(() => {
     if (!d) return []
     const obj = brief.objetivos?.[0] ? etiqueta('objetivos', brief.objetivos[0]) : null
@@ -445,7 +511,7 @@ export default function CrmPage() {
   /* Cada cambio se manda al servidor y la pantalla se queda con el CRM que devuelve. Si falla, se avisa y no se cambia nada. */
   const avisar = (m) => { setAviso(m); clearTimeout(avisoT.current); avisoT.current = setTimeout(() => setAviso(''), 3500) }
   const aplicar = async (peticion) => {
-    try { setCrm(await peticion()); return true } catch { avisar('No se pudo guardar el cambio. Inténtalo de nuevo.'); return false }
+    try { setCrm(await peticion()); return true } catch (e) { avisar([404, 422, 501].includes(e?.estado) && e.message ? e.message : 'No se pudo guardar el cambio. Inténtalo de nuevo.'); return false }
   }
 
   /* Chat */
@@ -521,15 +587,19 @@ export default function CrmPage() {
           {bienvenida && (
             <aside className="mc-shifu" role="status">
               <ShifuAvatar size={40} />
-              <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, listo para tus canales ({d.canales.join(', ')}). Empieza por tus contactos: pídemelo en el chat de abajo a la derecha o impórtalos desde tu Excel o tus notas.</p>
+              <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, listo para tus canales ({d.canales.join(', ')}). Empieza por tus contactos: pídemelo en el chat de abajo a la derecha o impórtalos desde tu Excel o tus notas. También puedo crear secciones nuevas, quitar las que no uses o cambiar tus etapas.</p>
               <button type="button" onClick={() => setBienvenida(false)} aria-label="Cerrar">✕</button>
             </aside>
           )}
-          {vista === 'contactos' && <Contactos lista={crm.contactos} total={crm.totalContactos} buscar={buscar} t={tit('contactos')} onBorrar={(c) => aplicar(() => apiCrm.contactosEliminar(c.id))} onImportar={() => ir('importar')} />}
+          {vista === 'contactos' && <Contactos lista={crm.contactos} total={crm.totalContactos} buscar={buscar} etapas={crm.etapas ?? ETAPAS} campos={crm.camposContacto ?? []} t={tit('contactos')} onBorrar={(c) => aplicar(() => apiCrm.contactosEliminar(c.id))} onImportar={() => ir('importar')} />}
           {vista === 'desarrollo' && <Desarrollo t={tit('desarrollo')} tareas={crm.tareas} onMover={(x, destino) => aplicar(() => apiCrm.tareasMover(x.id, destino))} />}
           {vista === 'importar' && (
             <Importar existentes={crm.contactos.map((c) => c.n)} onVer={() => ir('contactos')}
               onImportar={(filas) => aplicar(() => apiCrm.contactosCrear(filas, 'Importado', `Importaste ${filas.length} ${filas.length === 1 ? 'contacto' : 'contactos'} desde tus notas o Excel`))} />
+          )}
+          {vista.startsWith('l_') && crm.listas?.find((l) => l.id === vista) && (
+            <Lista lista={crm.listas.find((l) => l.id === vista)} onAgregar={(id, valores) => aplicar(() => apiCrm.registrosCrear(id, valores))}
+              onBorrar={(id, rid) => aplicar(() => apiCrm.registrosEliminar(id, rid))} />
           )}
           {vista === 'cobros' && <Cobros moneda={d.moneda} t={tit('cobros')} />}
           {vista === 'actividad' && <Actividad eventos={crm.eventos} t={tit('actividad')} />}

@@ -57,6 +57,9 @@ export const crm = {
   contactosCrear: (filas, canal, texto) => (HAY_SERVIDOR ? pedir('POST', '/crm/contactos', { filas, canal, texto }) : simulado.crm.contactosCrear(filas, canal, texto)),
   contactosActualizar: (id, cambios) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/contactos/${id}`, cambios) : simulado.crm.contactosActualizar(id, cambios)),
   contactosEliminar: (id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/contactos/${id}`) : simulado.crm.contactosEliminar(id)),
+  /** Registros de una sección propia (los valores van por id de campo). */
+  registrosCrear: (listaId, valores) => (HAY_SERVIDOR ? pedir('POST', `/crm/listas/${listaId}/registros`, { valores }) : simulado.crm.sinServidor()),
+  registrosEliminar: (listaId, id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/registros/${id}`) : simulado.crm.sinServidor()),
   tareasCrear: (t) => (HAY_SERVIDOR ? pedir('POST', '/crm/tareas', { t }) : simulado.crm.tareasCrear(t)),
   tareasMover: (id, destino) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/tareas/${id}`, { columna: destino }) : simulado.crm.tareasMover(id, destino)),
   tareasEliminar: (id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/tareas/${id}`) : simulado.crm.tareasEliminar(id)),

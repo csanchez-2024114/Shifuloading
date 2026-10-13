@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from app.crm.secciones import ETAPAS, IDS_COLUMNA, IDS_SECCION, titulo_seccion
+from app.crm.secciones import IDS_COLUMNA, IDS_SECCION, titulo_seccion
 
 MAX_EVENTOS = 30
 MAX_CONTACTOS = 5000  # tope por CRM mientras los contactos vivan dentro del mismo documento
@@ -49,10 +49,16 @@ def contactos_crear(doc: dict, filas: list[dict], canal: str, texto: str | None 
         raise ErrorCrm(422, "No hay contactos para agregar.")
     if doc["total_contactos"] + len(filas) > MAX_CONTACTOS:
         raise ErrorCrm(422, f"Un CRM admite hasta {MAX_CONTACTOS} contactos por ahora.")
+    from app.crm import estructura  # import tardío: estructura usa este módulo
+
     out = _copia(doc)
+    for f in filas:
+        if f.get("etapa") and f["etapa"] not in out["etapas"]:
+            raise ErrorCrm(422, f"La etapa “{f['etapa']}” no existe. Las etapas son: {', '.join(out['etapas'])}.")
     nuevos = [{
         "id": nuevo_id(), "n": f["n"], "det": f.get("det") or None, "canal": f.get("canal") or canal,
-        "etapa": "Nuevo", "dueno": out["vendedores"][0], "ultimo_contacto": ahora,
+        "etapa": f.get("etapa") or out["etapas"][0], "dueno": out["vendedores"][0], "ultimo_contacto": ahora,
+        "extra": {k: v for k, v in estructura.valores_validos(out["campos_contacto"], f.get("extra") or {}).items() if v is not None},
     } for f in filas]
     out["contactos"] = [*nuevos, *out["contactos"]]
     out["total_contactos"] += len(nuevos)
@@ -66,14 +72,22 @@ def contactos_actualizar(doc: dict, contacto_id: str, cambios: dict[str, Any], t
     c = next((x for x in out["contactos"] if x["id"] == contacto_id), None)
     if c is None:
         raise ErrorCrm(404, "Ese contacto no existe.")
-    if "etapa" in cambios and cambios["etapa"] not in ETAPAS:
-        raise ErrorCrm(422, f"La etapa debe ser una de: {', '.join(ETAPAS)}.")
+    if "etapa" in cambios and cambios["etapa"] not in out["etapas"]:
+        raise ErrorCrm(422, f"La etapa debe ser una de: {', '.join(out['etapas'])}.")
     if "dueno" in cambios and cambios["dueno"] not in out["vendedores"]:
         raise ErrorCrm(422, "Esa persona no está en tu equipo.")
     anterior = dict(c)
     for campo in ("n", "det", "canal", "etapa", "dueno"):
         if campo in cambios:
             c[campo] = cambios[campo]
+    if cambios.get("extra"):
+        from app.crm import estructura  # import tardío: estructura usa este módulo
+
+        for cid, v in estructura.valores_validos(out["campos_contacto"], cambios["extra"]).items():
+            if v is None:
+                c["extra"].pop(cid, None)
+            else:
+                c["extra"][cid] = v
     if "etapa" in cambios and cambios["etapa"] != anterior["etapa"]:
         c["ultimo_contacto"] = ahora  # pasar de etapa cuenta como contacto reciente
     if texto is None:
@@ -159,6 +173,10 @@ def automatizacion_fijar(doc: dict, auto_id: str, on: bool, ahora: datetime | No
 
 def seccion_renombrar(doc: dict, seccion_id: str, nombre: str, ahora: datetime | None = None) -> dict:
     ahora = ahora or ahora_utc()
+    if seccion_id.startswith("l_"):  # una sección propia: su nombre vive en la propia sección
+        from app.crm import estructura  # import tardío: estructura usa este módulo
+
+        return estructura.lista_renombrar(doc, seccion_id, nombre, ahora)
     if seccion_id not in IDS_SECCION:
         raise ErrorCrm(404, "Esa sección no existe.")
     out = _copia(doc)

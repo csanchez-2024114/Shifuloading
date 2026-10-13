@@ -13,7 +13,8 @@ from datetime import datetime
 from typing import Any
 
 from app.crm import operaciones as op
-from app.crm.secciones import ETAPAS, IDS_COLUMNA, IDS_SECCION, titulo_seccion
+from app.crm import estructura as est
+from app.crm.secciones import IDS_COLUMNA, IDS_SECCION, titulo_seccion
 
 MAX_NOMBRE = 40
 MAX_TAREA = 60
@@ -43,11 +44,40 @@ _RE_TIPO_CONTACTO = re.compile(r"^(?:a\s+|al\s+|un\s+|una\s+|el\s+|la\s+)?(?:con
 _RE_SALUDO = re.compile(r"^(hola|buenas|hey|ayuda|que puedes)")
 
 
+# Qué trae cada tipo de borrado pendiente, además de su "tipo" (todos los valores son textos cortos)
+_FORMA_PENDIENTE = {"contacto": ("id",), "tarea": ("id",), "lista": ("id",), "registro": ("lista", "id"), "campo": ("ambito", "id")}
+
+
 def sanear_pendiente(p: Any) -> dict | None:
-    """El cliente reenvía `pendiente`: solo se acepta con la forma esperada."""
-    if isinstance(p, dict) and p.get("tipo") in ("contacto", "tarea") and isinstance(p.get("id"), str) and len(p["id"]) <= 64:
-        return {"tipo": p["tipo"], "id": p["id"]}
-    return None
+    """El cliente reenvía `pendiente`: solo se acepta con la forma esperada y nada más."""
+    if not isinstance(p, dict) or p.get("tipo") not in _FORMA_PENDIENTE:
+        return None
+    claves = _FORMA_PENDIENTE[p["tipo"]]
+    if not all(isinstance(p.get(k), str) and 0 < len(p[k]) <= 64 for k in claves):
+        return None
+    return {"tipo": p["tipo"], **{k: p[k] for k in claves}}
+
+
+def ejecutar_pendiente(doc: dict, p: dict, ahora: datetime) -> tuple[dict, str]:
+    """Hace el borrado que la persona confirmó. Devuelve (CRM nuevo, mensaje). Lanza ErrorCrm si ya no existe."""
+    tipo = p["tipo"]
+    if tipo == "contacto":
+        c = next((x for x in doc["contactos"] if x["id"] == p["id"]), None)
+        return op.contactos_eliminar(doc, p["id"], ahora), f"Listo, eliminé a {c['n'] if c else 'ese contacto'} de tu CRM."
+    if tipo == "tarea":
+        x = next((y for col in IDS_COLUMNA for y in doc["tareas"][col] if y["id"] == p["id"]), None)
+        return op.tareas_eliminar(doc, p["id"], ahora), f"Listo, eliminé la tarea “{x['t'] if x else ''}”."
+    if tipo == "lista":
+        l = next((x for x in doc["listas"] if x["id"] == p["id"]), None)
+        return est.lista_eliminar(doc, p["id"], ahora), f"Listo, eliminé la sección “{l['nombre'] if l else ''}”."
+    if tipo == "registro":
+        l = next((x for x in doc["listas"] if x["id"] == p["lista"]), None)
+        r = next((x for x in (l["registros"] if l else []) if x["id"] == p["id"]), None)
+        nombre = est.resumen_de_registro(l, r) if l and r else "ese registro"
+        return est.registro_eliminar(doc, p["lista"], p["id"], ahora), f"Listo, eliminé “{nombre}”."
+    campos = doc["campos_contacto"] if p["ambito"] == "contactos" else next((x["campos"] for x in doc["listas"] if x["id"] == p["ambito"]), [])
+    campo = next((c for c in campos if c["id"] == p["id"]), None)
+    return est.campo_eliminar(doc, p["ambito"], p["id"], ahora), f"Listo, quité el campo “{campo['nombre'] if campo else ''}”."
 
 
 def responder(doc: dict, crudo: str, pendiente: dict | None = None, ahora: datetime | None = None) -> dict:
@@ -59,7 +89,8 @@ def responder(doc: dict, crudo: str, pendiente: dict | None = None, ahora: datet
     rubro = (doc.get("brief") or {}).get("rubro")
 
     def titulo(seccion_id: str) -> str:
-        return titulo_seccion(rubro, seccion_id, estado["doc"]["secciones"])
+        propia = next((l for l in estado["doc"]["listas"] if l["id"] == seccion_id), None)
+        return propia["nombre"] if propia else titulo_seccion(rubro, seccion_id, estado["doc"]["secciones"])
 
     def salida(respuesta: str, **extra: Any) -> dict:
         return {"doc": estado["doc"], "respuesta": respuesta, **extra}
@@ -72,11 +103,12 @@ def responder(doc: dict, crudo: str, pendiente: dict | None = None, ahora: datet
         k = _norm(q)
         if not k:
             return None
-        return next((i for i in IDS_SECCION if _norm(titulo(i)) in k or k in _norm(titulo(i))), None)
+        todas = [*IDS_SECCION, *(l["id"] for l in estado["doc"]["listas"])]
+        return next((i for i in todas if _norm(titulo(i)) in k or k in _norm(titulo(i))), None)
 
     def buscar_etapa(q: str) -> str | None:
         k = _norm(q)
-        return next((e for e in ETAPAS if _norm(e) == k or _norm(e).split(" ")[-1] in k), None)
+        return next((e for e in estado["doc"]["etapas"] if _norm(e) == k or _norm(e).split(" ")[-1] in k), None)
 
     def buscar_tarea(q: str) -> dict | None:
         k = _norm(q)
@@ -90,15 +122,11 @@ def responder(doc: dict, crudo: str, pendiente: dict | None = None, ahora: datet
     if pendiente:
         if _RE_CONFIRMA.match(t):
             try:
-                if pendiente["tipo"] == "contacto":
-                    c = next((x for x in doc["contactos"] if x["id"] == pendiente["id"]), None)
-                    estado["doc"] = op.contactos_eliminar(doc, pendiente["id"], ahora)
-                    return salida(f"Listo, eliminé a {c['n'] if c else 'ese contacto'} de tu CRM.")
-                x = next((y for col in IDS_COLUMNA for y in doc["tareas"][col] if y["id"] == pendiente["id"]), None)
-                estado["doc"] = op.tareas_eliminar(doc, pendiente["id"], ahora)
-                return salida(f"Listo, eliminé la tarea “{x['t'] if x else ''}”.")
+                nuevo, mensaje = ejecutar_pendiente(doc, pendiente, ahora)
             except op.ErrorCrm:
                 return salida("Eso ya no existe, así que no hay nada que borrar.")
+            estado["doc"] = nuevo
+            return salida(mensaje)
         return salida("Perfecto, no borré nada. 👍")
 
     # 2) Importar datos

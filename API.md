@@ -26,7 +26,7 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `GET /crm` | — | CRM · `404` si no tiene |
 | `POST /crm` | `{ brief }` (respuestas del cuestionario, ver abajo) | CRM nuevo, armado por Shifu a partir del brief |
 | `DELETE /crm` | — | `204` (para repetir el cuestionario) |
-| `POST /crm/contactos` | `{ filas: [{ n, det? }], canal, texto? }` | CRM (alta de uno o varios; `texto` es la frase que queda en Actividad) |
+| `POST /crm/contactos` | `{ filas: [{ n, det?, extra? }], canal, texto? }` | CRM (alta de uno o varios; `texto` es la frase que queda en Actividad) |
 | `PATCH /crm/contactos/:id` | campos a cambiar (`etapa`, `n`, `dueno`…) | CRM |
 | `DELETE /crm/contactos/:id` | — | CRM |
 | `POST /crm/tareas` | `{ t }` | CRM (entra en la columna `porHacer`) |
@@ -34,6 +34,9 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `DELETE /crm/tareas/:id` | — | CRM |
 | `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM |
 | `PUT /crm/secciones/:id` | `{ nombre }` (renombra una sección) | CRM |
+| `POST /crm/listas/:id/registros` | `{ valores: { <idCampo>: valor } }` | `201` CRM (agrega un registro a una sección propia) |
+| `PATCH /crm/listas/:id/registros/:rid` | `{ valores: { <idCampo>: valor } }` | CRM |
+| `DELETE /crm/listas/:id/registros/:rid` | — | CRM |
 | `POST /crm/chat` | `{ texto, contexto?: { pendiente?, imagen?, seccion? } }` | `{ respuesta, crm, vista?, pendiente? }` |
 
 ### Chat
@@ -55,7 +58,12 @@ La lógica de ejemplo está en `src/api/mock/chat.js`.
 {
   "brief": { "...respuestas del cuestionario..." },
   "totalContactos": 120,
-  "contactos": [{ "id": "", "n": "Ana Morales", "det": "5555-1234", "canal": "WhatsApp", "etapa": "Nuevo", "dueno": "Tú", "dias": 0 }],
+  "contactos": [{ "id": "", "n": "Ana Morales", "det": "5555-1234", "canal": "WhatsApp", "etapa": "Nuevo", "dueno": "Tú", "dias": 0, "extra": { "<idCampo>": "valor" } }],
+  "etapas": ["Nuevo", "En contacto", "Interesado", "Cliente"],
+  "camposContacto": [{ "id": "f_ab12cd34", "nombre": "Cumpleaños", "tipo": "fecha" }],
+  "ocultas": ["cobros"],
+  "listas": [{ "id": "l_ab12cd34", "nombre": "Proveedores", "campos": [{ "id": "f_…", "nombre": "Nombre", "tipo": "texto" }],
+               "registros": [{ "id": "", "valores": { "<idCampo>": "valor" } }] }],
   "vendedores": ["Tú", "Mariana Solís"],
   "tareas": { "porHacer": [{ "id": "", "t": "" }], "enCurso": [], "hecho": [] },
   "eventos": [{ "id": "", "e": "➕", "t": "Agregaste a Ana Morales", "h": "ahora" }],
@@ -64,9 +72,17 @@ La lógica de ejemplo está en `src/api/mock/chat.js`.
 }
 ```
 
-- `contactos` es la parte visible (los primeros); `totalContactos` es el total real. `etapa` ∈ `Nuevo`, `En contacto`, `Interesado`, `Cliente`. `dias` son los días desde el último contacto.
+- `totalContactos` es el total real y `contactos` la lista. `etapa` es una de las `etapas` del CRM (por defecto Nuevo, En contacto, Interesado, Cliente; la persona puede cambiarlas por el chat). `dias` son los días desde el último contacto.
 - `secciones` solo trae los nombres que la persona cambió; los demás salen del rubro (`src/crm/secciones.js`).
 - `eventos`, del más nuevo al más viejo, es lo que muestra la sección de actividad.
+
+## Estructura propia del CRM
+
+Cada persona moldea su CRM hablando con Shifu (`POST /crm/chat`): la IA puede **cambiar las etapas**, **quitar secciones del menú** (`ocultas`; sus datos se conservan y se pueden volver a mostrar), **crear secciones propias** (`listas`, con campos de tipo `texto`, `numero` o `fecha` y sus registros), **agregar campos a los contactos** (`camposContacto`, valores en `contacto.extra`) y renombrar secciones. Los valores por tipo: `numero` acepta "1,250" o "3,5"; `fecha` acepta `2026-11-02`, `02/11/2026` o `02-11-2026` y se guarda como `YYYY-MM-DD`.
+
+Lo que borra datos (un contacto, una tarea, un registro, un campo o una sección propia) nunca es inmediato: el servidor devuelve `pendiente` (`{tipo, id, …}`) y el cliente lo reenvía con el siguiente mensaje; "sí" lo confirma y lo resuelven reglas fijas, no la IA. Los tipos de `pendiente` son `contacto`, `tarea`, `lista`, `registro` (con `lista`) y `campo` (con `ambito`). Un id de sección propia es `l_…` y puede venir en `vista` para abrirla.
+
+La respuesta de `/crm/chat` incluye `modo`: `"ia"` o `"reglas"` (si la IA no está disponible por falta de saldo, clave o tiempo, contesta con reglas básicas que no cambian la estructura). `contexto.historial` (hasta 8 `{de: "yo"|"shifu", t}`) permite entender "y también a Pedro".
 
 ## Brief (respuestas del cuestionario)
 

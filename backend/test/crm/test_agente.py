@@ -241,3 +241,127 @@ def test_las_instrucciones_piden_no_fingir_ni_preguntar_de_mas():
 
 def test_las_instrucciones_no_dejan_que_el_detalle_repita_la_etapa():
     assert "nunca repitas ahí la etapa" in agente.INSTRUCCIONES
+
+
+# ───────── Estructura: secciones propias, campos, etapas ─────────
+
+from app.crm import estructura as est  # noqa: E402
+
+
+@pytest.mark.asyncio
+async def test_crea_una_seccion_propia_con_campos_y_la_abre(doc):
+    r, _ = await correr(doc, "necesito una sección de proveedores", dice("", llamar("crear_seccion", nombre="proveedores", campos=[
+        {"nombre": "Nombre", "tipo": "texto"}, {"nombre": "Teléfono"}, {"nombre": "Próxima compra", "tipo": "fecha"}])), dice("Listo, creé Proveedores."))
+    l = r["doc"]["listas"][0]
+    assert l["nombre"] == "Proveedores" and [c["nombre"] for c in l["campos"]] == ["Nombre", "Teléfono", "Próxima compra"]
+    assert r["vista"] == l["id"] and r["modo"] == "ia"
+
+
+@pytest.mark.asyncio
+async def test_llena_una_seccion_propia_usando_nombres_de_campo(doc):
+    base = est.lista_crear(doc, "Proveedores", [{"nombre": "Nombre"}, {"nombre": "Deuda", "tipo": "numero"}], AHORA)
+    r, _ = await correr(base, "x", dice("", llamar("agregar_registros", seccion="proveedores", registros=[
+        {"Nombre": "Ferretería Díaz", "deuda": "1,200"}, {"Nombre": "Papelera Sol"}])), dice("Agregué dos."))
+    regs = r["doc"]["listas"][0]["registros"]
+    ids = {c["nombre"]: c["id"] for c in r["doc"]["listas"][0]["campos"]}
+    assert len(regs) == 2 and regs[1]["valores"] == {ids["Nombre"]: "Ferretería Díaz", ids["Deuda"]: 1200}
+
+
+@pytest.mark.asyncio
+async def test_un_campo_que_no_existe_se_le_explica_al_modelo(doc):
+    base = est.lista_crear(doc, "Proveedores", [{"nombre": "Nombre"}], AHORA)
+    r, modelo = await correr(base, "x", dice("", llamar("agregar_registros", seccion="Proveedores", registros=[{"Nombre": "A", "Color": "rojo"}])), dice("Falta ese campo."))
+    assert r["doc"]["listas"][0]["registros"] == []
+    resultado = [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+    assert "No existe el campo “Color”" in resultado and "agregar_campo" in resultado
+
+
+@pytest.mark.asyncio
+async def test_agrega_un_campo_a_los_contactos_y_lo_usa(doc):
+    r, _ = await correr(doc, "x", dice("", llamar("agregar_campo", destino="contactos", nombre="Cumpleaños", tipo="fecha")),
+                        dice("", llamar("cambiar_contacto", buscar="Luis", campos={"cumpleaños": "25/12/1990"})), dice("Listo."))
+    cid = r["doc"]["campos_contacto"][0]["id"]
+    assert next(c for c in r["doc"]["contactos"] if c["n"] == "Luis Pérez")["extra"] == {cid: "1990-12-25"}
+
+
+@pytest.mark.asyncio
+async def test_define_las_etapas_del_proceso(doc):
+    r, _ = await correr(doc, "x", dice("", llamar("definir_etapas", etapas=["Prospecto", "Cotización", "Cliente"])), dice("Listo."))
+    assert r["doc"]["etapas"] == ["Prospecto", "Cotización", "Cliente"] and all(c["etapa"] == "Prospecto" for c in r["doc"]["contactos"])
+
+
+@pytest.mark.asyncio
+async def test_quitar_una_seccion_integrada_solo_la_oculta_y_se_puede_mostrar(doc):
+    r, _ = await correr(doc, "quita lo de pedidos", dice("", llamar("quitar_seccion", seccion="Tratamientos")), dice("La quité del menú."))
+    assert r["doc"]["ocultas"] == ["desarrollo"] and "pendiente" not in r and r["doc"]["tareas"]["porHacer"]  # sus datos siguen ahí
+    r2, _ = await correr(r["doc"], "vuelve a mostrarla", dice("", llamar("mostrar_seccion", seccion="Tratamientos")), dice("Listo."))
+    assert r2["doc"]["ocultas"] == [] and r2["vista"] == "desarrollo"
+
+
+@pytest.mark.asyncio
+async def test_quitar_una_seccion_propia_pide_confirmacion_y_no_la_borra(doc):
+    base = est.lista_crear(doc, "Proveedores", None, AHORA)
+    r, _ = await correr(base, "borra proveedores", dice("", llamar("quitar_seccion", seccion="Proveedores")), dice("¿Seguro?"))
+    assert r["doc"]["listas"] and r["pendiente"] == {"tipo": "lista", "id": base["listas"][0]["id"]}
+
+
+@pytest.mark.asyncio
+async def test_quitar_campo_y_eliminar_registro_piden_confirmacion(doc):
+    base = est.lista_crear(doc, "Proveedores", [{"nombre": "Nombre"}, {"nombre": "Teléfono"}], AHORA)
+    l = base["listas"][0]
+    base = est.registro_agregar(base, l["id"], {l["campos"][0]["id"]: "Ferretería Díaz"}, AHORA)
+    r, _ = await correr(base, "x", dice("", llamar("quitar_campo", destino="Proveedores", campo="Teléfono")), dice("¿Seguro?"))
+    assert r["pendiente"]["tipo"] == "campo" and len(r["doc"]["listas"][0]["campos"]) == 2
+    r, _ = await correr(base, "x", dice("", llamar("eliminar_registro", seccion="Proveedores", buscar="ferretería")), dice("¿Seguro?"))
+    assert r["pendiente"]["tipo"] == "registro" and len(r["doc"]["listas"][0]["registros"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_renombra_y_abre_una_seccion_propia_y_no_abre_una_oculta(doc):
+    base = est.lista_crear(doc, "Proveedores", None, AHORA)
+    r, _ = await correr(base, "x", dice("", llamar("renombrar_seccion", seccion="Proveedores", nombre="mis proveedores"), llamar("abrir_seccion", seccion="Mis proveedores")), dice("Listo."))
+    assert r["doc"]["listas"][0]["nombre"] == "Mis proveedores" and r["vista"] == base["listas"][0]["id"]
+    oculta = est.seccion_ocultar(doc, "cobros", AHORA)
+    r, modelo = await correr(oculta, "x", dice("", llamar("abrir_seccion", seccion="Pagos y consultas")), dice("Está oculta."))
+    assert "vista" not in r and "oculta" in [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+
+
+@pytest.mark.asyncio
+async def test_una_seccion_integrada_no_tiene_registros_propios(doc):
+    r, modelo = await correr(doc, "x", dice("", llamar("agregar_registros", seccion="Pacientes", registros=[{"Nombre": "A"}])), dice("No se puede."))
+    assert "integrada" in [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+
+
+@pytest.mark.asyncio
+async def test_el_modelo_ve_la_estructura_actual_en_el_contexto(doc):
+    base = est.lista_crear(doc, "Proveedores", [{"nombre": "Nombre"}, {"nombre": "Deuda", "tipo": "numero"}], AHORA)
+    base = est.seccion_ocultar(base, "cobros", AHORA)
+    base = est.campo_agregar(base, "contactos", "Cumpleaños", "fecha", AHORA)
+    base = est.etapas_definir(base, ["Prospecto", "Cliente"], AHORA)
+    _, modelo = await correr(base, "hola", dice("Hola."))
+    sistema = modelo.recibidos[0][0].content
+    for esperado in ("Proveedores", "Deuda", "Cumpleaños", "Prospecto", '"oculta": true'):
+        assert esperado in sistema
+
+
+def test_las_instrucciones_hablan_de_moldear_el_crm():
+    assert "moldee SU propio CRM" in agente.INSTRUCCIONES and "crear_seccion" in agente.INSTRUCCIONES
+    assert "solo la oculta" in agente.INSTRUCCIONES
+
+
+@pytest.mark.asyncio
+async def test_un_contacto_nuevo_puede_entrar_directo_en_su_etapa(doc):
+    r, _ = await correr(doc, "agrega a Laura, es cliente", dice("", llamar("agregar_contactos", contactos=[{"nombre": "Laura Gómez", "etapa": "cliente"}])), dice("Listo."))
+    assert r["doc"]["contactos"][0]["n"] == "Laura Gómez" and r["doc"]["contactos"][0]["etapa"] == "Cliente"
+
+
+@pytest.mark.asyncio
+async def test_una_etapa_que_no_existe_al_agregar_no_agrega_y_se_lo_dice_al_modelo(doc):
+    r, modelo = await correr(doc, "x", dice("", llamar("agregar_contactos", contactos=[{"nombre": "Laura Gómez", "etapa": "Millonaria"}])), dice("Esa etapa no existe."))
+    assert r["doc"]["total_contactos"] == doc["total_contactos"]
+    resultado = [m for m in modelo.recibidos[1] if isinstance(m, ToolMessage)][0].content
+    assert "Millonaria" in resultado and "Las etapas son" in resultado
+
+
+def test_las_instrucciones_exigen_decir_solo_lo_que_se_hizo():
+    assert "debe coincidir EXACTAMENTE" in agente.INSTRUCCIONES

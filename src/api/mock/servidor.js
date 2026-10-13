@@ -26,6 +26,8 @@ export const crm = {
   obtener: async () => leer(),
   crearDesdeBrief: async (brief) => { const s = generar(brief); guardar(s); return s },
   reiniciar: async () => { borrar() },
+  /* Las secciones propias, los campos y las etapas propias necesitan el servidor (la IA decide la estructura). */
+  sinServidor: async () => { throw new ErrorApi(501, 'Esto necesita el servidor de Shifu: conéctalo con VITE_API_URL.') },
 
   contactosCrear: (filas, canal, texto) => cambiar((s) => P.contactosCrear(s, filas, canal, texto)),
   contactosActualizar: (id, cambios) => cambiar((s) => P.contactosActualizar(s, id, cambios)),

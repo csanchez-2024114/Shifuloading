@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.crm.operaciones import ahora_utc, nuevo_id
+from app.crm.secciones import ETAPAS
 
 
 def generar(user_id: str, brief: dict, ahora: datetime | None = None) -> dict:
@@ -38,6 +39,10 @@ def generar(user_id: str, brief: dict, ahora: datetime | None = None) -> dict:
         "eventos": [{"id": nuevo_id(), "e": "🤖", "t": "Shifu creó tu CRM", "ts": ahora}],
         "automatizaciones": [{"id": i, "pilar": p, "t": t, "d": d, "on": bool(on)} for i, p, t, d, on in automatizaciones],
         "secciones": {},
+        "etapas": list(ETAPAS),
+        "ocultas": [],
+        "campos_contacto": [],
+        "listas": [],
         "created_at": ahora,
         "updated_at": ahora,
     }

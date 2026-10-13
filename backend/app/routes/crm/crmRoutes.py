@@ -16,7 +16,10 @@ Endpoints (relativos al prefijo):
   PATCH  /tareas/{id}             — La mueve de columna
   DELETE /tareas/{id}
   PUT    /automatizaciones/{id}   — Activa o apaga
-  PUT    /secciones/{id}          — Renombra una sección
+  PUT    /secciones/{id}          — Renombra una sección (integrada o propia)
+  POST   /listas/{id}/registros   — Agrega un registro a una sección propia (valores por id de campo)
+  PATCH  /listas/{id}/registros/{rid}  — Cambia valores de un registro
+  DELETE /listas/{id}/registros/{rid}
   POST   /chat                    — Mensaje para Shifu (texto y/o captura) -> respuesta + CRM actualizado
 """
 import logging
@@ -28,6 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.limiter import limiter
 from app.crm import agente
+from app.crm import estructura as est
 from app.crm import operaciones as op
 from app.crm import repositorio as repo
 from app.crm.chat import responder, sanear_pendiente
@@ -86,6 +90,7 @@ class CrearCrm(BaseModel):
 class FilaContacto(_Texto):
     n: str = Field(..., min_length=1, max_length=40)
     det: Optional[str] = Field(None, max_length=120)
+    extra: Optional[dict[str, Any]] = None  # valores de los campos extra de los contactos, por id de campo
 
 
 class ContactosCrear(_Texto):
@@ -100,6 +105,11 @@ class ContactoCambios(_Texto):
     canal: Optional[str] = Field(None, min_length=1, max_length=40)
     etapa: Optional[str] = Field(None, max_length=30)
     dueno: Optional[str] = Field(None, max_length=60)
+    extra: Optional[dict[str, Any]] = None
+
+
+class RegistroValores(BaseModel):
+    valores: dict[str, Any] = Field(..., max_length=est.MAX_CAMPOS)  # por id de campo
 
 
 class TareaNueva(_Texto):
@@ -178,7 +188,7 @@ async def borrar_crm(request: Request, user: dict = Depends(get_current_user)):
 
 @router.post("/contactos", status_code=201)
 async def crear_contactos(request: Request, datos: ContactosCrear, user: dict = Depends(get_current_user)):
-    filas = [f.model_dump(exclude_none=True) for f in datos.filas]
+    filas = [f.model_dump(exclude_none=True) for f in datos.filas]  # `extra` va por id de campo
     return await _aplicar(request, user, lambda d: op.contactos_crear(d, filas, datos.canal, datos.texto), 201)
 
 
@@ -193,6 +203,24 @@ async def actualizar_contacto(contacto_id: str, request: Request, datos: Contact
 @router.delete("/contactos/{contacto_id}")
 async def eliminar_contacto(contacto_id: str, request: Request, user: dict = Depends(get_current_user)):
     return await _aplicar(request, user, lambda d: op.contactos_eliminar(d, contacto_id))
+
+
+# ───────── Registros de las secciones propias ─────────
+# Crear, quitar o cambiar la estructura (secciones, campos, etapas) se hace por el chat: ahí la IA decide y confirma lo que borra.
+
+@router.post("/listas/{lista_id}/registros", status_code=201)
+async def crear_registro(lista_id: str, request: Request, datos: RegistroValores, user: dict = Depends(get_current_user)):
+    return await _aplicar(request, user, lambda d: est.registro_agregar(d, lista_id, datos.valores), 201)
+
+
+@router.patch("/listas/{lista_id}/registros/{registro_id}")
+async def cambiar_registro(lista_id: str, registro_id: str, request: Request, datos: RegistroValores, user: dict = Depends(get_current_user)):
+    return await _aplicar(request, user, lambda d: est.registro_actualizar(d, lista_id, registro_id, datos.valores))
+
+
+@router.delete("/listas/{lista_id}/registros/{registro_id}")
+async def eliminar_registro(lista_id: str, registro_id: str, request: Request, user: dict = Depends(get_current_user)):
+    return await _aplicar(request, user, lambda d: est.registro_eliminar(d, lista_id, registro_id))
 
 
 # ───────── Tareas ─────────
