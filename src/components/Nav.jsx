@@ -3,20 +3,7 @@ import { Link } from 'react-router-dom'
 import { ChevronDown } from './Iconos'
 import Logo from './Logo'
 
-/* Barra superior fija, con dos menús desplegables grandes ("Por qué Shifu" y "Productos"). */
-
-const PRODUCTOS = [
-  { titulo: 'Crea tu CRM', items: ['Constructor con IA', 'Plantillas por rubro', 'Etapas y campos a tu medida', 'Importar desde Excel', 'Shifu IA'] },
-  { titulo: 'Organiza a tus clientes', items: ['Contactos', 'Negocios y pipeline', 'Seguimientos', 'Cotizaciones', 'Actividades y tareas'] },
-  { titulo: 'Comunícate y automatiza', items: ['WhatsApp y correo', 'Mensajes con IA', 'Recordatorios', 'Formularios web', 'Flujos de trabajo'] },
-  { titulo: 'Mide y decide', items: ['Reportes', 'Panel de ventas', 'Pronósticos', 'Equipo y metas'] },
-  { titulo: 'Conecta', items: ['Integraciones', 'API', 'Webhooks'] },
-]
-const EXTENDER = [
-  ['Galería de plantillas', 'CRMs listos para tu industria'],
-  ['Directorio de integraciones', 'Conecta las herramientas que ya usas'],
-  ['Shifu.dev', 'Documentación, API y más'],
-]
+/* Barra superior fija, con un menú desplegable grande ("Por qué Shifu"). */
 
 function MenuPorQue() {
   return (
@@ -44,33 +31,8 @@ function MenuPorQue() {
   )
 }
 
-function MenuProductos() {
-  return (
-    <div className="mega mega-prod">
-      <div className="mega-cols">
-        {PRODUCTOS.map((c) => (
-          <div key={c.titulo} className="mega-col">
-            <span className="mega-etq">{c.titulo}</span>
-            <ul>{c.items.map((i) => <li key={i}><a href="#inicio"><i className="mega-pto" />{i}</a></li>)}</ul>
-          </div>
-        ))}
-        <div className="mega-col mega-novedad">
-          <span className="mega-etq">Innovación constante</span>
-          <span className="mega-novedad-arte" />
-          <b>Shifu Editions</b>
-          <small>Más de 150 actualizaciones al año.</small>
-        </div>
-      </div>
-      <div className="mega-pie">
-        <span className="mega-etq">Personalizar y extender Shifu</span>
-        {EXTENDER.map(([t, d]) => <a key={t} href="#inicio"><b>{t}</b><small>{d}</small></a>)}
-      </div>
-    </div>
-  )
-}
-
 export default function Nav() {
-  const [abierto, setAbierto] = useState(null)         // 'porque' | 'prod' | null
+  const [abierto, setAbierto] = useState(null)         // 'porque' | null
   const [fondo, setFondo] = useState(false)
   const ref = useRef(null)
 
@@ -94,11 +56,6 @@ export default function Nav() {
             <button type="button" className={`nav-enlace ${abierto === 'porque' ? 'nav-enlace-on' : ''}`} aria-expanded={abierto === 'porque'} onClick={() => alternar('porque')}>
               Por qué Shifu<ChevronDown />
             </button>
-            <button type="button" className={`nav-enlace ${abierto === 'prod' ? 'nav-enlace-on' : ''}`} aria-expanded={abierto === 'prod'} onClick={() => alternar('prod')}>
-              Productos<ChevronDown />
-            </button>
-            <a href="#planes" className="nav-enlace" onClick={() => setAbierto(null)}>Precios</a>
-            <a href="#planes" className="nav-enlace" onClick={() => setAbierto(null)}>Enterprise</a>
           </nav>
         </div>
         <div className="nav-der">
@@ -107,7 +64,6 @@ export default function Nav() {
         </div>
       </div>
       {abierto === 'porque' && <MenuPorQue />}
-      {abierto === 'prod' && <MenuProductos />}
     </header>
   )
 }
