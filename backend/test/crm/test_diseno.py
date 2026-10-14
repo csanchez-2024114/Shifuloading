@@ -220,7 +220,7 @@ TACOS = {
 async def test_un_negocio_de_tacos_recibe_menu_pedidos_gastos_y_trabajadores():
     b = {**PANADERIA, "nombre": "TaChat's", "que_vendes": "tacos con pedidos por WhatsApp"}
     nuevo = await diseno.disenar(generar("u1", b, AHORA), b, modelo=Modelo(TACOS), ahora=AHORA)
-    assert [l["nombre"] for l in nuevo["listas"]] == ["Menú y precios", "Pedidos", "Gastos del día", "Trabajadores", "Recomendaciones de Shifu"]
+    assert [l["nombre"] for l in nuevo["listas"]] == ["Menú y precios", "Pedidos", "Gastos del día", "Trabajadores", "Recomendaciones"]
     assert nuevo["secciones"]["desarrollo"] == "Pendientes del día"
 
 
@@ -246,7 +246,7 @@ def test_los_cobros_integrados_se_ocultan_porque_todavia_no_funcionan():
 def test_las_recomendaciones_quedan_como_una_seccion_con_un_registro_por_consejo():
     doc = generar("u1", PANADERIA, AHORA)
     nuevo, aplicado = diseno.aplicar_propuesta(doc, TACOS, AHORA)
-    lista = next(l for l in nuevo["listas"] if l["nombre"] == "Recomendaciones de Shifu")
+    lista = next(l for l in nuevo["listas"] if l["nombre"] == "Recomendaciones")
     assert aplicado["recomendaciones"] == 2 and len(lista["registros"]) == 2  # el consejo de 5 letras se descarta
     valores = [list(r["valores"].values()) for r in lista["registros"]]
     assert ["Guarda tus 5 platillos más vendidos en el menú, con precio.", "Por probar"] in valores
@@ -255,14 +255,14 @@ def test_las_recomendaciones_quedan_como_una_seccion_con_un_registro_por_consejo
 
 def test_no_hay_recomendaciones_si_la_ia_no_las_da():
     nuevo, aplicado = diseno.aplicar_propuesta(generar("u1", PANADERIA, AHORA), {"resumen": "ok"}, AHORA)
-    assert aplicado["recomendaciones"] == 0 and all(l["nombre"] != "Recomendaciones de Shifu" for l in nuevo["listas"])
+    assert aplicado["recomendaciones"] == 0 and all(l["nombre"] != "Recomendaciones" for l in nuevo["listas"])
 
 
-def test_hasta_seis_secciones_y_siete_campos_cada_una():
+def test_hasta_cinco_secciones_y_siete_campos_cada_una():
     doc = generar("u1", PANADERIA, AHORA)
     propuesta = {"secciones": [{"nombre": f"Sección {i}", "campos": [{"nombre": f"Campo {j}"} for j in range(12)]} for i in range(10)]}
     nuevo, _ = diseno.aplicar_propuesta(doc, propuesta, AHORA)
-    assert len(nuevo["listas"]) == 6 and all(len(l["campos"]) == 7 for l in nuevo["listas"])
+    assert len(nuevo["listas"]) == 5 and all(len(l["campos"]) == 7 for l in nuevo["listas"])
 
 
 @pytest.mark.asyncio
@@ -271,3 +271,45 @@ async def test_disenar_registra_el_resultado_sin_romperse_con_recomendaciones():
     b = {**PANADERIA, "que_vendes": "tacos"}
     nuevo = await diseno.disenar(generar("u1", b, AHORA), b, modelo=Modelo(TACOS), ahora=AHORA)
     assert nuevo["resumen_ia"].startswith("Armé tu CRM")
+
+
+# ───────── Menú limpio: nombres cortos, sin equipo repetido ─────────
+
+@pytest.mark.parametrize("nombre,negocio,esperado", [
+    ("Clientes TaChat´s", "TaChat's", "Clientes"),
+    ("Equipo de TaChat's", "TaChat's", "Equipo"),
+    ("Menú de tacos de TaChat's", "TaChat's", "Menú de tacos"),
+    ("clientes de Byte Store", "Byte Store", "Clientes"),
+    ("Café Ánimo clientes", "Cafe Animo", "Clientes"),
+    ("Gastos del día", "TaChat's", "Gastos del día"),
+    ("Pedidos por WhatsApp para el negocio", "", "Pedidos por WhatsApp"),
+    ("Recomendaciones de Shifu", "", "Recomendaciones"),
+])
+def test_los_nombres_de_seccion_quedan_cortos_y_sin_el_nombre_del_negocio(nombre, negocio, esperado):
+    assert diseno.nombre_corto(nombre, negocio) == esperado
+    assert len(diseno.nombre_corto("Seguimiento de clientes frecuentes y VIP del negocio", "")) <= diseno.LARGO_NOMBRE_CORTO
+
+
+def test_la_ia_no_puede_meter_el_nombre_del_negocio_en_las_secciones():
+    doc = generar("u1", {"nombre": "TaChat's", "rubro": "comercio"}, AHORA)
+    nuevo, _ = diseno.aplicar_propuesta(doc, {"nombres": {"contactos": "Clientes TaChat´s"},
+                                              "secciones": [{"nombre": "Menú de tacos de TaChat's", "campos": [{"nombre": "Platillo"}]}]}, AHORA)
+    assert nuevo["secciones"]["contactos"] == "Clientes" and [l["nombre"] for l in nuevo["listas"]] == ["Menú de tacos"]
+
+
+def test_si_hay_una_seccion_propia_de_personal_se_oculta_el_equipo_integrado():
+    doc = generar("u1", {"nombre": "TaChat's", "rubro": "comercio"}, AHORA)
+    nuevo, aplicado = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Trabajadores y turnos", "campos": [{"nombre": "Nombre"}, {"nombre": "Turno"}]}]}, AHORA)
+    assert "rrhh" in nuevo["ocultas"] and "rrhh" in aplicado["ocultas"]
+    sin_personal, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Menú", "campos": [{"nombre": "Platillo"}]}]}, AHORA)
+    assert "rrhh" not in sin_personal["ocultas"]  # sin sección de personal, el equipo integrado se queda
+
+
+def test_las_recomendaciones_llevan_su_tipo_para_que_el_menu_las_ponga_aparte():
+    from app.crm.vista import vista_crm
+
+    doc = generar("u1", PANADERIA, AHORA)
+    nuevo, _ = diseno.aplicar_propuesta(doc, TACOS, AHORA)
+    v = vista_crm(nuevo, AHORA)
+    tipos = {l["nombre"]: l["tipo"] for l in v["listas"]}
+    assert tipos["Recomendaciones"] == "recomendaciones" and tipos["Pedidos"] is None

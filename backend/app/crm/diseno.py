@@ -28,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 MAX_PREGUNTAS = 4
 MAX_OPCIONES = 6
-MAX_SECCIONES_INICIALES = 6
+MAX_SECCIONES_INICIALES = 5
+LARGO_NOMBRE_CORTO = 22
+NOMBRE_RECOMENDACIONES = "Recomendaciones"
+_PERSONAL = re.compile(r"equipo|trabajador|personal|empleado|staff|vendedor|colaborador", re.I)
 MAX_CAMPOS_CONTACTO_INICIALES = 4
 MAX_CAMPOS_POR_SECCION = 7
 MAX_RECOMENDACIONES = 5
@@ -251,10 +254,10 @@ Cómo piensas (escríbelo en "analisis" ANTES de diseñar):
 - Piensa en lo que ESE negocio mira cada día para decidir, no en lo que tiene cualquier negocio.
 
 Cómo funciona el CRM (respeta estos límites):
-- Contactos: la lista de clientes, cada uno en una ETAPA. Tú defines las etapas (de 3 a 7, máximo 24 caracteres cada una, en el orden real de ese negocio) y los CAMPOS EXTRA que se guardan de cada cliente (máximo 4; tipos: texto, numero, fecha). Ya existen nombre, detalle (teléfono o correo), canal y responsable: NO los repitas.
-- Secciones propias: listas extra con sus campos. SIEMPRE entre 4 y 6 (si es una idea o trabaja solo, 4; con equipo y más trayectoria, hasta 6), de 3 a 7 campos cada una, tipos texto, numero o fecha (usa numero para precios y montos, fecha para entregas, vencimientos o turnos). CADA una debe nacer de algo que la persona dijo: escribe en "por_que" la respuesta que la motivó. Prohibido rellenar con secciones genéricas (“Proveedores”, “Inventario”, “Clientes VIP”, “Ventas”) si nada de lo que contó las justifica; si las usas, personalízalas con el vocabulario y los campos de ese negocio.
+- Contactos: la lista de clientes, cada uno en una ETAPA. Tú defines las etapas (de 3 a 5, no más: cada una es un recuadro en la pantalla; máximo 24 caracteres cada una, en el orden real de ese negocio) y los CAMPOS EXTRA que se guardan de cada cliente (máximo 4; tipos: texto, numero, fecha). Ya existen nombre, detalle (teléfono o correo), canal y responsable: NO los repitas.
+- Secciones propias: listas extra con sus campos. Entre 3 y 5 (si es una idea o trabaja solo, 3; con equipo y más trayectoria, hasta 5; más ensucia el menú), de 3 a 7 campos cada una, tipos texto, numero o fecha (usa numero para precios y montos, fecha para entregas, vencimientos o turnos). CADA una debe nacer de algo que la persona dijo: escribe en "por_que" la respuesta que la motivó. Prohibido rellenar con secciones genéricas (“Proveedores”, “Inventario”, “Clientes VIP”, “Ventas”) si nada de lo que contó las justifica; si las usas, personalízalas con el vocabulario y los campos de ese negocio.
 - Si el negocio maneja pedidos como lista (cliente, qué pidió, total, estado, por qué canal llegó), créalos como sección propia "Pedidos" y renombra el tablero integrado a otra cosa (ver abajo) para que no choquen.
-- Secciones integradas (puedes cambiarles el nombre para que suenen a ese negocio): "contactos" (la lista de clientes), "desarrollo" (tablero de tareas Por hacer / En curso / Hecho; úsalo con un nombre como “Pendientes del día” o “Tareas”, o “Proyectos” si trabajan por proyectos), "cobros" (todavía no funciona: la ocultará el sistema; si el negocio necesita llevar gastos, ventas del día o cobros, créalo como sección propia), "actividad" (historial) y "rrhh" (la lista de quienes venden y a quienes se les asignan clientes). Si necesita datos de su personal (puesto, turno, teléfono), crea una sección propia de trabajadores. Nombres de máximo 28 caracteres.
+- Secciones integradas (puedes cambiarles el nombre para que suenen a ese negocio): "contactos" (la lista de clientes), "desarrollo" (tablero de tareas Por hacer / En curso / Hecho; úsalo con un nombre como “Pendientes del día” o “Tareas”, o “Proyectos” si trabajan por proyectos), "cobros" (todavía no funciona: la ocultará el sistema; si el negocio necesita llevar gastos, ventas del día o cobros, créalo como sección propia), "actividad" (historial) y "rrhh" (la lista de quienes venden y a quienes se les asignan clientes). Si necesita datos de su personal (puesto, turno, teléfono), crea una sección propia de trabajadores. Nombres CORTOS: de 1 a 3 palabras y máximo 22 caracteres, SIN el nombre del negocio ni “de <negocio>” (“Clientes”, no “Clientes de TaChat's”; “Menú”, no “Menú de tacos de TaChat's”).
 - Automatizaciones que funcionan hoy: "recordatorios" (crea una tarea cuando un contacto lleva 3 días sin avanzar de etapa), "reparto" (asigna los contactos nuevos por turnos entre el equipo; solo sirve si hay más de una persona) y "resumen" (resumen semanal en Actividad). Enciende solo las que sirvan según lo que contó. Las demás todavía no existen: no las menciones.
 
 Reglas:
@@ -273,10 +276,44 @@ def _limpia(texto: Any, largo: int) -> str:
     return " ".join(str(texto or "").split())[:largo]
 
 
+def _plano(texto: str) -> tuple[str, list[int]]:
+    """El texto en minúsculas, sin acentos ni comillas, y la posición original de cada letra que quedó (para poder recortar el original)."""
+    import unicodedata
+
+    salida, mapa = [], []
+    for i, ch in enumerate(texto):
+        for c in unicodedata.normalize("NFD", ch.lower()):
+            if not unicodedata.combining(c) and c not in "'`´’‘":
+                salida.append(c)
+                mapa.append(i)
+    return "".join(salida), mapa
+
+
+_CONECTORES = re.compile(r"(?:\s+(?:de|del|la|el|los|las|y|e|para|por|con|en|a))+\s*$", re.I)
+
+
+def nombre_corto(nombre: Any, negocio: str = "") -> str:
+    """Nombre de sección corto y sin el nombre del negocio (“Clientes de TaChat's” -> “Clientes”), de máximo `LARGO_NOMBRE_CORTO` letras."""
+    n = _limpia(nombre, 80)
+    base, _ = _plano(_limpia(negocio, 60))
+    base = base.strip()
+    if len(base) >= 3:
+        plano, mapa = _plano(n)
+        i = plano.find(base)
+        if i >= 0:
+            n = (n[:mapa[i]] + n[mapa[i + len(base) - 1] + 1:])  # se quita el nombre del negocio, con o sin acentos y comillas
+    n = _CONECTORES.sub("", _limpia(n, 80)).strip(" -–:,")
+    if len(n) > LARGO_NOMBRE_CORTO:
+        corte = n[:LARGO_NOMBRE_CORTO].rsplit(" ", 1)[0]
+        n = _CONECTORES.sub("", corte if len(corte) >= 5 else n[:LARGO_NOMBRE_CORTO]).strip(" -–:,")
+    return (n[:1].upper() + n[1:]) if n else ""
+
+
 def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None) -> tuple[dict, dict]:
     """Aplica lo que propuso la IA con las operaciones normales del CRM. Cada pieza inválida se descarta sola.
     Devuelve (doc, lo que sí se aplicó)."""
     ahora = ahora or op.ahora_utc()
+    negocio = str((doc.get("brief") or {}).get("nombre") or "")
     aplicado: dict[str, Any] = {"etapas": [], "campos_contacto": [], "secciones": [], "nombres": {}, "automatizaciones": [], "recomendaciones": 0, "ocultas": []}
     if not isinstance(propuesta, dict):
         return doc, aplicado
@@ -301,11 +338,11 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
     # Los nombres de las secciones integradas van PRIMERO: así una sección propia puede llamarse "Pedidos" si el tablero ya se renombró.
     nombres = propuesta.get("nombres") if isinstance(propuesta.get("nombres"), dict) else {}
     for sid, nombre in nombres.items():
-        n = _limpia(nombre, est.LARGO_NOMBRE)
+        n = nombre_corto(nombre, negocio)
         if sid in IDS_SECCION and sid not in ("importar", "automatizaciones") and len(n) >= 2:
             n = n[:1].upper() + n[1:]
             rubro = (doc.get("brief") or {}).get("rubro")
-            propias = [s.get("nombre") for s in (propuesta.get("secciones") if isinstance(propuesta.get("secciones"), list) else []) if isinstance(s, dict)]
+            propias = [nombre_corto(s.get("nombre"), negocio) for s in (propuesta.get("secciones") if isinstance(propuesta.get("secciones"), list) else []) if isinstance(s, dict)]
             ocupados = [titulo_seccion(rubro, i, doc["secciones"]) for i in IDS_SECCION if i != sid] + [l["nombre"] for l in doc["listas"]] + [_limpia(x, 40) for x in propias]
             if any(n.lower() == o.lower() for o in ocupados):
                 continue
@@ -320,7 +357,7 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
             continue
         campos = [c for c in (s.get("campos") if isinstance(s.get("campos"), list) else []) if isinstance(c, dict)][:MAX_CAMPOS_POR_SECCION]
         try:
-            doc = est.lista_crear(doc, s.get("nombre"), campos or None, ahora)
+            doc = est.lista_crear(doc, nombre_corto(s.get("nombre"), negocio), campos or None, ahora)
             aplicado["secciones"].append(doc["listas"][-1]["nombre"])
         except op.ErrorCrm:
             continue
@@ -330,6 +367,15 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
         try:
             doc = est.seccion_ocultar(doc, "cobros", ahora)
             aplicado["ocultas"].append("cobros")
+        except op.ErrorCrm:
+            pass
+
+    # Si el negocio tiene su propia sección de personal (turnos, puestos…), la integrada "Equipo" sería un segundo "Equipo" casi igual: se oculta
+    # (se puede volver a mostrar, y repartir clientes entre vendedores sigue funcionando).
+    if any(_PERSONAL.search(l["nombre"]) for l in doc["listas"]) and "rrhh" not in doc["ocultas"]:
+        try:
+            doc = est.seccion_ocultar(doc, "rrhh", ahora)
+            aplicado["ocultas"].append("rrhh")
         except op.ErrorCrm:
             pass
 
@@ -345,8 +391,9 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
     consejos = [c for c in consejos if len(c) >= 15][:MAX_RECOMENDACIONES]
     if consejos:
         try:
-            doc = est.lista_crear(doc, "Recomendaciones de Shifu", [{"nombre": "Recomendación", "tipo": "texto"}, {"nombre": "Estado", "tipo": "texto"}], ahora)
+            doc = est.lista_crear(doc, NOMBRE_RECOMENDACIONES, [{"nombre": "Recomendación", "tipo": "texto"}, {"nombre": "Estado", "tipo": "texto"}], ahora)
             lista = doc["listas"][-1]
+            lista["tipo"] = "recomendaciones"  # el menú la pone con las herramientas, no entre las secciones del negocio
             por_nombre = {c["nombre"]: c["id"] for c in lista["campos"]}
             for c in consejos:
                 doc = est.registro_agregar(doc, lista["id"], {por_nombre["Recomendación"]: c, por_nombre["Estado"]: "Por probar"}, ahora)

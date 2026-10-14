@@ -55,7 +55,7 @@ def vista_crm(doc: dict, ahora: datetime | None = None) -> dict:
         "etapas": doc["etapas"],
         "camposContacto": doc["campos_contacto"],
         "ocultas": doc["ocultas"],
-        "listas": [{"id": l["id"], "nombre": l["nombre"], "campos": l["campos"],
+        "listas": [{"id": l["id"], "nombre": l["nombre"], "tipo": l.get("tipo"), "campos": l["campos"],
                     "registros": [{"id": r["id"], "valores": r["valores"]} for r in l["registros"]]} for l in doc["listas"]],
         "vendedores": doc["vendedores"],
         "tareas": {col: [_tarea(x, nombres) for x in lista] for col, lista in doc["tareas"].items()},

@@ -1,5 +1,12 @@
 /* Grupos del menú: Estructura, Medición y equipo, Automatizaciones */
 .mc-grupo + .mc-grupo { margin-top: 14px; }
+/* Muchas secciones: el menú se aprieta un poco y, si aun así no cabe, hace scroll por dentro en vez de empujar la página. */
+.mc-menu { max-height: calc(100vh - 32px); overflow-y: auto; scrollbar-width: thin; }
+.mc-menu li button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-menu-denso { padding: 10px 8px; }
+.mc-menu-denso .mc-grupo + .mc-grupo { margin-top: 8px; }
+.mc-menu-denso li button { padding: 8px 12px; gap: 10px; font-size: 13.5px; }
+.mc-menu-denso .mc-grupo h2 { margin-bottom: 3px; }
 .mc-grupo h2 { margin: 0 0 6px; padding: 0 14px; color: var(--tx3); font: 700 10.5px var(--fuente); letter-spacing: .09em; text-transform: uppercase; }
 
 /* Contactos: detalle, quitar y resumen */

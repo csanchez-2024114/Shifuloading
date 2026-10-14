@@ -9,7 +9,7 @@ import { HAY_SERVIDOR, auth, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
+import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
 import '../crm-captura.css'
@@ -29,14 +29,18 @@ const COLORES = ['#7c5cff', '#22d3a6', '#f0587a', '#f5a623']
 
 const BASE = [
   { id: 'contactos', I: LuUsers, grupo: 0 }, { id: 'desarrollo', I: LuCode, grupo: 0 },
-  { id: 'cobros', I: LuWallet, grupo: 1 }, { id: 'actividad', I: LuActivity, grupo: 1 }, { id: 'rrhh', I: LuIdCard, grupo: 1 },
+  { id: 'cobros', I: LuWallet, grupo: 2 }, { id: 'actividad', I: LuActivity, grupo: 2 }, { id: 'rrhh', I: LuIdCard, grupo: 2 },
 ]
-const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
+/* Lo principal arriba, lo que armó la IA para ese negocio en su propio grupo, y las herramientas al final. Un grupo sin nada no se muestra. */
+const GRUPOS = ['Mi negocio', 'Mis secciones', 'Medición y equipo', 'Herramientas']
 const menuDe = (rubro, secciones, ocultas = [], listas = []) => [
   ...BASE.map((m) => ({ ...m, t: tituloSeccion(rubro, m.id, secciones) })),
-  { id: 'importar', t: tituloSeccion(rubro, 'importar'), I: LuUpload, grupo: 0 },
-  { id: 'automatizaciones', t: tituloSeccion(rubro, 'automatizaciones'), I: LuZap, grupo: 2 },
-].filter((m) => !ocultas.includes(m.id)).concat(listas.map((l) => ({ id: l.id, t: l.nombre, I: LuTable, grupo: 0, propia: true })))
+  { id: 'importar', t: tituloSeccion(rubro, 'importar'), I: LuUpload, grupo: 3 },
+  { id: 'automatizaciones', t: tituloSeccion(rubro, 'automatizaciones'), I: LuZap, grupo: 3 },
+].filter((m) => !ocultas.includes(m.id)).concat(listas.map((l) => (
+  // Las recomendaciones de Shifu son ideas, no una tabla del negocio: van con las herramientas y no llenan "Mis secciones".
+  l.tipo === 'recomendaciones' ? { id: l.id, t: l.nombre, I: LuLightbulb, grupo: 3, propia: true } : { id: l.id, t: l.nombre, I: LuTable, grupo: 1, propia: true }
+)))
 
 /** Cómo se ve el valor de un campo según su tipo. */
 const verValor = (tipo, v) => (v === undefined || v === null || v === '' ? '—' : tipo === 'fecha' ? String(v).split('-').reverse().join('/') : tipo === 'numero' ? Number(v).toLocaleString('es') : String(v))
@@ -589,17 +593,17 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
       </header>
 
       <div className="mc-cuerpo">
-        <nav className="mc-menu" aria-label="Secciones">
-          {GRUPOS.map((g, gi) => (
+        <nav className={`mc-menu ${menu.length > 9 ? 'mc-menu-denso' : ''}`} aria-label="Secciones">
+          {GRUPOS.map((g, gi) => (menu.some((m) => m.grupo === gi) && (
             <div key={g} className="mc-grupo">
               <h2>{g}</h2>
               <ul>
                 {menu.filter((m) => m.grupo === gi).map(({ id, t, I }) => (
-                  <li key={id}><button type="button" className={vista === id ? 'on' : ''} aria-current={vista === id ? 'page' : undefined} onClick={() => ir(id)}><I aria-hidden="true" />{t}</button></li>
+                  <li key={id}><button type="button" title={t} className={vista === id ? 'on' : ''} aria-current={vista === id ? 'page' : undefined} onClick={() => ir(id)}><I aria-hidden="true" /><span>{t}</span></button></li>
                 ))}
               </ul>
             </div>
-          ))}
+          )))}
           <button type="button" className="mc-rehacer" onClick={rehacer}><LuRotateCcw aria-hidden="true" /> Repetir cuestionario</button>
           {HAY_SERVIDOR && <button type="button" className="mc-rehacer mc-salir" onClick={salir}><LuLogOut aria-hidden="true" /> Cerrar sesión{yo?.correo ? <small>{yo.correo}</small> : null}</button>}
         </nav>
