@@ -43,7 +43,7 @@ export function validarPlantilla(p) {
 /** Una sección con `fuente` muestra los registros de otra: usa los campos de esa otra. */
 export const camposDe = (s, porId) => (s.fuente ? porId[s.fuente]?.campos : s.campos) || []
 
-function revisarVista(vista, opciones = {}, campos, donde) {
+export function revisarVista(vista, opciones = {}, campos, donde) {
   const def = VISTAS[vista]
   if (!def) return [`${donde}: la vista «${vista}» no está en el catálogo (${Object.keys(VISTAS).join(', ')}).`]
   if (def.datos === false) return []

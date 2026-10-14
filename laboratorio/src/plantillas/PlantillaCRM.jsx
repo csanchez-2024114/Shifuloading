@@ -9,8 +9,10 @@ import { COMPONENTES, AnimarContext, VelContext } from './vistas'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe } from './datosEjemplo'
+import ChatLab from './ChatLab'
 import '@base/crm.css'
 import '@base/crm-extra.css'
+import '@base/crm-captura.css'
 import './plantillas.css'
 import './estilos.css'
 
@@ -24,8 +26,6 @@ const nombreBloque = (w, porId) => `${TITULO_VISTA[w.vista] || w.vista} · ${por
 /** Cambia el DOM con una transición animada (View Transitions) cuando el navegador la soporta; si no, cambia directo. */
 const conTransicion = (fn) => (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   ? document.startViewTransition(() => flushSync(fn)) : fn())
-// Rejilla de 12 columnas: anchos posibles de un bloque y su nombre para el botón.
-const ANCHOS_COL = [3, 4, 6, 8, 12]
 const ANCHO_COMPLETO = ['kpis', 'tablero', 'agenda']
 /** Tamaño inicial: resumen, tablero y agenda a lo ancho; lo demás a media columna; si queda uno solo en su fila, a lo ancho. */
 function conTamano(bloques) {
@@ -41,25 +41,24 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
   const [vista, setVista] = useState('inicio')
   const def = ESTILOS.find((e) => e.id === estilo) || ESTILOS[0]
   const animado = def.base === 'vivo'
-  // El inicio es editable como lo haría la IA: se quitan y se agregan bloques, y el resto se reacomoda animado.
+  // El inicio SOLO lo cambia la IA (chat): recibe un estado nuevo y la pantalla se transforma animada.
   const [bloques, setBloques] = useState(() => conTamano(plantilla.inicio.map((w, i) => ({ ...w, uid: `b${i}` }))))
-  // Cambiar el tamaño de un bloque (ancho en columnas de 12, alto en filas). El resto se reacomoda animado.
-  const redimensionar = (uid, eje, paso) => conTransicion(() => setBloques((bs) => bs.map((b) => {
-    if (b.uid !== uid) return b
-    if (eje === 'ancho') { const i = ANCHOS_COL.indexOf(b.ancho); return { ...b, ancho: ANCHOS_COL[Math.max(0, Math.min(ANCHOS_COL.length - 1, i + paso))] } }
-    return { ...b, alto: Math.max(1, Math.min(4, b.alto + paso)) }
-  })))
-  const [quitados, setQuitados] = useState([])
   const [saliendo, setSaliendo] = useState([])
-  // Quitar: primero corre la animación de salida del bloque y después el resto se reacomoda (View Transition).
-  const quitar = (uid) => {
-    const fuera = () => conTransicion(() => { const b = bloques.find((x) => x.uid === uid); setBloques((bs) => bs.filter((x) => x.uid !== uid)); setQuitados((q) => [...q, b]); setSaliendo((s) => s.filter((x) => x !== uid)) })
-    if (!animado || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return fuera()
-    setSaliendo((s) => [...s, uid]); setTimeout(fuera, 700 * vel)
-  }
-  const poner = (uid) => conTransicion(() => { const b = quitados.find((x) => x.uid === uid); setQuitados((q) => q.filter((x) => x.uid !== uid)); setBloques((bs) => [...bs, { ...b, nuevo: true }]) })
-  // Si los bloques de media columna son impares, el último queda solo en su fila: ocupa el ancho completo (sin hueco).
   const ir = (id) => conTransicion(() => setVista(id))
+  /** Aplica el estado que devolvió Shifu: lo que se va sale primero (desenfoque), después el resto se reacomoda y lo nuevo nace. */
+  const aplicarEstado = (nuevo) => {
+    const ids = new Set(nuevo.bloques.map((b) => b.uid))
+    const viejos = new Set(bloques.map((b) => b.uid))
+    const fuera = bloques.filter((b) => !ids.has(b.uid)).map((b) => b.uid)
+    const final = () => conTransicion(() => {
+      setSaliendo([])
+      setBloques(nuevo.bloques.map((b) => (viejos.has(b.uid) ? { ...b, nuevo: false } : { ...b, nuevo: true })))
+      if (nuevo.vista && nuevo.vista !== vista) setVista(nuevo.vista)
+    })
+    if (!fuera.length || !animado || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return final()
+    setSaliendo(fuera); setTimeout(final, 700 * vel)
+  }
+  const estadoParaIA = () => ({ vista, bloques: bloques.map(({ nuevo: _n, ...b }) => b) })
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
@@ -107,26 +106,9 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
                 {bloques.map((w, i) => (
                   <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} style={{ '--i': w.nuevo ? 0 : i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
                     <h2>{nombreBloque(w, porId)}</h2>
-                    {animado && <button type="button" className="pl-quitar" onClick={() => quitar(w.uid)} aria-label={`Quitar ${nombreBloque(w, porId)}`}>×</button>}
-                    {animado && w.vista !== 'kpis' && (
-                      <div className="pl-tamano" role="group" aria-label={`Tamaño de ${nombreBloque(w, porId)}`}>
-                        <span>Ancho</span>
-                        <button type="button" disabled={w.ancho === ANCHOS_COL[0]} onClick={() => redimensionar(w.uid, 'ancho', -1)} aria-label="Más angosto">−</button>
-                        <button type="button" disabled={w.ancho === 12} onClick={() => redimensionar(w.uid, 'ancho', 1)} aria-label="Más ancho">+</button>
-                        <span>Alto</span>
-                        <button type="button" disabled={w.alto === 1} onClick={() => redimensionar(w.uid, 'alto', -1)} aria-label="Más bajo">−</button>
-                        <button type="button" disabled={w.alto === 4} onClick={() => redimensionar(w.uid, 'alto', 1)} aria-label="Más alto">+</button>
-                      </div>
-                    )}
                     {dibujar(porId[w.seccion], w.vista, w.opciones)}
                   </section>
                 ))}
-                {animado && quitados.length > 0 && (
-                  <div className="pl-agregar" style={{ viewTransitionName: 'pl-agregar' }}>
-                    <span>Pedirle a Shifu que vuelva a poner:</span>
-                    {quitados.map((w) => <button key={w.uid} type="button" onClick={() => poner(w.uid)}>＋ {nombreBloque(w, porId)}</button>)}
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -141,6 +123,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
           )}
         </main>
       </div>
+      <ChatLab tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} />
     </div>
     </VelContext.Provider></AnimarContext.Provider>
   )

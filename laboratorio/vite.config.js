@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { chatLaboratorio } from './servidor/chat.js'
 
 // Laboratorio de plantillas: app APARTE del CRM de Shifu (otro servidor, otro puerto, otras rutas).
 // Solo LEE los estilos y el logo del proyecto base (@base); nunca lo modifica ni comparte su arranque.
@@ -8,7 +9,7 @@ import react from '@vitejs/plugin-react'
 const aqui = (p) => fileURLToPath(new URL(p, import.meta.url))
 export default defineConfig({
   root: aqui('.'),
-  plugins: [react()],
+  plugins: [react(), chatLaboratorio()], // chat con IA: solo en desarrollo (apply: 'serve')
   resolve: { alias: { '@base': aqui('../src') } },
   server: { port: 5190, strictPort: true, fs: { allow: [aqui('..')] }, watch: { ignored: ['**/backend/**', '**/dist/**'] } },
   optimizeDeps: { entries: ['index.html'] },

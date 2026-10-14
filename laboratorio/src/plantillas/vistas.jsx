@@ -211,40 +211,33 @@ function Agenda({ seccion, campos, registros, opciones }) {
 }
 
 const COLOR_RANGO = (desde, hasta) => (hasta < 0 ? '#f0587a' : desde <= 7 ? '#f5a623' : '#22d3a6')
-const nombreRango = (desde, hasta) => (hasta < 0 ? 'Vencidos' : desde === 0 && hasta === 7 ? 'Próximos 7 días' : `De ${desde} a ${hasta} días`)
+const nombreRango = (desde, hasta) => (hasta < 0 ? 'Vencidos' : desde === 0 && hasta === 7 ? 'Próximos 7 días' : desde === 0 ? `Próximos ${hasta} días` : `De ${desde} a ${hasta} días`)
 
 function Vencimientos({ seccion, campos, registros, opciones }) {
-  const animar = useContext(AnimarContext)
   const lim = opciones.dias || 30
-  // Los grupos son rangos de días editables (como los editaría la IA): quitar uno, crear otro.
-  const { items: rangos, saliendo, quitar, poner } = useConSalida(() => [
-    { id: 'vencidos', desde: -Infinity, hasta: -1 },
-    { id: 'r0-7', desde: 0, hasta: 7 },
-    // El tercer grupo solo existe si el límite pasa de 7 días (con 7 sería "De 8 a 7", vacío y sin sentido).
-    ...(lim > 7 ? [{ id: `r8-${lim}`, desde: 8, hasta: lim }] : []),
-  ])
-  const [nuevo, setNuevo] = useState({ desde: 1, hasta: 45 })
+  // Los grupos son rangos de días. Solo los cambia la IA (opciones.rangos); al cambiar, los que se van salen animados
+  // y los nuevos "nacen". Sin opciones.rangos: Vencidos · 0-7 · 8-límite (este último solo si el límite pasa de 7).
+  const deseados = (opciones.rangos || [{ desde: null, hasta: -1 }, { desde: 0, hasta: 7 }, ...(lim > 7 ? [{ desde: 8, hasta: lim }] : [])])
+    .map((r) => ({ id: r.desde === null ? 'vencidos' : `r${r.desde}-${r.hasta}`, desde: r.desde === null ? -Infinity : r.desde, hasta: r.hasta }))
+  const { items: rangos, saliendo, quitar, setItems } = useConSalida(() => deseados)
+  const firma = deseados.map((r) => r.id).join('|')
+  useEffect(() => {
+    const ids = new Set(deseados.map((r) => r.id))
+    const fuera = rangos.filter((r) => !ids.has(r.id))
+    const entrar = () => setItems((xs) => {
+      const tengo = new Set(xs.map((x) => x.id))
+      return deseados.map((d) => (tengo.has(d.id) ? xs.find((x) => x.id === d.id) : { ...d, nuevo: true }))
+    })
+    if (!fuera.length) { entrar(); return }
+    fuera.forEach((r, i) => quitar(r.id, i === fuera.length - 1 ? entrar : undefined))
+  }, [firma]) // eslint-disable-line react-hooks/exhaustive-deps
   // Lo ya terminado (entregado, cancelado) no está "por vencer": se excluye por su estado.
   const vivos = opciones.estado && opciones.excluir ? registros.filter((r) => !opciones.excluir.includes(r.valores[opciones.estado])) : registros
   const conDia = vivos.filter((r) => r.valores[opciones.fecha]).map((r) => ({ r, d: diasHasta(r.valores[opciones.fecha]) })).sort((a, b) => a.d - b.d)
   if (!registros.length) return <Vacio seccion={seccion} />
   const det = opciones.detalle && campo(campos, opciones.detalle)
-  const crear = (desde, hasta) => poner({ id: `r${desde}-${hasta}-${Date.now()}`, desde, hasta, nuevo: true })
-  // Simula el pedido "quita De 8 a 30 y pon De 1 a 45": se borra solo ese grupo (con su salida) y luego se arma el nuevo.
-  const ultimo = rangos[rangos.length - 1]
-  const simular = () => { if (ultimo && ultimo.hasta >= 0) quitar(ultimo.id, () => crear(1, 45)); else crear(1, 45) }
   return (
     <div className="pl-venc-marco">
-      {animar && (
-        <div className="pl-ia-barra">
-          <button type="button" className="pl-ia" onClick={simular}>✦ Simular a Shifu: «quita {ultimo && ultimo.hasta >= 0 ? nombreRango(ultimo.desde, ultimo.hasta) : 'el último'} y pon De 1 a 45»</button>
-          <span className="pl-ia-form">
-            De <input type="number" value={nuevo.desde} onChange={(e) => setNuevo({ ...nuevo, desde: Number(e.target.value) })} aria-label="Desde (días)" />
-            a <input type="number" value={nuevo.hasta} onChange={(e) => setNuevo({ ...nuevo, hasta: Number(e.target.value) })} aria-label="Hasta (días)" /> días
-            <button type="button" onClick={() => nuevo.hasta >= nuevo.desde && crear(nuevo.desde, nuevo.hasta)}>＋ Crear grupo</button>
-          </span>
-        </div>
-      )}
       <div className="pl-venc">
         {rangos.map((g, gi) => {
           const items = conDia.filter((x) => x.d >= g.desde && x.d <= g.hasta)
@@ -252,7 +245,6 @@ function Vencimientos({ seccion, campos, registros, opciones }) {
           return (
             <section key={g.id} className={`pl-venc-grupo ${clase}${saliendo.includes(g.id) ? ' saliendo' : ''}${g.nuevo ? ' nuevo' : ''}`} style={{ '--c': COLOR_RANGO(g.desde, g.hasta), '--i': g.nuevo ? 0 : gi }}>
               <h3><span>{nombreRango(g.desde, g.hasta)}</span><i>{items.length}</i>
-                {animar && <button type="button" className="pl-quitar-mini" onClick={() => quitar(g.id)} aria-label={`Quitar ${nombreRango(g.desde, g.hasta)}`}>×</button>}
               </h3>
               <ul>
                 {items.slice(0, 40).map(({ r, d }, k) => (
