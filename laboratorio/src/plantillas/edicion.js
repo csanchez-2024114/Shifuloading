@@ -3,10 +3,11 @@
  * Las usa el servidor del laboratorio (servidor/chat.js) al ejecutar las herramientas del modelo, y nada más las cambia.
  * Lo que el modelo pide fuera de esto (una vista que no existe, un campo equivocado) se rechaza aquí, no se dibuja mal. */
 import { VISTAS, revisarVista, camposDe } from './validar.js'
+import { compatibles, GRAFICOS } from './graficos.jsx'
 
 export const ANCHOS_COL = [3, 4, 6, 8, 12]
 export const ALTO_MAX = 4
-const VISTAS_INICIO = ['kpis', 'tablero', 'agenda', 'vencimientos', 'grafica', 'tabla']
+const VISTAS_INICIO = ['kpis', 'tablero', 'agenda', 'vencimientos', 'grafico', 'tabla']
 // id nuevo e irrepetible: si se reusara el de un bloque quitado, la animación lo confundiría con el viejo.
 const nuevoUid = () => `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 const ajustarAncho = (a) => ANCHOS_COL.reduce((m, x) => (Math.abs(x - a) < Math.abs(m - a) ? x : m), 6)
@@ -46,9 +47,11 @@ export function describirPantalla(plantilla, estado) {
       // Los grupos que la persona VE ahora (los por defecto no viven en opciones): sin esto el modelo no sabe qué conservar.
       ...(b.vista === 'vencimientos' ? { grupos_actuales: rangosDe(b.opciones).map((r) => (r.desde === null ? 'Vencidos {vencidos:true}' : `De ${r.desde} a ${r.hasta} días {desde:${r.desde},hasta:${r.hasta}}`)) } : {}) })),
     secciones: plantilla.secciones.filter((s) => s.campos || s.fuente).map((s) => ({ id: s.id, titulo: s.titulo,
-      campos: camposDe(s, porId).map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones } : {}) })) })),
+      campos: camposDe(s, porId).map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones } : {}) })),
+      // Qué gráficos se pueden dibujar con ESTA sección (lo decide el código, no el modelo).
+      graficos_posibles: compatibles(camposDe(s, porId)).map((g) => `${g.id} (${g.nombre})`) })),
     vistas: Object.fromEntries(VISTAS_INICIO.map((v) => [v, { requiere: VISTAS[v].requiere, opcional: Object.keys(VISTAS[v].opcional || {}) }])),
-    tipos_grafica: ['barras (por: estado, suma?: dinero/numero)', 'dona (por: estado)', 'linea (fecha: fecha)'],
+    grafico: 'vista "grafico" con opciones {tipo: <id de graficos_posibles>} y opcionalmente {funcion: conteo|suma|promedio|mediana|minimo|maximo|moda|desviacion, valor: campo numérico, agrupar: campo o "mes", meta, top}. La vieja "grafica" (barras/dona/linea) sigue existiendo en bloques que ya la tienen.',
   }
 }
 
@@ -76,11 +79,19 @@ function ejecutarSin(plantilla, estado, nombre, args = {}, contexto = {}) {
     case 'agregar_bloque': case 'cambiar_visual': {
       const viejo = nombre === 'cambiar_visual' ? bloqueDe(estado, args.bloque) : null
       if (nombre === 'cambiar_visual' && !viejo) return no(`no existe el bloque «${args.bloque}».`)
+      // Cambiar un bloque que NO es gráfica (resumen, tablero, lista…) por otra cosa es quitarlo: solo si lo pidieron.
+      if (viejo && !['grafica', 'grafico'].includes(viejo.vista) && args.vista !== viejo.vista && !contexto.pideQuitar)
+        return no(`el bloque ${viejo.uid} es ${viejo.vista}: reemplazarlo lo quitaría y la persona no lo pidió. Agrega un bloque nuevo, o pregúntale si quiere reemplazarlo.`)
       const s = seccionDe(plantilla, args.seccion || viejo?.seccion); if (!s) return no(`la sección «${args.seccion}» no existe. Secciones: ${plantilla.secciones.filter((x) => x.campos || x.fuente).map((x) => x.id).join(', ')}.`)
       if (!VISTAS_INICIO.includes(args.vista)) return no(`la vista «${args.vista}» no existe en el inicio. Vistas posibles: ${VISTAS_INICIO.join(', ')}.`)
       const opciones = args.opciones || {}
       const errores = revisarVista(args.vista, opciones, camposDe(s, porId), `«${s.titulo}»`)
-      if (args.vista === 'grafica' && opciones.tipo && !['barras', 'dona', 'linea'].includes(opciones.tipo)) errores.push(`el tipo de gráfica «${opciones.tipo}» no existe (barras, dona, linea).`)
+      if (args.vista === 'grafico') {
+        const posibles = compatibles(camposDe(s, porId)).map((g) => g.id)
+        if (!GRAFICOS[opciones.tipo]) errores.push(`el gráfico «${opciones.tipo}» no existe. Con ${s.titulo} se pueden: ${posibles.join(', ')}.`)
+        else if (!posibles.includes(opciones.tipo)) errores.push(`«${GRAFICOS[opciones.tipo].nombre}» no se puede dibujar con los campos de ${s.titulo}. Posibles: ${posibles.join(', ')}.`)
+        for (const k of ['valor', 'agrupar', 'estado', 'fecha', 'texto', 'x', 'y']) if (opciones[k] && opciones[k] !== 'mes' && !camposDe(s, porId).some((c) => c.id === opciones[k])) errores.push(`«${k}» apunta al campo «${opciones[k]}», que no existe en ${s.titulo}.`)
+      }
       if (errores.length) return no(errores.join(' '))
       const b = { ...(viejo || {}), uid: viejo?.uid || nuevoUid(estado), seccion: s.id, vista: args.vista, opciones,
         ancho: ajustarAncho(Number(args.ancho) || viejo?.ancho || (['kpis', 'tablero', 'agenda'].includes(args.vista) ? 12 : 6)),
@@ -124,7 +135,7 @@ function ejecutarSin(plantilla, estado, nombre, args = {}, contexto = {}) {
 export const HERRAMIENTAS = [
   ['quitar_bloque', 'Quita un bloque del inicio.', { bloque: { type: 'string', description: 'id del bloque, ej. b2' } }, ['bloque']],
   ['agregar_bloque', 'Agrega un bloque al inicio con una vista del catálogo sobre una sección.', {
-    seccion: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', description: 'opciones de la vista: ids de campos (ver "vistas" y "secciones"). Para grafica: {tipo: barras|dona|linea, por|fecha, suma?}' , additionalProperties: true },
+    seccion: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', description: 'opciones de la vista: ids de campos (ver "vistas" y "secciones"). Para grafico: {tipo: uno de graficos_posibles de esa sección, ...}' , additionalProperties: true },
     ancho: { type: 'integer', enum: ANCHOS_COL }, alto: { type: 'integer', minimum: 1, maximum: ALTO_MAX }, posicion: { type: 'integer', minimum: 1 } }, ['seccion', 'vista']],
   ['cambiar_visual', 'Cambia la vista o sus opciones de un bloque existente (mantiene su lugar y tamaño).', {
     bloque: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', additionalProperties: true }, seccion: { type: 'string' } }, ['bloque', 'vista']],

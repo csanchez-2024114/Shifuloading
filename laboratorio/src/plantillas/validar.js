@@ -11,6 +11,8 @@ export const VISTAS = {
   agenda: { requiere: { fecha: ['fecha'] }, opcional: { hora: ['hora'], titulo: null, detalle: null } },
   vencimientos: { requiere: { fecha: ['fecha'] }, opcional: { titulo: null, detalle: null, estado: ['estado'], excluir: null } },
   grafica: { requiere: {}, opcional: { por: ['estado'], fecha: ['fecha'], suma: ['dinero', 'numero'] } },
+  // Catálogo grande (graficos.jsx): el tipo y sus campos los revisa compatibles() al editar.
+  grafico: { requiere: {}, libre: true },
   feed: { datos: false },
   equipo: { datos: false },
   interruptores: { datos: false },
@@ -46,7 +48,7 @@ export const camposDe = (s, porId) => (s.fuente ? porId[s.fuente]?.campos : s.ca
 export function revisarVista(vista, opciones = {}, campos, donde) {
   const def = VISTAS[vista]
   if (!def) return [`${donde}: la vista «${vista}» no está en el catálogo (${Object.keys(VISTAS).join(', ')}).`]
-  if (def.datos === false) return []
+  if (def.datos === false || def.libre) return []
   const errores = []
   const tipoDe = (id) => campos.find((c) => c.id === id)?.tipo
   for (const [op, tipos] of Object.entries(def.requiere)) {

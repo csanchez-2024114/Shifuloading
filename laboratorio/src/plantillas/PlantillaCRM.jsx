@@ -10,6 +10,7 @@ import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe } from './datosEjemplo'
 import ChatLab from './ChatLab'
+import { Grafico, GRAFICOS } from './graficos'
 import '@base/crm.css'
 import '@base/crm-extra.css'
 import '@base/crm-captura.css'
@@ -22,7 +23,7 @@ const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
 // Cada plantilla tiene su color de firma, tomado de la misma paleta de marca (no se agregan colores).
 const ACENTO = { embudo: '#22d3a6', agenda: '#7c5cff', pedidos: '#f5a623', membresias: '#3fb8ff', proyectos: '#b06cff', simple: '#22d3a6' }
 // Bloques que se le pueden "pedir a Shifu" en el inicio: los de la propia plantilla más los que su estructura permite.
-const nombreBloque = (w, porId) => `${TITULO_VISTA[w.vista] || w.vista} · ${porId[w.seccion]?.titulo}`
+const nombreBloque = (w, porId) => `${w.vista === 'grafico' ? GRAFICOS[w.opciones?.tipo]?.nombre || 'Gráfico' : TITULO_VISTA[w.vista] || w.vista} · ${porId[w.seccion]?.titulo}`
 /** Cambia el DOM con una transición animada (View Transitions) cuando el navegador la soporta; si no, cambia directo. */
 const conTransicion = (fn) => (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   ? document.startViewTransition(() => flushSync(fn)) : fn())
@@ -63,6 +64,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
   const dibujar = (s, nombreVista, opciones) => {
+    if (nombreVista === 'grafico') return <Grafico key={opciones?.tipo} tipo={opciones?.tipo} seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, datos)} opciones={opciones || {}} />
     const V = COMPONENTES[nombreVista]
     return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, datos)} opciones={opciones || {}} datos={datos} /> : null
   }

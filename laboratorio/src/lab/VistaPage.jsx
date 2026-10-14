@@ -3,6 +3,8 @@
 import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PlantillaCRM from '../plantillas/PlantillaCRM'
+import { GaleriaGraficos } from '../plantillas/graficos'
+import { VelContext } from '../plantillas/vistas'
 import { plantillaPorId } from '../plantillas/semillas'
 import { datosEjemplo } from '../plantillas/datosEjemplo'
 import { ROTAS } from './rotas'
@@ -18,5 +20,6 @@ export default function VistaPage() {
   const datos = useMemo(() => (plantilla ? datosEjemplo(plantilla, nivel) : null), [plantilla, nivel])
   useEffect(() => { document.documentElement.style.colorScheme = tema === 'claro' ? 'light' : 'dark' }, [tema])
   if (!plantilla) return <p style={{ padding: 24 }}>No existe la plantilla «{id}».</p>
+  if (q.get('galeria')) return <VelContext.Provider value={vel}><GaleriaGraficos plantilla={plantilla} datos={datos} tema={tema} vel={vel} /></VelContext.Provider>
   return <PlantillaCRM key={`${id}-${nivel}-${estilo}-${vel}`} plantilla={plantilla} datos={datos} tema={tema} estilo={estilo} vel={vel} negocio="Negocio de prueba" />
 }

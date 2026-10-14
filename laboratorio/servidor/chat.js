@@ -28,6 +28,9 @@ Reglas:
 - Para cambiar grupos de vencimientos usa cambiar_rangos con la lista COMPLETA de rangos (los que se quedan y los nuevos).
 - Todo el inicio debe caber en una pantalla: si agregas bloques, considera achicar otros (ancho 3-4 para gráficas chicas).
 - Si una herramienta devuelve ERROR, corrige y vuelve a intentar, o explica la verdad.
+- Un pedido = el MÍNIMO de bloques. Varias cifras de un mismo campo (promedio, mediana, mínimo…) van en UN bloque "estadisticas". No agregues resúmenes que no pidieron.
+- Si lo que piden NO existe: no agregues nada todavía; di que no existe y OFRECE la alternativa más parecida, preguntando.
+- Antes de decir que un gráfico no existe, búscalo en graficos_posibles de TODAS las secciones.
 - Nunca copies textos internos como "Así se ve ahora".
 - Para decir DÓNDE quedó algo usa solo "donde_se_ve" / "Así se ve ahora" de los resultados; si no quedó donde pidieron, muévelo o ajusta anchos.
 - "Muéstrame / abre / ver X" es navegar: usa abrir_seccion y nada más.
@@ -77,6 +80,15 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
         if (!tocados.some((id) => u[id]?.lado === lado)) {
           const donde = tocados.map((id) => `${id} → ${u[id] ? `fila ${u[id].fila}, ${u[id].lado}` : 'ya no está'}`).join('; ')
           if (correcciones < MAX_CORRECCIONES) { correcciones++; mensajes.push(ia, { role: 'user', content: `[Aviso interno] Dices "${lado}", pero lo que cambiaste quedó así: ${donde}. Muévelo/ajusta anchos para que quede a la ${lado}, o di dónde quedó de verdad.` }); continue }
+        }
+      }
+      // Negar lo que sí existe también es mentir: si dice "no hay/no se puede" y nombra un gráfico que el código sabe dibujar.
+      if (/\bno (hay|existe|tengo|se puede|puedo)\b/i.test(respuesta) && correcciones < MAX_CORRECCIONES) {
+        const posibles = edicion.describirPantalla(plantilla, estado).secciones.flatMap((x) => x.graficos_posibles.map((g) => ({ seccion: x.titulo, g })))
+        const negado = posibles.find(({ g }) => { const nombre = g.match(/\((.*)\)/)?.[1]?.toLowerCase(); return nombre && respuesta.toLowerCase().includes(nombre.replace(/ \d+ %/, '')) })
+        if (negado) {
+          const donde = posibles.filter((x) => x.g === negado.g).map((x) => x.seccion).join(', ')
+          correcciones++; mensajes.push(ia, { role: 'user', content: `[Aviso interno] Dices que no se puede, pero «${negado.g}» SÍ se puede dibujar con: ${donde}. Hazlo con agregar_bloque/cambiar_visual (vista "grafico"), o explica bien qué es lo que no se puede.` }); continue
         }
       }
       if (PROMESA.test(respuesta)) aviso = '[Aviso interno] No anuncies: hazlo ahora con las herramientas, o pregunta solo el dato que falta.'
