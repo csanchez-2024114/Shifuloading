@@ -28,7 +28,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', negoci
   return (
     <div className="mc pl" data-tema={tema}>
       <header className="mc-top">
-        <Logo height={24} />
+        <Logo height={24} color="var(--tx)" />
         <span className="mc-negocio">{negocio}</span>
         <span className="pl-plantilla" title={plantilla.para}>Plantilla: {plantilla.nombre}</span>
       </header>

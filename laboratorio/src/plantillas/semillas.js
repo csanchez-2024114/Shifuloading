@@ -62,7 +62,7 @@ export const PLANTILLAS = [
     id: 'pedidos', nombre: 'Pedidos y entregas', para: 'Comercio, comida, encargos: pedidos que se preparan y se entregan',
     inicio: [
       { vista: 'kpis', seccion: 'pedidos', opciones: { por: 'estado', suma: 'anticipo' } },
-      { vista: 'vencimientos', seccion: 'pedidos', opciones: { fecha: 'entrega', titulo: 'cliente', detalle: 'producto', dias: 7 } },
+      { vista: 'vencimientos', seccion: 'pedidos', opciones: { fecha: 'entrega', titulo: 'cliente', detalle: 'producto', dias: 7, estado: 'estado', excluir: ['Entregado'] } },
       { vista: 'grafica', seccion: 'pedidos', opciones: { tipo: 'dona', por: 'estado' } },
     ],
     secciones: [
@@ -81,16 +81,16 @@ export const PLANTILLAS = [
   {
     id: 'membresias', nombre: 'Membresías', para: 'Gimnasios, spas con membresía, academias, suscripciones',
     inicio: [
-      { vista: 'kpis', seccion: 'miembros', opciones: { por: 'estado', vencen: 'vence', dias: 7 } },
-      { vista: 'vencimientos', seccion: 'miembros', opciones: { fecha: 'vence', titulo: 'nombre', detalle: 'plan', dias: 30 } },
+      { vista: 'kpis', seccion: 'miembros', opciones: { por: 'estado', vencen: 'vence', dias: 7, estado: 'estado', excluir: ['Cancelada'] } },
+      { vista: 'vencimientos', seccion: 'miembros', opciones: { fecha: 'vence', titulo: 'nombre', detalle: 'plan', dias: 30, estado: 'estado', excluir: ['Cancelada'] } },
       { vista: 'grafica', seccion: 'miembros', opciones: { tipo: 'linea', fecha: 'alta' } },
     ],
     secciones: [
       { id: 'miembros', titulo: 'Miembros', grupo: 0, icono: 'usuarios', vista: 'tabla',
         campos: [{ id: 'nombre', nombre: 'Nombre', tipo: 'texto' }, { id: 'plan', nombre: 'Plan', tipo: 'texto' },
           { id: 'alta', nombre: 'Alta', tipo: 'fecha' }, { id: 'vence', nombre: 'Vence', tipo: 'fecha' },
-          { id: 'estado', nombre: 'Estado', tipo: 'estado', opciones: ['Activa', 'Por vencer', 'Vencida', 'Cancelada'] }] },
-      { id: 'vencimientos', titulo: 'Vencimientos', grupo: 0, icono: 'reloj', vista: 'vencimientos', fuente: 'miembros', opciones: { fecha: 'vence', titulo: 'nombre', detalle: 'plan', dias: 30 } },
+          { id: 'estado', nombre: 'Estado', tipo: 'estado', opciones: ['Activa', 'Pausada', 'Cancelada'] }] },
+      { id: 'vencimientos', titulo: 'Vencimientos', grupo: 0, icono: 'reloj', vista: 'vencimientos', fuente: 'miembros', opciones: { fecha: 'vence', titulo: 'nombre', detalle: 'plan', dias: 30, estado: 'estado', excluir: ['Cancelada'] } },
       { id: 'pagos', titulo: 'Pagos', grupo: 1, icono: 'tarjeta', vista: 'tabla',
         campos: [{ id: 'miembro', nombre: 'Miembro', tipo: 'texto' }, { id: 'monto', nombre: 'Monto', tipo: 'dinero' }, { id: 'fecha', nombre: 'Fecha', tipo: 'fecha' }] },
       ...fijas,

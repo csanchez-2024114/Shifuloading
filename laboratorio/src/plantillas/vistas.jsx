@@ -51,7 +51,8 @@ function Kpis({ campos, registros, opciones = {} }) {
   if (opciones.hoy) tarjetas.push({ t: 'Hoy', v: registros.filter((r) => r.valores[opciones.hoy] === hoyIso()).length })
   if (opciones.vencen) {
     const d = opciones.dias || 7
-    const dias = registros.map((r) => r.valores[opciones.vencen]).filter(Boolean).map(diasHasta)
+    const vivos = opciones.estado && opciones.excluir ? registros.filter((r) => !opciones.excluir.includes(r.valores[opciones.estado])) : registros
+    const dias = vivos.map((r) => r.valores[opciones.vencen]).filter(Boolean).map(diasHasta)
     tarjetas.push({ t: `Vencen en ${d} días`, v: dias.filter((x) => x >= 0 && x <= d).length, clase: 'aviso' })
     tarjetas.push({ t: 'Vencidas', v: dias.filter((x) => x < 0).length, clase: 'alerta' })
   }
@@ -120,7 +121,9 @@ function Agenda({ seccion, campos, registros, opciones }) {
 
 function Vencimientos({ seccion, campos, registros, opciones }) {
   const lim = opciones.dias || 30
-  const conDia = registros.filter((r) => r.valores[opciones.fecha]).map((r) => ({ r, d: diasHasta(r.valores[opciones.fecha]) })).sort((a, b) => a.d - b.d)
+  // Lo ya terminado (entregado, cancelado) no está "por vencer": se excluye por su estado.
+  const vivos = opciones.estado && opciones.excluir ? registros.filter((r) => !opciones.excluir.includes(r.valores[opciones.estado])) : registros
+  const conDia = vivos.filter((r) => r.valores[opciones.fecha]).map((r) => ({ r, d: diasHasta(r.valores[opciones.fecha]) })).sort((a, b) => a.d - b.d)
   const grupos = [
     { t: 'Vencidos', clase: 'alerta', items: conDia.filter((x) => x.d < 0) },
     { t: 'Próximos 7 días', clase: 'aviso', items: conDia.filter((x) => x.d >= 0 && x.d <= 7) },

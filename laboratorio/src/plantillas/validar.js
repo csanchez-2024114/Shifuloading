@@ -6,10 +6,10 @@ export const TIPOS_CAMPO = ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estad
 // vista → opciones que pide y de qué tipo debe ser el campo al que apuntan. `datos: false` = no usa registros de una sección.
 export const VISTAS = {
   tabla: { requiere: {} },
-  kpis: { requiere: {}, opcional: { por: ['estado'], suma: ['dinero', 'numero'], vencen: ['fecha'], hoy: ['fecha'] } },
+  kpis: { requiere: {}, opcional: { por: ['estado'], suma: ['dinero', 'numero'], vencen: ['fecha'], hoy: ['fecha'], estado: ['estado'], excluir: null } },
   tablero: { requiere: { por: ['estado'] }, opcional: { titulo: null, detalle: null } },
   agenda: { requiere: { fecha: ['fecha'] }, opcional: { hora: ['hora'], titulo: null, detalle: null } },
-  vencimientos: { requiere: { fecha: ['fecha'] }, opcional: { titulo: null, detalle: null } },
+  vencimientos: { requiere: { fecha: ['fecha'] }, opcional: { titulo: null, detalle: null, estado: ['estado'], excluir: null } },
   grafica: { requiere: {}, opcional: { por: ['estado'], fecha: ['fecha'], suma: ['dinero', 'numero'] } },
   feed: { datos: false },
   equipo: { datos: false },
@@ -55,7 +55,7 @@ function revisarVista(vista, opciones = {}, campos, donde) {
     else if (tipos && !tipos.includes(tipoDe(opciones[op]))) errores.push(`${donde}: «${op}» debe ser un campo de tipo ${tipos.join(' o ')}, y «${opciones[op]}» es ${tipoDe(opciones[op])}.`)
   }
   for (const [op, tipos] of Object.entries(def.opcional || {})) {
-    if (!opciones?.[op] || typeof opciones[op] !== 'string' || ['dias'].includes(op)) continue
+    if (!opciones?.[op] || typeof opciones[op] !== 'string' || ['dias', 'excluir'].includes(op)) continue
     if (!tipoDe(opciones[op])) errores.push(`${donde}: «${op}» apunta al campo «${opciones[op]}», que no existe.`)
     else if (tipos && !tipos.includes(tipoDe(opciones[op]))) errores.push(`${donde}: «${op}» debe ser un campo de tipo ${tipos.join(' o ')}.`)
   }

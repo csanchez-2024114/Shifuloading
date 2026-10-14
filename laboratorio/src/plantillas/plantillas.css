@@ -2,6 +2,8 @@
  * (tablero con muchas columnas) desplaza dentro de su propia caja. Móvil: ≤ 700px. Tablet: ≤ 900px (marco de crm.css). */
 .pl { overflow-x: hidden; }
 .pl .mc-cuerpo, .pl .mc-main { min-width: 0; }
+/* Sin esto, en tablet la rejilla estira sus filas y deja un hueco entre el menú y el contenido (pasa igual en CrmPage). */
+.pl .mc-cuerpo { align-content: start; }
 .pl-plantilla { margin-left: auto; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--linea); color: var(--tx2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
 .pl-errores { padding: 16px 18px; border-radius: 14px; border: 1px solid rgba(240, 88, 122, .5); background: rgba(240, 88, 122, .1); color: var(--rojo-t); }
 .pl-errores ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
@@ -19,7 +21,7 @@
 .pl-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .pl-kpis div { min-width: 0; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--linea); }
 .pl-kpis small { display: block; color: var(--tx3); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pl-kpis strong { display: block; margin-top: 4px; font-size: 24px; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.pl-kpis strong { display: block; margin-top: 4px; font-size: 24px; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-kpis .aviso strong { color: var(--ambar-t); }
 .pl-kpis .alerta strong { color: var(--rojo-t); }
 
@@ -41,7 +43,7 @@
 .pl-tarjeta small { color: var(--tx3); font-size: 12px; }
 
 /* Agenda: una columna por día en escritorio; lista de días en móvil */
-.pl-agenda { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 8px; }
+.pl-agenda { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .pl-dia { min-width: 0; display: grid; gap: 6px; align-content: start; padding: 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--linea); }
 .pl-dia.hoy { border-color: var(--verde); }
 .pl-dia h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin: 0; font-size: 12px; color: var(--tx3); text-transform: capitalize; }
@@ -54,7 +56,7 @@
 .pl-cita small { color: var(--tx3); }
 
 /* Vencimientos */
-.pl-venc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pl-venc { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .pl-venc-grupo { min-width: 0; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--linea); }
 .pl-venc-grupo.alerta { border-top: 3px solid #f0587a; }
 .pl-venc-grupo.aviso { border-top: 3px solid #f5a623; }
@@ -86,12 +88,8 @@
 .pl-barras em { font-style: normal; color: var(--tx2); font-variant-numeric: tabular-nums; }
 
 /* Tablet */
-@media (max-width: 1100px) {
-  .pl-agenda { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-}
 @media (max-width: 900px) {
   .pl-inicio { grid-template-columns: 1fr; }
-  .pl-venc { grid-template-columns: 1fr; }
   .pl-plantilla { display: none; }
 }
 /* Móvil */
@@ -111,6 +109,8 @@
   .pl-tabla-fila > span:first-child { font-weight: 600; font-size: 15px; }
   .pl-tablero { grid-auto-columns: minmax(78%, 1fr); }
   .pl-agenda { grid-template-columns: 1fr; }
+  /* En móvil la agenda muestra hoy y los 2 días siguientes; la semana completa se ve en su sección. */
+  .pl-bloque .pl-dia:nth-child(n+4) { display: none; }
   .pl-dia { grid-template-columns: 1fr; }
   .pl-dona { grid-template-columns: 1fr; justify-items: center; }
   .pl-dona svg { max-width: 160px; }
