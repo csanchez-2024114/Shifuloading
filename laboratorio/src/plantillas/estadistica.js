@@ -285,3 +285,116 @@ export function serie(registros, { agrupar: por, medir = null, funcion, campos =
     registros: g.registros,
   }))
 }
+
+// ── Montos compactos ────────────────────────────────────────────────────────────────────────────────
+/** Versión corta para espacios chicos: 'Q 241,8 mil', 'Q 1,2 M', '12,5 mil'. Menos de 10 000 se escribe completo (fmt). */
+export function fmtCorto(tipo, n) {
+  if (n === null || n === undefined || n === '' || !Number.isFinite(Number(n))) return '—'
+  const v = Number(n)
+  const a = Math.abs(v)
+  if (a < 1e4) return fmt(tipo, v)
+  const r1 = (x) => Math.round(x * 10) / 10 || 0
+  const s = a >= 1e6 || r1(a / 1e3) >= 1000 ? `${r1(v / 1e6).toLocaleString('es')} M` : `${r1(v / 1e3).toLocaleString('es')} mil`
+  return tipo === 'dinero' ? `Q ${s}` : s
+}
+
+/** Reparte 100 casillas según los valores (método del mayor residuo): la suma es SIEMPRE 100 si hay algo que repartir. */
+export function repartir100(xs, total = 100) {
+  const v = (xs || []).map((x) => Math.max(0, num(x) ?? 0))
+  const s = v.reduce((a, b) => a + b, 0)
+  if (!s) return v.map(() => 0)
+  const crudo = v.map((x) => (x / s) * total)
+  const base = crudo.map(Math.floor)
+  let falta = total - base.reduce((a, b) => a + b, 0)
+  const orden = crudo.map((c, i) => [c - base[i], i]).sort((a, b) => b[0] - a[0] || a[1] - b[1])
+  for (let k = 0; falta > 0 && k < orden.length; k++, falta--) base[orden[k][1]]++
+  return base
+}
+
+// ── Colores: mezcla y contraste (WCAG 2.x) ───────────────────────────────────────────────────────────
+export const TEXTO_OSCURO = '#14211d'
+export const TEXTO_CLARO = '#ffffff'
+/** '#rgb' | '#rrggbb' | 'rgb(a)(r, g, b[, a])' → [r, g, b, a] (0–255, a 0–1) o null. */
+export function aRgba(c) {
+  const s = String(c || '').trim()
+  let m = s.match(/^#([0-9a-f]{3,8})$/i)
+  if (m) {
+    let h = m[1]
+    if (h.length === 3 || h.length === 4) h = h.split('').map((x) => x + x).join('')
+    if (h.length !== 6 && h.length !== 8) return null
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16), h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1]
+  }
+  m = s.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/i)
+  if (m) { const a = m[4] === undefined ? 1 : m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4]); return [+m[1], +m[2], +m[3], a] }
+  return null
+}
+export const aHex = ([r, g, b]) => `#${[r, g, b].map((x) => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0')).join('')}`
+/** Mezcla `k` de `a` con (1 − k) de `b` (como color-mix in srgb). Devuelve '#rrggbb'. */
+export function mezclar(a, b, k) {
+  const x = aRgba(a); const y = aRgba(b)
+  if (!x || !y) return a
+  return aHex([0, 1, 2].map((i) => x[i] * k + y[i] * (1 - k)))
+}
+/** Luminancia relativa WCAG (0 negro – 1 blanco). */
+export function luminancia(c) {
+  const x = aRgba(c)
+  if (!x) return 0
+  const [r, g, b] = x.slice(0, 3).map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+/** Razón de contraste WCAG entre dos colores (1–21). */
+export function contraste(a, b) {
+  const la = luminancia(a); const lb = luminancia(b)
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+/** El texto (oscuro de marca o blanco) con más contraste sobre `fondo`, y cuánto contraste da. */
+export function textoSobre(fondo) {
+  const o = contraste(TEXTO_OSCURO, fondo); const c = contraste(TEXTO_CLARO, fondo)
+  return o >= c ? { color: TEXTO_OSCURO, contraste: o } : { color: TEXTO_CLARO, contraste: c }
+}
+/**
+ * Relleno suavizado: `k` del color con la superficie. Si con ese relleno ningún texto (oscuro o blanco) llega a `minimo`
+ * de contraste, se acerca un poco más a la superficie hasta lograrlo (sin inventar colores: misma paleta, más suave).
+ */
+export function suavizar(color, superficie, k, minimo = 4.6) {
+  let kk = k
+  let f = mezclar(color, superficie, kk)
+  while (textoSobre(f).contraste < minimo && kk > 0.3) { kk -= 0.04; f = mezclar(color, superficie, kk) }
+  return f
+}
+
+// ── Periodos comparables ────────────────────────────────────────────────────────────────────────────
+/**
+ * Mes en curso contra el mes anterior SIN comparar un mes incompleto contra uno completo:
+ * días 1…N del mes en curso (N = día de hoy) contra días 1…N del mes anterior (si el anterior es más corto, hasta su último día).
+ */
+export function tramosComparables(hoy = new Date()) {
+  const a = hoy.getFullYear(); const m = hoy.getMonth(); const d = hoy.getDate()
+  const ultimoAnt = new Date(a, m, 0).getDate()
+  const dAnt = Math.min(d, ultimoAnt)
+  const ant = new Date(a, m - 1, 1)
+  const tramo = (ini, fin) => ({ desde: isoDia(ini), hasta: isoDia(fin), etiqueta: `${ini.getDate() === fin.getDate() ? '' : `${ini.getDate()}–`}${fin.getDate()} ${MESES[fin.getMonth()]}`, mes: MESES[fin.getMonth()], larga: `${MESES[fin.getMonth()]} ${fin.getFullYear()}` })
+  return { dias: d, actual: tramo(new Date(a, m, 1), new Date(a, m, d)), anterior: tramo(ant, new Date(a, m - 1, dAnt)) }
+}
+/** Registros cuya fecha (yyyy-mm-dd) cae entre `desde` y `hasta` (incluidos, en texto iso). */
+export function registrosEntre(registros, campoFecha, desde, hasta) {
+  const id = idDe(campoFecha)
+  return (registros || []).filter((r) => { const v = r.valores?.[id]; if (!esFechaIso(v)) return false; const k = v.slice(0, 10); return k >= desde && k <= hasta })
+}
+
+/** Registros por día de la semana (0 = lunes … 6 = domingo) y hora entera (campo 'HH:MM'). Devuelve Map('d-h' → registros). */
+export function agruparPorDiaHora(registros, campoFecha, campoHora) {
+  const idf = idDe(campoFecha); const idh = idDe(campoHora)
+  const mapa = new Map()
+  for (const r of registros || []) {
+    const f = r.valores?.[idf]; const h = String(r.valores?.[idh] ?? '')
+    const m = h.match(/^(\d{1,2}):?(\d{2})?/)
+    if (!esFechaIso(f) || !m) continue
+    const hora = Number(m[1])
+    if (!(hora >= 0 && hora <= 23)) continue
+    const k = `${(deIso(f).getDay() + 6) % 7}-${hora}`
+    if (!mapa.has(k)) mapa.set(k, [])
+    mapa.get(k).push(r)
+  }
+  return mapa
+}

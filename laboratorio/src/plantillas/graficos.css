@@ -11,8 +11,24 @@
 @keyframes gr-arco { from { stroke-dasharray: 0 10000; } }
 @keyframes gr-aparece { from { opacity: 0; } }
 @keyframes gr-fila { from { opacity: 0; transform: translateX(-10px); } }
-@keyframes gr-pop { 0% { transform: scale(0); } 70% { transform: scale(1.45); } 100% { transform: scale(1); } }
+@keyframes gr-pop { 0% { transform: scale(0); } 70% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes gr-tip { from { opacity: 0; } }
+/* Firmas por familia */
+@keyframes gr-col { 0% { transform: scaleY(0); } 75% { transform: scaleY(1.03); } 100% { transform: scaleY(1); } }
+@keyframes gr-desliza { 0% { transform: translateX(-14px) scaleX(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: none; } }
+@keyframes gr-barrido { from { transform: scaleX(0); } }
+@keyframes gr-sube-area { from { transform: translateY(14px); opacity: 0; } }
+@keyframes gr-giro { from { transform: rotate(-120deg) scale(.82); } }
+@keyframes gr-abanico { from { transform: rotate(-90deg) scale(.7); opacity: 0; } }
+@keyframes gr-gajo { from { transform: scale(.55); opacity: 0; } }
+@keyframes gr-mosaico { from { transform: scale(.45); opacity: 0; } 60% { opacity: 1; } }
+@keyframes gr-casilla { from { transform: scale(0); opacity: 0; } }
+@keyframes gr-expande { from { transform: scale(0) rotate(-24deg); opacity: 0; } }
+@keyframes gr-cae { 0% { transform: translateY(-22px); opacity: 0; } 60% { transform: translateY(3px); opacity: 1; } 100% { transform: none; } }
+@keyframes gr-cadena { 0% { transform: scaleY(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: none; } }
+@keyframes gr-llueve { from { transform: translateY(-12px); opacity: 0; } }
+@keyframes gr-petalo { 0% { transform: scale(0); } 80% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@keyframes gr-caja { from { transform: scaleY(0); opacity: 0; } }
 
 /* ── Contenedor: llena el bloque (flex) sin desbordar; el SVG se dibuja con la medida real del lienzo ── */
 .gr { margin: 0; position: relative; display: flex; flex-direction: column; flex: 1 1 auto; width: 100%; height: 100%; min-width: 0; min-height: 0; color: var(--tx2); font: 11px var(--fuente); }
@@ -20,7 +36,7 @@
 .gr-lienzo > .gr-svg { position: absolute; inset: 0; display: block; overflow: hidden; }
 .gr-html > :not(.gr-tip) { position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .gr-html > :not(.gr-tip)::-webkit-scrollbar { display: none; }
-.gr-pie { flex: none; height: 18px; margin: 0; padding-top: 4px; box-sizing: border-box; color: var(--tx3); font-size: 11px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-pie { flex: none; max-height: 33px; margin: 0; padding-top: 5px; box-sizing: border-box; color: var(--tx3); font-size: 11px; font-weight: 500; line-height: 14px; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
 .gr-vacio { position: absolute; inset: 0; margin: 0; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--tx3); font-size: 12px; border: 1px dashed var(--linea); border-radius: 12px; }
 
 /* En móvil (y pantallas bajas) los bloques del CRM tienen alto automático: el gráfico pide un alto propio. */
@@ -28,33 +44,33 @@
   .pl-bloque:not(.gr-tarjeta) > .gr .gr-lienzo, .pl-seccion > .gr .gr-lienzo { min-height: 210px; }
 }
 
-/* ── Texto (siempre en píxeles reales: 11–12 px) ── */
-.gr text { fill: var(--tx3); font-size: 11px; font-family: var(--fuente); }
-.gr .gr-valor { fill: var(--tx2); font-weight: 600; }
-.gr .gr-grande { fill: var(--tx); font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.gr .gr-fuerte { font-weight: 700; }
+/* ── Texto: etiquetas 11 px/500 · valores 12 px/600 tabulares · número grande 600 (sin contornos ni sombras) ── */
+.gr text { fill: var(--tx3); font-size: 11px; font-weight: 500; font-family: var(--fuente); }
+.gr .gr-valor, .gr .gr-ley .gr-ley-v { fill: var(--tx); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gr .gr-grande { fill: var(--tx); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.gr .gr-fuerte { font-weight: 600; fill: var(--tx2); }
+.gr .gr-chico { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .gr .gr-sutil { fill: var(--tx3); }
-.gr .gr-paso { fill: var(--tx2); font-weight: 600; }
-.gr .gr-halo { fill: var(--tx); font-weight: 600; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.gr .gr-paso { fill: var(--tx2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.gr .gr-dentro { pointer-events: none; }
 .gr .gr-ley text { fill: var(--tx2); }
-.gr .gr-ley .gr-ley-v { fill: var(--tx); font-weight: 600; }
 .gr .gr-ley-mas { fill: var(--tx3); }
 
 /* ── Marcas ── */
-.gr-rejilla line, .gr-rejilla polygon { fill: none; stroke: var(--linea); stroke-width: 1; }
+.gr-rejilla line, .gr-rejilla polygon, .gr-rejilla circle { fill: none; stroke: var(--linea); stroke-width: 1; }
 .gr-rejilla line { shape-rendering: crispEdges; }
 .gr-rejilla .gr-cero { stroke: rgba(var(--ink), .22); }
 .gr-hit { fill: transparent; }
 .gr-m { transition: opacity .25s ease, filter .25s ease; }
 .gr-off { opacity: .3; }
-.gr-on { filter: brightness(1.12) saturate(1.1); }
+.gr-on { filter: brightness(1.08); }
 .gr-ley-it { cursor: default; transition: opacity .25s ease; }
 .gr-seg, .gr-capa { transition: opacity .25s ease; }
 .gr-pista { fill: rgba(var(--ink), .06); }
 .gr-pista-c { fill: none; stroke: rgba(var(--ink), .07); }
 .gr-arco { fill: none; transition: stroke-width .2s ease, opacity .25s ease; }
 .gr .gr-arco.gr-on { stroke-width: calc(var(--sw, 10px) + 5px) !important; filter: none; }
-.gr-linea { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.gr-linea { fill: none; stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
 .gr-mm { stroke-width: 2; opacity: .9; }
 .gr-tendencia { stroke-width: 2; stroke-dasharray: 6 4; stroke-linecap: round; }
 .gr-borde { fill: none; stroke-width: 1.5; stroke-linejoin: round; }
@@ -62,15 +78,30 @@
 .gr-punto { stroke-width: 2; transition: r .15s ease; }
 .gr-punto-on { stroke: var(--card); stroke-width: 2; pointer-events: none; }
 .gr-union { opacity: .16; pointer-events: none; }
-.gr-radar { fill-opacity: .2; stroke-width: 2; stroke-linejoin: round; pointer-events: none; }
-.gr-burbuja { fill-opacity: .5; stroke-width: 1.5; }
+.gr-radar { fill-opacity: .16; stroke-width: 2; stroke-linejoin: round; pointer-events: none; }
+.gr-burbuja { stroke-width: 1.25; }
 .gr-celda { fill: rgba(var(--ink), .07); }
 .gr-futuro { opacity: .45; }
 .gr-hoy { stroke: var(--tx); stroke-width: 1.5; }
-.gr-caja { fill-opacity: .22; stroke-width: 1.5; }
+.gr-caja { stroke-width: 1.25; }
 .gr-bigote { stroke-width: 1.5; }
 .gr-mediana { stroke: var(--tx); stroke-width: 2.5; stroke-linecap: round; }
 .gr-marca-v { stroke-width: 1.5; stroke-dasharray: 4 3; }
+.gr-a-col, .gr-a-col-neg, .gr-a-barra, .gr-forma, .gr-a-gantt, .gr-a-cadena, .gr-a-cadena-baja { stroke-width: 1.25; }
+.gr-parcial { stroke-dasharray: 3 2; }
+.gr-parcial-l { stroke-dasharray: 4 3; }
+.gr-guia-etq { fill: none; stroke-width: 1; opacity: .8; }
+.gr-esperado { stroke: var(--tx2); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.gr-meta-l { stroke: var(--tx); stroke-width: 2.5; stroke-linecap: round; }
+.gr-tallo { stroke-width: 2; stroke-linecap: round; opacity: .8; }
+.gr-eje-v { stroke: var(--linea); }
+.gr-ochenta { stroke: rgba(var(--ink), .35); stroke-dasharray: 4 3; }
+.gr-hoy-l { stroke: var(--tx2); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.gr-pista-f { fill: rgba(var(--ink), .06); }
+.gr-panel-f { fill: rgba(var(--ink), .025); }
+.gr-fina { stroke-width: 1.75; }
+.gr-tope { stroke-width: 2.5; stroke-linecap: round; }
+.gr-hit-l { stroke: transparent; stroke-width: 12; }
 .gr-conector { stroke: rgba(var(--ink), .3); stroke-width: 1; stroke-dasharray: 2 2; }
 
 /* ── Tooltip ── */
@@ -86,14 +117,24 @@
 .gr-kpi-fila { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
 .gr-kpi-txt { display: grid; gap: 2px; min-width: 0; }
 .gr-kpi small { color: var(--tx3); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-kpi strong { color: var(--tx); font-weight: 750; letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gr-kpi strong { color: var(--tx); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .gr-var { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; font-size: 12px; }
-.gr-var b { font-weight: 700; }
+.gr-var b { font-weight: 600; font-variant-numeric: tabular-nums; }
 .gr-var.sube b { color: var(--verde); }
 .gr-var.baja b { color: var(--rojo-t); }
 .gr-var.neutro b { color: var(--tx3); }
 .gr-var i { font-style: normal; color: var(--tx3); font-size: 11px; }
 .gr-spark { flex: none; display: block; overflow: visible; }
+
+/* ── Dos KPIs ── */
+.gr-dos { display: grid; gap: 10px; grid-template-rows: 1fr 1fr; }
+.gr-dos-fila { grid-template-columns: 1fr 1fr; grid-template-rows: none; gap: 12px; }
+.gr-dos-k { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 8px 12px; border-radius: 12px; background: rgba(var(--ink), .035); border: 1px solid var(--linea); overflow: hidden; }
+.gr-dos-k small { color: var(--tx3); font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-dos-k strong { color: var(--tx); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gr-dos-k .gr-var { flex-wrap: wrap; row-gap: 0; }
+.gr-dos-barras { display: grid; gap: 3px; margin-top: 4px; }
+.gr-dos-barras i { display: block; height: 5px; width: calc(var(--f, 0) * 100%); min-width: 2px; border-radius: 99px; transform-origin: 0 50%; }
 
 /* ── Tabla de posiciones ── */
 .gr-pos { list-style: none; margin: 0; padding: 0; display: grid; align-content: start; gap: 8px; }
@@ -101,8 +142,8 @@
 .gr-pos li:hover { background: rgba(var(--ink), .05); }
 .gr-pos-n { grid-area: n; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; background: rgba(var(--ink), .07); color: var(--tx2); font-size: 11px; }
 .gr-pos li:first-child .gr-pos-n { background: color-mix(in srgb, var(--acento) 28%, transparent); color: var(--tx); }
-.gr-pos-t { grid-area: t; min-width: 0; color: var(--tx); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gr-pos em { grid-area: v; font-style: normal; font-weight: 650; color: var(--tx); font-variant-numeric: tabular-nums; }
+.gr-pos-t { grid-area: t; min-width: 0; color: var(--tx); line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.gr-pos em { grid-area: v; font-style: normal; font-weight: 600; color: var(--tx); font-variant-numeric: tabular-nums; }
 .gr-pos-barra { grid-area: b; display: block; height: 5px; border-radius: 99px; background: rgba(var(--ink), .06); overflow: hidden; }
 .gr-pos-barra b { display: block; height: 100%; border-radius: inherit; background: var(--acento); }
 .gr-pos.compacta { gap: 3px; }
@@ -118,30 +159,54 @@
 .gr-stats-rej { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 6px; }
 .gr-stat { min-width: 0; padding: 6px 9px; border-radius: 10px; background: rgba(var(--ink), .04); border: 1px solid var(--linea); }
 .gr-stat small { display: block; color: var(--tx3); font-size: 11px; }
-.gr-stat strong { display: block; color: var(--tx); font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.gr-stat strong { display: block; color: var(--tx); font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .gr-tira { flex: none; display: block; overflow: visible; }
 
-/* ── Animaciones de entrada (lentas, escaladas por --vel) ── */
-.gr[data-animar] .gr-rejilla, .gr[data-animar] .gr-ejex { animation: gr-aparece calc(.6s * var(--vel, 1)) ease-out backwards; }
-.gr[data-animar] .gr-sube, .gr[data-animar] .gr-baja, .gr[data-animar] .gr-crece, .gr[data-animar] .gr-centro, .gr[data-animar] .gr-centro-x, .gr[data-animar] .gr-centro-y, .gr[data-animar] .gr-area {
-  transform-box: fill-box; animation-duration: calc(.9s * var(--vel, 1)); animation-timing-function: cubic-bezier(.2, .8, .2, 1); animation-fill-mode: backwards;
-  animation-delay: calc((var(--i, 0) * 55ms + 120ms) * var(--vel, 1)); }
-.gr[data-animar] .gr-sube { transform-origin: 50% 100%; animation-name: gr-sube; }
-.gr[data-animar] .gr-baja { transform-origin: 50% 0; animation-name: gr-sube; }
-.gr[data-animar] .gr-crece { transform-origin: 0 50%; animation-name: gr-crece; }
-.gr[data-animar] .gr-centro { transform-origin: 50% 50%; animation-name: gr-escala; }
-.gr[data-animar] .gr-centro-x { transform-origin: 50% 50%; animation-name: gr-crece; }
-.gr[data-animar] .gr-centro-y { transform-origin: 50% 50%; animation-name: gr-sube; }
-.gr[data-animar] .gr-area { transform-origin: 50% 100%; animation-name: gr-sube; animation-duration: calc(1.1s * var(--vel, 1)); animation-delay: calc((var(--i, 0) * 120ms + 300ms) * var(--vel, 1)); }
-.gr[data-animar] .gr-centro-v { transform-box: view-box; animation: gr-escala calc(1s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards calc(.25s * var(--vel, 1)); }
-.gr[data-animar] .gr-traza { stroke-dasharray: 1; animation: gr-traza calc(1.4s * var(--vel, 1)) cubic-bezier(.4, 0, .2, 1) backwards; animation-delay: calc((var(--i, 0) * 60ms + 200ms) * var(--vel, 1)); }
-.gr[data-animar] .gr-arco { animation: gr-arco calc(1.1s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--i, 0) * 120ms + 150ms) * var(--vel, 1)); }
-.gr[data-animar] .gr-aparece { animation: gr-aparece calc(.6s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--i, 0) * 55ms + 500ms) * var(--vel, 1)); }
-.gr[data-animar] .gr-punto { transform-box: fill-box; transform-origin: 50% 50%; animation: gr-pop calc(.45s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--i, 0) * 60ms + 600ms) * var(--vel, 1)); }
-.gr[data-animar] .gr-ley-it { animation: gr-aparece calc(.5s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--i, 0) * 60ms + 400ms) * var(--vel, 1)); }
-.gr[data-animar] .gr-fila { animation: gr-fila calc(.45s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--i, 0) * 80ms + 150ms) * var(--vel, 1)); }
+/* ── Animaciones de entrada: lentas («que se arme»), escaladas por --vel, con firma por familia.
+ *    --o = orden de la marca (lo decide la variante del montaje: en orden, desde el centro o al revés). ── */
+.gr[data-animar] .gr-rejilla, .gr[data-animar] .gr-ejex { animation: gr-aparece calc(.7s * var(--vel, 1)) ease-out backwards; }
+.gr[data-animar] :is(.gr-a-col, .gr-a-col-neg, .gr-a-barra, .gr-a-mosaico, .gr-a-casilla, .gr-a-cae, .gr-a-cadena, .gr-a-cadena-baja, .gr-a-llueve, .gr-a-caja, .gr-a-gantt, .gr-a-pop, .gr-a-tallo) {
+  transform-box: fill-box; animation-fill-mode: backwards; }
+/* Columnas: crecen desde la base, escalonadas, con un pequeño rebote */
+.gr[data-animar] .gr-a-col { transform-origin: 50% 100%; animation: gr-col calc(1s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 70ms + 150ms) * var(--vel, 1)); }
+.gr[data-animar] .gr-a-col-neg { transform-origin: 50% 0; animation: gr-col calc(1s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 70ms + 150ms) * var(--vel, 1)); }
+/* Barras: se deslizan desde la izquierda */
+.gr[data-animar] .gr-a-barra, .gr[data-animar] .gr-a-tallo { transform-origin: 0 50%; animation: gr-desliza calc(1s * var(--vel, 1)) cubic-bezier(.22, .9, .3, 1) backwards; animation-delay: calc((var(--o, 0) * 85ms + 150ms) * var(--vel, 1)); }
+/* Líneas: se trazan; áreas: suben con un barrido de izquierda a derecha */
+.gr[data-animar] .gr-traza { stroke-dasharray: 1; animation: gr-traza calc(1.6s * var(--vel, 1)) cubic-bezier(.45, 0, .2, 1) backwards; animation-delay: calc((var(--i, 0) * 90ms + 250ms) * var(--vel, 1)); }
+.gr[data-animar] .gr-a-barrido { transform-box: fill-box; transform-origin: 0 50%; animation: gr-barrido calc(1.5s * var(--vel, 1)) cubic-bezier(.45, 0, .2, 1) backwards calc(.2s * var(--vel, 1)); }
+.gr[data-animar] .gr-a-area { animation: gr-sube-area calc(1.1s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 140ms + 250ms) * var(--vel, 1)); }
+/* Circulares: giran y se abren por segmentos (la media dona se abre en abanico) */
+.gr[data-animar] .gr-a-giro { transform-box: view-box; animation: gr-giro calc(1.3s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards calc(.1s * var(--vel, 1)); }
+.gr[data-animar] .gr-a-abanico { transform-box: view-box; animation: gr-abanico calc(1.2s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards calc(.1s * var(--vel, 1)); }
+.gr[data-animar] .gr-a-gajo, .gr[data-animar] .gr-a-petalo { transform-box: view-box; animation: gr-gajo calc(.8s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 110ms + 200ms) * var(--vel, 1)); }
+.gr[data-animar] .gr-a-petalo { animation-name: gr-petalo; animation-duration: calc(1s * var(--vel, 1)); }
+.gr[data-animar] .gr-a-arco { animation: gr-arco calc(1.3s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 120ms + 150ms) * var(--vel, 1)); }
+/* Treemap: aparece en mosaico */
+.gr[data-animar] .gr-a-mosaico { transform-origin: 50% 50%; animation: gr-mosaico calc(.75s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 90ms + 120ms) * var(--vel, 1)); }
+/* Calendario, waffle y calor: casilla por casilla */
+.gr[data-animar] .gr-a-casilla { transform-origin: 50% 50%; animation: gr-casilla calc(.45s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--o, 0) * 22ms + 100ms) * var(--vel, 1)); }
+/* Radar: se expande desde el centro, anillo por anillo */
+.gr[data-animar] .gr-a-expande { transform-box: view-box; animation: gr-expande calc(1s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 120ms + 100ms) * var(--vel, 1)); }
+/* Embudo: cae etapa por etapa */
+.gr[data-animar] .gr-a-cae { transform-origin: 50% 50%; animation: gr-cae calc(.8s * var(--vel, 1)) cubic-bezier(.3, .9, .4, 1) backwards; animation-delay: calc((var(--o, 0) * 180ms + 120ms) * var(--vel, 1)); }
+/* Cascada: en cadena, cada barra después de la anterior */
+.gr[data-animar] .gr-a-cadena { transform-origin: 50% 100%; animation: gr-cadena calc(.55s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--o, 0) * 150ms + 150ms) * var(--vel, 1)); }
+.gr[data-animar] .gr-a-cadena-baja { transform-origin: 50% 0; animation: gr-cadena calc(.55s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--o, 0) * 150ms + 150ms) * var(--vel, 1)); }
+/* Distribución: los puntos llueven; las burbujas y puntos saltan */
+.gr[data-animar] .gr-a-llueve { animation: gr-llueve calc(.7s * var(--vel, 1)) cubic-bezier(.3, 1.3, .5, 1) backwards; animation-delay: calc((var(--o, 0) * 40ms + 150ms) * var(--vel, 1)); }
+.gr[data-animar] .gr-a-pop { transform-origin: 50% 50%; animation: gr-pop calc(.5s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--o, 0) * 60ms + 500ms) * var(--vel, 1)); }
+.gr[data-animar] .gr-a-caja { transform-origin: 50% 50%; animation: gr-caja calc(.9s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 90ms + 150ms) * var(--vel, 1)); }
+/* Línea de tiempo: cada barra se extiende desde su fecha de inicio */
+.gr[data-animar] .gr-a-gantt { transform-origin: 0 50%; animation: gr-crece calc(.9s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--o, 0) * 70ms + 150ms) * var(--vel, 1)); }
+/* Textos y leyendas: aparecen después de las marcas */
+.gr[data-animar] .gr-aparece { animation: gr-aparece calc(.6s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--o, var(--i, 0)) * 55ms + 650ms) * var(--vel, 1)); }
+.gr[data-animar] .gr-ley-it { animation: gr-aparece calc(.5s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--i, 0) * 60ms + 450ms) * var(--vel, 1)); }
+/* Resúmenes: filas que entran y números que cuentan (en JS) */
+.gr[data-animar] .gr-fila { animation: gr-fila calc(.5s * var(--vel, 1)) ease-out backwards; animation-delay: calc((var(--i, 0) * 90ms + 150ms) * var(--vel, 1)); }
 .gr[data-animar] .gr-crece-h { transform-origin: 0 50%; animation: gr-crece calc(1s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc((var(--i, 0) * 80ms + 300ms) * var(--vel, 1)); }
 .gr[data-animar] .gr-kpi strong, .gr[data-animar] .gr-var { animation: gr-fila calc(.5s * var(--vel, 1)) ease-out backwards calc(.1s * var(--vel, 1)); }
+.gr[data-animar] .gr-area:not(.gr-a-area) { animation: gr-aparece calc(1s * var(--vel, 1)) ease-out backwards calc(.3s * var(--vel, 1)); }
 
 /* ── Galería de prueba ── */
 .gr-galeria-marco { min-height: 100vh; padding: 20px 16px; box-sizing: border-box; overflow-x: clip; }
