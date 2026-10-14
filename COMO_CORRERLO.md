@@ -103,6 +103,15 @@ Cada persona usa **sus propias claves**. No pidas ni compartas claves por chat, 
 
 Con IA activa Shifu hace preguntas de seguimiento según el negocio, arma el CRM a la medida, lee capturas y agenda citas. La primera petición tras arrancar puede tardar unos segundos mientras carga.
 
+## Automatizaciones que corren solas (opcional)
+
+Las automatizaciones del CRM (recordatorios de seguimiento y resumen semanal) se calculan siempre que alguien abre el CRM. Para que además corran **solas**, aunque nadie lo tenga abierto, y dejen un aviso en la campana 🔔:
+
+1. En `backend/.env` debe estar `SHIFU_SCHEDULER=1` (el script `crear_env_local.py` ya lo pone). Reinicia el servidor.
+2. Cada 5 minutos el programador revisa los CRM y, si hay algo, crea la tarea y el aviso. Se cambia con `CRM_RELOJ_SEGUNDOS`.
+
+**Avisos por correo** (opcional, necesita un correo de envío): en `backend/.env` agrega `SHIFU_NOTICE_EMAILS=1` y los datos `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM_EMAIL`. Los avisos del CRM saldrán juntos en un solo correo, con un tope de 5 al día por persona. Sin estos datos no sale ningún correo; los avisos igual aparecen en la campana.
+
 ## Correr las pruebas
 
 Con el entorno `.venv` activado, dentro de `backend`:

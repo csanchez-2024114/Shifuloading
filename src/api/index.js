@@ -74,6 +74,13 @@ export const crm = {
   seccionRenombrar: (id, nombre, anterior) => (HAY_SERVIDOR ? pedir('PUT', `/crm/secciones/${id}`, { nombre }) : simulado.crm.seccionRenombrar(id, nombre, anterior)),
 }
 
+/** Los avisos de la persona (campana): los que dejan las automatizaciones y el resto de la plataforma. */
+export const avisos = {
+  listar: () => (HAY_SERVIDOR ? pedir('GET', '/me/notifications?limit=15') : Promise.resolve({ notifications: [], unread_count: 0 })),
+  leer: (id) => (HAY_SERVIDOR ? pedir('PATCH', `/me/notifications/${id}/read`) : Promise.resolve()),
+  leerTodos: () => (HAY_SERVIDOR ? pedir('PATCH', '/me/notifications/mark-all-read') : Promise.resolve()),
+}
+
 export const chat = {
   /** La conversación guardada en el servidor y, si hace rato que no hablan, un saludo que retoma lo último. */
   historial: () => (HAY_SERVIDOR ? pedir('GET', '/crm/chat/historial') : Promise.resolve({ mensajes: [], saludo: null })),

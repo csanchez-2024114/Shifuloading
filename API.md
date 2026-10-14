@@ -112,7 +112,7 @@ El módulo de CRM ya existe en `backend/app/crm` y `backend/app/routes/crm` (col
 
 ## Automatizaciones
 
-Funcionan de verdad tres, sin conectar nada de afuera: **recordatorios** (crea una tarea con `auto: true` cuando un contacto lleva 3 días sin cambiar de etapa), **reparto** (asigna los contactos nuevos por turnos entre el equipo) y **resumen** (una vez por semana deja un resumen en `eventos`). **bienvenida**, **contacto** y **vencidos** todavía no existen (`disponible: false`). No hay proceso en segundo plano: lo pendiente se calcula cuando alguien abre o toca el CRM, y repetirlo no duplica nada.
+Funcionan de verdad tres, sin conectar nada de afuera: **recordatorios** (crea una tarea con `auto: true` cuando un contacto lleva 3 días sin cambiar de etapa), **reparto** (asigna los contactos nuevos por turnos entre el equipo) y **resumen** (una vez por semana deja un resumen en `eventos`). **bienvenida**, **contacto** y **vencidos** todavía no existen (`disponible: false`). Lo pendiente se calcula cuando alguien abre o toca el CRM y, con `SHIFU_SCHEDULER=1`, también cada `CRM_RELOJ_SEGUNDOS` (300) en el programador (`app/crm/reloj.py`), aunque nadie lo tenga abierto. El reloj deja avisos en `user_notifications` (`GET /me/notifications`, la campana del CRM) de tipo `crm_recordatorio` y `crm_resumen`, que además salen por correo si `SHIFU_NOTICE_EMAILS=1` y hay SMTP. Repetirlo no duplica nada: se guarda solo si nadie cambió el CRM en medio (versión) y los avisos se crean después de guardar.
 
 
 ## Memoria de Shifu

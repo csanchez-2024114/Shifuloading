@@ -5,7 +5,7 @@ import Logo from '../components/Logo'
 import ShifuAvatar from '../components/ShifuAvatar'
 import TextoChat from '../components/TextoChat'
 import { SelectorCaptura, capturarRegion, imagenDeArchivo } from '../components/CapturaPantalla'
-import { HAY_SERVIDOR, auth, chat as apiChat, crm as apiCrm } from '../api'
+import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
@@ -348,6 +348,75 @@ function Importar({ existentes, onImportar, onVer }) {
   )
 }
 
+/* ───────── Campana de avisos ───────── */
+
+const haceTiempo = (iso) => {
+  const seg = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  if (Number.isNaN(seg)) return ''
+  if (seg < 60) return 'ahora'
+  if (seg < 3600) return `hace ${Math.floor(seg / 60)} min`
+  if (seg < 86400) return `hace ${Math.floor(seg / 3600)} h`
+  const d = Math.floor(seg / 86400)
+  return `hace ${d} ${d === 1 ? 'día' : 'días'}`
+}
+// A dónde lleva cada tipo de aviso al tocarlo.
+const DESTINO_DE_AVISO = { crm_recordatorio: 'desarrollo', crm_resumen: 'actividad' }
+
+function Avisos({ onIr }) {
+  const [lista, setLista] = useState([])
+  const [sinLeer, setSinLeer] = useState(0)
+  const [abierta, setAbierta] = useState(false)
+  const caja = useRef(null)
+
+  const cargar = () => apiAvisos.listar().then((r) => { setLista(r?.notifications || []); setSinLeer(r?.unread_count || 0) }).catch(() => { /* sin avisos por ahora */ })
+  useEffect(() => {
+    if (!HAY_SERVIDOR) return undefined
+    cargar()
+    const t = setInterval(() => { if (!document.hidden) cargar() }, 60000) // se revisa cada minuto mientras la pestaña está a la vista
+    return () => clearInterval(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!abierta) return undefined
+    const fuera = (e) => { if (caja.current && !caja.current.contains(e.target)) setAbierta(false) }
+    const esc = (e) => { if (e.key === 'Escape') setAbierta(false) }
+    document.addEventListener('mousedown', fuera); document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', esc) }
+  }, [abierta])
+
+  const tocar = async (a) => {
+    setAbierta(false)
+    if (DESTINO_DE_AVISO[a.type]) onIr(DESTINO_DE_AVISO[a.type])
+    if (!a.read) {
+      setLista((l) => l.map((x) => (x.id === a.id ? { ...x, read: true } : x))); setSinLeer((n) => Math.max(0, n - 1))
+      try { await apiAvisos.leer(a.id) } catch { /* se verá como sin leer en la próxima revisión */ }
+    }
+  }
+  const leerTodos = async () => {
+    setLista((l) => l.map((x) => ({ ...x, read: true }))); setSinLeer(0)
+    try { await apiAvisos.leerTodos() } catch { cargar() }
+  }
+
+  return (
+    <div className="mc-avisos" ref={caja}>
+      <button type="button" className="mc-camp" aria-label={sinLeer ? `Avisos: ${sinLeer} sin leer` : 'Avisos'} aria-expanded={abierta} onClick={() => { setAbierta(!abierta); if (!abierta) cargar() }}>
+        <LuBell />{sinLeer > 0 && <i aria-hidden="true">{sinLeer > 9 ? '9+' : sinLeer}</i>}
+      </button>
+      {abierta && (
+        <section className="mc-avisos-panel" aria-label="Tus avisos">
+          <header><b>Avisos</b>{sinLeer > 0 && <button type="button" onClick={leerTodos}>Marcar todo como leído</button>}</header>
+          {lista.length === 0
+            ? <p className="mc-avisos-vacio">Sin avisos por ahora. Cuando Shifu note algo que merece tu atención, te lo dirá aquí.</p>
+            : <ul>{lista.map((a) => (
+              <li key={a.id}><button type="button" className={a.read ? '' : 'nuevo'} onClick={() => tocar(a)}>
+                <b>{a.title}</b><span>{a.message}</span><small>{haceTiempo(a.created_at)}</small>
+              </button></li>
+            ))}</ul>}
+        </section>
+      )}
+    </div>
+  )
+}
+
 /* ───────── Chat con Shifu ───────── */
 
 /** Ideas para el chat. Las que nombran a un contacto usan uno que de verdad existe; si no hay ninguno, solo salen las generales. */
@@ -609,7 +678,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
           onClick={() => setTema(tema === 'claro' ? 'oscuro' : 'claro')}>
           <span className={tema === 'claro' ? 'on' : ''}><LuSun aria-hidden="true" /></span><span className={tema === 'oscuro' ? 'on' : ''}><LuMoon aria-hidden="true" /></span>
         </button>
-        <button type="button" className="mc-camp" aria-label="Avisos"><LuBell /></button>
+        <Avisos onIr={ir} />
         <span className="mc-yo" title={yo?.correo || d.nombre} aria-hidden="true">{inicial}</span>
       </header>
 

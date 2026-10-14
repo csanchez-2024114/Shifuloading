@@ -24,6 +24,7 @@ from app.services.scheduled_task_service import (
 )
 from app.services.workflow_launcher import start_workflow_run
 from app.services.workflow_run_service import ConcurrentRunLimitExceededError
+from app.crm.reloj import tick as crm_tick
 from app.workers.email_trigger_loop import tick as email_tick
 from app.workers.notice_mailer import tick as mailer_tick
 from app.workers.reminder_loop import tick as reminder_tick
@@ -104,6 +105,12 @@ async def run_forever(db: Any, tick_seconds: float = DEFAULT_TICK_SECONDS) -> No
             raise
         except Exception:
             logger.exception("[scheduler] fallo el tick de recordatorios; el ciclo sigue")
+        try:
+            await crm_tick(db)  # automatizaciones del CRM (recordatorios, resumen): se limita solo a una pasada cada CRM_RELOJ_SEGUNDOS
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("[scheduler] fallo el tick del CRM; el ciclo sigue")
         try:
             await mailer_tick(db)
         except asyncio.CancelledError:

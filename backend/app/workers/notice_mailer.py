@@ -21,7 +21,7 @@ from app.utils.mail import send_smtp_email, validate_smtp_config
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TYPES = ("run_failed", "trigger_disabled", "commitment_due")
+DEFAULT_TYPES = ("run_failed", "trigger_disabled", "commitment_due", "crm_recordatorio", "crm_resumen")  # los dos últimos: automatizaciones del CRM
 _MAX_AGE = timedelta(hours=24)   # un aviso viejo ya no se manda (p. ej. al encender la variable por primera vez)
 _MAX_PER_TICK = 200
 DEFAULT_DAILY_CAP = 5            # correos por usuario en 24 h: un workflow que falla cada minuto no inunda la bandeja

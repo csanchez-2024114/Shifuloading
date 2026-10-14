@@ -40,6 +40,17 @@ SECRETS_ENCRYPTION_KEY={fernet()}
 OPENAI_API_KEY=sk-pendiente-pega-aqui-tu-clave
 TAVILY_API_KEY=
 
+# Automatizaciones del CRM que corren solas (recordatorios, resumen) aunque nadie abra el CRM
+SHIFU_SCHEDULER=1
+# CRM_RELOJ_SEGUNDOS=300
+# Avisos por correo (opcional): con SMTP configurado y SHIFU_NOTICE_EMAILS=1 los avisos también llegan al correo de la persona
+# SHIFU_NOTICE_EMAILS=1
+# SMTP_HOST=
+# SMTP_PORT=465
+# SMTP_USER=
+# SMTP_PASS=
+# SMTP_FROM_EMAIL=
+
 # Frontend local
 FRONTEND_URL=http://localhost:5180
 BACKEND_BASE_URL=http://localhost:5000
