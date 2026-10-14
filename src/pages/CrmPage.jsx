@@ -608,7 +608,9 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
           {bienvenida && (
             <aside className="mc-shifu" role="status">
               <ShifuAvatar size={40} />
-              <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, listo para tus canales ({d.canales.join(', ')}). Empieza por tus contactos: pídemelo en el chat de abajo a la derecha o impórtalos desde tu Excel o tus notas. También puedo crear secciones nuevas, quitar las que no uses o cambiar tus etapas.</p>
+              {crm.resumenIA
+                ? <p><b>Listo, {d.nombre}.</b> {crm.resumenIA} Si algo no te cuadra, pídemelo en el chat de abajo a la derecha: puedo agregar, quitar o cambiar secciones, campos y etapas.</p>
+                : <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, listo para tus canales ({d.canales.join(', ')}). Empieza por tus contactos: pídemelo en el chat de abajo a la derecha o impórtalos desde tu Excel o tus notas. También puedo crear secciones nuevas, quitar las que no uses o cambiar tus etapas.</p>}
               <button type="button" onClick={() => setBienvenida(false)} aria-label="Cerrar">✕</button>
             </aside>
           )}

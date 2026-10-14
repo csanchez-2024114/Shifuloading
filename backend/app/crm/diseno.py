@@ -28,9 +28,10 @@ logger = logging.getLogger(__name__)
 
 MAX_PREGUNTAS = 4
 MAX_OPCIONES = 6
-MAX_SECCIONES_INICIALES = 4
+MAX_SECCIONES_INICIALES = 6
 MAX_CAMPOS_CONTACTO_INICIALES = 4
 MAX_CAMPOS_POR_SECCION = 7
+MAX_RECOMENDACIONES = 5
 
 _cache: dict[str, Any] = {}
 _dia = ["", 0]  # [fecha, cantidad]: tope diario de preguntas generadas (la ruta no exige sesión, así que se limita el gasto)
@@ -93,7 +94,7 @@ def _modelo():
 
         from app.crm import agente
 
-        _cache["m"] = ChatOpenAI(model=agente.MODELO, temperature=0.3, max_tokens=1600, timeout=40, max_retries=0, api_key=agente.clave_openai())
+        _cache["m"] = ChatOpenAI(model=agente.MODELO, temperature=0.4, max_tokens=3200, timeout=45, max_retries=0, api_key=agente.clave_openai())
     return _cache["m"]
 
 
@@ -240,24 +241,32 @@ async def preguntas_de_seguimiento(brief: dict, modelo: Any = None) -> tuple[lis
 
 # ───────── 2 · Diseño del CRM ─────────
 
-_SISTEMA_DISENO = """Eres el diseñador de Shifu, una plataforma que crea el CRM de cada negocio con IA. Con las respuestas de la persona, propón la estructura de SU CRM, distinta a la de cualquier otro tipo de negocio. Una panadería, una empresa de tecnología y una clínica deben recibir CRMs muy diferentes.
+_SISTEMA_DISENO = """Eres el diseñador de Shifu, una plataforma que crea el CRM de cada negocio con IA. Tu trabajo es armar el CRM de ESTA persona, no uno genérico.
+Si dos negocios del mismo tipo (por ejemplo dos de “comercio”) te cuentan cosas distintas, sus CRM deben verse MUY distintos: una taquería y una tienda de tecnología no pueden compartir casi nada. Si la persona leyera su CRM y pensara “esto se lo darían a cualquiera”, fallaste.
+
+Cómo piensas (escríbelo en "analisis" ANTES de diseñar):
+- Repasa UNA POR UNA las respuestas, desde la primera, también las de abajo en la lista (país, tiempo, tamaño del equipo, qué usa hoy, canales). Para cada una que cambie algo, escribe qué decides. Ejemplos de cómo se traduce una respuesta (con negocios inventados, no los copies): “da cortes y tintes con citas por WhatsApp” → sección de servicios con precios y una agenda de citas; “trabajan 2 a 5 personas” → sección de trabajadores con puesto y turno; “no sé cuánto gasto al día” → sección de gastos del día; “alquila equipo para eventos” → catálogo con disponibilidad y reservas por fecha; “lo lleva en un cuaderno” → todo simple y desde cero; “el negocio es solo una idea” → menos secciones y consejos para validar y conseguir los primeros clientes; “está en Guatemala” → quetzales y WhatsApp como canal natural.
+- Lo que escribió con sus palabras (qué vende, lo que le complica, sus respuestas de seguimiento) pesa más que las casillas marcadas.
+- Casi todo negocio necesita estas piezas; arma las que apliquen y llámalas como las llamaría esa persona: (1) el CATÁLOGO de lo que vende, con precio (“Menú” si vende comida, “Catálogo” o “Productos” si vende objetos, “Servicios y precios” si da servicios, “Planes” si cobra suscripciones); (2) dónde apunta sus PEDIDOS, CITAS o TRABAJOS, con su estado y por qué canal llegaron; (3) sus FINANZAS si las mencionó (gastos del día, ingresos, cobros pendientes, garantías por vencer…); (4) su PERSONAL, si tiene equipo (nombre, puesto, turno, teléfono); (5) lo PROPIO de su giro que ningún otro negocio tendría (garantías, recetas, rutas de entrega, permisos, rentas, cursos, contratos…). Cada una con campos y nombres de ese negocio, no de uno genérico.
+- Piensa en lo que ESE negocio mira cada día para decidir, no en lo que tiene cualquier negocio.
 
 Cómo funciona el CRM (respeta estos límites):
-- Contactos: la lista de clientes, cada uno en una ETAPA. Tú defines las etapas (de 3 a 7, máximo 24 caracteres cada una, en el orden real del proceso de ese negocio) y los CAMPOS EXTRA que se guardan de cada cliente (máximo 4; tipos: texto, numero, fecha). Ya existen nombre, detalle (teléfono o correo), canal y responsable: NO los repitas.
-- Secciones propias: listas extra con sus campos, para lo que ese negocio necesita llevar (pedidos, proyectos, proveedores, productos, inventario, citas, contratos, tickets…). Entre 0 y 4 secciones, máximo 7 campos cada una, tipos texto, numero o fecha. Cada sección debe justificarse por lo que contó la persona: no crees secciones de relleno.
-- Secciones integradas (puedes cambiarles el nombre para que suenen a ese negocio): "contactos" (lista de clientes), "desarrollo" (tablero de tareas Por hacer / En curso / Hecho: ahí se llevan pedidos, proyectos o citas), "cobros" (todavía no activa), "actividad" (historial) y "rrhh" (el equipo). Nombres de máximo 28 caracteres.
+- Contactos: la lista de clientes, cada uno en una ETAPA. Tú defines las etapas (de 3 a 7, máximo 24 caracteres cada una, en el orden real de ese negocio) y los CAMPOS EXTRA que se guardan de cada cliente (máximo 4; tipos: texto, numero, fecha). Ya existen nombre, detalle (teléfono o correo), canal y responsable: NO los repitas.
+- Secciones propias: listas extra con sus campos. SIEMPRE entre 4 y 6 (si es una idea o trabaja solo, 4; con equipo y más trayectoria, hasta 6), de 3 a 7 campos cada una, tipos texto, numero o fecha (usa numero para precios y montos, fecha para entregas, vencimientos o turnos). CADA una debe nacer de algo que la persona dijo: escribe en "por_que" la respuesta que la motivó. Prohibido rellenar con secciones genéricas (“Proveedores”, “Inventario”, “Clientes VIP”, “Ventas”) si nada de lo que contó las justifica; si las usas, personalízalas con el vocabulario y los campos de ese negocio.
+- Si el negocio maneja pedidos como lista (cliente, qué pidió, total, estado, por qué canal llegó), créalos como sección propia "Pedidos" y renombra el tablero integrado a otra cosa (ver abajo) para que no choquen.
+- Secciones integradas (puedes cambiarles el nombre para que suenen a ese negocio): "contactos" (la lista de clientes), "desarrollo" (tablero de tareas Por hacer / En curso / Hecho; úsalo con un nombre como “Pendientes del día” o “Tareas”, o “Proyectos” si trabajan por proyectos), "cobros" (todavía no funciona: la ocultará el sistema; si el negocio necesita llevar gastos, ventas del día o cobros, créalo como sección propia), "actividad" (historial) y "rrhh" (la lista de quienes venden y a quienes se les asignan clientes). Si necesita datos de su personal (puesto, turno, teléfono), crea una sección propia de trabajadores. Nombres de máximo 28 caracteres.
 - Automatizaciones que funcionan hoy: "recordatorios" (crea una tarea cuando un contacto lleva 3 días sin avanzar de etapa), "reparto" (asigna los contactos nuevos por turnos entre el equipo; solo sirve si hay más de una persona) y "resumen" (resumen semanal en Actividad). Enciende solo las que sirvan según lo que contó. Las demás todavía no existen: no las menciones.
 
 Reglas:
-- Usa el vocabulario del negocio (una panadería habla de pedidos y encargos; una empresa de tecnología, de proyectos, demos y contratos; una clínica, de pacientes y citas).
-- No inventes clientes, cifras ni datos: solo estructura.
-- Español simple. Nada de jerga técnica.
-- "resumen": 2 frases cortas, hablándole a la persona de “tú” (por ejemplo: “Armé tu CRM para vender pasteles por encargo: cada pedido avanza desde que lo recibes hasta la entrega. Agregué proveedores e inventario para que no te falte nada.”), con el vocabulario del negocio, sin listas. Máximo 300 caracteres.
+- Usa el vocabulario del negocio y de su país, no jerga de CRM.
+- No inventes clientes, cifras ni datos: solo estructura (columnas, secciones y etapas) y las recomendaciones.
+- "recomendaciones": de 3 a 5 consejos de NEGOCIO (cómo vender más, gastar menos o cuidar a sus clientes), NO de cómo usar el CRM: prohibido “registra tus pedidos”, “usa los recordatorios” o “guarda tus datos”. Deben salir de lo que contó: su tipo de negocio, su país, cuánto lleva y cuántos son (alguien que apenas empieza necesita validar y conseguir sus primeros clientes; alguien con equipo grande necesita orden y metas), y al menos uno debe atacar lo que dijo que le complica. Máximo 150 caracteres cada uno, accionables esta semana. Ejemplos para una peluquería con citas por WhatsApp (solo como guía de tono; escribe los tuyos para ESTE negocio y no los repitas): “Ofrece un paquete corte + tinte a precio cerrado para subir lo que gasta cada clienta.” y “Escríbele a cada clienta la víspera de su cita para evitar que falte.”
+- "resumen": 2 frases cortas, hablándole a la persona de “tú” (por ejemplo: “Armé tu CRM para tu peluquería: cada cita avanza desde que la agendas hasta que la clienta vuelve. Agregué servicios con precios y a tu equipo con sus turnos.”), con el vocabulario del negocio y mencionando lo más propio que armaste, sin listas. Máximo 300 caracteres.
 
 Responde SOLO con JSON, sin texto antes ni después:
-{"resumen":"...","etapas":["..."],"campos_contacto":[{"nombre":"...","tipo":"texto"}],
- "secciones":[{"nombre":"...","campos":[{"nombre":"...","tipo":"texto|numero|fecha"}]}],
- "nombres":{"contactos":"...","desarrollo":"...","rrhh":"..."},"automatizaciones":["recordatorios"]}"""
+{"analisis":[{"respuesta":"...","decision":"..."}],"resumen":"...","etapas":["..."],"campos_contacto":[{"nombre":"...","tipo":"texto"}],
+ "secciones":[{"nombre":"...","por_que":"...","campos":[{"nombre":"...","tipo":"texto|numero|fecha"}]}],
+ "nombres":{"contactos":"...","desarrollo":"...","rrhh":"..."},"automatizaciones":["recordatorios"],"recomendaciones":["..."]}"""
 
 
 def _limpia(texto: Any, largo: int) -> str:
@@ -268,7 +277,7 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
     """Aplica lo que propuso la IA con las operaciones normales del CRM. Cada pieza inválida se descarta sola.
     Devuelve (doc, lo que sí se aplicó)."""
     ahora = ahora or op.ahora_utc()
-    aplicado: dict[str, Any] = {"etapas": [], "campos_contacto": [], "secciones": [], "nombres": {}, "automatizaciones": []}
+    aplicado: dict[str, Any] = {"etapas": [], "campos_contacto": [], "secciones": [], "nombres": {}, "automatizaciones": [], "recomendaciones": 0, "ocultas": []}
     if not isinstance(propuesta, dict):
         return doc, aplicado
 
@@ -289,6 +298,23 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
         except op.ErrorCrm:
             continue
 
+    # Los nombres de las secciones integradas van PRIMERO: así una sección propia puede llamarse "Pedidos" si el tablero ya se renombró.
+    nombres = propuesta.get("nombres") if isinstance(propuesta.get("nombres"), dict) else {}
+    for sid, nombre in nombres.items():
+        n = _limpia(nombre, est.LARGO_NOMBRE)
+        if sid in IDS_SECCION and sid not in ("importar", "automatizaciones") and len(n) >= 2:
+            n = n[:1].upper() + n[1:]
+            rubro = (doc.get("brief") or {}).get("rubro")
+            propias = [s.get("nombre") for s in (propuesta.get("secciones") if isinstance(propuesta.get("secciones"), list) else []) if isinstance(s, dict)]
+            ocupados = [titulo_seccion(rubro, i, doc["secciones"]) for i in IDS_SECCION if i != sid] + [l["nombre"] for l in doc["listas"]] + [_limpia(x, 40) for x in propias]
+            if any(n.lower() == o.lower() for o in ocupados):
+                continue
+            try:
+                doc = op.seccion_renombrar(doc, sid, n, ahora)
+                aplicado["nombres"][sid] = n
+            except op.ErrorCrm:
+                continue
+
     for s in (propuesta.get("secciones") if isinstance(propuesta.get("secciones"), list) else [])[:MAX_SECCIONES_INICIALES]:
         if not isinstance(s, dict):
             continue
@@ -299,20 +325,13 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
         except op.ErrorCrm:
             continue
 
-    nombres = propuesta.get("nombres") if isinstance(propuesta.get("nombres"), dict) else {}
-    for sid, nombre in nombres.items():
-        n = _limpia(nombre, est.LARGO_NOMBRE)
-        if sid in IDS_SECCION and sid not in ("importar", "automatizaciones") and len(n) >= 2:
-            n = n[:1].upper() + n[1:]
-            rubro = (doc.get("brief") or {}).get("rubro")
-            ocupados = [titulo_seccion(rubro, i, doc["secciones"]) for i in IDS_SECCION if i != sid] + [l["nombre"] for l in doc["listas"]]
-            if any(n.lower() == o.lower() for o in ocupados):
-                continue
-            try:
-                doc = op.seccion_renombrar(doc, sid, n, ahora)
-                aplicado["nombres"][sid] = n
-            except op.ErrorCrm:
-                continue
+    # Los cobros integrados todavía no funcionan: no se le deja a la persona una pantalla vacía. Si el negocio lleva gastos o cobros, ya tiene su sección propia.
+    if "cobros" not in doc["ocultas"]:
+        try:
+            doc = est.seccion_ocultar(doc, "cobros", ahora)
+            aplicado["ocultas"].append("cobros")
+        except op.ErrorCrm:
+            pass
 
     encendidas = {a for a in (propuesta.get("automatizaciones") if isinstance(propuesta.get("automatizaciones"), list) else []) if a in AUTOMATIZACIONES}
     if encendidas or isinstance(propuesta.get("automatizaciones"), list):
@@ -320,6 +339,20 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
         for a in doc["automatizaciones"]:
             a["on"] = a["id"] in encendidas
         aplicado["automatizaciones"] = sorted(encendidas)
+
+    # Consejos propios del negocio: una sección con un registro por consejo (no son datos de clientes, son sugerencias para la persona).
+    consejos = [_limpia(r, 150) for r in (propuesta.get("recomendaciones") if isinstance(propuesta.get("recomendaciones"), list) else [])]
+    consejos = [c for c in consejos if len(c) >= 15][:MAX_RECOMENDACIONES]
+    if consejos:
+        try:
+            doc = est.lista_crear(doc, "Recomendaciones de Shifu", [{"nombre": "Recomendación", "tipo": "texto"}, {"nombre": "Estado", "tipo": "texto"}], ahora)
+            lista = doc["listas"][-1]
+            por_nombre = {c["nombre"]: c["id"] for c in lista["campos"]}
+            for c in consejos:
+                doc = est.registro_agregar(doc, lista["id"], {por_nombre["Recomendación"]: c, por_nombre["Estado"]: "Por probar"}, ahora)
+            aplicado["recomendaciones"] = len(consejos)
+        except op.ErrorCrm:
+            pass
 
     resumen = _limpia(propuesta.get("resumen"), 320)
     if resumen:
@@ -341,5 +374,5 @@ async def disenar(doc: dict, brief: dict, modelo: Any = None, ahora: datetime | 
         logger.warning("La IA no pudo diseñar el CRM; se usa la plantilla base: %s", type(e).__name__)
         return doc
     nuevo, aplicado = aplicar_propuesta(doc, propuesta, ahora)
-    logger.info("CRM diseñado por la IA: %s", {k: len(v) for k, v in aplicado.items()})
+    logger.info("CRM diseñado por la IA: %s", {k: (len(v) if hasattr(v, "__len__") else v) for k, v in aplicado.items()})
     return nuevo

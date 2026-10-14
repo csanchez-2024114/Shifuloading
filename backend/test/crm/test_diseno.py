@@ -195,5 +195,79 @@ def test_un_texto_con_instrucciones_no_cambia_el_prompt_ni_la_estructura():
 
 def test_el_prompt_pide_diferenciar_negocios_y_no_inventar_datos():
     s = diseno._SISTEMA_DISENO
-    assert "muy diferentes" in s and "No inventes clientes" in s and "No repitas" not in s
+    assert "MUY distintos" in s and "No inventes clientes" in s and "UNA POR UNA" in s and "por_que" in s and "analisis" in s
     assert "No repitas lo que ya respondió" in diseno._SISTEMA_PREGUNTAS and "panadería" in diseno._SISTEMA_PREGUNTAS
+
+
+# ───────── Personalización ─────────
+
+TACOS = {
+    "analisis": [{"respuesta": "vende tacos con pedidos por WhatsApp", "decision": "menú y pedidos por WhatsApp"}],
+    "resumen": "Armé tu CRM para tu puesto de tacos.",
+    "etapas": ["Pedido recibido", "Preparando", "Entregado", "Cliente frecuente"],
+    "secciones": [
+        {"nombre": "Menú y precios", "por_que": "vende tacos", "campos": [{"nombre": "Platillo"}, {"nombre": "Precio Q", "tipo": "numero"}]},
+        {"nombre": "Pedidos", "por_que": "pedidos por WhatsApp", "campos": [{"nombre": "Cliente"}, {"nombre": "Total Q", "tipo": "numero"}, {"nombre": "Estado"}]},
+        {"nombre": "Gastos del día", "por_que": "no sabe cuánto gasta", "campos": [{"nombre": "Concepto"}, {"nombre": "Monto Q", "tipo": "numero"}]},
+        {"nombre": "Trabajadores", "por_que": "2 a 5 personas", "campos": [{"nombre": "Nombre"}, {"nombre": "Turno"}]},
+    ],
+    "nombres": {"desarrollo": "Pendientes del día", "contactos": "Clientes"},
+    "recomendaciones": ["Guarda tus 5 platillos más vendidos en el menú, con precio.", "Fija un horario para recibir pedidos por WhatsApp.", "corto"],
+}
+
+
+@pytest.mark.asyncio
+async def test_un_negocio_de_tacos_recibe_menu_pedidos_gastos_y_trabajadores():
+    b = {**PANADERIA, "nombre": "TaChat's", "que_vendes": "tacos con pedidos por WhatsApp"}
+    nuevo = await diseno.disenar(generar("u1", b, AHORA), b, modelo=Modelo(TACOS), ahora=AHORA)
+    assert [l["nombre"] for l in nuevo["listas"]] == ["Menú y precios", "Pedidos", "Gastos del día", "Trabajadores", "Recomendaciones de Shifu"]
+    assert nuevo["secciones"]["desarrollo"] == "Pendientes del día"
+
+
+@pytest.mark.asyncio
+async def test_el_tablero_se_renombra_antes_para_poder_crear_una_seccion_propia_con_el_nombre_que_tenia():
+    # En comercio el tablero integrado se llama "Pedidos": solo se puede crear una sección "Pedidos" si antes se renombró el tablero.
+    doc = generar("u1", {"rubro": "comercio"}, AHORA)
+    nuevo, aplicado = diseno.aplicar_propuesta(doc, {"nombres": {"desarrollo": "Pendientes"}, "secciones": [{"nombre": "Pedidos", "campos": [{"nombre": "Cliente"}]}]}, AHORA)
+    assert [l["nombre"] for l in nuevo["listas"]] == ["Pedidos"] and nuevo["secciones"]["desarrollo"] == "Pendientes"
+    sin_renombrar, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Pedidos"}]}, AHORA)
+    assert sin_renombrar["listas"] == []  # sin renombrar el tablero, chocaría
+
+
+def test_los_cobros_integrados_se_ocultan_porque_todavia_no_funcionan():
+    doc = generar("u1", PANADERIA, AHORA)
+    nuevo, aplicado = diseno.aplicar_propuesta(doc, {"resumen": "ok"}, AHORA)
+    assert nuevo["ocultas"] == ["cobros"] and aplicado["ocultas"] == ["cobros"]
+    # y se puede volver a mostrar cuando la persona quiera
+    from app.crm import estructura as est
+    assert est.seccion_mostrar(nuevo, "cobros", AHORA)["ocultas"] == []
+
+
+def test_las_recomendaciones_quedan_como_una_seccion_con_un_registro_por_consejo():
+    doc = generar("u1", PANADERIA, AHORA)
+    nuevo, aplicado = diseno.aplicar_propuesta(doc, TACOS, AHORA)
+    lista = next(l for l in nuevo["listas"] if l["nombre"] == "Recomendaciones de Shifu")
+    assert aplicado["recomendaciones"] == 2 and len(lista["registros"]) == 2  # el consejo de 5 letras se descarta
+    valores = [list(r["valores"].values()) for r in lista["registros"]]
+    assert ["Guarda tus 5 platillos más vendidos en el menú, con precio.", "Por probar"] in valores
+    assert nuevo["contactos"] == [] and nuevo["total_contactos"] == 0  # los consejos no son clientes
+
+
+def test_no_hay_recomendaciones_si_la_ia_no_las_da():
+    nuevo, aplicado = diseno.aplicar_propuesta(generar("u1", PANADERIA, AHORA), {"resumen": "ok"}, AHORA)
+    assert aplicado["recomendaciones"] == 0 and all(l["nombre"] != "Recomendaciones de Shifu" for l in nuevo["listas"])
+
+
+def test_hasta_seis_secciones_y_siete_campos_cada_una():
+    doc = generar("u1", PANADERIA, AHORA)
+    propuesta = {"secciones": [{"nombre": f"Sección {i}", "campos": [{"nombre": f"Campo {j}"} for j in range(12)]} for i in range(10)]}
+    nuevo, _ = diseno.aplicar_propuesta(doc, propuesta, AHORA)
+    assert len(nuevo["listas"]) == 6 and all(len(l["campos"]) == 7 for l in nuevo["listas"])
+
+
+@pytest.mark.asyncio
+async def test_disenar_registra_el_resultado_sin_romperse_con_recomendaciones():
+    # Regresión: el log del resultado contaba elementos de un número y tumbaba la creación del CRM.
+    b = {**PANADERIA, "que_vendes": "tacos"}
+    nuevo = await diseno.disenar(generar("u1", b, AHORA), b, modelo=Modelo(TACOS), ahora=AHORA)
+    assert nuevo["resumen_ia"].startswith("Armé tu CRM")
