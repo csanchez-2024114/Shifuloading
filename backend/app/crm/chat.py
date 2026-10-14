@@ -45,7 +45,7 @@ _RE_SALUDO = re.compile(r"^(hola|buenas|hey|ayuda|que puedes)")
 
 
 # Qué trae cada tipo de borrado pendiente, además de su "tipo" (todos los valores son textos cortos)
-_FORMA_PENDIENTE = {"contacto": ("id",), "tarea": ("id",), "lista": ("id",), "registro": ("lista", "id"), "campo": ("ambito", "id")}
+_FORMA_PENDIENTE = {"contacto": ("id",), "tarea": ("id",), "lista": ("id",), "registro": ("lista", "id"), "registros": ("lista", "buscar"), "campo": ("ambito", "id")}
 
 
 def sanear_pendiente(p: Any) -> dict | None:
@@ -75,6 +75,15 @@ def ejecutar_pendiente(doc: dict, p: dict, ahora: datetime) -> tuple[dict, str]:
         r = next((x for x in (l["registros"] if l else []) if x["id"] == p["id"]), None)
         nombre = est.resumen_de_registro(l, r) if l and r else "ese registro"
         return est.registro_eliminar(doc, p["lista"], p["id"], ahora), f"Listo, eliminé “{nombre}”."
+    if tipo == "registros":
+        l = next((x for x in doc["listas"] if x["id"] == p["lista"]), None)
+        k = _norm(p["buscar"])
+        ids = [r["id"] for r in (l["registros"] if l else []) if k and k in _norm(" ".join(str(v) for v in r["valores"].values()))]
+        if not ids:
+            raise op.ErrorCrm(404, "Ya no encontré esos registros.")
+        for rid in ids:
+            doc = est.registro_eliminar(doc, p["lista"], rid, ahora)
+        return doc, f"Listo, eliminé {len(ids)} registros de “{l['nombre']}”."
     campos = doc["campos_contacto"] if p["ambito"] == "contactos" else next((x["campos"] for x in doc["listas"] if x["id"] == p["ambito"]), [])
     campo = next((c for c in campos if c["id"] == p["id"]), None)
     return est.campo_eliminar(doc, p["ambito"], p["id"], ahora), f"Listo, quité el campo “{campo['nombre'] if campo else ''}”."

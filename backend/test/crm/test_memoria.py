@@ -280,3 +280,13 @@ async def test_al_actualizar_la_memoria_los_hechos_no_llevan_clientes_del_crm(db
     await mem.actualizar_memoria(db, "u1", modelo)
     c = await mem.obtener(db, "u1")
     assert c["memoria"]["hechos"] == ["Vende los fines de semana"] and c["memoria"]["trabajo"] == "agregamos a Carmen Ruiz"
+
+
+def test_la_memoria_no_guarda_las_limitaciones_del_sistema_y_tampoco_las_repite_si_ya_estaban_guardadas():
+    crudo = {"hechos": ["Vende portones y rejas", "No puede eliminar todos los pedidos de un cliente en un solo comando", "Evita duplicar pedidos idénticos"],
+             "trabajo": "Recordamos que no se pueden eliminar varios pedidos; ofrecí listar uno por uno."}
+    m = mem.sanear_memoria(crudo, {"trabajo": "armamos tu menú"})
+    assert m["hechos"] == ["Vende portones y rejas"] and m["trabajo"] == "armamos tu menú"
+    guardada = {"memoria": {"hechos": ["Vende portones y rejas", "No puede eliminar todos los pedidos iguales"], "trabajo": "No se pueden eliminar varios"}}
+    bloque = mem.bloque_persona(guardada, "Ana")
+    assert "Vende portones" in bloque and "No puede eliminar" not in bloque and "Lo último" not in bloque
