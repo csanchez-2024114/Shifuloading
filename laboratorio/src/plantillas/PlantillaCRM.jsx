@@ -2,9 +2,11 @@
  * CrmPage (.mc, .mc-top, .mc-menu, .mc-main y los temas de crm-extra.css) para que lo que se prueba sea lo que se integra.
  * Si la plantilla no pasa `validarPlantilla`, muestra los errores en vez de dibujarla mal. */
 import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
-import { COMPONENTES } from './vistas'
+import { COMPONENTES, AnimarContext } from './vistas'
+import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe } from './datosEjemplo'
 import '@base/crm.css'
@@ -15,10 +17,25 @@ import './estilos.css'
 const ICONOS = { usuarios: LuUsers, calendario: LuCalendarDays, caja: LuPackage, tarjeta: LuCreditCard, tablero: LuFolderKanban, tabla: LuTable,
   actividad: LuActivity, equipo: LuIdCard, rayo: LuZap, documento: LuFileText, camion: LuTruck, reloj: LuCalendarClock }
 const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
+// Cada plantilla tiene su color de firma, tomado de la misma paleta de marca (no se agregan colores).
+const ACENTO = { embudo: '#22d3a6', agenda: '#7c5cff', pedidos: '#f5a623', membresias: '#3fb8ff', proyectos: '#b06cff', simple: '#22d3a6' }
+// Bloques que se le pueden "pedir a Shifu" en el inicio: los de la propia plantilla más los que su estructura permite.
+const nombreBloque = (w, porId) => `${TITULO_VISTA[w.vista] || w.vista} · ${porId[w.seccion]?.titulo}`
+/** Cambia el DOM con una transición animada (View Transitions) cuando el navegador la soporta; si no, cambia directo. */
+const conTransicion = (fn) => (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ? document.startViewTransition(() => flushSync(fn)) : fn())
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
 export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'actual', negocio = 'Mi negocio' }) {
   const [vista, setVista] = useState('inicio')
+  const def = ESTILOS.find((e) => e.id === estilo) || ESTILOS[0]
+  const animado = def.base === 'vivo'
+  // El inicio es editable como lo haría la IA: se quitan y se agregan bloques, y el resto se reacomoda animado.
+  const [bloques, setBloques] = useState(() => plantilla.inicio.map((w, i) => ({ ...w, uid: `b${i}` })))
+  const [quitados, setQuitados] = useState([])
+  const quitar = (uid) => conTransicion(() => { const b = bloques.find((x) => x.uid === uid); setBloques((bs) => bs.filter((x) => x.uid !== uid)); setQuitados((q) => [...q, b]) })
+  const poner = (uid) => conTransicion(() => { const b = quitados.find((x) => x.uid === uid); setQuitados((q) => q.filter((x) => x.uid !== uid)); setBloques((bs) => [...bs, b]) })
+  const ir = (id) => conTransicion(() => setVista(id))
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
@@ -27,7 +44,8 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
     return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, datos)} opciones={opciones || {}} datos={datos} /> : null
   }
   return (
-    <div className="mc pl" data-tema={tema} data-estilo={estilo}>
+    <AnimarContext.Provider value={animado}>
+    <div className="mc pl" data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6' }}>
       <header className="mc-top">
         <Logo height={24} color="var(--tx)" />
         <span className="mc-negocio">{negocio}</span>
@@ -36,7 +54,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
       <div className="mc-cuerpo">
         <nav className="mc-menu" aria-label="Secciones">
           <div className="mc-grupo">
-            <ul><li><button type="button" className={vista === 'inicio' ? 'on' : ''} aria-current={vista === 'inicio' ? 'page' : undefined} onClick={() => setVista('inicio')}><LuLayoutDashboard aria-hidden="true" />Inicio</button></li></ul>
+            <ul><li><button type="button" className={vista === 'inicio' ? 'on' : ''} aria-current={vista === 'inicio' ? 'page' : undefined} onClick={() => ir('inicio')}><LuLayoutDashboard aria-hidden="true" />Inicio</button></li></ul>
           </div>
           {GRUPOS.map((g, gi) => {
             const items = plantilla.secciones.filter((s) => s.grupo === gi)
@@ -47,7 +65,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
                 <ul>
                   {items.map((s) => {
                     const I = ICONOS[s.icono] || LuTable
-                    return <li key={s.id}><button type="button" className={vista === s.id ? 'on' : ''} aria-current={vista === s.id ? 'page' : undefined} onClick={() => setVista(s.id)}><I aria-hidden="true" />{s.titulo}</button></li>
+                    return <li key={s.id}><button type="button" className={vista === s.id ? 'on' : ''} aria-current={vista === s.id ? 'page' : undefined} onClick={() => ir(s.id)}><I aria-hidden="true" />{s.titulo}</button></li>
                   })}
                 </ul>
               </div>
@@ -62,12 +80,19 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
             <>
               <div className="mc-cab"><div><h1>Inicio</h1><p>{plantilla.para}</p></div></div>
               <div className="pl-inicio">
-                {plantilla.inicio.map((w, i) => (
-                  <section key={i} className={`pl-bloque pl-bloque-${w.vista}`}>
-                    <h2>{TITULO_VISTA[w.vista] || w.vista} · {porId[w.seccion].titulo}</h2>
+                {bloques.map((w, i) => (
+                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}`} style={{ '--i': i, viewTransitionName: `pl-${w.uid}` }}>
+                    <h2>{nombreBloque(w, porId)}</h2>
+                    {animado && <button type="button" className="pl-quitar" onClick={() => quitar(w.uid)} aria-label={`Quitar ${nombreBloque(w, porId)}`}>×</button>}
                     {dibujar(porId[w.seccion], w.vista, w.opciones)}
                   </section>
                 ))}
+                {animado && quitados.length > 0 && (
+                  <div className="pl-agregar" style={{ viewTransitionName: 'pl-agregar' }}>
+                    <span>Pedirle a Shifu que vuelva a poner:</span>
+                    {quitados.map((w) => <button key={w.uid} type="button" onClick={() => poner(w.uid)}>＋ {nombreBloque(w, porId)}</button>)}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -83,5 +108,6 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
         </main>
       </div>
     </div>
+    </AnimarContext.Provider>
   )
 }

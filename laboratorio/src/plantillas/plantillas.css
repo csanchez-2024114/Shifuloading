@@ -117,3 +117,28 @@
   .pl-dona ul { width: 100%; }
   .pl-barras > div { grid-template-columns: minmax(0, 90px) 1fr auto; }
 }
+
+/* ── Contención de datos grandes (todas las vistas, todos los estilos) ──
+ * Ninguna vista crece sin límite: cada contenedor tiene alto máximo y scroll propio, con su encabezado fijo.
+ * La página nunca se estira por la cantidad de registros. */
+.pl-tabla-marco { display: grid; gap: 10px; min-width: 0; }
+.pl-tabla-barra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pl-tabla-barra input { flex: 1 1 200px; min-width: 0; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--linea); background: var(--panel); color: var(--tx); font: 13.5px var(--fuente); }
+.pl-tabla-barra span { color: var(--tx3); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pl-tabla-barra button { width: 34px; height: 34px; border-radius: 999px; border: 1px solid var(--linea); background: var(--card); color: var(--tx); font-size: 16px; cursor: pointer; }
+.pl-tabla-barra button:disabled { opacity: .35; cursor: default; }
+.pl-tabla { max-height: min(62vh, 620px); overflow: auto; overscroll-behavior: contain; }
+.pl-tabla-cab { position: sticky; top: 0; z-index: 1; background: var(--card); box-shadow: inset 0 -1px 0 var(--linea); }
+.pl-ordenar { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+.pl-ordenar i { font-style: normal; opacity: .5; }
+.pl-bloque .pl-tabla { max-height: 360px; }
+.pl-col { max-height: 520px; overflow-y: auto; overscroll-behavior: contain; }
+.pl-col h3 { position: sticky; top: -12px; z-index: 1; margin: -12px -12px 2px; padding: 12px 12px 8px; background: var(--card); }
+.pl-dia { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+.pl-venc-grupo ul { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
+.pl-kpis { max-height: 280px; overflow-y: auto; }
+.mc-feed { max-height: 560px; overflow-y: auto; }
+@media (max-width: 700px) {
+  .pl-tabla { max-height: none; overflow: visible; }  /* en móvil son tarjetas: la paginación ya limita a 25 */
+  .pl-col { max-height: 60vh; }
+}
