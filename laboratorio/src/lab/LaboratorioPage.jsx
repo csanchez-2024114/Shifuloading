@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import { PLANTILLAS } from '../plantillas/semillas'
 import { validarPlantilla } from '../plantillas/validar'
 import { ROTAS } from './rotas'
+import { ESTILOS } from '../plantillas/estilos'
 import './laboratorio.css'
 
 const ANCHOS = [360, 390, 768, 1024, 1280, 1440]
@@ -12,7 +13,7 @@ const ALTO = { 360: 760, 390: 844, 768: 1024, 1024: 768, 1280: 800, 1440: 900 }
 const COMPARAR = [360, 768, 1280]
 const DATOS = [['vacio', 'Vacío'], ['pocos', 'Pocos (8)'], ['muchos', 'Muchos (220)']]
 
-const urlVista = (plantilla, datos, tema) => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}`
+const urlVista = (plantilla, datos, tema, estilo) => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}&estilo=${estilo}`
 
 /** Un iframe con el ancho real del dispositivo, escalado para que quepa en el espacio disponible. */
 function Marco({ src, ancho, titulo, maxAncho }) {
@@ -33,6 +34,7 @@ export default function LaboratorioPage() {
   const plantilla = q.get('plantilla') || 'embudo'
   const datos = q.get('datos') || 'pocos'
   const tema = q.get('tema') || 'oscuro'
+  const estilo = q.get('estilo') || 'actual'
   const modo = q.get('modo') || 'una'
   const ancho = Number(q.get('ancho')) || 1280
   const fijar = (k, v) => { const n = new URLSearchParams(q); n.set(k, v); setQ(n, { replace: true }) }
@@ -66,12 +68,15 @@ export default function LaboratorioPage() {
           <ul className="lab-lista">{ROTAS.map((p) => <li key={p.id}><button type="button" className={plantilla === p.id ? 'on' : ''} onClick={() => fijar('plantilla', p.id)}><b>{p.nombre}</b></button></li>)}</ul>
         </details>
 
+        <h2>Estilo</h2>
+        <ul className="lab-lista">{ESTILOS.map((e) => <li key={e.id}><button type="button" className={estilo === e.id ? 'on' : ''} onClick={() => fijar('estilo', e.id)}><b>{e.nombre}</b><small>{e.idea}</small></button></li>)}</ul>
+
         <h2>Datos</h2>
         <div className="lab-botones">{DATOS.map(([v, t]) => <button key={v} type="button" className={datos === v ? 'on' : ''} onClick={() => fijar('datos', v)}>{t}</button>)}</div>
         <h2>Tema</h2>
         <div className="lab-botones">{[['oscuro', 'Oscuro'], ['claro', 'Claro']].map(([v, t]) => <button key={v} type="button" className={tema === v ? 'on' : ''} onClick={() => fijar('tema', v)}>{t}</button>)}</div>
         <h2>Modo</h2>
-        <div className="lab-botones">{[['una', 'Un ancho'], ['comparar', 'Comparar 3 anchos'], ['todas', 'Todas las plantillas']].map(([v, t]) => <button key={v} type="button" className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}>{t}</button>)}</div>
+        <div className="lab-botones">{[['una', 'Un ancho'], ['comparar', 'Comparar 3 anchos'], ['todas', 'Todas las plantillas'], ['estilos', 'Todos los estilos']].map(([v, t]) => <button key={v} type="button" className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}>{t}</button>)}</div>
         {modo !== 'comparar' && (
           <>
             <h2>Ancho</h2>
@@ -82,12 +87,15 @@ export default function LaboratorioPage() {
       </aside>
 
       <main className="lab-zona" ref={zona}>
-        {modo === 'una' && <Marco src={urlVista(plantilla, datos, tema)} ancho={ancho} titulo={todas.find((p) => p.id === plantilla)?.nombre} maxAncho={disp - 8} />}
+        {modo === 'una' && <Marco src={urlVista(plantilla, datos, tema, estilo)} ancho={ancho} titulo={todas.find((p) => p.id === plantilla)?.nombre} maxAncho={disp - 8} />}
         {modo === 'comparar' && (
-          <div className="lab-fila">{COMPARAR.map((a) => <Marco key={a} src={urlVista(plantilla, datos, tema)} ancho={a} titulo={a < 700 ? 'Móvil' : a < 1000 ? 'Tablet' : 'Escritorio'} maxAncho={(disp - 32) * (a / COMPARAR.reduce((s, x) => s + x, 0))} />)}</div>
+          <div className="lab-fila">{COMPARAR.map((a) => <Marco key={a} src={urlVista(plantilla, datos, tema, estilo)} ancho={a} titulo={a < 700 ? 'Móvil' : a < 1000 ? 'Tablet' : 'Escritorio'} maxAncho={(disp - 32) * (a / COMPARAR.reduce((s, x) => s + x, 0))} />)}</div>
         )}
         {modo === 'todas' && (
-          <div className="lab-rejilla">{PLANTILLAS.map((p) => <Marco key={p.id} src={urlVista(p.id, datos, tema)} ancho={ancho} titulo={p.nombre} maxAncho={ancho < 700 ? (disp - 48) / 3 : (disp - 24) / 2} />)}</div>
+          <div className="lab-rejilla">{PLANTILLAS.map((p) => <Marco key={p.id} src={urlVista(p.id, datos, tema, estilo)} ancho={ancho} titulo={p.nombre} maxAncho={ancho < 700 ? (disp - 48) / 3 : (disp - 24) / 2} />)}</div>
+        )}
+        {modo === 'estilos' && (
+          <div className="lab-rejilla">{ESTILOS.map((e) => <Marco key={e.id} src={urlVista(plantilla, datos, tema, e.id)} ancho={ancho} titulo={e.nombre} maxAncho={ancho < 700 ? (disp - 48) / 3 : (disp - 24) / 2} />)}</div>
         )}
       </main>
     </div>

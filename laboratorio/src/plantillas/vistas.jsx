@@ -164,7 +164,7 @@ function Grafica({ seccion, campos, registros, opciones }) {
     return (
       <figure className="pl-grafica">
         <svg viewBox="0 0 480 180" role="img" aria-label={`Altas por mes en ${seccion.titulo}`}>
-          <polyline points={pts} fill="none" stroke="#22d3a6" strokeWidth="3" strokeLinejoin="round" />
+          <polyline points={pts} pathLength="1" fill="none" stroke="#22d3a6" strokeWidth="3" strokeLinejoin="round" />
           {valores.map((v, i) => <g key={i}><circle cx={20 + i * 40} cy={150 - (v / max) * 120} r="4" fill="#22d3a6" /><text x={20 + i * 40} y="172" textAnchor="middle">{MESES[meses[i].getMonth()]}</text></g>)}
         </svg>
         <figcaption>Altas por mes · {campo(campos, opciones.fecha)?.nombre}</figcaption>

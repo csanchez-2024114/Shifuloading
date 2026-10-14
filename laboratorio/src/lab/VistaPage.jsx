@@ -12,9 +12,10 @@ export default function VistaPage() {
   const id = q.get('plantilla') || 'embudo'
   const nivel = q.get('datos') || 'pocos'
   const tema = q.get('tema') === 'claro' ? 'claro' : 'oscuro'
+  const estilo = q.get('estilo') || 'actual'
   const plantilla = plantillaPorId(id) || ROTAS.find((p) => p.id === id)
   const datos = useMemo(() => (plantilla ? datosEjemplo(plantilla, nivel) : null), [plantilla, nivel])
   useEffect(() => { document.documentElement.style.colorScheme = tema === 'claro' ? 'light' : 'dark' }, [tema])
   if (!plantilla) return <p style={{ padding: 24 }}>No existe la plantilla «{id}».</p>
-  return <PlantillaCRM key={`${id}-${nivel}`} plantilla={plantilla} datos={datos} tema={tema} negocio="Negocio de prueba" />
+  return <PlantillaCRM key={`${id}-${nivel}`} plantilla={plantilla} datos={datos} tema={tema} estilo={estilo} negocio="Negocio de prueba" />
 }

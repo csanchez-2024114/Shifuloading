@@ -10,13 +10,14 @@ import { registrosDe } from './datosEjemplo'
 import '@base/crm.css'
 import '@base/crm-extra.css'
 import './plantillas.css'
+import './estilos.css'
 
 const ICONOS = { usuarios: LuUsers, calendario: LuCalendarDays, caja: LuPackage, tarjeta: LuCreditCard, tablero: LuFolderKanban, tabla: LuTable,
   actividad: LuActivity, equipo: LuIdCard, rayo: LuZap, documento: LuFileText, camion: LuTruck, reloj: LuCalendarClock }
 const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
-export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', negocio = 'Mi negocio' }) {
+export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'actual', negocio = 'Mi negocio' }) {
   const [vista, setVista] = useState('inicio')
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
@@ -26,7 +27,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', negoci
     return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, datos)} opciones={opciones || {}} datos={datos} /> : null
   }
   return (
-    <div className="mc pl" data-tema={tema}>
+    <div className="mc pl" data-tema={tema} data-estilo={estilo}>
       <header className="mc-top">
         <Logo height={24} color="var(--tx)" />
         <span className="mc-negocio">{negocio}</span>
@@ -53,7 +54,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', negoci
             )
           })}
         </nav>
-        <main className="mc-main">
+        <main className="mc-main" key={vista}>
           {errores.length > 0 && (
             <div className="pl-errores" role="alert"><b>Esta plantilla no es válida ({errores.length})</b><ul>{errores.map((e) => <li key={e}>{e}</li>)}</ul></div>
           )}
