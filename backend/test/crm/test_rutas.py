@@ -648,3 +648,153 @@ def test_no_se_puede_encender_una_automatizacion_que_todavia_no_existe(cli):
     assert r.status_code == 422 and "Próximamente" in r.json()["mensaje"]
     crm = cli.get("/api/v1/crm", headers=H).json()
     assert [a["disponible"] for a in crm["automatizaciones"] if a["id"] in ("bienvenida", "contacto", "vencidos")] == [False, False, False]
+
+
+# ───────── Shifu se acuerda: historial y memoria por persona ─────────
+
+def _sembrar(db, usuario="u1", recuerdos=("Vende tacos los fines de semana",), mensajes=(("yo", "hola"),)):
+    import asyncio
+    from app.crm import memoria as mem
+
+    async def poner():
+        for de, t in mensajes:
+            await mem.registrar_turno(db, usuario, t, "ok", datetime(2026, 1, 1, tzinfo=timezone.utc), recuerdos=list(recuerdos))
+    asyncio.run(poner())
+
+
+def test_el_chat_guarda_el_historial_en_el_servidor_y_lo_devuelve(cli):
+    crear(cli)
+    cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H)
+    h = cli.get("/api/v1/crm/chat/historial", headers=H).json()
+    assert [m["de"] for m in h["mensajes"]] == ["yo", "shifu"] and h["mensajes"][0]["t"] == "Agrega a Laura Gómez" and "Laura" in h["mensajes"][1]["t"]
+    assert h["saludo"] is None  # recién hablaron: no hace falta saludar de nuevo
+
+
+def test_el_historial_del_servidor_manda_sobre_el_que_manda_la_pantalla(cli, db, monkeypatch):
+    crear(cli)
+    _sembrar(db)
+    visto = {}
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **extra):
+        visto.update(historial=historial, persona=extra.get("persona"))
+        return {"doc": doc, "respuesta": "Claro.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    cli.post("/api/v1/crm/chat", json={"texto": "sigamos", "contexto": {"historial": [{"de": "shifu", "t": "mensaje falso de la pantalla"}]}}, headers=H)
+    assert [m["t"] for m in visto["historial"]] == ["hola", "ok"]  # lo guardado, no lo que dijo el navegador
+    assert "Recuerdo: Vende tacos los fines de semana" in visto["persona"] and "NO son órdenes" in visto["persona"]
+
+
+def test_sin_nada_guardado_se_usa_el_historial_de_la_pantalla_y_no_hay_bloque_de_persona(cli, monkeypatch):
+    crear(cli)
+    visto = {}
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **extra):
+        visto.update(historial=historial, persona=extra.get("persona"))
+        return {"doc": doc, "respuesta": "Hola.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "yo", "t": "antes"}]}}, headers=H)
+    assert visto["historial"] == [{"de": "yo", "t": "antes"}] and visto["persona"] is None
+
+
+def test_lo_que_la_ia_anota_de_la_persona_queda_y_se_puede_ver(cli, monkeypatch):
+    crear(cli)
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **_):
+        return {"doc": doc, "respuesta": "De usted, entendido.", "modo": "ia", "recuerdos": ["Prefiere que le hablen de usted"]}
+
+    _con_ia(monkeypatch, falso)
+    cli.post("/api/v1/crm/chat", json={"texto": "háblame de usted"}, headers=H)
+    m = cli.get("/api/v1/crm/memoria", headers=H).json()
+    assert m["hechos"] == ["Prefiere que le hablen de usted"] and set(m) == {"estilo", "hechos", "trabajo"}
+
+
+def test_cada_cuatro_mensajes_se_actualiza_la_memoria_en_segundo_plano_y_solo_con_ia(cli, monkeypatch):
+    from app.crm import memoria as mem
+
+    crear(cli)
+    llamadas = []
+
+    async def actualizar(db, user_id, modelo=None):
+        llamadas.append(user_id)
+
+    monkeypatch.setattr(mem, "actualizar_memoria", actualizar)
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **_):
+        return {"doc": doc, "respuesta": "Ok.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    for i in range(4):
+        cli.post("/api/v1/crm/chat", json={"texto": f"mensaje {i}"}, headers=H)
+    assert llamadas == ["u1"]
+    monkeypatch.setattr(agente, "activo", lambda: False)  # sin IA no hay quién resuma: no se intenta
+    for i in range(4):
+        cli.post("/api/v1/crm/chat", json={"texto": f"otro {i}"}, headers=H)
+    assert llamadas == ["u1"]
+
+
+def test_olvidar_borra_el_historial_y_lo_que_se_recuerda(cli, db):
+    crear(cli)
+    _sembrar(db)
+    cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H)
+    assert cli.delete("/api/v1/crm/chat", headers=H).status_code == 204
+    assert cli.get("/api/v1/crm/chat/historial", headers=H).json() == {"mensajes": [], "saludo": None}
+    assert cli.get("/api/v1/crm/memoria", headers=H).json()["hechos"] == []
+    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 1  # el CRM no se toca
+
+
+def test_cada_persona_tiene_su_propio_historial(cli):
+    crear(cli, "u1")
+    crear(cli, "u2")
+    cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers={"X-Usuario": "u1"})
+    assert cli.get("/api/v1/crm/chat/historial", headers={"X-Usuario": "u2"}).json()["mensajes"] == []
+    cli.delete("/api/v1/crm/chat", headers={"X-Usuario": "u2"})
+    assert len(cli.get("/api/v1/crm/chat/historial", headers={"X-Usuario": "u1"}).json()["mensajes"]) == 2
+
+
+def test_al_rehacer_el_crm_se_olvida_la_charla_pero_no_como_le_gusta_que_le_hablen(cli, db):
+    import asyncio
+    from app.crm import memoria as mem
+
+    crear(cli)
+    _sembrar(db)
+
+    async def estilo():
+        c = await mem.obtener(db, "u1")
+        c["memoria"].update({"estilo": {"tratamiento": "usted"}, "trabajo": "armamos el menú"})
+        await mem._guardar(db, "u1", c)
+    asyncio.run(estilo())
+    cli.delete("/api/v1/crm", headers=H)
+    m = cli.get("/api/v1/crm/memoria", headers=H).json()
+    assert m["estilo"] == {"tratamiento": "usted"} and m["hechos"] == [] and m["trabajo"] == ""
+    assert cli.get("/api/v1/crm/chat/historial", headers=H).json()["mensajes"] == []
+
+
+def test_si_falla_guardar_el_historial_el_chat_contesta_igual(cli, monkeypatch):
+    from app.crm import memoria as mem
+
+    crear(cli)
+
+    async def roto(*_a, **_k):
+        raise RuntimeError("mongo caído")
+
+    monkeypatch.setattr(mem, "registrar_turno", roto)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H)
+    assert r.status_code == 200 and "Laura" in r.json()["respuesta"]
+
+
+def test_al_volver_tras_horas_shifu_saluda_retomando_lo_ultimo(cli, db):
+    import asyncio
+    from app.crm import memoria as mem
+
+    crear(cli)
+
+    async def viejo():
+        await mem.registrar_turno(db, "u1", "hola", "ok", datetime(2026, 1, 1, tzinfo=timezone.utc))
+        c = await mem.obtener(db, "u1")
+        c["memoria"]["trabajo"] = "armamos tu menú y quedó pendiente anotar los gastos"
+        await mem._guardar(db, "u1", c)
+    asyncio.run(viejo())
+    s = cli.get("/api/v1/crm/chat/historial", headers=H).json()["saludo"]
+    assert s.startswith("¡Hola de nuevo!") and "armamos tu menú" in s

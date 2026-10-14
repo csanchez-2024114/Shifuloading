@@ -30,6 +30,9 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `PATCH /crm/contactos/:id` | campos a cambiar (`etapa`, `n`, `dueno`…) | CRM |
 | `DELETE /crm/contactos/:id` | — | CRM |
 | `POST /crm/seguimiento` | `{ brief }` (sin sesión; limitado por IP) | `{ preguntas: [{ id, tipo: "una"\|"varias"\|"parrafo", titulo, emoji, sub, opciones: [{ v, e, t }] }], modo: "ia"\|"base" }`: preguntas propias del negocio que la IA hace tras las generales |
+| `GET /crm/chat/historial` | — | `{ mensajes: [{ de: "yo"\|"shifu", t }], saludo: string\|null }`: la conversación guardada en el servidor y, si hace más de 6 horas que no hablan y hay algo pendiente, un saludo que retoma lo último |
+| `GET /crm/memoria` | — | `{ estilo, hechos[], trabajo }`: lo que Shifu recuerda de la persona (nada escondido) |
+| `DELETE /crm/chat` | — | 204. Borra el historial y todo lo que Shifu recuerda de la persona (el CRM no se toca) |
 | `POST /crm/tareas` | `{ t }` | CRM (entra en la columna `porHacer`) |
 | `PATCH /crm/tareas/:id` | `{ columna: "porHacer" \| "enCurso" \| "hecho" }` | CRM |
 | `DELETE /crm/tareas/:id` | — | CRM |
@@ -110,3 +113,13 @@ El módulo de CRM ya existe en `backend/app/crm` y `backend/app/routes/crm` (col
 ## Automatizaciones
 
 Funcionan de verdad tres, sin conectar nada de afuera: **recordatorios** (crea una tarea con `auto: true` cuando un contacto lleva 3 días sin cambiar de etapa), **reparto** (asigna los contactos nuevos por turnos entre el equipo) y **resumen** (una vez por semana deja un resumen en `eventos`). **bienvenida**, **contacto** y **vencidos** todavía no existen (`disponible: false`). No hay proceso en segundo plano: lo pendiente se calcula cuando alguien abre o toca el CRM, y repetirlo no duplica nada.
+
+
+## Memoria de Shifu
+
+El historial del chat y lo que Shifu recuerda viven en el servidor (colección `crm_conversaciones`, un documento por persona), no en la pantalla: sobreviven a recargar y a cambiar de dispositivo, y lo que mande el navegador en `contexto.historial` solo se usa si todavía no hay nada guardado.
+
+- **Historial:** los últimos 200 mensajes.
+- **Memoria:** el estilo (`tratamiento` tú/usted, `tono`, `largo`, `emojis`), hasta 12 hechos duraderos del negocio o de cómo quiere su CRM, y una frase de en qué trabajaron la última vez. Se pone al día en segundo plano cada 4 mensajes de la persona y con la herramienta `recordar`. Lo que la persona pide explícitamente manda sobre lo que se observa.
+- **Privacidad:** nunca se guardan contraseñas, claves, tarjetas, identificaciones, teléfonos, correos ni datos de salud, religión o política. Los hechos duraderos tampoco llevan nombres de clientes. La persona lo borra todo con `DELETE /crm/chat`; rehacer el CRM olvida la conversación pero conserva cómo le gusta que le hablen.
+- Lo recordado entra al prompt como contexto, nunca como órdenes.

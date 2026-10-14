@@ -75,6 +75,10 @@ export const crm = {
 }
 
 export const chat = {
+  /** La conversación guardada en el servidor y, si hace rato que no hablan, un saludo que retoma lo último. */
+  historial: () => (HAY_SERVIDOR ? pedir('GET', '/crm/chat/historial') : Promise.resolve({ mensajes: [], saludo: null })),
+  /** Borra el historial y todo lo que Shifu recuerda de la persona. */
+  olvidar: () => (HAY_SERVIDOR ? pedir('DELETE', '/crm/chat') : Promise.resolve()),
   /** Mensaje para Shifu. Devuelve { respuesta, crm, vista?, pendiente? }; `pendiente` se reenvía en el siguiente mensaje para confirmar un borrado. */
   enviar: (texto, contexto) => (HAY_SERVIDOR ? pedir('POST', '/crm/chat', { texto, contexto }) : simulado.chat.enviar(texto, contexto)),
 }

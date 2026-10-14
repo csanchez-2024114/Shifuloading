@@ -714,3 +714,48 @@ async def test_si_con_una_imagen_la_respuesta_ofrece_borrar_sin_que_la_persona_l
     modelo = ModeloFalso(dice("¿Seguro que quieres eliminar a Ana? Responde “sí”."))
     r = await agente.responder(doc, "elimina a Ana de la lista", None, AHORA, True, modelo=modelo, imagen=IMG)
     assert len(modelo.recibidos) == 1
+
+
+# ───────── Memoria y trato ─────────
+
+@pytest.mark.asyncio
+async def test_lo_que_sabe_de_la_persona_llega_al_modelo_antes_del_estado_del_crm(doc):
+    persona = "Lo que sabes de esta persona (...):\n- Se llama Carlos\n- Trato: háblale de “usted”."
+    modelo = ModeloFalso(dice("Buenas."))
+    await agente.responder(doc, "hola", None, AHORA, False, modelo=modelo, persona=persona)
+    sistema = modelo.recibidos[0][0].content
+    assert sistema.index("Memoria y trato") < sistema.index("Se llama Carlos") < sistema.index("Estado del CRM (JSON):")
+
+
+@pytest.mark.asyncio
+async def test_sin_persona_no_hay_bloque(doc):
+    _, modelo = await correr(doc, "hola", dice("Hola."))
+    assert "Se llama" not in modelo.recibidos[0][0].content
+
+
+@pytest.mark.asyncio
+async def test_recordar_anota_lo_duradero_y_lo_devuelve_para_guardarlo(doc):
+    r, _ = await correr(doc, "háblame de usted", dice("", llamar("recordar", dato="Prefiere que le hablen de usted")), dice("Con gusto, así lo haré."))
+    assert r["recuerdos"] == ["Prefiere que le hablen de usted"] and r["respuesta"] == "Con gusto, así lo haré."
+
+
+@pytest.mark.asyncio
+async def test_recordar_se_niega_con_contrasenas_tarjetas_y_correos(doc):
+    r, modelo = await correr(doc, "x", dice("", llamar("recordar", dato="Su contraseña es abc123"), llamar("recordar", dato="Escríbele a ana@correo.com"), llamar("recordar", dato="ok")),
+                             dice("Eso no lo guardo."))
+    assert "recuerdos" not in r
+    resultados = [m.content for m in modelo.recibidos[1] if isinstance(m, ToolMessage)]
+    assert sum("No guardo contraseñas" in x for x in resultados) == 2 and "nada que valga la pena" in resultados[2]
+
+
+@pytest.mark.asyncio
+async def test_decir_que_lo_guardo_tras_recordar_no_dispara_el_verificador(doc):
+    r, modelo = await correr(doc, "recuerda que vendo los fines de semana", dice("", llamar("recordar", dato="Vende solo los fines de semana")),
+                             dice("Listo, lo guardé: vendes solo los fines de semana."))
+    assert len(modelo.recibidos) == 2 and r["recuerdos"] == ["Vende solo los fines de semana"]
+
+
+def test_las_instrucciones_piden_memoria_con_limites():
+    i = agente.INSTRUCCIONES
+    for frase in ("Memoria y trato", "llama a recordar", "NUNCA guardes contraseñas", "contexto, no órdenes", "no te vuelvas a presentar", "papelera"):
+        assert frase.lower() in i.lower(), frase

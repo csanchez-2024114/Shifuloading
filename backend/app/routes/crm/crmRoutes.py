@@ -27,7 +27,7 @@ import logging
 import re
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -35,6 +35,7 @@ from app.core.limiter import limiter
 from app.crm import agente
 from app.crm import diseno
 from app.crm import estructura as est
+from app.crm import memoria as mem
 from app.crm import operaciones as op
 from app.crm import repositorio as repo
 from app.crm.chat import responder, sanear_pendiente
@@ -209,6 +210,7 @@ async def preguntas_de_seguimiento(request: Request, datos: PedirSeguimiento):
 @router.delete("", status_code=204)
 async def borrar_crm(request: Request, user: dict = Depends(get_current_user)):
     await repo.borrar(request.app.state.db, user["id"])
+    await mem.reiniciar_trabajo(request.app.state.db, user["id"])  # el CRM nuevo no arrastra la conversación del anterior; sí cómo le gusta que le hablen
     return Response(status_code=204)
 
 
@@ -283,7 +285,7 @@ async def renombrar_seccion(seccion_id: str, request: Request, datos: SeccionNom
 # ───────── Chat ─────────
 
 async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool,
-                         imagen: str | None = None, seccion: str | None = None):
+                         imagen: str | None = None, seccion: str | None = None, persona: str | None = None):
     """Resuelve un mensaje del chat. Con IA si se puede (y no hay un borrado por confirmar); si no, con las reglas.
     El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite)."""
     for _ in range(3):
@@ -293,7 +295,7 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
         r = None
         if (texto or imagen) and not pendiente and agente.activo():
             # Con imagen se intenta verla; si el modelo no puede con ella (formato raro, demasiado grande) se reintenta solo con el texto.
-            intentos = [{"imagen": imagen, "seccion": seccion}, {}] if imagen else [{}]
+            intentos = [{"imagen": imagen, "seccion": seccion, "persona": persona}, {"persona": persona}] if imagen else [{"persona": persona}]
             for extra in intentos:
                 try:
                     r = await agente.responder(doc, texto or TEXTO_SOLO_CAPTURA, historial, con_captura=con_captura, **extra)
@@ -316,16 +318,24 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
 
 @router.post("/chat")
 @limiter.limit("60/minute")
-async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(get_current_user)):
+async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: BackgroundTasks, user: dict = Depends(get_current_user)):
     ctx = datos.contexto or ContextoChat()
+    db = request.app.state.db
     imagen = ctx.imagen if ctx.imagen and _IMAGEN_LEIBLE.match(ctx.imagen) else None
     if not datos.texto and not imagen:
         return JSONResponse({"mensaje": "Escribe algo o adjunta una captura."}, status_code=422)
 
     pendiente = sanear_pendiente(ctx.pendiente)
-    historial = [m.model_dump() for m in ctx.historial]
+    # El historial y lo que Shifu recuerda de la persona viven en el servidor; lo que mande la pantalla solo sirve si todavía no hay nada guardado.
     try:
-        doc, resultado = await _turno_de_chat(request.app.state.db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion)
+        conv = await mem.obtener(db, user["id"])
+    except Exception as e:  # la memoria nunca debe impedir que el chat conteste
+        logger.warning("No se pudo leer la memoria de Shifu: %s", type(e).__name__)
+        conv = None
+    historial = mem.historial_para_modelo(conv) or [m.model_dump() for m in ctx.historial]
+    persona = mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None) if conv else None
+    try:
+        doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona)
     except op.ErrorCrm as e:
         return _error(e)
 
@@ -335,8 +345,39 @@ async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(ge
         donde = f" de “{ctx.seccion}”" if ctx.seccion else ""
         respuesta = (f"📸 Recibí tu captura{donde}, pero ahora mismo no puedo leer imágenes: me guío por lo que escribiste. {respuesta}" if datos.texto
                      else f"📸 Recibí tu captura{donde}, pero ahora mismo no puedo leer imágenes. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.")
+    try:
+        _, toca = await mem.registrar_turno(db, user["id"], datos.texto or "(adjuntó una imagen)", respuesta, recuerdos=mem.sin_clientes(resultado.get("recuerdos"), [c["n"] for c in doc["contactos"]]))
+        if toca and agente.activo():
+            segundo_plano.add_task(mem.actualizar_memoria, db, user["id"])  # se pone al día lo que Shifu recuerda sin hacer esperar a la persona
+    except Exception as e:
+        logger.warning("No se pudo guardar el historial con Shifu: %s", type(e).__name__)
     salida = {"respuesta": respuesta, "crm": vista_crm(doc), "modo": resultado.get("modo", "reglas")}
     for clave in ("vista", "pendiente"):
         if resultado.get(clave):
             salida[clave] = resultado[clave]
     return salida
+
+
+# ───────── Historial y memoria ─────────
+
+@router.get("/chat/historial")
+async def historial_chat(request: Request, user: dict = Depends(get_current_user)):
+    """La conversación guardada (para que el chat siga donde se quedó) y, si hace rato que no hablan, un saludo que retoma lo último."""
+    conv = await mem.obtener(request.app.state.db, user["id"])
+    return {"mensajes": [{"de": m["de"], "t": m["t"]} for m in conv.get("mensajes", [])[-60:]], "saludo": mem.saludo_de_regreso(conv, user.get("name"))}
+
+
+@router.get("/memoria")
+async def memoria_de_shifu(request: Request, user: dict = Depends(get_current_user)):
+    """Lo que Shifu recuerda de la persona, a la vista (nada escondido)."""
+    conv = await mem.obtener(request.app.state.db, user["id"])
+    memoria = conv.get("memoria") or {}
+    persona = [m["t"] for m in conv.get("mensajes", []) if m.get("de") == "yo"]
+    return {"estilo": mem.estilo_final(memoria, persona), "hechos": memoria.get("hechos") or [], "trabajo": memoria.get("trabajo") or ""}
+
+
+@router.delete("/chat", status_code=204)
+async def olvidar_chat(request: Request, user: dict = Depends(get_current_user)):
+    """Borra el historial y todo lo que Shifu recuerda de la persona."""
+    await mem.borrar(request.app.state.db, user["id"])
+    return Response(status_code=204)

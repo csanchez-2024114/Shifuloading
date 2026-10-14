@@ -9,7 +9,7 @@ import { HAY_SERVIDOR, auth, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb } from 'react-icons/lu'
+import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb, LuTrash2 } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
 import '../crm-captura.css'
@@ -362,7 +362,7 @@ function sugerenciasDe(contactos) {
   return primero ? [...base, ['Medición', `Mueve a ${primero} a Cliente`], ['Estructura', `Elimina a ${primero}`]] : base
 }
 
-function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo }) {
+function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar }) {
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null) // captura o imagen pegada, lista para mandar con el mensaje
   const [eligiendo, setEligiendo] = useState(false)
@@ -408,6 +408,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
       {abierto && (
         <section className="mc-chat-panel" aria-label="Chat con Shifu" hidden={eligiendo || capturando}>
           <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>{modo === 'reglas' ? 'Modo básico · la IA no está disponible' : 'Tu asistente del CRM'}</small></div>
+            {onOlvidar && <button type="button" onClick={onOlvidar} aria-label="Olvidar mi historial" title="Borrar el historial y lo que Shifu recuerda de mí"><LuTrash2 /></button>}
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
@@ -549,6 +550,26 @@ export default function CrmPage() {
     } finally { setEscribiendo(false) }
   }
 
+  // Shifu se acuerda: al abrir el CRM se recupera la conversación guardada y, si hace rato que no hablan, él retoma lo último.
+  const restaurado = useRef(false)
+  useEffect(() => {
+    if (!crm || restaurado.current || recienTerminado) return
+    restaurado.current = true
+    apiChat.historial().then((h) => {
+      if (!h?.mensajes?.length) return
+      setMensajes([...h.mensajes.map((m) => mensaje(m.de, m.t)), ...(h.saludo ? [mensaje('shifu', h.saludo)] : [])])
+      if (h.saludo) setChatAbierto(true)
+    }).catch(() => { /* sin historial: se queda el saludo de siempre */ })
+  }, [crm, recienTerminado])
+  const olvidar = async () => {
+    if (!window.confirm('¿Borrar tu historial con Shifu y todo lo que recuerda de ti? Tu CRM no se toca.')) return
+    try {
+      await apiChat.olvidar()
+      setMensajes([mensaje('shifu', 'Listo, empezamos de cero: ya no recuerdo nuestras conversaciones. 🙂 ¿En qué te ayudo?')])
+      avisar('Shifu olvidó tu historial.')
+    } catch { avisar('No se pudo borrar el historial. Inténtalo de nuevo.') }
+  }
+
   // Recién creado con IA: el chat se abre solo y cuenta cómo armó el CRM, para que la persona lo ajuste hablando.
   const saludado = useRef(false)
   useEffect(() => {
@@ -636,7 +657,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
       </div>
 
       {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
-      <ChatShifu modo={modo} sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} />
+      <ChatShifu modo={modo} sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} />
     </div>
   )
 }
