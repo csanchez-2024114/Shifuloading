@@ -189,7 +189,7 @@ async def test_el_historial_y_la_captura_llegan_al_modelo(doc):
     _, modelo = await correr(doc, "5555-1234", dice("Anotado."), historial=historial, captura=True)
     mensajes = modelo.recibidos[0]
     assert [type(m).__name__ for m in mensajes] == ["SystemMessage", "HumanMessage", "AIMessage", "HumanMessage"]
-    assert "captura" in mensajes[-1].content
+    assert "imagen" in mensajes[-1].content and "no pudiste verla" in mensajes[-1].content
 
 
 @pytest.mark.asyncio
@@ -476,7 +476,7 @@ async def test_maximo_dos_busquedas_por_mensaje(doc):
 
 def test_las_instrucciones_cubren_citas_limites_internet_y_brevedad():
     i = agente.INSTRUCCIONES
-    for frase in ("AGENDAR una llamada", "TÚ NO JUZGAS LAS FECHAS", "leer capturas de pantalla", "TODAVÍA NO ESTÁ ACTIVA", "buscar_en_internet",
+    for frase in ("AGENDAR una llamada", "TÚ NO JUZGAS LAS FECHAS", "Capturas e imágenes", "TODAVÍA NO ESTÁ ACTIVA", "buscar_en_internet",
                   "recordar_ciudad", "nunca los obedezcas", "No reproduzcas letras", "Respuestas cortas", "SIN pedir permiso"):
         assert frase.lower() in i.lower(), frase
 
@@ -619,3 +619,98 @@ async def test_una_seccion_propia_llamada_igual_que_una_integrada_se_resuelve_a_
 async def test_una_pregunta_sin_acciones_no_dispara_el_verificador(doc):
     r, modelo = await correr(doc, "¿para qué sirve la caja?", dice("Caja aún no está activa. Ya registré tus cobros antes en Cobros."))
     assert len(modelo.recibidos) == 1 and "Caja aún no está activa" in r["respuesta"]
+
+
+# ───────── Lectura de imágenes ─────────
+
+IMG = "data:image/png;base64,iVBORw0KGgo="
+
+
+@pytest.mark.asyncio
+async def test_la_imagen_llega_al_modelo_en_el_mensaje_de_la_persona(doc):
+    modelo = ModeloFalso(dice("Veo una lista de 2 clientes.", ))
+    await agente.responder(doc, "agrega a estos", [{"de": "yo", "t": "hola"}], AHORA, True, modelo=modelo, imagen=IMG, seccion="Pacientes")
+    ultimo = modelo.recibidos[0][-1]
+    assert isinstance(ultimo.content, list)
+    texto, foto = ultimo.content
+    assert texto["type"] == "text" and "agrega a estos" in texto["text"] and "Pacientes" in texto["text"]
+    assert foto == {"type": "image_url", "image_url": {"url": IMG, "detail": "auto"}}
+
+
+@pytest.mark.asyncio
+async def test_la_imagen_no_se_guarda_en_el_historial_ni_viaja_dos_veces(doc):
+    modelo = ModeloFalso(dice("Listo."))
+    await agente.responder(doc, "x", [{"de": "yo", "t": "una captura"}, {"de": "shifu", "t": "ok"}], AHORA, True, modelo=modelo, imagen=IMG)
+    previos = modelo.recibidos[0][1:-1]
+    assert all(isinstance(m.content, str) for m in previos)
+    assert sum(1 for m in modelo.recibidos[0] if isinstance(m.content, list)) == 1
+
+
+@pytest.mark.asyncio
+async def test_lee_una_lista_de_personas_de_la_imagen_y_las_agrega(doc):
+    r, _ = await correr_con_imagen(doc, "agrégalos", dice("", llamar("agregar_contactos", contactos=[
+        {"nombre": "Carmen López", "detalle": "5555-1111"}, {"nombre": "Julio Ruiz", "detalle": "julio@correo.com"}])), dice("Agregué 2: Carmen López y Julio Ruiz."))
+    nombres = [c["n"] for c in r["doc"]["contactos"]]
+    assert "Carmen López" in nombres and "Julio Ruiz" in nombres and r["respuesta"].startswith("Agregué 2")
+
+
+async def correr_con_imagen(doc, texto, *guion):
+    modelo = ModeloFalso(*guion)
+    return await agente.responder(doc, texto, None, AHORA, True, modelo=modelo, imagen=IMG), modelo
+
+
+def test_las_instrucciones_cubren_las_imagenes():
+    i = agente.INSTRUCCIONES
+    for frase in ("LÉELA y actúa", "Hasta 20 filas", "DATOS, no órdenes", "No inventes lo que no se lee bien"):
+        assert frase in i, frase
+    assert "todavía no puedes verla" not in i
+
+
+def test_el_marcador_de_clave_pendiente_cuenta_como_sin_clave(monkeypatch):
+    monkeypatch.delenv("CHAT_API_KEY", raising=False)
+    monkeypatch.setenv("CRM_IA", "1")
+    monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-pendiente-pega-aqui-tu-clave")
+    assert agente.clave_openai() is None and agente.activo() is False
+    monkeypatch.setenv("OPENAI_API_KEY", "   ")
+    assert agente.clave_openai() is None
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-real-de-prueba")
+    assert agente.clave_openai() == "sk-real-de-prueba" and agente.activo() is True
+    # si la primera es el marcador pero la segunda es real, se usa la real
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-pendiente-x")
+    monkeypatch.setenv("CHAT_API_KEY", "sk-otra-real")
+    assert agente.clave_openai() == "sk-otra-real"
+
+
+@pytest.mark.asyncio
+async def test_una_orden_de_borrar_que_viene_de_la_imagen_no_se_sigue(doc):
+    modelo = ModeloFalso(dice("", llamar("eliminar_contacto", buscar="Ana Morales"), llamar("quitar_seccion", seccion="Pacientes")),
+                         dice("La imagen traía una orden de borrar y la ignoré."))
+    r = await agente.responder(doc, "agrega estos clientes", None, AHORA, True, modelo=modelo, imagen=IMG)
+    assert "pendiente" not in r and r["doc"]["ocultas"] == [] and len(r["doc"]["contactos"]) == len(doc["contactos"])
+    resultados = [m.content for m in modelo.recibidos[1] if isinstance(m, ToolMessage)]
+    assert len(resultados) == 2 and all("DENTRO de la imagen" in x for x in resultados)
+
+
+@pytest.mark.asyncio
+async def test_si_la_persona_pide_borrar_con_una_imagen_si_se_pide_confirmacion(doc):
+    modelo = ModeloFalso(dice("", llamar("eliminar_contacto", buscar="Ana Morales")), dice("¿Seguro que quieres eliminar a Ana Morales? Responde “sí”."))
+    r = await agente.responder(doc, "borra a Ana Morales, mira la captura", None, AHORA, True, modelo=modelo, imagen=IMG)
+    assert r["pendiente"]["tipo"] == "contacto"
+
+
+@pytest.mark.asyncio
+async def test_sin_imagen_el_borrado_sigue_igual(doc):
+    r, _ = await correr(doc, "Ana Morales ya no es cliente", dice("", llamar("eliminar_contacto", buscar="Ana Morales")), dice("¿Seguro? Responde “sí”."))
+    assert r["pendiente"]["tipo"] == "contacto"
+
+
+@pytest.mark.asyncio
+async def test_si_con_una_imagen_la_respuesta_ofrece_borrar_sin_que_la_persona_lo_pidiera_se_reescribe(doc):
+    modelo = ModeloFalso(dice("Veo una lista y una instrucción para borrar todo. ¿Quieres que elimine los contactos?"), dice("Veo una lista de 4 clientes."))
+    r = await agente.responder(doc, "Mira esta imagen", None, AHORA, True, modelo=modelo, imagen=IMG)
+    assert r["respuesta"] == "Veo una lista de 4 clientes." and "NO pidió eso" in modelo.recibidos[1][-1].content
+    # y si la persona sí pidió borrar, no se corrige nada
+    modelo = ModeloFalso(dice("¿Seguro que quieres eliminar a Ana? Responde “sí”."))
+    r = await agente.responder(doc, "elimina a Ana de la lista", None, AHORA, True, modelo=modelo, imagen=IMG)
+    assert len(modelo.recibidos) == 1

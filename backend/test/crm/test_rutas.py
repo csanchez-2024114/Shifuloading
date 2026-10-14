@@ -311,7 +311,7 @@ def test_el_chat_usa_la_ia_cuando_esta_disponible(cli, monkeypatch):
     crear(cli)
     visto = {}
 
-    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None):
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **_):
         visto.update(texto=texto, historial=historial, captura=con_captura)
         from app.crm import operaciones as op
         return {"doc": op.contactos_crear(doc, [{"n": "Pedro Castillo"}], "Chat con Shifu"), "respuesta": "Agregué a Pedro Castillo.", "modo": "ia", "vista": "contactos"}
@@ -349,30 +349,60 @@ def test_confirmar_un_borrado_nunca_pasa_por_la_ia(cli, monkeypatch):
     assert llamadas == [] and r["modo"] == "reglas" and r["crm"]["totalContactos"] == 2
 
 
-def test_la_captura_sin_texto_no_llama_a_la_ia(cli, monkeypatch):
-    crear(cli)
-    llamadas = []
-
-    async def falso(*_a, **_k):
-        llamadas.append(1)
-        return {"doc": {}, "respuesta": "", "modo": "ia"}
-
-    _con_ia(monkeypatch, falso)
-    r = cli.post("/api/v1/crm/chat", json={"texto": "", "contexto": {"imagen": "data:image/jpeg;base64,/9j/4AAQ", "seccion": "Pacientes"}}, headers=H).json()
-    assert llamadas == [] and "Recibí tu captura" in r["respuesta"]
-
-
-def test_la_ia_recibe_la_captura_como_aviso_junto_con_el_texto(cli, monkeypatch):
+def test_una_captura_sin_texto_va_a_la_ia_con_la_imagen_y_la_seccion(cli, monkeypatch):
     crear(cli)
     visto = {}
 
-    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None):
-        visto["captura"] = con_captura
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **extra):
+        visto.update(texto=texto, captura=con_captura, **extra)
+        return {"doc": doc, "respuesta": "Veo una tabla con 3 clientes.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    img = "data:image/jpeg;base64,/9j/4AAQ"
+    r = cli.post("/api/v1/crm/chat", json={"texto": "", "contexto": {"imagen": img, "seccion": "Pacientes"}}, headers=H).json()
+    assert visto["imagen"] == img and visto["seccion"] == "Pacientes" and visto["captura"] is True and "imagen" in visto["texto"].lower()
+    assert r["respuesta"] == "Veo una tabla con 3 clientes." and r["modo"] == "ia"  # con IA no hay aviso de "no puedo leer"
+
+
+def test_con_ia_la_captura_no_lleva_el_aviso_de_que_no_se_puede_leer(cli, monkeypatch):
+    crear(cli)
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **_):
         return {"doc": doc, "respuesta": "Listo.", "modo": "ia"}
 
     _con_ia(monkeypatch, falso)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "mira esto", "contexto": {"imagen": "data:image/png;base64,iVBOR"}}, headers=H).json()
+    assert r["respuesta"] == "Listo." and r["modo"] == "ia"
+
+
+def test_si_el_modelo_no_puede_con_la_imagen_se_reintenta_solo_con_el_texto(cli, monkeypatch):
+    crear(cli)
+    intentos = []
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **extra):
+        intentos.append("imagen" in extra)
+        if "imagen" in extra:
+            raise RuntimeError("Error code: 400 - invalid image")
+        return {"doc": doc, "respuesta": "Sin ver la imagen, ¿qué necesitas?", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    antes = agente._pausa_hasta
     r = cli.post("/api/v1/crm/chat", json={"texto": "mira esto", "contexto": {"imagen": "data:image/jpeg;base64,/9j/4AAQ"}}, headers=H).json()
-    assert visto["captura"] is True and r["respuesta"].startswith("📸 Recibí tu captura") and r["modo"] == "ia"
+    assert intentos == [True, False] and r["modo"] == "ia" and agente._pausa_hasta == antes  # un mal archivo no apaga la IA para todos
+
+
+def test_sin_ia_la_captura_se_reconoce_pero_dice_que_no_puede_leerla(cli):
+    crear(cli)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "agrega la tarea revisar esta tabla", "contexto": {"imagen": "data:image/jpeg;base64,/9j/4AAQ"}}, headers=H).json()
+    assert r["modo"] == "reglas" and r["respuesta"].startswith("📸 Recibí tu captura") and "no puedo leer imágenes" in r["respuesta"]
+
+
+def test_solo_se_aceptan_los_formatos_de_imagen_que_el_modelo_lee(cli):
+    crear(cli)
+    for mime in ("png", "jpeg", "jpg", "webp", "gif"):
+        assert cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"imagen": f"data:image/{mime};base64,AAAA"}}, headers=H).status_code == 200
+    # un SVG u otro "archivo" no cuenta como captura: sin texto no hay nada que hacer
+    assert cli.post("/api/v1/crm/chat", json={"texto": "", "contexto": {"imagen": "data:image/svg+xml;base64,AAAA"}}, headers=H).status_code == 422
 
 
 def test_el_historial_del_chat_se_valida(cli):
@@ -393,7 +423,7 @@ def test_si_otra_pestana_cambia_el_crm_mientras_la_ia_piensa_se_repite(cli, db, 
     crear(cli)
     veces = []
 
-    async def lento(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None):
+    async def lento(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **_):
         from app.crm import operaciones as op
         veces.append(doc["version"])
         if len(veces) == 1:  # mientras "piensa", otra pestaña guarda

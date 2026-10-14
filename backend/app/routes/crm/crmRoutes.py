@@ -24,6 +24,7 @@ Endpoints (relativos al prefijo):
   POST   /chat                    — Mensaje para Shifu (texto y/o captura) -> respuesta + CRM actualizado
 """
 import logging
+import re
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Request
@@ -45,6 +46,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 MAX_IMAGEN = 4_000_000  # caracteres del data URL (≈3 MB de imagen)
+_IMAGEN_LEIBLE = re.compile(r"^data:image/(png|jpe?g|webp|gif);base64,", re.I)  # los formatos que lee el modelo (no SVG ni otros)
+TEXTO_SOLO_CAPTURA = "Mira esta imagen: dime en una línea qué ves y haz lo más obvio con ella, o propón una acción concreta."
 
 
 # ───────── Entradas ─────────
@@ -279,7 +282,8 @@ async def renombrar_seccion(seccion_id: str, request: Request, datos: SeccionNom
 
 # ───────── Chat ─────────
 
-async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool):
+async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool,
+                         imagen: str | None = None, seccion: str | None = None):
     """Resuelve un mensaje del chat. Con IA si se puede (y no hay un borrado por confirmar); si no, con las reglas.
     El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite)."""
     for _ in range(3):
@@ -287,12 +291,19 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
         if doc is None:
             raise op.ErrorCrm(404, "Todavía no tienes un CRM. Responde el cuestionario para crearlo.")
         r = None
-        if texto and not pendiente and agente.activo():
-            try:
-                r = await agente.responder(doc, texto, historial, con_captura=con_captura)
-            except Exception as e:  # sin saldo, tiempo agotado, clave inválida…: se sigue con las reglas
-                agente.marcar_fallo(e)
-                logger.warning("El agente del CRM falló; se usan las reglas un rato: %s", type(e).__name__)
+        if (texto or imagen) and not pendiente and agente.activo():
+            # Con imagen se intenta verla; si el modelo no puede con ella (formato raro, demasiado grande) se reintenta solo con el texto.
+            intentos = [{"imagen": imagen, "seccion": seccion}, {}] if imagen else [{}]
+            for extra in intentos:
+                try:
+                    r = await agente.responder(doc, texto or TEXTO_SOLO_CAPTURA, historial, con_captura=con_captura, **extra)
+                    break
+                except Exception as e:  # sin saldo, tiempo agotado, clave inválida…: se sigue con las reglas
+                    if extra is intentos[-1]:
+                        agente.marcar_fallo(e)
+                        logger.warning("El agente del CRM falló; se usan las reglas un rato: %s", type(e).__name__)
+                    else:
+                        logger.warning("El agente no pudo con la imagen; se reintenta solo con el texto: %s", type(e).__name__)
         if r is None:
             r = {**(responder(doc, texto, pendiente) if texto else {"doc": doc, "respuesta": ""}), "modo": "reglas"}
         if r["doc"] is doc:
@@ -307,23 +318,23 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
 @limiter.limit("60/minute")
 async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(get_current_user)):
     ctx = datos.contexto or ContextoChat()
-    imagen = ctx.imagen if ctx.imagen and ctx.imagen.startswith("data:image/") else None
+    imagen = ctx.imagen if ctx.imagen and _IMAGEN_LEIBLE.match(ctx.imagen) else None
     if not datos.texto and not imagen:
         return JSONResponse({"mensaje": "Escribe algo o adjunta una captura."}, status_code=422)
 
     pendiente = sanear_pendiente(ctx.pendiente)
     historial = [m.model_dump() for m in ctx.historial]
     try:
-        doc, resultado = await _turno_de_chat(request.app.state.db, user["id"], datos.texto, pendiente, historial, bool(imagen))
+        doc, resultado = await _turno_de_chat(request.app.state.db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion)
     except op.ErrorCrm as e:
         return _error(e)
 
     respuesta = resultado["respuesta"]
-    if imagen:
-        # La imagen todavía no se lee (falta conectar el modelo de visión): se acusa recibo y se actúa con el texto.
+    if imagen and resultado.get("modo") != "ia":
+        # Sin la IA (sin saldo, apagada, falló) no hay quien lea la imagen: se dice con sinceridad y se actúa con el texto.
         donde = f" de “{ctx.seccion}”" if ctx.seccion else ""
-        respuesta = (f"📸 Recibí tu captura{donde}, pero todavía no puedo leer imágenes: me guío por lo que escribiste. {respuesta}" if datos.texto
-                     else f"📸 Recibí tu captura{donde}, pero todavía no puedo leer imágenes. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.")
+        respuesta = (f"📸 Recibí tu captura{donde}, pero ahora mismo no puedo leer imágenes: me guío por lo que escribiste. {respuesta}" if datos.texto
+                     else f"📸 Recibí tu captura{donde}, pero ahora mismo no puedo leer imágenes. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.")
     salida = {"respuesta": respuesta, "crm": vista_crm(doc), "modo": resultado.get("modo", "reglas")}
     for clave in ("vista", "pendiente"):
         if resultado.get(clave):
