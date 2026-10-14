@@ -41,6 +41,10 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
     setSaliendo((s) => [...s, uid]); setTimeout(fuera, 700 * vel)
   }
   const poner = (uid) => conTransicion(() => { const b = quitados.find((x) => x.uid === uid); setQuitados((q) => q.filter((x) => x.uid !== uid)); setBloques((bs) => [...bs, { ...b, nuevo: true }]) })
+  // Si los bloques de media columna son impares, el último queda solo en su fila: ocupa el ancho completo (sin hueco).
+  const ANCHOS = ['kpis', 'tablero', 'agenda']
+  const medios = bloques.filter((b) => !ANCHOS.includes(b.vista) && !saliendo.includes(b.uid))
+  const soloUid = medios.length % 2 === 1 ? medios[medios.length - 1].uid : null
   const ir = (id) => conTransicion(() => setVista(id))
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
@@ -87,7 +91,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
               <div className="mc-cab"><div><h1>Inicio</h1><p>{plantilla.para}</p></div></div>
               <div className="pl-inicio">
                 {bloques.map((w, i) => (
-                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} style={{ '--i': w.nuevo ? 0 : i, viewTransitionName: `pl-${w.uid}` }}>
+                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${w.uid === soloUid ? ' pl-bloque-solo' : ''}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} style={{ '--i': w.nuevo ? 0 : i, viewTransitionName: `pl-${w.uid}` }}>
                     <h2>{nombreBloque(w, porId)}</h2>
                     {animado && <button type="button" className="pl-quitar" onClick={() => quitar(w.uid)} aria-label={`Quitar ${nombreBloque(w, porId)}`}>×</button>}
                     {dibujar(porId[w.seccion], w.vista, w.opciones)}

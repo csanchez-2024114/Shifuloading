@@ -42,7 +42,7 @@
 [data-densidad="compacto"] .pl-inicio { gap: 10px; margin-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 [data-densidad="compacto"] .pl-bloque-kpis, [data-densidad="compacto"] .pl-bloque-tablero, [data-densidad="compacto"] .pl-bloque-agenda { grid-column: 1 / -1; }
 [data-densidad="compacto"] .pl-bloque { padding: 10px 12px; }
-[data-densidad="compacto"] .pl-bloque h2 { margin-bottom: 8px; font-size: 10px; }
+[data-densidad="compacto"] .pl-bloque h2 { margin-bottom: 8px; font-size: 11px; }
 [data-densidad="compacto"] .pl-kpis { gap: 0; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); border: 1px solid var(--linea); border-radius: 14px; background: var(--card); overflow: hidden; }
 [data-densidad="compacto"] .pl-kpis div { border: 0; border-left: 1px solid var(--linea); border-radius: 0; background: transparent; padding: 10px 14px; }
 [data-densidad="compacto"] .pl-kpis div:first-child { border-left: 0; }

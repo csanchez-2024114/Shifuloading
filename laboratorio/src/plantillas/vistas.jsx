@@ -28,14 +28,15 @@ const sinMovimiento = () => typeof window !== 'undefined' && window.matchMedia?.
 /** Número que sube desde 0 hasta su valor real (solo en estilos animados). El valor final es siempre el contado. */
 function Numero({ v, fmt = (x) => x.toLocaleString('es') }) {
   const animar = useContext(AnimarContext) && !sinMovimiento()
+  const vel = useContext(VelContext)
   const [n, setN] = useState(animar ? 0 : v)
   useEffect(() => {
     if (!animar) { setN(v); return }
-    let raf; const t0 = performance.now(); const dur = 900
+    let raf; const t0 = performance.now(); const dur = 900 * vel
     const paso = (t) => { const k = Math.min(1, (t - t0) / dur); setN(Math.round(v * (1 - (1 - k) ** 3))); if (k < 1) raf = requestAnimationFrame(paso) }
     raf = requestAnimationFrame(paso)
     return () => cancelAnimationFrame(raf)
-  }, [v, animar])
+  }, [v, animar, vel])
   return fmt(n)
 }
 
@@ -43,7 +44,7 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
 const COLORES = ['#7c5cff', '#22d3a6', '#f5a623', '#f0587a', '#5b6bff', '#3fb8ff', '#b06cff']
 const POR_PAGINA = 25
-const MAX_TARJETAS = 6
+const MAX_TARJETAS = 30 // con scroll interno ya no hace falta cortar en 6
 
 const hoyIso = () => isoDia(new Date())
 const diasHasta = (iso) => Math.round((new Date(`${iso}T00:00:00`) - new Date(`${hoyIso()}T00:00:00`)) / 86400000)
@@ -194,13 +195,13 @@ function Agenda({ seccion, campos, registros, opciones }) {
         return (
           <section key={iso} className={`pl-dia${i === 0 ? ' hoy' : ''}`} style={{ '--i': i }}>
             <h3><span>{i === 0 ? 'Hoy' : DIAS[d.getDay()]}</span> <b>{d.getDate()} {MESES[d.getMonth()]}</b><i>{citas.length || ''}</i></h3>
-            {citas.slice(0, 8).map((r, k) => (
+            {citas.slice(0, 30).map((r, k) => (
               <article key={r.id} className="pl-cita" style={{ '--i': k }}>
                 {opciones.hora && <time>{r.valores[opciones.hora] || '—'}</time>}
                 <span><b>{ver('texto', r.valores[opciones.titulo])}</b>{det && <small>{ver(det.tipo, r.valores[det.id])}</small>}</span>
               </article>
             ))}
-            {citas.length > 8 && <p className="pl-mas">+{citas.length - 8} más</p>}
+            {citas.length > 30 && <p className="pl-mas">+{citas.length - 30} más</p>}
             {!citas.length && <p className="pl-mas">Libre</p>}
           </section>
         )
@@ -219,7 +220,8 @@ function Vencimientos({ seccion, campos, registros, opciones }) {
   const { items: rangos, saliendo, quitar, poner } = useConSalida(() => [
     { id: 'vencidos', desde: -Infinity, hasta: -1 },
     { id: 'r0-7', desde: 0, hasta: 7 },
-    { id: `r8-${lim}`, desde: 8, hasta: lim },
+    // El tercer grupo solo existe si el límite pasa de 7 días (con 7 sería "De 8 a 7", vacío y sin sentido).
+    ...(lim > 7 ? [{ id: `r8-${lim}`, desde: 8, hasta: lim }] : []),
   ])
   const [nuevo, setNuevo] = useState({ desde: 1, hasta: 45 })
   // Lo ya terminado (entregado, cancelado) no está "por vencer": se excluye por su estado.
@@ -229,12 +231,13 @@ function Vencimientos({ seccion, campos, registros, opciones }) {
   const det = opciones.detalle && campo(campos, opciones.detalle)
   const crear = (desde, hasta) => poner({ id: `r${desde}-${hasta}-${Date.now()}`, desde, hasta, nuevo: true })
   // Simula el pedido "quita De 8 a 30 y pon De 1 a 45": se borra solo ese grupo (con su salida) y luego se arma el nuevo.
-  const simular = () => { const v = rangos.find((g) => g.desde === 8); if (v) quitar(v.id, () => crear(1, 45)); else crear(1, 45) }
+  const ultimo = rangos[rangos.length - 1]
+  const simular = () => { if (ultimo && ultimo.hasta >= 0) quitar(ultimo.id, () => crear(1, 45)); else crear(1, 45) }
   return (
     <div className="pl-venc-marco">
       {animar && (
         <div className="pl-ia-barra">
-          <button type="button" className="pl-ia" onClick={simular}>✦ Simular a Shifu: «quita De 8 a {lim} y pon De 1 a 45»</button>
+          <button type="button" className="pl-ia" onClick={simular}>✦ Simular a Shifu: «quita {ultimo && ultimo.hasta >= 0 ? nombreRango(ultimo.desde, ultimo.hasta) : 'el último'} y pon De 1 a 45»</button>
           <span className="pl-ia-form">
             De <input type="number" value={nuevo.desde} onChange={(e) => setNuevo({ ...nuevo, desde: Number(e.target.value) })} aria-label="Desde (días)" />
             a <input type="number" value={nuevo.hasta} onChange={(e) => setNuevo({ ...nuevo, hasta: Number(e.target.value) })} aria-label="Hasta (días)" /> días

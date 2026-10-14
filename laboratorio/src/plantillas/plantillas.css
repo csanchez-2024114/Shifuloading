@@ -73,6 +73,7 @@
 .pl-grafica { margin: 0; min-width: 0; }
 .pl-grafica svg { width: 100%; height: auto; display: block; }
 .pl-grafica text { fill: var(--tx3); font: 11px var(--fuente); }
+.pl-linea text { font-size: 8.5px; } /* el SVG se escala al alto del bloque: en unidades del SVG para que no crezca de más */
 .pl-grafica figcaption { margin-top: 8px; color: var(--tx3); font-size: 12px; }
 .pl-dona { display: grid; grid-template-columns: minmax(0, 160px) 1fr; align-items: center; gap: 16px; }
 .pl-dona .pl-dona-n { fill: var(--tx); font: 700 20px var(--fuente); }
@@ -158,13 +159,17 @@
 @media (min-width: 901px) and (min-height: 560px) {
   .pl { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
   .pl .mc-top { flex: none; }
-  .pl .mc-cuerpo { flex: 1; min-height: 0; align-items: stretch; }
+  .pl .mc-cuerpo { flex: 1; min-height: 0; align-items: stretch; align-content: stretch; grid-template-rows: minmax(0, 1fr); }
   .pl .mc-menu { position: static; min-height: 0; height: 100%; overflow-y: auto; }
   .pl .mc-main { min-height: 0; height: 100%; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
   .pl .mc-cab { flex: none; }
 
   /* Inicio: la 1.ª fila (resumen) toma lo que necesita; las demás se reparten el alto restante. */
-  .pl-inicio { flex: 1; min-height: 0; grid-template-rows: auto; grid-auto-rows: minmax(220px, 1fr); }
+  .pl-inicio { flex: 1; min-height: 0; grid-template-rows: max-content; grid-auto-rows: minmax(170px, 1fr); }
+  /* El resumen nunca se aplasta: mide lo que mide su contenido. */
+  .pl-bloque-kpis { overflow: visible; min-height: max-content; }
+  /* Tablero y agenda tienen más contenido: toman el doble de alto que una gráfica o una lista. */
+  .pl-bloque-tablero, .pl-bloque-agenda { grid-row: span 2; }
   .pl-bloque { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
   .pl-bloque > h2 { flex: none; }
   .pl-bloque > :last-child { flex: 1; min-height: 0; }
@@ -175,7 +180,8 @@
   .pl-tablero { height: 100%; align-items: stretch; }
   .pl-col { max-height: none; min-height: 0; }
   .pl-agenda { height: 100%; overflow-y: auto; align-content: start; }
-  .pl-dia { max-height: 100%; }
+  .pl-agenda { grid-auto-rows: minmax(0, 1fr); align-content: stretch; }
+  .pl-dia { max-height: 100%; min-height: 0; }
   .pl-venc-marco { height: 100%; grid-template-rows: auto minmax(0, 1fr); }
   .pl-venc-marco:not(:has(.pl-ia-barra)) { grid-template-rows: minmax(0, 1fr); }
   .pl-venc { height: 100%; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
@@ -190,4 +196,17 @@
   .pl-seccion { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .pl-seccion > * { flex: 1; min-height: 0; }
   .pl-seccion .mc-feed { max-height: none; overflow-y: auto; }
+}
+.pl-bloque-solo { grid-column: 1 / -1; }
+
+/* Revisión del laboratorio (2026-10-14): textos mínimos de 11px y botones táctiles en móvil. */
+.pl .mc-pilar { font-size: 11px; }
+.pl .pl-cita small, .pl .pl-tarjeta small, .pl .pl-venc-grupo li small { font-size: 11px; }   /* en el CRM base es 10.5px: pendiente de avisar a Carlos */
+@media (max-width: 700px) {
+  .pl-tabla-barra button { width: 40px; height: 40px; }
+  .pl-tabla-barra input { min-height: 40px; }
+  .pl-ia, .pl-ia-form button { min-height: 40px; }
+  .pl-ia-form input { min-height: 40px; }
+  .pl .pl-quitar-mini { opacity: 1; width: 32px; height: 32px; }
+  .pl-quitar { opacity: 1 !important; transform: none !important; width: 36px !important; height: 36px !important; }
 }
