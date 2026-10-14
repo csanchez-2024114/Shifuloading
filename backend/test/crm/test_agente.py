@@ -320,6 +320,40 @@ async def test_quitar_campo_y_eliminar_registro_piden_confirmacion(doc):
 
 
 @pytest.mark.asyncio
+async def test_dos_registros_identicos_no_atoran_el_borrado(doc):
+    base = est.lista_crear(doc, "Pedidos", [{"nombre": "Cliente"}, {"nombre": "Zona"}], AHORA)
+    l = base["listas"][0]
+    for _ in range(2):
+        base = est.registro_agregar(base, l["id"], {l["campos"][0]["id"]: "Ejemplo Cliente", l["campos"][1]["id"]: "Zona 7"}, AHORA)
+    r, _ = await correr(base, "x", dice("", llamar("eliminar_registro", seccion="Pedidos", buscar="Ejemplo Cliente")), dice("¿Seguro?"))
+    assert r["pendiente"]["tipo"] == "registro"
+
+
+@pytest.mark.asyncio
+async def test_un_campo_de_texto_se_vuelve_lista_de_opciones_sin_perder_datos(doc):
+    base = est.lista_crear(doc, "Pedidos", [{"nombre": "Cliente"}, {"nombre": "Estado"}], AHORA)
+    l = base["listas"][0]
+    base = est.registro_agregar(base, l["id"], {l["campos"][0]["id"]: "Juan", l["campos"][1]["id"]: "Pendiente"}, AHORA)
+    r, _ = await correr(base, "x", dice("", llamar("definir_opciones", destino="Pedidos", campo="Estado", opciones=["pendiente", "realizado", "cancelado"])), dice("Listo."))
+    campo = r["doc"]["listas"][0]["campos"][1]
+    assert campo["tipo"] == "lista" and campo["opciones"] == ["pendiente", "realizado", "cancelado"]
+    assert r["doc"]["listas"][0]["registros"][0]["valores"][campo["id"]] == "pendiente"  # el dato que ya tenía se conserva, con la forma de la opción
+
+
+def test_un_campo_lista_solo_acepta_sus_opciones():
+    base = est.lista_crear(est.normalizar({"listas": [], "secciones": {}, "eventos": [], "brief": {}}), "Pedidos",
+                           [{"nombre": "Estado", "tipo": "lista", "opciones": ["pendiente", "realizado", "cancelado"]}], AHORA)
+    l = base["listas"][0]
+    cid = l["campos"][0]["id"]
+    ok = est.registro_agregar(base, l["id"], {cid: "REALIZADO"}, AHORA)
+    assert ok["listas"][0]["registros"][0]["valores"][cid] == "realizado"
+    with pytest.raises(est.ErrorCrm):
+        est.registro_agregar(base, l["id"], {cid: "quién sabe"}, AHORA)
+    with pytest.raises(est.ErrorCrm):  # una lista sin opciones no tiene sentido
+        est.lista_crear(base, "Otra", [{"nombre": "Estado", "tipo": "lista"}], AHORA)
+
+
+@pytest.mark.asyncio
 async def test_renombra_y_abre_una_seccion_propia_y_no_abre_una_oculta(doc):
     base = est.lista_crear(doc, "Proveedores", None, AHORA)
     r, _ = await correr(base, "x", dice("", llamar("renombrar_seccion", seccion="Proveedores", nombre="mis proveedores"), llamar("abrir_seccion", seccion="Mis proveedores")), dice("Listo."))

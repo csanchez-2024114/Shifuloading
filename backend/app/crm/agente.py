@@ -91,7 +91,9 @@ def _herramienta(nombre: str, descripcion: str, propiedades: dict, requeridas: l
                                               "parameters": {"type": "object", "properties": propiedades, "required": requeridas}}}
 
 
-_CAMPO = {"type": "object", "properties": {"nombre": {"type": "string"}, "tipo": {"type": "string", "enum": list(est.TIPOS_DE_CAMPO)}}, "required": ["nombre"]}
+_OPCIONES = {"type": "array", "items": {"type": "string"}, "minItems": est.MIN_OPCIONES, "maxItems": est.MAX_OPCIONES,
+             "description": "solo con tipo \"lista\": las opciones fijas entre las que se elige (por ejemplo [\"pendiente\", \"realizado\", \"cancelado\"])"}
+_CAMPO = {"type": "object", "properties": {"nombre": {"type": "string"}, "tipo": {"type": "string", "enum": list(est.TIPOS_DE_CAMPO)}, "opciones": _OPCIONES}, "required": ["nombre"]}
 _VALORES = {"type": "object", "description": "valores por NOMBRE de campo, por ejemplo {\"Teléfono\": \"5555-1234\"}", "additionalProperties": True}
 
 HERRAMIENTAS = [
@@ -124,13 +126,16 @@ HERRAMIENTAS = [
                  {"etapas": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": est.MAX_ETAPAS}}, ["etapas"]),
     _herramienta("renombrar_seccion", "Cambia el nombre de una sección del menú (integrada o propia). `seccion` es su nombre actual.",
                  {"seccion": {"type": "string"}, "nombre": {"type": "string"}}, ["seccion", "nombre"]),
-    _herramienta("crear_seccion", "Crea una sección nueva y propia en el menú (como una tabla), con los campos que se necesiten. Tipos de campo: texto, numero, fecha.",
+    _herramienta("crear_seccion", "Crea una sección nueva y propia en el menú (como una tabla), con los campos que se necesiten. Tipos de campo: texto, numero, fecha y lista (opciones fijas, con `opciones`).",
                  {"nombre": {"type": "string"}, "campos": {"type": "array", "items": _CAMPO, "maxItems": est.MAX_CAMPOS}}, ["nombre"]),
     _herramienta("quitar_seccion", "Quita una sección del menú. Si es integrada solo se oculta (se puede volver a mostrar con mostrar_seccion). Si es una sección propia, NO la borra: deja una confirmación pendiente y tú debes preguntar si está seguro.",
                  {"seccion": {"type": "string"}}, ["seccion"]),
     _herramienta("mostrar_seccion", "Vuelve a mostrar en el menú una sección integrada que estaba oculta.", {"seccion": {"type": "string"}}, ["seccion"]),
     _herramienta("agregar_campo", "Agrega un campo nuevo a los contactos (destino \"contactos\") o a una sección propia (destino = su nombre).",
-                 {"destino": {"type": "string"}, "nombre": {"type": "string"}, "tipo": {"type": "string", "enum": list(est.TIPOS_DE_CAMPO)}}, ["destino", "nombre"]),
+                 {"destino": {"type": "string"}, "nombre": {"type": "string"}, "tipo": {"type": "string", "enum": list(est.TIPOS_DE_CAMPO)}, "opciones": _OPCIONES}, ["destino", "nombre"]),
+    _herramienta("definir_opciones", "Convierte un campo que YA existe en una lista de opciones fijas (por ejemplo Estado = pendiente, realizado, cancelado), o cambia las opciones de una lista. "
+                 "Se conservan sus datos. Úsala en vez de quitar y volver a crear el campo.",
+                 {"destino": {"type": "string"}, "campo": {"type": "string"}, "opciones": _OPCIONES}, ["destino", "campo", "opciones"]),
     _herramienta("quitar_campo", "Pide quitar un campo (y sus valores) de los contactos o de una sección propia. NO lo borra: deja una confirmación pendiente y tú debes preguntar si está seguro.",
                  {"destino": {"type": "string"}, "campo": {"type": "string"}}, ["destino", "campo"]),
     # Registros de las secciones propias
@@ -512,13 +517,26 @@ class Sesion:
         self.vista = sid
         return f"Volví a mostrar “{self._titulo(sid)}” en el menú."
 
-    def _h_agregar_campo(self, destino: str, nombre: str, tipo: str = "texto") -> str:
+    def _h_agregar_campo(self, destino: str, nombre: str, tipo: str = "texto", opciones: list | None = None) -> str:
         _, ambito, error = self._campos_de(destino)
         if error:
             return error
-        self.doc = est.campo_agregar(self.doc, ambito, nombre, tipo, self.ahora)
+        self.doc = est.campo_agregar(self.doc, ambito, nombre, tipo, self.ahora, opciones)
         self.vista = "contactos" if ambito == "contactos" else ambito
-        return f"Agregué el campo “{nombre}” ({tipo or 'texto'}) a {destino}."
+        extra = f" con las opciones {', '.join(opciones)}" if tipo == "lista" and isinstance(opciones, list) else ""
+        return f"Agregué el campo “{nombre}” ({tipo or 'texto'}{extra}) a {destino}."
+
+    def _h_definir_opciones(self, destino: str, campo: str, opciones: list) -> str:
+        campos, ambito, error = self._campos_de(destino)
+        if error:
+            return error
+        c = self._campo(campos, campo)
+        if c is None:
+            return f"No encontré el campo “{campo}”. Campos: {', '.join(x['nombre'] for x in campos) or 'ninguno'}."
+        self.doc = est.campo_hacer_lista(self.doc, ambito, c["id"], opciones, self.ahora)
+        self.vista = "contactos" if ambito == "contactos" else ambito
+        nuevas = next(x for x in self._campos_de(destino)[0] if x["id"] == c["id"])["opciones"]
+        return f"Listo: “{c['nombre']}” de {destino} ahora es una lista con las opciones {', '.join(nuevas)}."
 
     def _h_quitar_campo(self, destino: str, campo: str) -> str:
         campos, ambito, error = self._campos_de(destino)
@@ -544,8 +562,15 @@ class Sesion:
         return f"Agregué {n} registro(s) en “{l['nombre']}”."
 
     def _registros(self, l: dict, q: str) -> list[dict]:
+        """Registros que dicen `q`. Si varios son idénticos (mismos valores) no hay nada que distinguir: se queda el primero, y el
+        siguiente mensaje se ocupa del otro. Antes preguntaba “¿cuál?” sin salida cuando eran copias exactas."""
         k = _norm(q or "")
-        return [r for r in l["registros"] if k and k in _norm(" ".join(str(v) for v in r["valores"].values()))]
+        halladas = [r for r in l["registros"] if k and k in _norm(" ".join(str(v) for v in r["valores"].values()))]
+        distintos: list[dict] = []
+        for r in halladas:
+            if not any(d["valores"] == r["valores"] for d in distintos):
+                distintos.append(r)
+        return distintos
 
     def _h_cambiar_registro(self, seccion: str, buscar: str, valores: dict) -> str:
         l, error = self._lista(seccion)
@@ -609,7 +634,7 @@ def contexto_crm(doc: dict, ahora: datetime) -> str:
         "secciones_integradas": {i: {"nombre": titulo_seccion(rubro, i, doc["secciones"]), "oculta": i in doc["ocultas"], "para_que": PARA_QUE[i]} for i in IDS_SECCION},
         "ultimas_acciones": [e["t"] for e in doc.get("eventos", [])[:8]],
         "secciones_propias": [{
-            "nombre": l["nombre"], "campos": [{"nombre": c["nombre"], "tipo": c["tipo"]} for c in l["campos"]], "total_registros": len(l["registros"]),
+            "nombre": l["nombre"], "campos": [{"nombre": c["nombre"], "tipo": c["tipo"], **({"opciones": c["opciones"]} if c.get("opciones") else {})} for c in l["campos"]], "total_registros": len(l["registros"]),
             "registros": [_valores_con_nombres(l["campos"], r["valores"]) for r in l["registros"][:MAX_REGISTROS_EN_CONTEXTO]],
         } for l in doc["listas"]],
         "etapas": etapas,

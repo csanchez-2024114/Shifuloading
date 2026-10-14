@@ -151,8 +151,17 @@ function Lista({ lista, onAgregar, onBorrar }) {
         <form className="mc-form-registro" onSubmit={enviar} noValidate>
           {lista.campos.map((c) => (
             <label key={c.id}>{c.nombre}
-              <input type={c.tipo === 'numero' ? 'text' : c.tipo === 'fecha' ? 'date' : 'text'} inputMode={c.tipo === 'numero' ? 'decimal' : undefined} maxLength={200}
-                value={vals[c.id] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [c.id]: e.target.value }))} />
+              {c.tipo === 'lista'
+                ? (
+                  <select value={vals[c.id] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [c.id]: e.target.value }))}>
+                    <option value="">Elegir…</option>
+                    {(c.opciones || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                )
+                : (
+                  <input type={c.tipo === 'numero' ? 'text' : c.tipo === 'fecha' ? 'date' : 'text'} inputMode={c.tipo === 'numero' ? 'decimal' : undefined} maxLength={200}
+                    value={vals[c.id] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [c.id]: e.target.value }))} />
+                )}
             </label>
           ))}
           {error && <p className="mc-form-error" role="alert">{error}</p>}
@@ -505,7 +514,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
           )}
           <form onSubmit={enviar}>
             <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); setEligiendo(true) }} disabled={escribiendo} aria-label="Capturar una parte de la pantalla" title="Capturar una parte de la pantalla"><LuCamera /></button>
-            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres hacer con esta captura…' : 'Escribe, captura o pega una imagen…'} aria-label="Mensaje para Shifu" maxLength={300} />
+            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres hacer con esta captura…' : 'Escribe, captura o pega una imagen…'} aria-label="Mensaje para Shifu" maxLength={2000} />
             <button type="submit" disabled={(!txt.trim() && !imagen) || escribiendo} aria-label="Enviar"><LuSend /></button>
           </form>
         </section>

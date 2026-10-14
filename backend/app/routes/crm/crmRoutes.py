@@ -158,7 +158,7 @@ class ContextoChat(_Texto):
 
 
 class ChatEntrada(_Texto):
-    texto: str = Field("", max_length=300)
+    texto: str = Field("", max_length=2000)
     contexto: Optional[ContextoChat] = None
 
 
@@ -336,6 +336,8 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
         return JSONResponse({"mensaje": "Escribe algo o adjunta una captura."}, status_code=422)
 
     pendiente = sanear_pendiente(ctx.pendiente)
+    if imagen:
+        pendiente = None  # una captura es un tema nuevo: no se queda atada a un borrado por confirmar (nada se borra sin su “sí”)
     # El historial y lo que Shifu recuerda de la persona viven en el servidor; lo que mande la pantalla solo sirve si todavía no hay nada guardado.
     try:
         conv = await mem.obtener(db, user["id"])

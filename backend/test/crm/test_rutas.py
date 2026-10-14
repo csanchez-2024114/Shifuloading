@@ -278,7 +278,7 @@ def test_chat_con_captura(cli):
 def test_chat_validaciones(cli):
     crear(cli)
     assert cli.post("/api/v1/crm/chat", json={"texto": ""}, headers=H).status_code == 422
-    assert cli.post("/api/v1/crm/chat", json={"texto": "x" * 501}, headers=H).status_code == 422
+    assert cli.post("/api/v1/crm/chat", json={"texto": "x" * 2001}, headers=H).status_code == 422
     # un "archivo" que no es imagen no cuenta como captura
     assert cli.post("/api/v1/crm/chat", json={"texto": "", "contexto": {"imagen": "data:text/html;base64,AAAA"}}, headers=H).status_code == 422
     # un pendiente falso se ignora en vez de borrar algo
@@ -399,6 +399,20 @@ def test_con_ia_la_captura_no_lleva_el_aviso_de_que_no_se_puede_leer(cli, monkey
     _con_ia(monkeypatch, falso)
     r = cli.post("/api/v1/crm/chat", json={"texto": "mira esto", "contexto": {"imagen": "data:image/png;base64,iVBOR"}}, headers=H).json()
     assert r["respuesta"] == "Listo." and r["modo"] == "ia"
+
+
+def test_una_captura_con_un_borrado_por_confirmar_igual_la_lee_la_ia(cli, monkeypatch):
+    crear(cli)
+    visto = {}
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **extra):
+        visto.update(extra)
+        return {"doc": doc, "respuesta": "Veo la tabla.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    ctx = {"imagen": "data:image/png;base64,iVBOR", "pendiente": {"tipo": "contacto", "id": "c1"}}
+    r = cli.post("/api/v1/crm/chat", json={"texto": "mira esto", "contexto": ctx}, headers=H).json()
+    assert r["modo"] == "ia" and visto["imagen"] and "pendiente" not in r  # el borrado pendiente se descarta, nada se borra
 
 
 def test_si_el_modelo_no_puede_con_la_imagen_se_reintenta_solo_con_el_texto(cli, monkeypatch):
