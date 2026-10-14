@@ -12,8 +12,8 @@ export default function VistaPage() {
   const id = q.get('plantilla') || 'embudo'
   const nivel = q.get('datos') || 'pocos'
   const tema = q.get('tema') === 'claro' ? 'claro' : 'oscuro'
-  const estilo = q.get('estilo') || 'actual'
-  const vel = Number(q.get('vel')) || 1.6
+  const estilo = q.get('estilo') || 'vivo-compacto'
+  const vel = Number(q.get('vel')) || 2.2
   const plantilla = plantillaPorId(id) || ROTAS.find((p) => p.id === id)
   const datos = useMemo(() => (plantilla ? datosEjemplo(plantilla, nivel) : null), [plantilla, nivel])
   useEffect(() => { document.documentElement.style.colorScheme = tema === 'claro' ? 'light' : 'dark' }, [tema])

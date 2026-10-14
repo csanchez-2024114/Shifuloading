@@ -26,7 +26,7 @@ const conTransicion = (fn) => (document.startViewTransition && !window.matchMedi
   ? document.startViewTransition(() => flushSync(fn)) : fn())
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
-export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'actual', vel = 1.6, negocio = 'Mi negocio' }) {
+export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio' }) {
   const [vista, setVista] = useState('inicio')
   const def = ESTILOS.find((e) => e.id === estilo) || ESTILOS[0]
   const animado = def.base === 'vivo'
