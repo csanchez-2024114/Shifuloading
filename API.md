@@ -33,7 +33,7 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `POST /crm/tareas` | `{ t }` | CRM (entra en la columna `porHacer`) |
 | `PATCH /crm/tareas/:id` | `{ columna: "porHacer" \| "enCurso" \| "hecho" }` | CRM |
 | `DELETE /crm/tareas/:id` | — | CRM |
-| `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM |
+| `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM (422 si se intenta encender una que todavía no existe) |
 | `PUT /crm/secciones/:id` | `{ nombre }` (renombra una sección) | CRM |
 | `POST /crm/listas/:id/registros` | `{ valores: { <idCampo>: valor } }` | `201` CRM (agrega un registro a una sección propia) |
 | `PATCH /crm/listas/:id/registros/:rid` | `{ valores: { <idCampo>: valor } }` | CRM |
@@ -66,9 +66,9 @@ La lógica de ejemplo está en `src/api/mock/chat.js`.
   "listas": [{ "id": "l_ab12cd34", "nombre": "Proveedores", "campos": [{ "id": "f_…", "nombre": "Nombre", "tipo": "texto" }],
                "registros": [{ "id": "", "valores": { "<idCampo>": "valor" } }] }],
   "vendedores": ["Tú", "Mariana Solís"],
-  "tareas": { "porHacer": [{ "id": "", "t": "", "vence": "2026-11-02", "hora": "16:00", "contacto": "Nombre" }], "enCurso": [], "hecho": [] },  // vence, hora y contacto son opcionales (las pone el chat al agendar)
+  "tareas": { "porHacer": [{ "id": "", "t": "", "vence": "2026-11-02", "hora": "16:00", "contacto": "Nombre", "auto": true }], "enCurso": [], "hecho": [] },  // vence, hora y contacto son opcionales (las pone el chat al agendar)
   "eventos": [{ "id": "", "e": "➕", "t": "Agregaste a Ana Morales", "h": "ahora" }],
-  "automatizaciones": [{ "id": "recordatorios", "pilar": "Estructura", "t": "", "d": "", "on": true }],
+  "automatizaciones": [{ "id": "recordatorios", "pilar": "Estructura", "t": "", "d": "", "on": true, "disponible": true, "nota": null }],  // disponible:false = todavía no existe (no se puede encender; `nota` dice por qué)
   "secciones": { "contactos": "Pacientes" }
 }
 ```
@@ -105,3 +105,8 @@ El módulo de CRM ya existe en `backend/app/crm` y `backend/app/routes/crm` (col
 - Pantalla `/panel` (asistente de inicio): su chat sigue respondiendo con texto fijo; falta conectarlo a `POST /chat`.
 - Lectura de archivos `.xlsx` (hoy se pega o se sube CSV/TXT y se interpreta en el navegador).
 - Entrar con Google, Apple, Facebook, WhatsApp o clave de acceso (los botones del login todavía no hacen nada) y recuperar contraseña (el backend ya tiene `/auth/forgot-password` y `/auth/reset-password`, falta la pantalla).
+
+
+## Automatizaciones
+
+Funcionan de verdad tres, sin conectar nada de afuera: **recordatorios** (crea una tarea con `auto: true` cuando un contacto lleva 3 días sin cambiar de etapa), **reparto** (asigna los contactos nuevos por turnos entre el equipo) y **resumen** (una vez por semana deja un resumen en `eventos`). **bienvenida**, **contacto** y **vencidos** todavía no existen (`disponible: false`). No hay proceso en segundo plano: lo pendiente se calcula cuando alguien abre o toca el CRM, y repetirlo no duplica nada.

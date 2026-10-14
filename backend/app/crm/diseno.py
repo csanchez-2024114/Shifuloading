@@ -19,6 +19,7 @@ import time
 from datetime import datetime
 from typing import Any
 
+from app.crm import automatizaciones
 from app.crm import estructura as est
 from app.crm import operaciones as op
 from app.crm.secciones import IDS_SECCION, titulo_seccion
@@ -51,10 +52,7 @@ ETIQUETAS: dict[str, dict[str, str]] = {
 }
 
 # Automatizaciones que existen en el CRM (por ahora son interruptores); la IA elige cuáles dejar encendidas.
-AUTOMATIZACIONES = {
-    "recordatorios": "Recordatorios de seguimiento", "bienvenida": "Bienvenida automática por WhatsApp", "contacto": "Crear el contacto desde cada mensaje",
-    "reparto": "Repartir contactos nuevos entre el equipo", "vencidos": "Aviso de cobros vencidos", "resumen": "Resumen semanal por correo",
-}
+AUTOMATIZACIONES = {i: automatizaciones.CATALOGO[i][1] for i in automatizaciones.DISPONIBLES}  # solo las que funcionan hoy
 
 
 def _etq(grupo: str, v: Any) -> str:
@@ -248,7 +246,7 @@ Cómo funciona el CRM (respeta estos límites):
 - Contactos: la lista de clientes, cada uno en una ETAPA. Tú defines las etapas (de 3 a 7, máximo 24 caracteres cada una, en el orden real del proceso de ese negocio) y los CAMPOS EXTRA que se guardan de cada cliente (máximo 4; tipos: texto, numero, fecha). Ya existen nombre, detalle (teléfono o correo), canal y responsable: NO los repitas.
 - Secciones propias: listas extra con sus campos, para lo que ese negocio necesita llevar (pedidos, proyectos, proveedores, productos, inventario, citas, contratos, tickets…). Entre 0 y 4 secciones, máximo 7 campos cada una, tipos texto, numero o fecha. Cada sección debe justificarse por lo que contó la persona: no crees secciones de relleno.
 - Secciones integradas (puedes cambiarles el nombre para que suenen a ese negocio): "contactos" (lista de clientes), "desarrollo" (tablero de tareas Por hacer / En curso / Hecho: ahí se llevan pedidos, proyectos o citas), "cobros" (todavía no activa), "actividad" (historial) y "rrhh" (el equipo). Nombres de máximo 28 caracteres.
-- Automatizaciones (por ahora son interruptores): recordatorios, bienvenida, contacto, reparto, vencidos, resumen. Deja encendidas solo las que sirvan según lo que contó.
+- Automatizaciones que funcionan hoy: "recordatorios" (crea una tarea cuando un contacto lleva 3 días sin avanzar de etapa), "reparto" (asigna los contactos nuevos por turnos entre el equipo; solo sirve si hay más de una persona) y "resumen" (resumen semanal en Actividad). Enciende solo las que sirvan según lo que contó. Las demás todavía no existen: no las menciones.
 
 Reglas:
 - Usa el vocabulario del negocio (una panadería habla de pedidos y encargos; una empresa de tecnología, de proyectos, demos y contratos; una clínica, de pacientes y citas).

@@ -139,9 +139,9 @@ async def test_renombra_secciones_y_abre_otra(doc):
 
 @pytest.mark.asyncio
 async def test_activa_y_mueve_tareas(doc):
-    r, _ = await correr(doc, "x", dice("", llamar("activar_automatizacion", buscar="cobros vencidos", encendida=True), llamar("mover_tarea", buscar="proveedores", columna="hecho")),
+    r, _ = await correr(doc, "x", dice("", llamar("activar_automatizacion", buscar="resumen semanal", encendida=True), llamar("mover_tarea", buscar="proveedores", columna="hecho")),
                         dice("Hecho."))
-    assert next(a for a in r["doc"]["automatizaciones"] if a["id"] == "vencidos")["on"] is True
+    assert next(a for a in r["doc"]["automatizaciones"] if a["id"] == "resumen")["on"] is True
     assert r["doc"]["tareas"]["hecho"][0]["t"] == "Llamar a proveedores"
 
 

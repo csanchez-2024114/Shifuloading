@@ -122,7 +122,7 @@ async def test_la_ia_arma_el_crm_de_una_panaderia():
     assert [l["nombre"] for l in nuevo["listas"]] == ["Pedidos de pasteles", "Proveedores"]
     assert [c["tipo"] for c in nuevo["listas"][0]["campos"]] == ["texto", "texto", "fecha", "numero"]
     assert nuevo["secciones"] == {"contactos": "Clientes", "desarrollo": "Producción"}
-    assert {a["id"] for a in nuevo["automatizaciones"] if a["on"]} == {"recordatorios", "bienvenida"}
+    assert {a["id"] for a in nuevo["automatizaciones"] if a["on"]} == {"recordatorios"}  # "bienvenida" todavía no existe: no se enciende
     assert nuevo["resumen_ia"].startswith("Armé tu CRM para vender pan")
     assert nuevo["contactos"] == [] and nuevo["total_contactos"] == 0  # nunca inventa clientes
     assert doc["etapas"] != nuevo["etapas"]  # no tocó el original

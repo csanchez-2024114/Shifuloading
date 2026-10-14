@@ -211,7 +211,7 @@ function Desarrollo({ t, tareas, onMover }) {
             {tareas[k].map((x) => (
               <button key={x.id} type="button" className="mc-tarea" onClick={() => onMover(x, COLUMNAS[(c + 1) % COLUMNAS.length][0])} title={c < 2 ? 'Pasar a la siguiente columna' : 'Volver a “Por hacer”'}>
                 {x.t}
-                {(x.vence || x.contacto) && <small className="mc-tarea-meta">{x.vence && `📅 ${fechaCorta(x.vence)}${x.hora ? ` · ${x.hora}` : ''}`}{x.vence && x.contacto && ' · '}{x.contacto && `👤 ${x.contacto}`}</small>}
+                {(x.vence || x.contacto || x.auto) && <small className="mc-tarea-meta">{x.auto && '🤖 Automática · '}{x.vence && `📅 ${fechaCorta(x.vence)}${x.hora ? ` · ${x.hora}` : ''}`}{x.vence && x.contacto && ' · '}{x.contacto && `👤 ${x.contacto}`}</small>}
               </button>
             ))}
             {!tareas[k].length && <p className="mc-vacio chico">Sin tareas</p>}
@@ -253,9 +253,9 @@ function Automatizaciones({ autos, onAlternar }) {
       <div className="mc-cab"><div><h1>Automatizaciones</h1><p>Lo que Shifu hace solo por ti. Actívalas o apágalas cuando quieras, o pídeselo en el chat.</p></div></div>
       <ul className="mc-autos">
         {autos.map((a) => (
-          <li key={a.id} className={a.on ? 'on' : ''}>
-            <div><span className="mc-pilar">{a.pilar}</span><b>{a.t}</b><small>{a.d}</small></div>
-            <button type="button" role="switch" aria-checked={a.on} aria-label={a.t} className="mc-switch" onClick={() => onAlternar(a)}><i /></button>
+          <li key={a.id} className={`${a.on ? 'on' : ''} ${a.disponible === false ? 'pronto' : ''}`}>
+            <div><span className="mc-pilar">{a.pilar}</span>{a.disponible === false && <span className="mc-pronto">Próximamente</span>}<b>{a.t}</b><small>{a.disponible === false && a.nota ? a.nota : a.d}</small></div>
+            <button type="button" role="switch" aria-checked={a.on} aria-label={a.t} className="mc-switch" disabled={a.disponible === false} onClick={() => onAlternar(a)}><i /></button>
           </li>
         ))}
       </ul>

@@ -22,6 +22,7 @@ import time
 from datetime import datetime
 from typing import Any
 
+from app.crm import automatizaciones
 from app.crm import estructura as est
 from app.crm import operaciones as op
 from app.crm import web
@@ -574,7 +575,7 @@ PARA_QUE = {
     "actividad": "historial automático de lo que se hace",
     "rrhh": "equipo de vendedores",
     "importar": "subir contactos desde Excel",
-    "automatizaciones": "interruptores; todavía no envían mensajes solos",
+    "automatizaciones": "funcionan de verdad: recordatorios, reparto y resumen semanal; bienvenida por WhatsApp, crear contacto desde mensajes y cobros vencidos todavía no",
 }
 
 
@@ -607,7 +608,7 @@ def contexto_crm(doc: dict, ahora: datetime) -> str:
         "tareas": {col: [{"texto": x["t"], **({"fecha": x["vence"]} if x.get("vence") else {}), **({"hora": x["hora"]} if x.get("hora") else {}),
                           **({"contacto": nombres[x["contacto_id"]]} if x.get("contacto_id") in nombres else {})}
                          for x in doc["tareas"][col]] for col in IDS_COLUMNA},
-        "automatizaciones": [{"nombre": a["t"], "encendida": a["on"]} for a in doc["automatizaciones"]],
+        "automatizaciones": [{"nombre": a["t"], "encendida": a["on"], **({} if automatizaciones.CATALOGO[a["id"]][3] else {"todavia_no_existe": True})} for a in doc["automatizaciones"]],
     }, ensure_ascii=False)
 
 
@@ -645,7 +646,7 @@ Qué es cada sección (explícalo así si preguntan, con los nombres que aparece
 - Actividad (Movimiento…): el historial automático de lo que se hace en el CRM.
 - Equipo (Vendedores…): las personas que venden contigo.
 - Importar datos: para subir contactos desde Excel.
-- Automatizaciones: interruptores; por ahora solo se encienden o apagan y todavía no mandan mensajes solos.
+- Automatizaciones: ya funcionan tres de verdad. Recordatorios (crea una tarea automática cuando un contacto lleva 3 días sin cambiar de etapa), reparto (asigna los contactos nuevos por turnos entre las personas del equipo; hace falta más de una) y resumen (una vez por semana deja un resumen en Actividad). Bienvenida por WhatsApp, crear el contacto desde un mensaje y aviso de cobros vencidos todavía NO existen (necesitan conectar WhatsApp, el correo o los cobros): dilo así, no los enciendas.
 
 Fechas y citas
 - En el Estado aparece “hoy” (fecha y hora reales). Úsala siempre; nunca adivines qué día es.

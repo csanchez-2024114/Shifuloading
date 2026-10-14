@@ -221,8 +221,8 @@ def test_tareas(cli):
 
 def test_automatizaciones_y_secciones(cli):
     crear(cli)
-    crm = cli.put("/api/v1/crm/automatizaciones/vencidos", json={"on": True}, headers=H).json()
-    assert next(a for a in crm["automatizaciones"] if a["id"] == "vencidos")["on"] is True
+    crm = cli.put("/api/v1/crm/automatizaciones/resumen", json={"on": True}, headers=H).json()
+    assert next(a for a in crm["automatizaciones"] if a["id"] == "resumen")["on"] is True
     assert cli.put("/api/v1/crm/automatizaciones/nada", json={"on": True}, headers=H).status_code == 404
     crm = cli.put("/api/v1/crm/secciones/actividad", json={"nombre": "Bitácora clínica"}, headers=H).json()
     assert crm["secciones"]["actividad"] == "Bitácora clínica"
@@ -623,3 +623,28 @@ def test_si_la_ia_falla_al_crear_el_crm_se_crea_igual_con_la_plantilla(cli, monk
         assert r.status_code == 201 and r.json()["listas"] == [] and r.json()["etapas"] == ["Nuevo", "En contacto", "Interesado", "Cliente"]
     finally:
         monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+
+
+# ───────── Automatizaciones al abrir el CRM ─────────
+
+def test_al_abrir_el_crm_las_automatizaciones_crean_los_recordatorios_pendientes(cli, db):
+    from datetime import datetime, timedelta, timezone
+
+    crear(cli, brief={**BRIEF, "objetivos": ["seguimientos"]})
+    con_contactos(cli, nombres=("Oscar Siacajau",))
+    doc = db["crm_workspaces"].docs[0]
+    doc["contactos"][0]["ultimo_contacto"] = datetime.now(timezone.utc) - timedelta(days=5)  # lleva 5 días sin avanzar
+    r1 = cli.get("/api/v1/crm", headers=H).json()
+    auto = [t for t in r1["tareas"]["porHacer"] if t.get("auto")]
+    assert len(auto) == 1 and auto[0]["t"] == "Dar seguimiento a Oscar Siacajau" and auto[0]["contacto"] == "Oscar Siacajau"
+    assert any("Recordatorio automático" in e["t"] for e in r1["eventos"])
+    r2 = cli.get("/api/v1/crm", headers=H).json()  # abrir otra vez no duplica
+    assert len([t for t in r2["tareas"]["porHacer"] if t.get("auto")]) == 1
+
+
+def test_no_se_puede_encender_una_automatizacion_que_todavia_no_existe(cli):
+    crear(cli)
+    r = cli.put("/api/v1/crm/automatizaciones/bienvenida", json={"on": True}, headers=H)
+    assert r.status_code == 422 and "Próximamente" in r.json()["mensaje"]
+    crm = cli.get("/api/v1/crm", headers=H).json()
+    assert [a["disponible"] for a in crm["automatizaciones"] if a["id"] in ("bienvenida", "contacto", "vencidos")] == [False, False, False]

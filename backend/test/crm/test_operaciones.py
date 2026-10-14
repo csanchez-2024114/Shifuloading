@@ -36,7 +36,7 @@ def test_un_crm_nuevo_nace_vacio():
 def test_lo_unico_que_sale_del_cuestionario_son_las_automatizaciones():
     d = generar("u1", BRIEF, AHORA)
     activas = {a["id"] for a in d["automatizaciones"] if a["on"]}
-    assert activas == {"recordatorios", "bienvenida", "contacto", "reparto"}
+    assert activas == {"recordatorios", "reparto"}  # solo nacen encendidas las que funcionan de verdad
     # la cartera y el equipo contados no inventan contactos ni personas
     grande = generar("u1", {"cartera": "k4", "equipo": "grande"}, AHORA)
     assert grande["contactos"] == [] and grande["total_contactos"] == 0 and grande["vendedores"] == ["Tú"]
@@ -111,7 +111,7 @@ def test_tareas_crear_mover_eliminar(doc):
 
 
 def test_automatizacion_fijar_solo_deja_rastro_si_cambia(doc):
-    a = next(x for x in doc["automatizaciones"] if not x["on"])
+    a = next(x for x in doc["automatizaciones"] if not x["on"] and x["id"] in ("resumen",))
     mismo = op.automatizacion_fijar(doc, a["id"], False, AHORA)
     assert mismo["eventos"] == doc["eventos"]
     nuevo = op.automatizacion_fijar(doc, a["id"], True, AHORA)

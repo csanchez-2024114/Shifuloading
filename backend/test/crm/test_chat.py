@@ -64,8 +64,8 @@ def test_renombrar_contacto(doc):
 
 
 def test_activar_y_apagar_automatizaciones(doc):
-    r = dice(doc, "activa los avisos de cobros vencidos")
-    assert next(a for a in r["doc"]["automatizaciones"] if a["id"] == "vencidos")["on"] is True
+    r = dice(doc, "activa el resumen semanal")
+    assert next(a for a in r["doc"]["automatizaciones"] if a["id"] == "resumen")["on"] is True
     r2 = dice(r["doc"], "apaga los recordatorios")
     assert next(a for a in r2["doc"]["automatizaciones"] if a["id"] == "recordatorios")["on"] is False
     assert dice(doc, "activa la teletransportación")["doc"] is doc
