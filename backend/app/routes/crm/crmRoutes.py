@@ -187,8 +187,18 @@ async def obtener_crm(request: Request, user: dict = Depends(get_current_user)):
     return vista_crm(doc)
 
 
+def _tiene_datos(doc: dict) -> bool:
+    """¿La persona ya trabajó en este CRM? Contactos, registros o tareas suyas (las que crean las automatizaciones no cuentan)."""
+    return bool(doc.get("total_contactos") or any(l["registros"] for l in doc.get("listas", []))
+                or any(not t.get("auto") for col in doc.get("tareas", {}).values() for t in col))
+
+
 @router.post("", status_code=201)
 async def crear_crm(request: Request, datos: CrearCrm, user: dict = Depends(get_current_user)):
+    existente = await repo.obtener(request.app.state.db, user["id"])
+    if existente and _tiene_datos(existente):
+        # Crear reemplaza el CRM: con datos de la persona adentro no se permite (un cuestionario viejo no debe borrarle su trabajo).
+        return JSONResponse({"mensaje": "Ya tienes un CRM con información. Para rehacerlo usa «Repetir cuestionario» (eso borra el actual)."}, status_code=409)
     brief = datos.brief.model_dump(exclude_none=True)
     doc = await diseno.disenar(generar(user["id"], brief), brief)  # la IA arma la estructura a la medida; sin IA queda la plantilla base
     await repo.reemplazar(request.app.state.db, user["id"], doc)

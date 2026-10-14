@@ -24,7 +24,7 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `POST /auth/refresh` | `{ refresh_token }` | `{ access_token, refresh_token }` (el anterior queda invalidado) |
 | `POST /auth/logout` | `{ refresh_token }` + token de acceso | `{ success }` |
 | `GET /crm` | — | CRM · `404` si no tiene |
-| `POST /crm` | `{ brief }` (respuestas del cuestionario, ver abajo) | CRM nuevo, armado por Shifu a partir del brief |
+| `POST /crm` | `{ brief }` (respuestas del cuestionario, ver abajo) | CRM nuevo, armado por Shifu a partir del brief. **409** si la persona ya tiene un CRM con datos (contactos, registros o tareas suyas): no se pisa; para rehacerlo, primero `DELETE /crm` |
 | `DELETE /crm` | — | `204` (para repetir el cuestionario) |
 | `POST /crm/contactos` | `{ filas: [{ n, det?, extra? }], canal, texto? }` | CRM (alta de uno o varios; `texto` es la frase que queda en Actividad) |
 | `PATCH /crm/contactos/:id` | campos a cambiar (`etapa`, `n`, `dueno`…) | CRM |

@@ -153,12 +153,38 @@ def test_el_brief_se_limpia_y_se_acota(cli):
     assert r.status_code == 201 and "campo_raro" not in r.json()["brief"]
 
 
-def test_volver_a_crear_reemplaza_el_crm(cli, db):
+def test_un_crm_con_datos_no_se_pisa_al_crear_otro(cli, db):
     crear(cli)
     assert con_contactos(cli)["totalContactos"] == 3
-    crear(cli, brief={**BRIEF, "cartera": "k1"})
-    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 0
+    r = crear(cli, brief={**BRIEF, "cartera": "k1"})  # p. ej. un cuestionario viejo que quedó en el navegador
+    assert r.status_code == 409 and "Repetir cuestionario" in r.json()["mensaje"]
+    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 3  # no se tocó nada
     assert len(db["crm_workspaces"].docs) == 1
+
+
+def test_un_crm_con_tareas_o_registros_tampoco_se_pisa(cli):
+    crear(cli)
+    cli.post("/api/v1/crm/tareas", json={"t": "Llamar a proveedores"}, headers=H)
+    assert crear(cli).status_code == 409
+
+
+def test_un_crm_vacio_si_se_puede_volver_a_crear(cli, db):
+    crear(cli)
+    r = crear(cli, brief={**BRIEF, "cartera": "k1"})  # la persona no ha trabajado nada: no hay qué perder
+    assert r.status_code == 201 and r.json()["brief"]["cartera"] == "k1" and len(db["crm_workspaces"].docs) == 1
+
+
+def test_las_tareas_de_las_automatizaciones_no_cuentan_como_trabajo_de_la_persona(cli, db):
+    crear(cli)
+    db["crm_workspaces"].docs[0]["tareas"]["porHacer"].append({"id": "a1", "t": "Dar seguimiento a X", "auto": "recordatorios"})
+    assert crear(cli).status_code == 201
+
+
+def test_para_rehacer_se_borra_primero_y_entonces_se_crea(cli):
+    crear(cli)
+    con_contactos(cli)
+    assert cli.delete("/api/v1/crm", headers=H).status_code == 204
+    assert crear(cli, brief={**BRIEF, "cartera": "k1"}).status_code == 201
 
 
 def test_borrar_crm(cli):

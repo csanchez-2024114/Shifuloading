@@ -4,6 +4,7 @@ import { HAY_SERVIDOR, auth } from '../api'
 import { FaApple, FaFacebook, FaWhatsapp } from 'react-icons/fa6'
 import { FcGoogle } from 'react-icons/fc'
 import { ClaveDeAcceso } from '../components/Iconos'
+import { borrarBorrador } from '../brief/borrador'
 import Logo from '../components/Logo'
 
 const CORREO_OK = /^\S+@\S+\.\S+$/
@@ -48,7 +49,7 @@ export default function LoginPage() {
       setEnviando(true)
       try {
         if (await auth.correoExiste(correo.trim())) { setPaso('clave'); setEnviando(false) }
-        else nav('/registro', { state: { correo: correo.trim(), sinCuenta: true } })
+        else { borrarBorrador(); nav('/registro', { state: { correo: correo.trim(), sinCuenta: true } }) } // lo que haya quedado aquí no es de esta persona
       } catch (err) { setAviso(mensajeDeEntrada(err)); setEnviando(false) }
       return
     }
@@ -56,6 +57,7 @@ export default function LoginPage() {
     setEnviando(true)
     try {
       await auth.iniciarSesion({ correo: correo.trim(), clave })
+      borrarBorrador() // un cuestionario viejo de este navegador no debe tocar la cuenta de quien entra
       nav('/mi-crm')
     } catch (err) {
       setAviso(mensajeDeEntrada(err))

@@ -552,9 +552,12 @@ export default function CrmPage() {
   // Al entrar: si venimos del cuestionario se crea el CRM; si no, se pide el que ya existe. Se pide una sola vez (también con StrictMode).
   const cargar = () => {
     setFallo(false)
-    pedido.current = (recienTerminado && borrador?.resp ? apiCrm.crearDesdeBrief(borrador.resp) : apiCrm.obtener())
+    // Con el cuestionario recién terminado se crea el CRM; si el servidor dice que ya hay uno con datos (409), se abre ese y no se toca.
+    pedido.current = (recienTerminado && borrador?.fin && borrador?.resp
+      ? apiCrm.crearDesdeBrief(borrador.resp).catch((e) => (e?.estado === 409 ? apiCrm.obtener() : Promise.reject(e)))
+      : apiCrm.obtener())
     pedido.current.then((s) => {
-      if (s) { setCrm(s); return }
+      if (s) { if (recienTerminado) borrarBorrador(); setCrm(s); return } // el CRM ya guarda sus respuestas: el borrador sobra
       // Sin CRM no hay nada que mostrar: se vuelve al cuestionario (con las respuestas guardadas, pero sin marcarlo como terminado).
       if (borrador) guardarBorrador({ ...borrador, fin: false })
       nav('/bienvenida', { replace: true })
@@ -657,7 +660,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
   if (animando && d) return <Cargando pasos={pasos} listo={!!crm} onListo={() => { setAnimando(false); nav('/mi-crm', { replace: true, state: null }) }} />
   if (!crm || !d) return <div className="carga" role="status"><p className="carga-sub">Abriendo tu CRM…</p></div>
 
-  const salir = async () => { await auth.cerrarSesion(); nav('/login', { replace: true }) }
+  const salir = async () => { borrarBorrador(); await auth.cerrarSesion(); nav('/login', { replace: true }) }
   const yo = auth.usuario()
   const inicial = (yo?.nombre || d.nombre)[0].toUpperCase()
   const rehacer = async () => {
