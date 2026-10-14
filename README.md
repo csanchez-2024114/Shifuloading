@@ -17,6 +17,8 @@ El backend de `backend/` ya trae autenticación, onboarding, chat con el agente 
 
 ## Cómo verlo funcionando
 
+> **¿Eres colaborador y quieres correrlo completo en tu computadora?** Sigue la guía paso a paso: [`COMO_CORRERLO.md`](COMO_CORRERLO.md).
+
 **Solo el frontend** (todo se guarda en el navegador, sin cuentas): `npm install` y `npm run dev`, y abrir http://localhost:5180.
 
 **Con cuentas y el CRM en un servidor, sin Mongo ni Redis** (servidor de desarrollo, todo en memoria):
