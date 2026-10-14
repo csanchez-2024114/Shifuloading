@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { SESION_VENCIDA } from './api/http'
 import HomePage from './pages/HomePage'
@@ -7,10 +7,6 @@ import LoginPage from './pages/LoginPage'
 import RegistroPage from './pages/RegistroPage'
 import CrmPage from './pages/CrmPage'
 import PanelPage from './pages/PanelPage'
-
-// Laboratorio de plantillas: solo en desarrollo (import.meta.env.DEV es false en el build, así que no entra a producción).
-const LaboratorioPage = import.meta.env.DEV ? lazy(() => import('./laboratorio/LaboratorioPage')) : null
-const VistaLabPage = import.meta.env.DEV ? lazy(() => import('./laboratorio/VistaPage')) : null
 
 export default function App() {
   const nav = useNavigate()
@@ -28,8 +24,6 @@ export default function App() {
       <Route path="/bienvenida" element={<BriefPage />} />
       <Route path="/mi-crm" element={<CrmPage />} />
       <Route path="/panel" element={<PanelPage />} />
-      {import.meta.env.DEV && <Route path="/laboratorio" element={<Suspense fallback={null}><LaboratorioPage /></Suspense>} />}
-      {import.meta.env.DEV && <Route path="/laboratorio/vista" element={<Suspense fallback={null}><VistaLabPage /></Suspense>} />}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

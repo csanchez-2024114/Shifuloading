@@ -12,7 +12,7 @@ const ALTO = { 360: 760, 390: 844, 768: 1024, 1024: 768, 1280: 800, 1440: 900 }
 const COMPARAR = [360, 768, 1280]
 const DATOS = [['vacio', 'Vacío'], ['pocos', 'Pocos (8)'], ['muchos', 'Muchos (220)']]
 
-const urlVista = (plantilla, datos, tema) => `/laboratorio/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}`
+const urlVista = (plantilla, datos, tema) => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}`
 
 /** Un iframe con el ancho real del dispositivo, escalado para que quepa en el espacio disponible. */
 function Marco({ src, ancho, titulo, maxAncho }) {

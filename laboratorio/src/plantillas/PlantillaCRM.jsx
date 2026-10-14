@@ -2,13 +2,13 @@
  * CrmPage (.mc, .mc-top, .mc-menu, .mc-main y los temas de crm-extra.css) para que lo que se prueba sea lo que se integra.
  * Si la plantilla no pasa `validarPlantilla`, muestra los errores en vez de dibujarla mal. */
 import { useState } from 'react'
-import Logo from '../components/Logo'
+import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
 import { COMPONENTES } from './vistas'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe } from './datosEjemplo'
-import '../crm.css'
-import '../crm-extra.css'
+import '@base/crm.css'
+import '@base/crm-extra.css'
 import './plantillas.css'
 
 const ICONOS = { usuarios: LuUsers, calendario: LuCalendarDays, caja: LuPackage, tarjeta: LuCreditCard, tablero: LuFolderKanban, tabla: LuTable,
