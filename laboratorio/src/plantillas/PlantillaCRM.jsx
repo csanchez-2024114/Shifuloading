@@ -24,6 +24,17 @@ const nombreBloque = (w, porId) => `${TITULO_VISTA[w.vista] || w.vista} · ${por
 /** Cambia el DOM con una transición animada (View Transitions) cuando el navegador la soporta; si no, cambia directo. */
 const conTransicion = (fn) => (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   ? document.startViewTransition(() => flushSync(fn)) : fn())
+// Rejilla de 12 columnas: anchos posibles de un bloque y su nombre para el botón.
+const ANCHOS_COL = [3, 4, 6, 8, 12]
+const ANCHO_COMPLETO = ['kpis', 'tablero', 'agenda']
+/** Tamaño inicial: resumen, tablero y agenda a lo ancho; lo demás a media columna; si queda uno solo en su fila, a lo ancho. */
+function conTamano(bloques) {
+  const medios = bloques.filter((b) => !ANCHO_COMPLETO.includes(b.vista))
+  const solo = medios.length % 2 === 1 ? medios[medios.length - 1].uid : null
+  return bloques.map((b) => ({ ...b,
+    ancho: b.ancho || (ANCHO_COMPLETO.includes(b.vista) || b.uid === solo ? 12 : 6),
+    alto: b.alto || (b.vista === 'kpis' ? 1 : b.vista === 'tablero' || b.vista === 'agenda' ? 2 : 2) }))
+}
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
 export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio' }) {
@@ -31,7 +42,13 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
   const def = ESTILOS.find((e) => e.id === estilo) || ESTILOS[0]
   const animado = def.base === 'vivo'
   // El inicio es editable como lo haría la IA: se quitan y se agregan bloques, y el resto se reacomoda animado.
-  const [bloques, setBloques] = useState(() => plantilla.inicio.map((w, i) => ({ ...w, uid: `b${i}` })))
+  const [bloques, setBloques] = useState(() => conTamano(plantilla.inicio.map((w, i) => ({ ...w, uid: `b${i}` }))))
+  // Cambiar el tamaño de un bloque (ancho en columnas de 12, alto en filas). El resto se reacomoda animado.
+  const redimensionar = (uid, eje, paso) => conTransicion(() => setBloques((bs) => bs.map((b) => {
+    if (b.uid !== uid) return b
+    if (eje === 'ancho') { const i = ANCHOS_COL.indexOf(b.ancho); return { ...b, ancho: ANCHOS_COL[Math.max(0, Math.min(ANCHOS_COL.length - 1, i + paso))] } }
+    return { ...b, alto: Math.max(1, Math.min(4, b.alto + paso)) }
+  })))
   const [quitados, setQuitados] = useState([])
   const [saliendo, setSaliendo] = useState([])
   // Quitar: primero corre la animación de salida del bloque y después el resto se reacomoda (View Transition).
@@ -42,9 +59,6 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
   }
   const poner = (uid) => conTransicion(() => { const b = quitados.find((x) => x.uid === uid); setQuitados((q) => q.filter((x) => x.uid !== uid)); setBloques((bs) => [...bs, { ...b, nuevo: true }]) })
   // Si los bloques de media columna son impares, el último queda solo en su fila: ocupa el ancho completo (sin hueco).
-  const ANCHOS = ['kpis', 'tablero', 'agenda']
-  const medios = bloques.filter((b) => !ANCHOS.includes(b.vista) && !saliendo.includes(b.uid))
-  const soloUid = medios.length % 2 === 1 ? medios[medios.length - 1].uid : null
   const ir = (id) => conTransicion(() => setVista(id))
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
@@ -91,9 +105,19 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
               <div className="mc-cab"><div><h1>Inicio</h1><p>{plantilla.para}</p></div></div>
               <div className="pl-inicio">
                 {bloques.map((w, i) => (
-                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${w.uid === soloUid ? ' pl-bloque-solo' : ''}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} style={{ '--i': w.nuevo ? 0 : i, viewTransitionName: `pl-${w.uid}` }}>
+                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} style={{ '--i': w.nuevo ? 0 : i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
                     <h2>{nombreBloque(w, porId)}</h2>
                     {animado && <button type="button" className="pl-quitar" onClick={() => quitar(w.uid)} aria-label={`Quitar ${nombreBloque(w, porId)}`}>×</button>}
+                    {animado && w.vista !== 'kpis' && (
+                      <div className="pl-tamano" role="group" aria-label={`Tamaño de ${nombreBloque(w, porId)}`}>
+                        <span>Ancho</span>
+                        <button type="button" disabled={w.ancho === ANCHOS_COL[0]} onClick={() => redimensionar(w.uid, 'ancho', -1)} aria-label="Más angosto">−</button>
+                        <button type="button" disabled={w.ancho === 12} onClick={() => redimensionar(w.uid, 'ancho', 1)} aria-label="Más ancho">+</button>
+                        <span>Alto</span>
+                        <button type="button" disabled={w.alto === 1} onClick={() => redimensionar(w.uid, 'alto', -1)} aria-label="Más bajo">−</button>
+                        <button type="button" disabled={w.alto === 4} onClick={() => redimensionar(w.uid, 'alto', 1)} aria-label="Más alto">+</button>
+                      </div>
+                    )}
                     {dibujar(porId[w.seccion], w.vista, w.opciones)}
                   </section>
                 ))}

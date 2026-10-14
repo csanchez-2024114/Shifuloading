@@ -165,11 +165,12 @@
   .pl .mc-cab { flex: none; }
 
   /* Inicio: la 1.ª fila (resumen) toma lo que necesita; las demás se reparten el alto restante. */
-  .pl-inicio { flex: 1; min-height: 0; grid-template-rows: max-content; grid-auto-rows: minmax(170px, 1fr); }
+  /* Filas elásticas: si todo cabe, la rejilla mide EXACTO el alto disponible (sin scroll). Si se agregan más bloques
+   * de los que caben con un mínimo legible (64px por fila; un bloque normal ocupa 2), recién ahí sigue hacia abajo. */
+  .pl-inicio { flex: 1; min-height: 0; grid-template-rows: max-content; grid-auto-rows: minmax(64px, 1fr); }
   /* El resumen nunca se aplasta: mide lo que mide su contenido. */
   .pl-bloque-kpis { overflow: visible; min-height: max-content; }
   /* Tablero y agenda tienen más contenido: toman el doble de alto que una gráfica o una lista. */
-  .pl-bloque-tablero, .pl-bloque-agenda { grid-row: span 2; }
   .pl-bloque { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
   .pl-bloque > h2 { flex: none; }
   .pl-bloque > :last-child { flex: 1; min-height: 0; }
@@ -197,7 +198,6 @@
   .pl-seccion > * { flex: 1; min-height: 0; }
   .pl-seccion .mc-feed { max-height: none; overflow-y: auto; }
 }
-.pl-bloque-solo { grid-column: 1 / -1; }
 
 /* Revisión del laboratorio (2026-10-14): textos mínimos de 11px y botones táctiles en móvil. */
 .pl .mc-pilar { font-size: 11px; }
@@ -210,3 +210,49 @@
   .pl .pl-quitar-mini { opacity: 1; width: 32px; height: 32px; }
   .pl-quitar { opacity: 1 !important; transform: none !important; width: 36px !important; height: 36px !important; }
 }
+
+/* ── Rejilla de 12 columnas: cada bloque decide su ancho (--ancho) y su alto en filas (--alto) ── */
+.pl-inicio { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-flow: row dense; }
+.pl-inicio > .pl-bloque { grid-column: span var(--ancho, 6); grid-row: span var(--alto, 1); }
+.pl-inicio > .pl-bloque-kpis { grid-row: span 1; }
+.pl-tamano { position: absolute; right: 44px; top: 10px; z-index: 2; display: flex; align-items: center; gap: 3px; padding: 3px 6px; border-radius: 999px; background: var(--card); border: 1px solid var(--linea); font-size: 11px; color: var(--tx3); opacity: 0; transform: translateY(-4px); transition: opacity .25s, transform .25s; }
+.pl-tamano span { padding: 0 3px; }
+.pl-tamano button { width: 22px; height: 22px; border-radius: 999px; border: 0; background: rgba(var(--ink), .07); color: var(--tx); font-size: 14px; line-height: 1; cursor: pointer; }
+.pl-tamano button:hover:not(:disabled) { background: color-mix(in srgb, var(--acento) 30%, transparent); }
+.pl-tamano button:disabled { opacity: .3; cursor: default; }
+.pl-bloque:hover .pl-tamano, .pl-tamano:focus-within { opacity: 1; transform: none; }
+/* Bloques angostos: el título se acorta y los controles se compactan. */
+.pl-bloque[data-ancho="3"] > h2, .pl-bloque[data-ancho="4"] > h2 { padding-right: 0; }
+.pl-bloque[data-ancho="3"] .pl-tamano span, .pl-bloque[data-ancho="4"] .pl-tamano span { display: none; }
+.pl-bloque > h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 900px) {
+  .pl-inicio { grid-template-columns: 1fr; }
+  .pl-inicio > .pl-bloque { grid-column: 1 / -1; grid-row: auto; min-height: calc(var(--alto, 1) * 160px); }
+  .pl-inicio > .pl-bloque-kpis { min-height: 0; }
+  .pl-tamano { display: none; }
+}
+@media (hover: none) { .pl-tamano { opacity: 1; transform: none; } }
+
+/* ── Elevarse al pasar el mouse (casi todo, suave) ──
+ * Claro: sube y proyecta sombra sobre el fondo blanco.
+ * Oscuro: la sombra casi no se ve, así que su contraparte es: la superficie se aclara un poco, aparece un filo de luz
+ * arriba (como si la luz le pegara de frente) y un halo tenue del color de la plantilla. */
+.pl-bloque, .pl-kpis > div, .pl-tarjeta, .pl-col, .pl-venc-grupo li, .pl-cita, .pl-dia, .mc-persona, .mc-autos li, .pl-agregar button, .pl-ia, .btn-pildora {
+  transition: transform calc(.35s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1), box-shadow calc(.35s * var(--vel, 1)) ease, background-color calc(.35s * var(--vel, 1)) ease, border-color calc(.35s * var(--vel, 1)) ease;
+}
+[data-tema="claro"] :is(.pl-kpis > div, .pl-tarjeta, .pl-venc-grupo li, .pl-cita, .mc-persona, .mc-autos li, .pl-agregar button, .pl-ia, .btn-pildora):hover {
+  transform: translateY(-3px); box-shadow: 0 10px 24px rgba(var(--sombra), .14), 0 2px 6px rgba(var(--sombra), .08);
+}
+[data-tema="claro"] :is(.pl-bloque, .pl-col, .pl-dia):hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(var(--sombra), .10); }
+:is([data-tema="oscuro"], .pl:not([data-tema="claro"])) :is(.pl-kpis > div, .pl-tarjeta, .pl-venc-grupo li, .pl-cita, .mc-persona, .mc-autos li, .pl-agregar button, .pl-ia, .btn-pildora):hover {
+  transform: translateY(-3px);
+  background-color: color-mix(in srgb, var(--card) 88%, #fff);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10), 0 0 0 1px rgba(255, 255, 255, .06), 0 12px 28px rgba(0, 0, 0, .55), 0 0 22px color-mix(in srgb, var(--acento) 14%, transparent);
+}
+:is([data-tema="oscuro"], .pl:not([data-tema="claro"])) :is(.pl-bloque, .pl-col, .pl-dia):hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 18px 40px rgba(0, 0, 0, .5), 0 0 30px color-mix(in srgb, var(--acento) 8%, transparent);
+}
+/* Mientras se arrastra o se anima la salida, no se eleva. */
+.pl-tarjeta.arrastrando:hover, .saliendo:hover { transform: none; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .pl *:hover { transform: none !important; } }
