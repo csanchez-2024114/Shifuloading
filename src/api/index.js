@@ -33,6 +33,11 @@ export const auth = {
     if (!HAY_SERVIDOR) return simulado.auth.iniciarSesion()
     return abrirSesion(await pedir('POST', '/auth/register', { name: nombre, last_name: apellido, email: correo, password: clave }, { publico: true }))
   },
+  /** ¿Ya hay una cuenta con este correo? (primer paso del inicio de sesión; sin servidor no hay cuentas y se considera que no). */
+  async correoExiste(correo) {
+    if (!HAY_SERVIDOR) return false
+    return !!(await pedir('POST', '/auth/email-exists', { email: correo }, { publico: true })).exists
+  },
   /** Primer paso del inicio de sesión en el servidor simulado (que no tiene contraseñas). */
   continuarConCorreo: (correo) => simulado.auth.continuarConCorreo(correo),
   /** Cierra la sesión aquí y en el servidor (si el servidor falla, igual se cierra aquí). */

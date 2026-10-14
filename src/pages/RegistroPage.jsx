@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { HAY_SERVIDOR, auth } from '../api'
 import { leerBorrador } from '../brief/borrador'
 import Logo from '../components/Logo'
@@ -27,7 +27,9 @@ function mensaje(e) {
  * Solo existe con servidor; sin servidor (modo de prueba) no hay cuentas y se sigue directo al CRM. */
 export default function RegistroPage() {
   const nav = useNavigate()
-  const [f, setF] = useState({ nombre: '', apellido: '', correo: '', clave: '' })
+  const { state } = useLocation()
+  // Si viene del inicio de sesión porque ese correo no tiene cuenta, ya trae el correo escrito.
+  const [f, setF] = useState({ nombre: '', apellido: '', correo: state?.correo || '', clave: '' })
   const [ver, setVer] = useState(false)
   const [aviso, setAviso] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -62,6 +64,7 @@ export default function RegistroPage() {
         <form className="login-tarjeta" onSubmit={enviar} noValidate>
           <h1>Crea tu cuenta</h1>
           <p className="login-sub">{brief?.nombre ? `Para guardar el CRM de ${brief.nombre}` : 'Para empezar con Shifu'}</p>
+          {state?.sinCuenta && state?.correo && <p className="login-info" role="status">No encontramos una cuenta con <b>{state.correo}</b>. Créala en un minuto: es gratis.</p>}
 
           <div className="login-fila2">
             <div>

@@ -43,7 +43,15 @@ export default function LoginPage() {
     }
 
     if (!CORREO_OK.test(correo.trim())) { setAviso('Escribe un correo válido, por ejemplo nombre@correo.com.'); return }
-    if (paso === 'correo') { setPaso('clave'); return }
+    if (paso === 'correo') {
+      // Sin cuenta con ese correo no hay contraseña que pedir: se manda a crearla, con el correo ya escrito.
+      setEnviando(true)
+      try {
+        if (await auth.correoExiste(correo.trim())) { setPaso('clave'); setEnviando(false) }
+        else nav('/registro', { state: { correo: correo.trim(), sinCuenta: true } })
+      } catch (err) { setAviso(mensajeDeEntrada(err)); setEnviando(false) }
+      return
+    }
     if (!clave) { setAviso('Escribe tu contraseña.'); return }
     setEnviando(true)
     try {
