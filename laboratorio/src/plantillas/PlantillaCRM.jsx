@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
-import { COMPONENTES, AnimarContext } from './vistas'
+import { COMPONENTES, AnimarContext, VelContext } from './vistas'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe } from './datosEjemplo'
@@ -26,15 +26,21 @@ const conTransicion = (fn) => (document.startViewTransition && !window.matchMedi
   ? document.startViewTransition(() => flushSync(fn)) : fn())
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
-export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'actual', negocio = 'Mi negocio' }) {
+export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'actual', vel = 1.6, negocio = 'Mi negocio' }) {
   const [vista, setVista] = useState('inicio')
   const def = ESTILOS.find((e) => e.id === estilo) || ESTILOS[0]
   const animado = def.base === 'vivo'
   // El inicio es editable como lo haría la IA: se quitan y se agregan bloques, y el resto se reacomoda animado.
   const [bloques, setBloques] = useState(() => plantilla.inicio.map((w, i) => ({ ...w, uid: `b${i}` })))
   const [quitados, setQuitados] = useState([])
-  const quitar = (uid) => conTransicion(() => { const b = bloques.find((x) => x.uid === uid); setBloques((bs) => bs.filter((x) => x.uid !== uid)); setQuitados((q) => [...q, b]) })
-  const poner = (uid) => conTransicion(() => { const b = quitados.find((x) => x.uid === uid); setQuitados((q) => q.filter((x) => x.uid !== uid)); setBloques((bs) => [...bs, b]) })
+  const [saliendo, setSaliendo] = useState([])
+  // Quitar: primero corre la animación de salida del bloque y después el resto se reacomoda (View Transition).
+  const quitar = (uid) => {
+    const fuera = () => conTransicion(() => { const b = bloques.find((x) => x.uid === uid); setBloques((bs) => bs.filter((x) => x.uid !== uid)); setQuitados((q) => [...q, b]); setSaliendo((s) => s.filter((x) => x !== uid)) })
+    if (!animado || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return fuera()
+    setSaliendo((s) => [...s, uid]); setTimeout(fuera, 700 * vel)
+  }
+  const poner = (uid) => conTransicion(() => { const b = quitados.find((x) => x.uid === uid); setQuitados((q) => q.filter((x) => x.uid !== uid)); setBloques((bs) => [...bs, { ...b, nuevo: true }]) })
   const ir = (id) => conTransicion(() => setVista(id))
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
@@ -44,8 +50,8 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
     return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, datos)} opciones={opciones || {}} datos={datos} /> : null
   }
   return (
-    <AnimarContext.Provider value={animado}>
-    <div className="mc pl" data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6' }}>
+    <AnimarContext.Provider value={animado}><VelContext.Provider value={vel}>
+    <div className="mc pl" data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel }}>
       <header className="mc-top">
         <Logo height={24} color="var(--tx)" />
         <span className="mc-negocio">{negocio}</span>
@@ -81,7 +87,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
               <div className="mc-cab"><div><h1>Inicio</h1><p>{plantilla.para}</p></div></div>
               <div className="pl-inicio">
                 {bloques.map((w, i) => (
-                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}`} style={{ '--i': i, viewTransitionName: `pl-${w.uid}` }}>
+                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} style={{ '--i': w.nuevo ? 0 : i, viewTransitionName: `pl-${w.uid}` }}>
                     <h2>{nombreBloque(w, porId)}</h2>
                     {animado && <button type="button" className="pl-quitar" onClick={() => quitar(w.uid)} aria-label={`Quitar ${nombreBloque(w, porId)}`}>×</button>}
                     {dibujar(porId[w.seccion], w.vista, w.opciones)}
@@ -108,6 +114,6 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
         </main>
       </div>
     </div>
-    </AnimarContext.Provider>
+    </VelContext.Provider></AnimarContext.Provider>
   )
 }

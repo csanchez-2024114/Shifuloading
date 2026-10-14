@@ -13,7 +13,8 @@ const ALTO = { 360: 760, 390: 844, 768: 1024, 1024: 768, 1280: 800, 1440: 900 }
 const COMPARAR = [360, 768, 1280]
 const DATOS = [['vacio', 'Vacío'], ['pocos', 'Pocos (8)'], ['muchos', 'Muchos (220)']]
 
-const urlVista = (plantilla, datos, tema, estilo) => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}&estilo=${estilo}`
+let VEL = '1.6'
+const urlVista = (plantilla, datos, tema, estilo) => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}&estilo=${estilo}&vel=${VEL}`
 
 /** Un iframe con el ancho real del dispositivo, escalado para que quepa en el espacio disponible. */
 function Marco({ src, ancho, titulo, maxAncho }) {
@@ -35,6 +36,7 @@ export default function LaboratorioPage() {
   const datos = q.get('datos') || 'pocos'
   const tema = q.get('tema') || 'oscuro'
   const estilo = q.get('estilo') || 'actual'
+  VEL = q.get('vel') || '1.6'
   const modo = q.get('modo') || 'una'
   const ancho = Number(q.get('ancho')) || 1280
   const fijar = (k, v) => { const n = new URLSearchParams(q); n.set(k, v); setQ(n, { replace: true }) }
@@ -70,6 +72,10 @@ export default function LaboratorioPage() {
 
         <h2>Estilo</h2>
         <ul className="lab-lista">{ESTILOS.map((e) => <li key={e.id}><button type="button" className={estilo === e.id ? 'on' : ''} onClick={() => fijar('estilo', e.id)}><b>{e.nombre}</b><small>{e.idea}</small></button></li>)}</ul>
+
+        <h2>Velocidad de animación</h2>
+        <div className="lab-botones">{[['1', 'Rápida'], ['1.6', 'Calmada'], ['2.2', 'Lenta'], ['3', 'Muy lenta']].map(([v, t]) => <button key={v} type="button" className={VEL === v ? 'on' : ''} onClick={() => fijar('vel', v)}>{t}</button>)}</div>
+        <p className="lab-nota">Para volver a ver la entrada, recarga el marco (o cambia de sección).</p>
 
         <h2>Datos</h2>
         <div className="lab-botones">{DATOS.map(([v, t]) => <button key={v} type="button" className={datos === v ? 'on' : ''} onClick={() => fijar('datos', v)}>{t}</button>)}</div>

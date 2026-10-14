@@ -6,6 +6,23 @@ import { isoDia } from './datosEjemplo'
 
 /** true cuando el estilo es animado ("vivo"): los números cuentan desde 0, las tablas se ordenan y el tablero se arrastra. */
 export const AnimarContext = createContext(false)
+/** Multiplicador de duración de las animaciones (1 = normal, 2 = el doble de lento). Debe coincidir con --vel del CSS. */
+export const VelContext = createContext(1)
+const SALIDA_MS = 700
+
+/** Lista que anima sus salidas: al quitar un elemento primero se marca "saliendo" (corre su animación) y después se borra. */
+export function useConSalida(inicial) {
+  const vel = useContext(VelContext)
+  const [items, setItems] = useState(inicial)
+  const [saliendo, setSaliendo] = useState([])
+  const quitar = (id, despues) => {
+    if (sinMovimiento()) { setItems((xs) => xs.filter((x) => x.id !== id)); despues?.(); return }
+    setSaliendo((s) => [...s, id])
+    setTimeout(() => { setItems((xs) => xs.filter((x) => x.id !== id)); setSaliendo((s) => s.filter((x) => x !== id)); despues?.() }, SALIDA_MS * vel)
+  }
+  const poner = (item) => setItems((xs) => [...xs, item])
+  return { items, saliendo, quitar, poner, setItems }
+}
 const sinMovimiento = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 /** Número que sube desde 0 hasta su valor real (solo en estilos animados). El valor final es siempre el contado. */
@@ -192,35 +209,62 @@ function Agenda({ seccion, campos, registros, opciones }) {
   )
 }
 
+const COLOR_RANGO = (desde, hasta) => (hasta < 0 ? '#f0587a' : desde <= 7 ? '#f5a623' : '#22d3a6')
+const nombreRango = (desde, hasta) => (hasta < 0 ? 'Vencidos' : desde === 0 && hasta === 7 ? 'Próximos 7 días' : `De ${desde} a ${hasta} días`)
+
 function Vencimientos({ seccion, campos, registros, opciones }) {
+  const animar = useContext(AnimarContext)
   const lim = opciones.dias || 30
+  // Los grupos son rangos de días editables (como los editaría la IA): quitar uno, crear otro.
+  const { items: rangos, saliendo, quitar, poner } = useConSalida(() => [
+    { id: 'vencidos', desde: -Infinity, hasta: -1 },
+    { id: 'r0-7', desde: 0, hasta: 7 },
+    { id: `r8-${lim}`, desde: 8, hasta: lim },
+  ])
+  const [nuevo, setNuevo] = useState({ desde: 1, hasta: 45 })
   // Lo ya terminado (entregado, cancelado) no está "por vencer": se excluye por su estado.
   const vivos = opciones.estado && opciones.excluir ? registros.filter((r) => !opciones.excluir.includes(r.valores[opciones.estado])) : registros
   const conDia = vivos.filter((r) => r.valores[opciones.fecha]).map((r) => ({ r, d: diasHasta(r.valores[opciones.fecha]) })).sort((a, b) => a.d - b.d)
-  const grupos = [
-    { t: 'Vencidos', clase: 'alerta', c: '#f0587a', items: conDia.filter((x) => x.d < 0) },
-    { t: 'Próximos 7 días', clase: 'aviso', c: '#f5a623', items: conDia.filter((x) => x.d >= 0 && x.d <= 7) },
-    { t: `De 8 a ${lim} días`, clase: 'tranquilo', c: '#22d3a6', items: conDia.filter((x) => x.d > 7 && x.d <= lim) },
-  ]
   if (!registros.length) return <Vacio seccion={seccion} />
   const det = opciones.detalle && campo(campos, opciones.detalle)
+  const crear = (desde, hasta) => poner({ id: `r${desde}-${hasta}-${Date.now()}`, desde, hasta, nuevo: true })
+  // Simula el pedido "quita De 8 a 30 y pon De 1 a 45": se borra solo ese grupo (con su salida) y luego se arma el nuevo.
+  const simular = () => { const v = rangos.find((g) => g.desde === 8); if (v) quitar(v.id, () => crear(1, 45)); else crear(1, 45) }
   return (
-    <div className="pl-venc">
-      {grupos.map((g, gi) => (
-        <section key={g.t} className={`pl-venc-grupo ${g.clase}`} style={{ '--c': g.c, '--i': gi }}>
-          <h3><span>{g.t}</span><i>{g.items.length}</i></h3>
-          <ul>
-            {g.items.slice(0, 8).map(({ r, d }, k) => (
-              <li key={r.id} style={{ '--i': k }}>
-                <span><b>{ver('texto', r.valores[opciones.titulo])}</b>{det && <small>{ver(det.tipo, r.valores[det.id])}</small>}</span>
-                <em>{d < 0 ? `hace ${-d} d` : d === 0 ? 'hoy' : `en ${d} d`}</em>
-              </li>
-            ))}
-            {g.items.length > 8 && <li className="pl-mas">+{g.items.length - 8} más</li>}
-            {!g.items.length && <li className="pl-mas">Nada</li>}
-          </ul>
-        </section>
-      ))}
+    <div className="pl-venc-marco">
+      {animar && (
+        <div className="pl-ia-barra">
+          <button type="button" className="pl-ia" onClick={simular}>✦ Simular a Shifu: «quita De 8 a {lim} y pon De 1 a 45»</button>
+          <span className="pl-ia-form">
+            De <input type="number" value={nuevo.desde} onChange={(e) => setNuevo({ ...nuevo, desde: Number(e.target.value) })} aria-label="Desde (días)" />
+            a <input type="number" value={nuevo.hasta} onChange={(e) => setNuevo({ ...nuevo, hasta: Number(e.target.value) })} aria-label="Hasta (días)" /> días
+            <button type="button" onClick={() => nuevo.hasta >= nuevo.desde && crear(nuevo.desde, nuevo.hasta)}>＋ Crear grupo</button>
+          </span>
+        </div>
+      )}
+      <div className="pl-venc">
+        {rangos.map((g, gi) => {
+          const items = conDia.filter((x) => x.d >= g.desde && x.d <= g.hasta)
+          const clase = g.hasta < 0 ? 'alerta' : g.desde <= 7 && g.hasta <= 7 ? 'aviso' : 'tranquilo'
+          return (
+            <section key={g.id} className={`pl-venc-grupo ${clase}${saliendo.includes(g.id) ? ' saliendo' : ''}${g.nuevo ? ' nuevo' : ''}`} style={{ '--c': COLOR_RANGO(g.desde, g.hasta), '--i': g.nuevo ? 0 : gi }}>
+              <h3><span>{nombreRango(g.desde, g.hasta)}</span><i>{items.length}</i>
+                {animar && <button type="button" className="pl-quitar-mini" onClick={() => quitar(g.id)} aria-label={`Quitar ${nombreRango(g.desde, g.hasta)}`}>×</button>}
+              </h3>
+              <ul>
+                {items.slice(0, 40).map(({ r, d }, k) => (
+                  <li key={r.id} style={{ '--i': Math.min(k, 10) }}>
+                    <span><b>{ver('texto', r.valores[opciones.titulo])}</b>{det && <small>{ver(det.tipo, r.valores[det.id])}</small>}</span>
+                    <em>{d < 0 ? `hace ${-d} d` : d === 0 ? 'hoy' : `en ${d} d`}</em>
+                  </li>
+                ))}
+                {items.length > 40 && <li className="pl-mas">+{items.length - 40} más</li>}
+                {!items.length && <li className="pl-mas">Nada</li>}
+              </ul>
+            </section>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -142,3 +142,52 @@
   .pl-tabla { max-height: none; overflow: visible; }  /* en móvil son tarjetas: la paginación ya limita a 25 */
   .pl-col { max-height: 60vh; }
 }
+
+/* Scroll siempre oculto (en todo el CRM y en cualquier vista): se sigue pudiendo desplazar con rueda, trackpad o dedo. */
+.pl, .pl * { scrollbar-width: none; -ms-overflow-style: none; }
+.pl ::-webkit-scrollbar, .pl::-webkit-scrollbar { display: none; width: 0; height: 0; }
+/* Como no hay barra, un desvanecido abajo avisa que hay más contenido. */
+.pl-col, .pl-dia, .pl-venc-grupo ul, .pl-tabla, .mc-feed { mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
+.pl-tablero { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+@media (max-width: 700px) { .pl-tabla { mask-image: none; } }
+
+/* ── Una sola pantalla (escritorio y tablet horizontal) ──
+ * El CRM ocupa exactamente la ventana y la página NUNCA se desplaza: todo lo que sobra (más filas, más tarjetas, más días)
+ * se desplaza DENTRO de su propio bloque. Así una captura siempre muestra la vista completa.
+ * En móvil (< 900px) se vuelve al scroll normal de página: ahí una pantalla no alcanza. */
+@media (min-width: 901px) and (min-height: 560px) {
+  .pl { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  .pl .mc-top { flex: none; }
+  .pl .mc-cuerpo { flex: 1; min-height: 0; align-items: stretch; }
+  .pl .mc-menu { position: static; min-height: 0; height: 100%; overflow-y: auto; }
+  .pl .mc-main { min-height: 0; height: 100%; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+  .pl .mc-cab { flex: none; }
+
+  /* Inicio: la 1.ª fila (resumen) toma lo que necesita; las demás se reparten el alto restante. */
+  .pl-inicio { flex: 1; min-height: 0; grid-template-rows: auto; grid-auto-rows: minmax(220px, 1fr); }
+  .pl-bloque { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .pl-bloque > h2 { flex: none; }
+  .pl-bloque > :last-child { flex: 1; min-height: 0; }
+
+  /* Cada vista llena su bloque y desplaza por dentro. */
+  .pl-bloque .pl-tabla-marco, .pl-seccion .pl-tabla-marco { height: 100%; grid-template-rows: auto minmax(0, 1fr); }
+  .pl-bloque .pl-tabla, .pl-seccion .pl-tabla { max-height: none; height: 100%; }
+  .pl-tablero { height: 100%; align-items: stretch; }
+  .pl-col { max-height: none; min-height: 0; }
+  .pl-agenda { height: 100%; overflow-y: auto; align-content: start; }
+  .pl-dia { max-height: 100%; }
+  .pl-venc-marco { height: 100%; grid-template-rows: auto minmax(0, 1fr); }
+  .pl-venc-marco:not(:has(.pl-ia-barra)) { grid-template-rows: minmax(0, 1fr); }
+  .pl-venc { height: 100%; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+  .pl-venc-grupo { display: flex; flex-direction: column; min-height: 0; }
+  .pl-venc-grupo ul { flex: 1; min-height: 0; max-height: none; }
+  .pl-grafica { display: flex; flex-direction: column; justify-content: center; }
+  .pl-grafica svg { max-height: 100%; min-height: 0; }
+  .pl-linea svg { flex: 1; }
+  .pl-kpis { max-height: none; overflow: visible; }
+
+  /* Sección: el contenido llena lo que queda debajo del título. */
+  .pl-seccion { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .pl-seccion > * { flex: 1; min-height: 0; }
+  .pl-seccion .mc-feed { max-height: none; overflow-y: auto; }
+}
