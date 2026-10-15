@@ -1,0 +1,27 @@
+[project]
+name = "assistant"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=1.2,<1.3",
+    "langchain>=1.3.14",
+    "langchain-openai",
+    "langgraph-checkpoint-mongodb",
+    "langgraph-store-mongodb",
+    "pymongo",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+    "ddgs",
+    "tzdata",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
