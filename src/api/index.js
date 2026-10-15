@@ -60,6 +60,8 @@ export const crm = {
   reiniciar: () => (HAY_SERVIDOR ? pedir('DELETE', '/crm') : simulado.crm.reiniciar()),
   /** Preguntas que la IA hace según lo que la persona ya contó de su negocio (sin servidor no hay: se sigue con las fijas). */
   seguimiento: (brief) => (HAY_SERVIDOR ? pedir('POST', '/crm/seguimiento', { brief }) : Promise.resolve({ preguntas: [], modo: 'base' })),
+  /** La siguiente pregunta del cuestionario, escrita por la IA según lo contestado: { modo, pregunta, rubro }. Sin servidor o sin IA, modo 'base' (siguen las preguntas fijas). */
+  siguientePregunta: (datos) => (HAY_SERVIDOR ? pedir('POST', '/crm/siguiente-pregunta', datos) : Promise.resolve({ modo: 'base', pregunta: null, rubro: null })),
 
   contactosCrear: (filas, canal, texto) => (HAY_SERVIDOR ? pedir('POST', '/crm/contactos', { filas, canal, texto }) : simulado.crm.contactosCrear(filas, canal, texto)),
   contactosActualizar: (id, cambios) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/contactos/${id}`, cambios) : simulado.crm.contactosActualizar(id, cambios)),

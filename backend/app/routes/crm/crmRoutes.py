@@ -8,7 +8,8 @@ Errores: `{"mensaje": "..."}` con el código HTTP que corresponda.
 Endpoints (relativos al prefijo):
   GET    ""                       — El CRM (404 si todavía no tiene uno)
   POST   ""                       — Crea el CRM a partir del cuestionario; la IA diseña etapas, campos y secciones (reemplaza el anterior)
-  POST   /seguimiento             — Preguntas de seguimiento que la IA hace según el negocio (sin sesión, con límite)
+  POST   /seguimiento             — (antiguo) Preguntas de seguimiento que la IA hace según el negocio (sin sesión, con límite)
+  POST   /siguiente-pregunta      — La siguiente pregunta del cuestionario, escrita por la IA según lo contestado (sin sesión, con límite)
   DELETE ""                       — Lo borra (para repetir el cuestionario)
   POST   /contactos               — Alta de uno o varios contactos
   PATCH  /contactos/{id}          — Cambia nombre, etapa, canal, responsable o detalle
@@ -82,8 +83,8 @@ class BriefEntrada(_Texto):
     herramientas: list[str] = Field(default_factory=list, max_length=20)
     objetivos: list[str] = Field(default_factory=list, max_length=20)
     dolor: Optional[str] = Field(None, max_length=300)
-    que_vendes: Optional[str] = Field(None, max_length=200)
-    seguimiento: list[Seguimiento] = Field(default_factory=list, max_length=4)  # preguntas que la IA hizo según el negocio, con sus respuestas
+    que_vendes: Optional[str] = Field(None, max_length=300)
+    seguimiento: list[Seguimiento] = Field(default_factory=list, max_length=6)  # preguntas que la IA hizo según el negocio, con sus respuestas
     armado: Optional[str] = Field(None, max_length=30)
     autonomia: Optional[str] = Field(None, max_length=30)
     presupuesto: Optional[str] = Field(None, max_length=30)
@@ -102,6 +103,15 @@ class CrearCrm(BaseModel):
 
 class PedirSeguimiento(BaseModel):
     brief: BriefEntrada
+
+
+class SiguienteEntrada(_Texto):
+    """Lo contestado hasta ahora en el cuestionario: las 3 preguntas fijas y las que la IA ya hizo."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
+    nombre: str = Field("", max_length=60)
+    ubicacion: Optional[Ubicacion] = None
+    que_vendes: Optional[str] = Field(None, max_length=300)
+    qa: list[Seguimiento] = Field(default_factory=list, max_length=6)
 
 
 class FilaContacto(_Texto):
@@ -215,6 +225,16 @@ async def preguntas_de_seguimiento(request: Request, datos: PedirSeguimiento):
         return JSONResponse({"mensaje": "Falta el tipo de negocio."}, status_code=422)
     preguntas, modo = await diseno.preguntas_de_seguimiento(brief)
     return {"preguntas": preguntas, "modo": modo}
+
+
+@router.post("/siguiente-pregunta")
+@limiter.limit("60/hour")
+async def siguiente_pregunta(request: Request, datos: SiguienteEntrada):
+    """La siguiente pregunta del cuestionario, escrita por la IA según lo ya contestado (sin sesión: el cuestionario va antes de crear la cuenta;
+    limitada por IP y por tope diario). `modo: "base"` significa que la IA no está disponible y la pantalla sigue con las preguntas fijas."""
+    if len(datos.nombre) < 2 or not (datos.que_vendes or "").strip():
+        return JSONResponse({"mensaje": "Faltan el nombre del negocio y qué vendes."}, status_code=422)
+    return await diseno.siguiente_pregunta(datos.model_dump(exclude_none=True))
 
 
 @router.delete("", status_code=204)

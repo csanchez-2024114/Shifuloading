@@ -313,3 +313,52 @@ def test_las_recomendaciones_llevan_su_tipo_para_que_el_menu_las_ponga_aparte():
     v = vista_crm(nuevo, AHORA)
     tipos = {l["nombre"]: l["tipo"] for l in v["listas"]}
     assert tipos["Recomendaciones"] == "recomendaciones" and tipos["Pedidos"] is None
+
+
+# ───────── El cuestionario lo escribe la IA, una pregunta a la vez ─────────
+
+DATOS = {"nombre": "Herrería El Yunque", "ubicacion": {"pais": "gt", "ciudad": "Guatemala"}, "que_vendes": "portones, puertas y rejas de hierro", "qa": []}
+PREG = {"titulo": "¿Cómo te piden un trabajo nuevo?", "tipo": "una", "emoji": "🛠️", "opciones": [{"t": "Piden cotización", "e": "🧾"}, {"t": "Llegan a la herrería", "e": "🏠"}]}
+
+
+@pytest.mark.asyncio
+async def test_la_ia_hace_la_siguiente_pregunta_viendo_todo_lo_contestado():
+    m = Modelo({"listo": False, "rubro": "servicios", "pregunta": PREG})
+    r = await diseno.siguiente_pregunta({**DATOS, "qa": [{"pregunta": "¿Con cuántos trabajas?", "respuesta": "Solo yo"}]}, modelo=m)
+    assert r["modo"] == "ia" and r["rubro"] == "servicios"
+    assert r["pregunta"]["id"] == "ia2" and r["pregunta"]["tipo"] == "una" and r["pregunta"]["opciones"][0]["t"] == "Piden cotización"
+    visto = " ".join(msg.content for msg in m.recibido)
+    assert "portones, puertas y rejas de hierro" in visto and "Solo yo" in visto and "NO puedes terminar" in visto  # con 1 hecha todavía no puede cerrar
+
+
+@pytest.mark.asyncio
+async def test_la_ia_puede_terminar_solo_despues_del_minimo_y_nunca_pasa_del_maximo():
+    qa = lambda n: [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo"} for i in range(n)]
+    # antes del mínimo, un "listo" no se acepta: se sigue con las preguntas fijas
+    assert (await diseno.siguiente_pregunta({**DATOS, "qa": qa(1)}, modelo=Modelo({"listo": True})))["modo"] == "base"
+    r = await diseno.siguiente_pregunta({**DATOS, "qa": qa(diseno.MIN_IA)}, modelo=Modelo({"listo": True, "rubro": "otro"}))
+    assert r == {"modo": "ia", "pregunta": None, "rubro": "otro"}
+    # en el máximo ni siquiera se llama al modelo
+    m = Modelo(RuntimeError("no debía llamarse"))
+    assert (await diseno.siguiente_pregunta({**DATOS, "qa": qa(diseno.MAX_IA)}, modelo=m))["pregunta"] is None and m.recibido is None
+
+
+@pytest.mark.asyncio
+async def test_una_pregunta_repetida_o_mal_hecha_o_una_falla_de_la_ia_pasan_a_las_preguntas_fijas():
+    previa = [{"pregunta": "¿Cómo te piden un trabajo nuevo?", "respuesta": "Cotización"}]
+    assert (await diseno.siguiente_pregunta({**DATOS, "qa": previa}, modelo=Modelo({"pregunta": PREG})))["modo"] == "base"   # repetida
+    assert (await diseno.siguiente_pregunta(DATOS, modelo=Modelo({"pregunta": {"titulo": "corta", "tipo": "una"}})))["modo"] == "base"
+    assert (await diseno.siguiente_pregunta(DATOS, modelo=Modelo("esto no es json")))["modo"] == "base"
+    assert (await diseno.siguiente_pregunta(DATOS, modelo=Modelo(RuntimeError("Error code: 429 - insufficient_quota"))))["modo"] == "base"
+
+
+@pytest.mark.asyncio
+async def test_un_rubro_inventado_se_descarta_y_la_pregunta_abierta_no_dice_opcional():
+    m = Modelo({"rubro": "naves espaciales", "pregunta": {"titulo": "¿Qué te gustaría contarnos de tus clientes?", "tipo": "texto"}})
+    r = await diseno.siguiente_pregunta(DATOS, modelo=m)
+    assert r["rubro"] is None and r["pregunta"]["tipo"] == "parrafo" and "Opcional" not in r["pregunta"]["sub"]
+
+
+def test_el_resumen_para_la_ia_no_llena_de_guiones_lo_que_no_se_pregunto():
+    texto = diseno.resumen_del_brief({"nombre": "Yunque", "que_vendes": "rejas", "seguimiento": [{"pregunta": "¿Cómo cobras?", "respuesta": "Anticipo"}]})
+    assert "Negocio: Yunque" in texto and "¿Cómo cobras?: Anticipo" in texto and "—" not in texto

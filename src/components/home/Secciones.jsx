@@ -89,7 +89,7 @@ export function ReuneClientes() {
         <div className="pci-texto">
           <div className="pci-logos" aria-hidden="true"><span>💬</span><span>✉️</span><span>📸</span></div>
           <h3>Tu CRM entiende tus chats</h3>
-          <p>Conecta WhatsApp y tu correo: Shifu detecta quién te escribe, crea el contacto, anota lo que pidió y te propone el siguiente paso. <a href="#ia">Conoce a Shifu IA</a>.</p>
+          <p>Conecta WhatsApp y tu correo: Shifu detecta quién te escribe, crea el contacto, anota lo que pidió y te propone el siguiente paso.</p>
         </div>
         <div className="pci-mock" aria-hidden="true">
           <div className="pci-pregunta">Hola, quisiera una cotización para un evento en agosto 🙌</div>

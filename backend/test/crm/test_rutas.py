@@ -609,7 +609,7 @@ def test_las_preguntas_de_seguimiento_no_piden_sesion_y_usan_las_del_rubro_sin_i
 
 def test_las_preguntas_de_seguimiento_exigen_el_rubro_y_validan_el_cuestionario(cli):
     assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"nombre": "Sin rubro"}}).status_code == 422
-    assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"rubro": "comercio", "que_vendes": "x" * 201}}).status_code == 422
+    assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"rubro": "comercio", "que_vendes": "x" * 301}}).status_code == 422
     assert cli.post("/api/v1/crm/seguimiento", json={}).status_code == 422
 
 
@@ -619,7 +619,7 @@ def test_el_cuestionario_acepta_que_vende_y_las_respuestas_de_seguimiento(cli):
     assert r.status_code == 201
     assert r.json()["brief"]["que_vendes"] == "pan por encargo" and r.json()["brief"]["seguimiento"][0]["respuesta"] == "A domicilio, En el local"
     assert r.json()["resumenIA"] is None  # sin IA no hay resumen: la plantilla base no inventa nada
-    muchas = {**BRIEF, "seguimiento": [{"pregunta": "p", "respuesta": "r"}] * 5}
+    muchas = {**BRIEF, "seguimiento": [{"pregunta": "p", "respuesta": "r"}] * 7}
     assert crear(cli, brief=muchas).status_code == 422
 
 
@@ -838,3 +838,13 @@ def test_al_volver_tras_horas_shifu_saluda_retomando_lo_ultimo(cli, db):
     asyncio.run(viejo())
     s = cli.get("/api/v1/crm/chat/historial", headers=H).json()["saludo"]
     assert s.startswith("¡Hola de nuevo!") and "armamos tu menú" in s
+
+
+def test_la_siguiente_pregunta_no_pide_sesion_exige_lo_basico_y_sin_ia_manda_a_las_fijas(cli):
+    ok = {"nombre": "Herrería El Yunque", "que_vendes": "portones", "ubicacion": {"pais": "gt"}, "qa": []}
+    r = cli.post("/api/v1/crm/siguiente-pregunta", json=ok)
+    assert r.status_code == 200 and r.json()["modo"] == "base" and r.json()["pregunta"] is None
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "nombre": ""}).status_code == 422
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": ""}).status_code == 422
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "qa": [{"pregunta": "p", "respuesta": "r"}] * 7}).status_code == 422
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": "x" * 301}).status_code == 422

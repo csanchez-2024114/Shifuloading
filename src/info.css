@@ -71,3 +71,44 @@
   .info-tuyo dl { grid-template-columns: 1fr; gap: 4px; }
   .info-tuyo dt { margin-top: 10px; }
 }
+
+/* Panel de "Impulsado por la IA": pestañas con mini paneles */
+.dev-tabs { justify-content: flex-start; flex-wrap: wrap; margin: 0 0 22px; }
+.dev-mini { border-radius: 14px; overflow: hidden; background: #0b0f17; border: 1px solid rgba(255,255,255,.1); animation: dev-entra .35s ease both; }
+@keyframes dev-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.dev-mini pre { margin: 0; padding: 20px 24px; font: 13px/1.7 ui-monospace, Consolas, monospace; color: #b8f0d8; overflow-x: auto; }
+.dev-aviso { display: flex; align-items: center; gap: 14px; margin: 0 20px 16px; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px dashed rgba(255,255,255,.2); }
+.dev-aviso div { flex: 1; min-width: 0; }
+.dev-aviso b, .dev-auto b { display: block; font-size: 14px; color: #fff; }
+.dev-aviso small, .dev-auto small { display: block; color: #8c93bd; font-size: 12.5px; margin-top: 2px; }
+.dev-aviso em { font-style: normal; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(255,196,77,.14); color: #ffd37a; white-space: nowrap; }
+.dev-mas { display: inline-block; margin: 0 20px 18px; color: #8fe9cf; font-size: 14px; font-weight: 600; }
+.dev-mas:hover { color: #fff; }
+.dev-auto { list-style: none; margin: 0; padding: 8px 20px; }
+.dev-auto li { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.dev-auto li:last-child { border-bottom: 0; }
+.dev-auto li > div { flex: 1; min-width: 0; }
+.dev-auto em { font-style: normal; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+.dev-auto em.ok { background: rgba(34,211,166,.16); color: #6ff0cb; }
+.dev-sw { width: 38px; height: 22px; border-radius: 999px; background: #22d3a6; position: relative; flex: none; }
+.dev-sw i { position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: #04120d; }
+.dev-pie { margin: 0; padding: 12px 20px 18px; color: #8c93bd; font-size: 13px; line-height: 1.5; }
+.dev-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; padding: 20px; }
+.dev-form label { display: grid; gap: 7px; font-size: 12.5px; font-weight: 600; color: #8c93bd; }
+.dev-in { padding: 10px 12px; border-radius: 10px; background: #151a24; border: 1px solid rgba(255,255,255,.1); color: #e6e9ff; font-size: 14px; font-weight: 400; }
+.dev-ops { display: flex; gap: 6px; flex-wrap: wrap; }
+.dev-ops b { padding: 8px 12px; border-radius: 10px; background: #151a24; border: 1px solid rgba(255,255,255,.1); color: #b6b9d6; font-size: 13px; font-weight: 500; }
+.dev-ops b.on { background: #fff; color: #000; border-color: #fff; }
+
+/* "Crea tu CRM en 3 pasos": cada paso se abre con un resumen */
+.pasos-lista li { display: block; padding: 0; }
+.paso-btn { width: 100%; display: flex; align-items: baseline; gap: 28px; padding: 18px 0; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; font-family: inherit; }
+.paso-btn:hover b { color: #8fe9cf; }
+.paso-btn:focus-visible { outline: 2px solid #22d3a6; outline-offset: 2px; border-radius: 6px; }
+.paso-btn b { flex: 1; transition: color .2s; }
+.paso-mas { font-size: 26px; color: var(--verde-vivo); transition: transform .25s; line-height: 1; }
+.paso-abierto .paso-mas { transform: rotate(45deg); }
+.paso-detalle { padding: 0 0 20px 56px; animation: dev-entra .3s ease both; }
+.paso-detalle[hidden] { display: none; }
+.paso-detalle p { margin: 0; max-width: 520px; color: #b9c9c3; font-size: 15.5px; line-height: 1.65; }
+@media (max-width: 720px) { .paso-btn { gap: 16px; } .paso-detalle { padding-left: 0; } }
