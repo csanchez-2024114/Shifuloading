@@ -11,6 +11,7 @@ export default defineConfig({
   root: aqui('.'),
   plugins: [react(), chatLaboratorio()], // chat con IA: solo en desarrollo (apply: 'serve')
   resolve: { alias: { '@base': aqui('../src') } },
+  publicDir: aqui('../public'), // imágenes del CRM base (mascota de Shifu), solo lectura
   server: { port: 5190, strictPort: true, fs: { allow: [aqui('..')] }, watch: { ignored: ['**/backend/**', '**/dist/**'] } },
   optimizeDeps: { entries: ['index.html'] },
   build: { outDir: aqui('dist') },

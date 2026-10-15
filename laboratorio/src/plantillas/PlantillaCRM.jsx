@@ -45,6 +45,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
   // El inicio SOLO lo cambia la IA (chat): recibe un estado nuevo y la pantalla se transforma animada.
   const [bloques, setBloques] = useState(() => conTamano(plantilla.inicio.map((w, i) => ({ ...w, uid: `b${i}` }))))
   const [saliendo, setSaliendo] = useState([])
+  const [chatAbierto, setChatAbierto] = useState(true)
   const ir = (id) => conTransicion(() => setVista(id))
   /** Aplica el estado que devolvió Shifu: lo que se va sale primero (desenfoque), después el resto se reacomoda y lo nuevo nace. */
   const aplicarEstado = (nuevo) => {
@@ -70,7 +71,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
   }
   return (
     <AnimarContext.Provider value={animado}><VelContext.Provider value={vel}>
-    <div className="mc pl" data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel }}>
+    <div className={`mc pl${chatAbierto ? ' con-chat' : ''}`} data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel }}>
       <header className="mc-top">
         <Logo height={24} color="var(--tx)" />
         <span className="mc-negocio">{negocio}</span>
@@ -125,7 +126,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
           )}
         </main>
       </div>
-      <ChatLab tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} />
+      <ChatLab tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
     </div>
     </VelContext.Provider></AnimarContext.Provider>
   )

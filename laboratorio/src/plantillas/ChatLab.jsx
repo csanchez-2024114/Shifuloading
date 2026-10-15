@@ -17,8 +17,9 @@ const SUGERENCIAS = [
   ['Orden', 'Pon el resumen al final'],
 ]
 
-export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual }) {
+export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto }) {
   const [abierto, setAbierto] = useState(true)
+  useEffect(() => { onAbierto?.(abierto) }, [abierto]) // eslint-disable-line react-hooks/exhaustive-deps
   const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Esta es la pantalla de **${plantilla.nombre}**. Dime qué quieres ver distinto: quitar, agregar, agrandar, achicar o mover cualquier bloque.`)])
   const [escribiendo, setEscribiendo] = useState(false)
   const [txt, setTxt] = useState('')

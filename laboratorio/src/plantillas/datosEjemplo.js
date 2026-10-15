@@ -53,7 +53,14 @@ export function datosEjemplo(plantilla, nivel = 'pocos') {
   const registros = {}
   for (const s of plantilla.secciones) {
     if (!s.campos?.length || s.fuente) continue
-    registros[s.id] = Array.from({ length: n }, (_, i) => ({ id: `${s.id}-${i}`, valores: Object.fromEntries(s.campos.map((c) => [c.id, valor(c, r)])) }))
+    registros[s.id] = Array.from({ length: n }, (_, i) => {
+      const valores = Object.fromEntries(s.campos.map((c) => [c.id, valor(c, r)]))
+      // Coherencia: una campaña termina DESPUÉS de empezar (antes salían 44 con fin < inicio y la línea de tiempo no los dibujaba).
+      if (valores.inicio && valores.fin && valores.fin < valores.inicio) {
+        const d = new Date(`${valores.inicio}T00:00:00`); d.setDate(d.getDate() + 3 + Math.floor(r() * 28)); valores.fin = isoDia(d)
+      }
+      return { id: `${s.id}-${i}`, valores }
+    })
   }
   const eventos = n === 0 ? [{ id: 'e0', e: '🤖', t: 'Shifu creó tu CRM', h: 'ahora' }]
     : Array.from({ length: Math.min(n, 12) }, (_, i) => ({ id: `e${i}`, e: ['➕', '🔁', '📅', '💬', '✅'][i % 5], t: `${['Agregaste a', 'Actualizaste a', 'Agendaste a', 'Escribiste a', 'Cerraste con'][i % 5]} ${NOMBRES[i % NOMBRES.length]}`, h: i === 0 ? 'hace 5 min' : `hace ${i} h` }))

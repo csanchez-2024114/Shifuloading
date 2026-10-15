@@ -120,8 +120,11 @@ function ejecutarSin(plantilla, estado, nombre, args = {}, contexto = {}) {
       const rangos = (args.rangos || []).map((r) => ({ desde: r.vencidos ? null : Number(r.desde), hasta: r.vencidos ? -1 : Number(r.hasta) }))
       if (!rangos.length || rangos.length > 5) return no('da entre 1 y 5 rangos.')
       for (const r of rangos) if (r.desde !== null && !(Number.isFinite(r.desde) && Number.isFinite(r.hasta) && r.hasta >= r.desde && r.desde >= 0 && r.hasta <= 365)) return no('cada rango es {desde, hasta} en días (0 a 365, hasta ≥ desde), o {vencidos: true}.')
+      const dias = rangos.filter((r) => r.desde !== null).sort((x, y) => x.desde - y.desde)
+      const pisados = dias.slice(1).map((r, i) => (r.desde <= dias[i].hasta ? `${dias[i].desde}-${dias[i].hasta} y ${r.desde}-${r.hasta}` : null)).filter(Boolean)
       return si(conBloques(estado.bloques.map((x) => (x === b ? { ...b, opciones: { ...b.opciones, rangos } } : x))),
-        `Rangos del bloque ${b.uid}: ${rangos.map((r) => (r.desde === null ? 'Vencidos' : `${r.desde}-${r.hasta} días`)).join(', ')}.`)
+        `Rangos del bloque ${b.uid}: ${rangos.map((r) => (r.desde === null ? 'Vencidos' : `${r.desde}-${r.hasta} días`)).join(', ')}.`
+        + (pisados.length ? ` AVISO: se pisan (${pisados.join('; ')}): quien vence en esos días aparece en los dos grupos. Díselo a la persona en una línea y ofrece ajustarlo.` : ''))
     }
     case 'abrir_seccion': {
       const s = seccionDe(plantilla, args.seccion); if (!s && args.seccion !== 'inicio') return no(`la sección «${args.seccion}» no existe.`)

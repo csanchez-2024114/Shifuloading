@@ -256,3 +256,10 @@
 /* Mientras se arrastra o se anima la salida, no se eleva. */
 .pl-tarjeta.arrastrando:hover, .saliendo:hover { transform: none; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .pl *:hover { transform: none !important; } }
+
+/* El chat de Shifu no tapa el CRM (error 7 del recorrido): en escritorio, con el panel abierto, el CRM se corre a la izquierda
+ * y le deja su espacio (380px de panel + 22px de margen + aire). En pantallas angostas el panel flota encima, como en el base. */
+@media (min-width: 1100px) {
+  .pl .mc-cuerpo { transition: padding-right calc(.5s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1); }
+  .pl.con-chat .mc-cuerpo { padding-right: 420px; }
+}
