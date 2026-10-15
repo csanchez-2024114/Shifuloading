@@ -28,6 +28,9 @@ class Settings:
     model_call_limit: int
     memory_semantic: bool
     enable_hitl_demo: bool
+    use_bigtool: bool = False          # agente alterno con langgraph-bigtool (busca herramientas en un registro)
+    bigtool_demo_tools: bool = False   # +50 herramientas inofensivas de demostración en el registro
+    embedding_model: str = "text-embedding-3-small"  # índice semántico de herramientas (bigtool)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -41,6 +44,9 @@ class Settings:
             model_call_limit=int(os.getenv("MODEL_CALL_LIMIT", "0")),
             memory_semantic=_bool("MEMORY_SEMANTIC"),
             enable_hitl_demo=_bool("ENABLE_HITL_DEMO"),
+            use_bigtool=_bool("USE_BIGTOOL"),
+            bigtool_demo_tools=_bool("BIGTOOL_DEMO_TOOLS"),
+            embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small").strip(),
         )
 
     def require_api_key(self) -> None:

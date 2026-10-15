@@ -481,7 +481,8 @@ textarea#input:disabled { opacity: .6; }
     calculadora: "🧮 Calculando…",
     fecha_hora: "🕒 Consultando la hora…",
     guardar_recuerdo: "💾 Guardando recuerdo…",
-    buscar_recuerdos: "📚 Buscando recuerdos…"
+    buscar_recuerdos: "📚 Buscando recuerdos…",
+    retrieve_tools: "🧰 Buscando herramientas…"
   };
   var TOOL_DONE = {
     buscar_web: "🔎 Búsqueda web",
@@ -489,7 +490,8 @@ textarea#input:disabled { opacity: .6; }
     calculadora: "🧮 Cálculo",
     fecha_hora: "🕒 Hora consultada",
     guardar_recuerdo: "💾 Recuerdo guardado",
-    buscar_recuerdos: "📚 Recuerdos consultados"
+    buscar_recuerdos: "📚 Recuerdos consultados",
+    retrieve_tools: "🧰 Herramientas"
   };
   var ENGINES = { duckduckgo: "vía DuckDuckGo", openai_web_search: "vía OpenAI web search" };
 
@@ -559,6 +561,7 @@ textarea#input:disabled { opacity: .6; }
       if (running && g.last) extra += " · «" + g.last.slice(0, 60) + "»";
       chip.appendChild(el("span", "eng", extra));
     }
+    if (g.found && g.found.length) chip.appendChild(el("span", "eng", g.found.join(", ")));
     if (g.engine) chip.appendChild(el("span", "eng", ENGINES[g.engine] || ("vía " + g.engine)));
     if (g.errors && g.errors < g.total) chip.appendChild(el("span", "eng", "· " + g.errors + " fallaron"));
     scrollDown(false);
@@ -577,6 +580,12 @@ textarea#input:disabled { opacity: .6; }
     g.done++;
     if (ev.status === "error") g.errors++;
     if (ev.engine) g.engine = ev.engine;
+    // bigtool: "Available tools: ['acos', 'log2']" -> herramientas encontradas
+    var av = /^Available tools:\s*\[(.*)\]/.exec(ev.output || "");
+    if (av) {
+      g.found = g.found || [];
+      av[1].split(",").forEach(function (s) { s = s.trim().replace(/^['"]|['"]$/g, ""); if (s && g.found.indexOf(s) < 0) g.found.push(s); });
+    }
     this.paint(g);
     if (ev.output) g.chip.title = String(ev.output).slice(0, 500);
   };

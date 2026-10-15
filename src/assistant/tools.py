@@ -79,11 +79,11 @@ def _eval_node(node: ast.AST):
 
 @tool
 def calculadora(expresion: str) -> str:
-    """Evalúa una expresión matemática y devuelve el resultado exacto.
+    """Calculator: evaluates a math expression and returns the exact result.
 
-    Soporta + - * / // % ** y paréntesis, y funciones/constantes de math (sqrt, sin, cos, tan,
-    log, log10, exp, factorial, abs, round, min, max, pi, e...). Ejemplo: "sqrt(144) + 2**10 / 4".
-    Úsala siempre para cuentas en lugar de calcular de memoria.
+    Supports + - * / // % ** and parentheses, plus math functions/constants (sqrt, sin, cos, tan,
+    log, log10, exp, factorial, abs, round, min, max, pi, e...). Example: "sqrt(144) + 2**10 / 4".
+    Always use it for arithmetic instead of computing from memory.
     """
     try:
         tree = ast.parse(expresion.strip(), mode="eval")
@@ -101,15 +101,12 @@ def calculadora(expresion: str) -> str:
 
 # --------------------------------------------------------------------------- fecha y hora
 
-_DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-
-
 @tool
 def fecha_hora(zona: str = "local") -> str:
-    """Devuelve la fecha y hora actuales (ISO 8601) y el día de la semana.
+    """Returns the current date and time (ISO 8601) and the day of the week.
 
-    `zona` es opcional: "local" (por defecto) o un nombre de zona horaria IANA,
-    por ejemplo "America/Mexico_City", "Europe/Madrid", "UTC".
+    `zona` is optional: "local" (default) or an IANA time zone name,
+    e.g. "America/Mexico_City", "Europe/Madrid", "UTC".
     """
     try:
         if not zona or zona.strip().lower() == "local":
@@ -123,7 +120,7 @@ def fecha_hora(zona: str = "local") -> str:
             f"Error: zona horaria desconocida o no disponible: {zona!r}. "
             "Usa un nombre IANA como 'America/Mexico_City'."
         )
-    return f"{now.isoformat(timespec='seconds')} ({_DIAS[now.weekday()]})"
+    return f"{now.isoformat(timespec='seconds')} ({now:%A})"
 
 
 # --------------------------------------------------------------------------- memoria
@@ -131,9 +128,9 @@ def fecha_hora(zona: str = "local") -> str:
 
 @tool
 def guardar_recuerdo(texto: str, runtime: ToolRuntime[Context]) -> str:
-    """Guarda en la memoria a largo plazo un dato estable del usuario (nombre, gustos,
-    preferencias, contexto de trabajo). Escribe el dato como una frase completa y autosuficiente,
-    por ejemplo "El usuario se llama Ana y prefiere respuestas cortas".
+    """Saves a stable fact about the user to long-term memory (name, likes, preferences,
+    work context). Write it as a complete, self-contained sentence in the user's language,
+    e.g. "El usuario se llama Ana y prefiere respuestas cortas".
     """
     memory.save_memory(runtime.store, runtime.context.user_id, texto)
     return "Recuerdo guardado."
@@ -141,8 +138,8 @@ def guardar_recuerdo(texto: str, runtime: ToolRuntime[Context]) -> str:
 
 @tool
 def buscar_recuerdos(consulta: str, runtime: ToolRuntime[Context]) -> str:
-    """Busca en la memoria a largo plazo lo que se sabe del usuario. Pasa una consulta con
-    palabras clave del tema, o una cadena vacía para obtener los recuerdos más recientes.
+    """Searches long-term memory for what is known about the user. Pass topic keywords in the
+    language the memories were saved in, or an empty string to get the most recent memories.
     """
     found = memory.search_memories(runtime.store, runtime.context.user_id, consulta)
     if not found:
@@ -155,8 +152,8 @@ def buscar_recuerdos(consulta: str, runtime: ToolRuntime[Context]) -> str:
 
 @tool
 def enviar_email_simulado(destinatario: str, asunto: str, cuerpo: str) -> str:
-    """Envía un correo electrónico (SIMULADO: no se envía nada real). Requiere aprobación
-    humana antes de ejecutarse.
+    """Sends an email (SIMULATED: nothing is actually sent). Requires human approval
+    before it runs.
     """
     return f"Email simulado enviado a {destinatario} con asunto {asunto!r} ({len(cuerpo)} caracteres)."
 
@@ -197,8 +194,8 @@ def web_search(query: str, settings: Settings) -> tuple[str, str]:
 def make_buscar_web(settings: Settings, search_fn: Callable[[str, Settings], tuple[str, str]] = web_search) -> BaseTool:
     @tool
     def buscar_web(consulta: str) -> str:
-        """Busca información actual en la web y devuelve un resumen con fuentes. Úsala para
-        noticias, datos recientes o cualquier cosa que pueda haber cambiado.
+        """Searches the web for current information and returns a summary with sources. Use it for
+        news, recent data or anything that may have changed.
         """
         text, engine = search_fn(consulta, settings)
         return f"[motor: {engine}]\n{text}"
@@ -207,35 +204,45 @@ def make_buscar_web(settings: Settings, search_fn: Callable[[str, Settings], tup
 
 
 _INVESTIGADOR_PROMPT = (
-    "Eres un investigador. Para la tarea recibida, haz entre 3 y 5 búsquedas web con la herramienta "
-    "buscar_web (varía las consultas), contrasta las fuentes y devuelve un resumen claro y conciso "
-    "con las fuentes (URLs) al final. Si algo no se pudo confirmar, dilo. Responde en el idioma de la tarea."
+    "You are a researcher. For the given task, run 3 to 5 web searches with the buscar_web tool "
+    "(vary the queries), cross-check the sources and return a clear, concise summary with the "
+    "sources (URLs) at the end. If something could not be confirmed, say so. Reply in the task's language."
 )
 
 
-def make_investigador(model: BaseChatModel, buscar_web_tool: BaseTool) -> BaseTool:
-    sub = create_agent(model, [buscar_web_tool], system_prompt=_INVESTIGADOR_PROMPT)
+INVESTIGADOR_DOC = """Delegates in-depth research to a sub-agent that runs several web searches and
+returns a summary with sources. Use it for questions that need cross-checking several
+sources; for a single fact use buscar_web."""
 
-    @tool
+
+def make_subinvestigador(model: BaseChatModel, buscar_web_tool: BaseTool):
+    return create_agent(model, [buscar_web_tool], system_prompt=_INVESTIGADOR_PROMPT)
+
+
+def investigar(sub, tarea: str, write: Callable[[dict], None]) -> str:
+    """Corre el subagente investigador; avisa cada búsqueda interna con `write` y devuelve su resumen."""
+    # tags=["nostream"]: sus tokens no deben llegar al stream del agente principal.
+    # Se usa stream (no invoke) para avisar a la UI de cada búsqueda interna mientras trabaja.
+    final = ""
+    for update in sub.stream(
+        {"messages": [{"role": "user", "content": f"Current date: {datetime.now().astimezone():%Y-%m-%d}.\n\n{tarea}"}]},
+        config={"tags": ["nostream"], "recursion_limit": 25},
+        stream_mode="updates",
+    ):
+        for msg in (update.get("model") or {}).get("messages", []):
+            for call in msg.tool_calls:
+                write({"tipo": "progreso", "herramienta": call["name"], "args": call["args"]})
+            if not msg.tool_calls and msg.text:
+                final = msg.text
+    return final
+
+
+def make_investigador(model: BaseChatModel, buscar_web_tool: BaseTool) -> BaseTool:
+    sub = make_subinvestigador(model, buscar_web_tool)
+
+    @tool(description=INVESTIGADOR_DOC)
     def investigador_profundo(tarea: str, runtime: ToolRuntime[Context]) -> str:
-        """Delega una investigación a fondo en un subagente que hace varias búsquedas web y
-        devuelve un resumen con fuentes. Úsalo para preguntas que requieren contrastar varias
-        fuentes; para datos puntuales usa buscar_web.
-        """
-        # tags=["nostream"]: sus tokens no deben llegar al stream del agente principal.
-        # Se usa stream (no invoke) para avisar a la UI de cada búsqueda interna mientras trabaja.
-        final = ""
-        for update in sub.stream(
-            {"messages": [{"role": "user", "content": f"Fecha actual: {datetime.now().astimezone():%Y-%m-%d}.\n\n{tarea}"}]},
-            config={"tags": ["nostream"], "recursion_limit": 25},
-            stream_mode="updates",
-        ):
-            for msg in (update.get("model") or {}).get("messages", []):
-                for call in msg.tool_calls:
-                    runtime.stream_writer({"tipo": "progreso", "herramienta": call["name"], "args": call["args"]})
-                if not msg.tool_calls and msg.text:
-                    final = msg.text
-        return final
+        return investigar(sub, tarea, runtime.stream_writer)
 
     return investigador_profundo
 

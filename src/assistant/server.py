@@ -33,13 +33,14 @@ def _build_real_agent(settings: Settings):
     from assistant.tools import build_tools
 
     model = agent_mod.make_model(settings)
-    return agent_mod.build_agent(
-        model,
-        build_tools(model, settings),
-        settings,
-        checkpointer=memory.build_checkpointer(client, settings.mongodb_db),
-        store=memory.build_store(client, settings.mongodb_db, settings.memory_semantic, settings.openai_api_key),
-    )
+    checkpointer = memory.build_checkpointer(client, settings.mongodb_db)
+    store = memory.build_store(client, settings.mongodb_db, settings.memory_semantic, settings.openai_api_key)
+    if settings.use_bigtool:
+        from assistant.bigtool_agent import build_bigtool_agent
+
+        log.info("Agente: langgraph-bigtool (demo tools: %s)", settings.bigtool_demo_tools)
+        return build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store)
+    return agent_mod.build_agent(model, build_tools(model, settings), settings, checkpointer=checkpointer, store=store)
 
 
 def create_app(agent=None, settings: Settings | None = None, classify=None) -> FastAPI:

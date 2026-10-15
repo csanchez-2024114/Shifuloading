@@ -22,6 +22,7 @@ from assistant.config import Settings, read_system_prompt
 logger = logging.getLogger(__name__)
 
 OUTPUT_PREVIEW_CHARS = 500
+MODEL_NODES = ("model", "agent")  # "agent" = nodo del modelo en langgraph-bigtool
 
 # Esfuerzo automático: nivel -> (tope de llamadas al modelo en el turno, reasoning effort de Luna)
 ESFUERZOS = {"bajo": (5, "low"), "medio": (15, "medium"), "alto": (40, "high")}
@@ -42,12 +43,12 @@ def clasificar_esfuerzo(settings: Settings, mensaje: str) -> str:
         llm = ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None,
                          use_responses_api=True, reasoning={"effort": "none"}, max_tokens=16)
         prompt = (
-            "Clasifica el esfuerzo que requiere este mensaje para un asistente con herramientas. "
-            "Responde SOLO una palabra:\n"
-            "bajo = saludo, charla, dato simple o una sola consulta rápida;\n"
-            "medio = una búsqueda web, un cálculo o una explicación normal;\n"
-            "alto = varios pasos o cálculos encadenados, comparar fuentes, investigar a fondo, planear o razonar algo difícil.\n\n"
-            f"Mensaje: {mensaje[:2000]}"
+            "Classify the effort this message requires from an assistant with tools. "
+            "Reply with ONLY one of these words: bajo, medio, alto.\n"
+            "bajo = greeting, small talk, a simple fact or a single quick lookup;\n"
+            "medio = one web search, one calculation or a normal explanation;\n"
+            "alto = several steps or chained calculations, comparing sources, in-depth research, planning or hard reasoning.\n\n"
+            f"Message: {mensaje[:2000]}"
         )
         palabra = llm.invoke(prompt).text.strip().lower()
         return next((n for n in ESFUERZOS if n in palabra), "medio")
@@ -102,18 +103,19 @@ def _on_tool_error(exc: Exception, request) -> str:
     return f"Error en la herramienta ({type(exc).__name__}): {exc}. Intenta otra cosa."
 
 
-_DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-
-
-@dynamic_prompt
-def _system_prompt(request) -> str:
+def system_prompt_text() -> str:
     # Fecha local en cada llamada: el modelo no la sabe y la búsqueda web va en UTC.
     now = datetime.now().astimezone()
     return (
         f"{read_system_prompt()}\n\n"
-        f"Fecha y hora actual del usuario: {_DIAS[now.weekday()]} {now:%Y-%m-%d %H:%M} (UTC{now:%z}). "
-        "Úsala como 'hoy'; no la deduzcas de resultados de búsqueda."
+        f"User's current local date and time: {now:%A %Y-%m-%d %H:%M} (UTC{now:%z}). "
+        "Treat it as 'today'; never infer the date from search results."
     )
+
+
+@dynamic_prompt
+def _system_prompt(request) -> str:
+    return system_prompt_text()
 
 
 def build_agent(model, tools, settings: Settings, checkpointer=None, store=None):
@@ -185,7 +187,8 @@ def _update_events(update: dict) -> Iterator[dict]:
             yield {"type": "token", "text": f"\n\n_{LIMIT_MSG}_"}
             continue
         for msg in node_update.get("messages", []) or []:
-            if node == "model" and isinstance(msg, AIMessage):
+            # nodos de create_agent ("model"/"tools") y de langgraph-bigtool ("agent"/"tools"/"select_tools")
+            if node in MODEL_NODES and isinstance(msg, AIMessage):
                 for call in msg.tool_calls:
                     yield {
                         "type": "tool_start",
@@ -193,12 +196,12 @@ def _update_events(update: dict) -> Iterator[dict]:
                         "name": call.get("name"),
                         "args": call.get("args", {}),
                     }
-            elif node == "tools" and isinstance(msg, ToolMessage):
+            elif node in ("tools", "select_tools") and isinstance(msg, ToolMessage):
                 output = _content_text(msg)
                 yield {
                     "type": "tool_end",
                     "id": msg.tool_call_id,
-                    "name": msg.name,
+                    "name": msg.name or ("retrieve_tools" if node == "select_tools" else None),
                     "output": output[:OUTPUT_PREVIEW_CHARS],
                     "status": "error" if msg.status == "error" else "success",
                     "engine": _engine_from_output(output),
@@ -227,7 +230,7 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             kind, data = chunk["type"], chunk["data"]
             if kind == "messages":
                 token, metadata = data
-                if metadata.get("langgraph_node") != "model":
+                if metadata.get("langgraph_node") not in MODEL_NODES:
                     continue
                 if "nostream" in (metadata.get("tags") or []):
                     continue
