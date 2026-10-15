@@ -3,6 +3,7 @@
  * que muestra lo cuenta de los registros (nada escrito a mano). */
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { isoDia } from './datosEjemplo'
+import { region } from './regional'
 
 /** true cuando el estilo es animado ("vivo"): los números cuentan desde 0, las tablas se ordenan y el tablero se arrastra. */
 export const AnimarContext = createContext(false)
@@ -26,7 +27,7 @@ export function useConSalida(inicial) {
 const sinMovimiento = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 /** Número que sube desde 0 hasta su valor real (solo en estilos animados). El valor final es siempre el contado. */
-function Numero({ v, fmt = (x) => x.toLocaleString('es') }) {
+function Numero({ v, fmt = (x) => region().numero(x) }) {
   const animar = useContext(AnimarContext) && !sinMovimiento()
   const vel = useContext(VelContext)
   const [n, setN] = useState(animar ? 0 : v)
@@ -48,11 +49,10 @@ const MAX_TARJETAS = 30 // con scroll interno ya no hace falta cortar en 6
 
 const hoyIso = () => isoDia(new Date())
 const diasHasta = (iso) => Math.round((new Date(`${iso}T00:00:00`) - new Date(`${hoyIso()}T00:00:00`)) / 86400000)
-const fechaCorta = (iso) => { const [a, m, d] = iso.split('-').map(Number); return `${d} ${MESES[m - 1]}${a !== new Date().getFullYear() ? ` ${a}` : ''}` }
 export const ver = (tipo, v) => (v === undefined || v === null || v === '' ? '—'
-  : tipo === 'fecha' ? fechaCorta(v) : tipo === 'dinero' ? `Q ${Number(v).toLocaleString('es')}` : tipo === 'numero' ? Number(v).toLocaleString('es') : String(v))
+  : tipo === 'fecha' ? region().fecha(v) : tipo === 'dinero' ? region().dinero(Number(v)) : tipo === 'numero' ? region().numero(Number(v)) : tipo === 'hora' ? region().hora(v) : String(v))
 const campo = (campos, id) => campos.find((c) => c.id === id)
-const plural = (n, uno, varios) => `${n.toLocaleString('es')} ${n === 1 ? uno : varios}`
+const plural = (n, uno, varios) => `${region().numero(n)} ${n === 1 ? uno : varios}`
 
 function Vacio({ seccion }) {
   return (
@@ -84,8 +84,8 @@ function Tabla({ seccion, campos, registros }) {
     <div className="pl-tabla-marco">
     {registros.length > POR_PAGINA && (
       <div className="pl-tabla-barra">
-        <input type="search" placeholder={`Buscar en ${registros.length.toLocaleString('es')} registros…`} value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(0) }} aria-label={`Buscar en ${seccion.titulo}`} />
-        <span>{ordenadas.length ? `${(pag * POR_PAGINA + 1).toLocaleString('es')}–${(pag * POR_PAGINA + filas.length).toLocaleString('es')} de ${ordenadas.length.toLocaleString('es')}` : 'Sin resultados'}</span>
+        <input type="search" placeholder={`Buscar en ${region().numero(registros.length)} registros…`} value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(0) }} aria-label={`Buscar en ${seccion.titulo}`} />
+        <span>{ordenadas.length ? `${region().numero(pag * POR_PAGINA + 1)}–${region().numero(pag * POR_PAGINA + filas.length)} de ${region().numero(ordenadas.length)}` : 'Sin resultados'}</span>
         <button type="button" disabled={pag === 0} onClick={() => setPagina(pag - 1)} aria-label="Página anterior">‹</button>
         <button type="button" disabled={pag >= paginas - 1} onClick={() => setPagina(pag + 1)} aria-label="Página siguiente">›</button>
       </div>
@@ -197,7 +197,7 @@ function Agenda({ seccion, campos, registros, opciones }) {
             <h3><span>{i === 0 ? 'Hoy' : DIAS[d.getDay()]}</span> <b>{d.getDate()} {MESES[d.getMonth()]}</b><i>{citas.length || ''}</i></h3>
             {citas.slice(0, 30).map((r, k) => (
               <article key={r.id} className="pl-cita" style={{ '--i': k }}>
-                {opciones.hora && <time>{r.valores[opciones.hora] || '—'}</time>}
+                {opciones.hora && <time>{r.valores[opciones.hora] ? region().hora(r.valores[opciones.hora]) : '—'}</time>}
                 <span><b>{ver('texto', r.valores[opciones.titulo])}</b>{det && <small>{ver(det.tipo, r.valores[det.id])}</small>}</span>
               </article>
             ))}
@@ -295,7 +295,7 @@ function Grafica({ seccion, campos, registros, opciones }) {
   const datos = c.opciones.map((op, i) => ({ op, color: COLORES[i % COLORES.length],
     v: registros.filter((r) => r.valores[opciones.por] === op).reduce((s, r) => s + (opciones.suma ? Number(r.valores[opciones.suma]) || 0 : 1), 0) }))
   const total = datos.reduce((s, d) => s + d.v, 0) || 1
-  const fmt = (v) => (opciones.suma ? ver('dinero', v) : v.toLocaleString('es'))
+  const fmt = (v) => (opciones.suma ? ver('dinero', v) : region().numero(v))
   if (tipo === 'dona') {
     let acum = 0
     return (

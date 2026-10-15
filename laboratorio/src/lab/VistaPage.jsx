@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import PlantillaCRM from '../plantillas/PlantillaCRM'
 import { GaleriaGraficos } from '../plantillas/graficos'
 import { VelContext } from '../plantillas/vistas'
+import { fijarRegion } from '../plantillas/regional'
 import { plantillaPorId } from '../plantillas/semillas'
 import { datosEjemplo } from '../plantillas/datosEjemplo'
 import { ROTAS } from './rotas'
@@ -16,10 +17,11 @@ export default function VistaPage() {
   const tema = q.get('tema') === 'claro' ? 'claro' : 'oscuro'
   const estilo = q.get('estilo') || 'vivo-compacto'
   const vel = Number(q.get('vel')) || 2.2
+  const pais = q.get('pais') || 'gt'
   const plantilla = plantillaPorId(id) || ROTAS.find((p) => p.id === id)
   const datos = useMemo(() => (plantilla ? datosEjemplo(plantilla, nivel) : null), [plantilla, nivel])
   useEffect(() => { document.documentElement.style.colorScheme = tema === 'claro' ? 'light' : 'dark' }, [tema])
   if (!plantilla) return <p style={{ padding: 24 }}>No existe la plantilla «{id}».</p>
-  if (q.get('galeria')) return <VelContext.Provider value={vel}><GaleriaGraficos plantilla={plantilla} datos={datos} tema={tema} vel={vel} /></VelContext.Provider>
-  return <PlantillaCRM key={`${id}-${nivel}-${estilo}-${vel}`} plantilla={plantilla} datos={datos} tema={tema} estilo={estilo} vel={vel} negocio="Negocio de prueba" />
+  if (q.get('galeria')) { fijarRegion(pais); return <VelContext.Provider value={vel}><GaleriaGraficos key={pais} plantilla={plantilla} datos={datos} tema={tema} vel={vel} /></VelContext.Provider> }
+  return <PlantillaCRM key={`${id}-${nivel}-${estilo}-${vel}-${pais}`} plantilla={plantilla} datos={datos} tema={tema} estilo={estilo} vel={vel} pais={pais} negocio="Negocio de prueba" />
 }

@@ -11,19 +11,20 @@
 export const COLORES = ['#7c5cff', '#22d3a6', '#f5a623', '#f0587a', '#5b6bff', '#3fb8ff', '#b06cff']
 export const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 export const SIN_DATO = 'Sin dato'
+import { region } from './regional.js'
 
-// ── Formato (el mismo del CRM: `Q ${n.toLocaleString('es')}`) ────────────────────────────────────────
+// ── Formato: lo decide la configuración regional de la persona (regional.js), nunca un símbolo fijo ──────────
 /** Escribe un número según el tipo de campo. Redondea a 2 decimales (promedios) y nunca devuelve "NaN". */
 export function fmt(tipo, n) {
   if (n === null || n === undefined || n === '' || !Number.isFinite(Number(n))) return '—'
   const r = Math.round(Number(n) * 100) / 100 || 0 // `|| 0` evita "-0"
-  return tipo === 'dinero' ? `Q ${r.toLocaleString('es')}` : r.toLocaleString('es')
+  return tipo === 'dinero' ? region().dinero(r) : region().numero(r)
 }
 /** Fracción → "12,5 %". Con `signo` antepone + o −. */
 export function fmtPct(f, signo = false) {
   if (f === null || f === undefined || !Number.isFinite(f)) return '—'
   const r = Math.round(f * 1000) / 10 || 0
-  const s = `${Math.abs(r).toLocaleString('es')} %`
+  const s = region().pct(Math.abs(r) / 100)
   return signo ? `${r > 0 ? '+' : r < 0 ? '−' : ''}${s}` : (r < 0 ? `−${s}` : s)
 }
 
@@ -293,9 +294,7 @@ export function fmtCorto(tipo, n) {
   const v = Number(n)
   const a = Math.abs(v)
   if (a < 1e4) return fmt(tipo, v)
-  const r1 = (x) => Math.round(x * 10) / 10 || 0
-  const s = a >= 1e6 || r1(a / 1e3) >= 1000 ? `${r1(v / 1e6).toLocaleString('es')} M` : `${r1(v / 1e3).toLocaleString('es')} mil`
-  return tipo === 'dinero' ? `Q ${s}` : s
+  return tipo === 'dinero' ? region().dineroCorto(v) : region().numeroCorto(v)
 }
 
 /** Reparte 100 casillas según los valores (método del mayor residuo): la suma es SIEMPRE 100 si hay algo que repartir. */

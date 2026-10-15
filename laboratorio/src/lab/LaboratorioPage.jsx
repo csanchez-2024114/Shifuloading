@@ -6,6 +6,7 @@ import { PLANTILLAS } from '../plantillas/semillas'
 import { validarPlantilla } from '../plantillas/validar'
 import { ROTAS } from './rotas'
 import { ESTILOS } from '../plantillas/estilos'
+import { PAISES } from '../plantillas/regional'
 import './laboratorio.css'
 
 const ANCHOS = [360, 390, 768, 1024, 1280, 1440]
@@ -14,7 +15,8 @@ const COMPARAR = [360, 768, 1280]
 const DATOS = [['vacio', 'Vacío'], ['pocos', 'Pocos (8)'], ['muchos', 'Muchos (220)']]
 
 let VEL = '2.2'
-const urlVista = (plantilla, datos, tema, estilo, extra = '') => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}&estilo=${estilo}&vel=${VEL}${extra}`
+let PAIS = 'gt'
+const urlVista = (plantilla, datos, tema, estilo, extra = '') => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}&estilo=${estilo}&vel=${VEL}&pais=${PAIS}${extra}`
 
 /** Un iframe con el ancho real del dispositivo, escalado para que quepa en el espacio disponible. */
 function Marco({ src, ancho, titulo, maxAncho }) {
@@ -37,6 +39,7 @@ export default function LaboratorioPage() {
   const tema = q.get('tema') || 'oscuro'
   const estilo = q.get('estilo') || 'vivo-compacto'
   VEL = q.get('vel') || '2.2'
+  PAIS = q.get('pais') || 'gt'
   const modo = q.get('modo') || 'una'
   const ancho = Number(q.get('ancho')) || 1280
   const fijar = (k, v) => { const n = new URLSearchParams(q); n.set(k, v); setQ(n, { replace: true }) }
@@ -76,6 +79,10 @@ export default function LaboratorioPage() {
         <h2>Velocidad de animación</h2>
         <div className="lab-botones">{[['1', 'Rápida'], ['1.6', 'Calmada'], ['2.2', 'Lenta'], ['3', 'Muy lenta']].map(([v, t]) => <button key={v} type="button" className={VEL === v ? 'on' : ''} onClick={() => fijar('vel', v)}>{t}</button>)}</div>
         <p className="lab-nota">Para volver a ver la entrada, recarga el marco (o cambia de sección).</p>
+
+        <h2>País del negocio (configuración)</h2>
+        <div className="lab-botones">{Object.entries(PAISES).map(([v, p]) => <button key={v} type="button" className={PAIS === v ? 'on' : ''} onClick={() => fijar('pais', v)}>{p.nombre}</button>)}</div>
+        <p className="lab-nota">Moneda, miles, fechas y horas salen de aquí (como en la configuración del CRM).</p>
 
         <h2>Datos</h2>
         <div className="lab-botones">{DATOS.map(([v, t]) => <button key={v} type="button" className={datos === v ? 'on' : ''} onClick={() => fijar('datos', v)}>{t}</button>)}</div>
