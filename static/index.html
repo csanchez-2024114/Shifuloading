@@ -89,6 +89,8 @@ select#thread {
   background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
   font-size: .92rem; text-overflow: ellipsis;
 }
+.tid { font-size: .7rem; color: var(--muted); margin-top: 2px; padding-left: 2px; font-variant-numeric: tabular-nums; }
+#newbtn.queued { border-style: dashed; border-color: var(--accent); color: var(--accent); }
 .btn {
   border: 1px solid var(--border); background: var(--surface-2);
   border-radius: 8px; padding: 7px 11px; cursor: pointer; font-size: .92rem;
@@ -246,6 +248,7 @@ textarea#input:disabled { opacity: .6; }
     <div class="thread-wrap">
       <label for="thread" class="sr-only">Conversación</label>
       <select id="thread"></select>
+      <div class="tid">hilo <span id="threadid"></span></div>
     </div>
     <button id="newbtn" class="btn" type="button" aria-label="Nueva conversación"><span class="long">Nueva conversación</span><span class="short" aria-hidden="true">+ Nueva</span></button>
     <button id="membtn" class="btn" type="button" aria-expanded="false" aria-controls="memories" aria-label="Recuerdos" title="Recuerdos guardados">🧠</button>
@@ -461,7 +464,10 @@ textarea#input:disabled { opacity: .6; }
       memBtn = $("membtn"), memEl = $("memories"), memListEl = $("memlist"), timesEl = $("showtimes"),
       effortEl = $("effortsel");
 
-  var state = { threadId: null, threads: [], userId: "usuario", streaming: false, pending: 0, loadSeq: 0 };
+  var state = { threadId: null, threads: [], userId: "usuario", streaming: false, pending: 0, loadSeq: 0, newQueued: false };
+  var NEW_LABEL = "Nueva conversación", NEW_QUEUED_LABEL = "Nueva al terminar…";
+  // lo lee el modelo (resultado de la herramienta rechazada): en inglés, como todo lo que lee el modelo
+  var REJECT_MSG = "The user declined this action. Do not run it again; answer without it.";
 
   function newId() {
     var id;
@@ -521,7 +527,13 @@ textarea#input:disabled { opacity: .6; }
     inputEl.disabled = locked;
     sendBtn.disabled = locked;
     threadSel.disabled = locked;
-    newBtn.disabled = locked;
+    // "Nueva conversación" nunca se deshabilita: con un turno en curso, el clic queda en cola (visible) y se
+    // ejecuta al terminar; un botón deshabilitado se tragaba el clic sin avisar
+    newBtn.classList.toggle("queued", state.newQueued);
+    newBtn.querySelector(".long").textContent = state.newQueued ? NEW_QUEUED_LABEL : NEW_LABEL;
+    newBtn.querySelector(".short").textContent = state.newQueued ? "Nueva…" : "+ Nueva";
+    newBtn.title = state.newQueued ? "Se abrirá una conversación nueva en cuanto termine esta respuesta (clic para cancelar)" : "";
+    newBtn.setAttribute("aria-label", state.newQueued ? NEW_QUEUED_LABEL : NEW_LABEL);
     if (!locked) inputEl.placeholder = "Escribe un mensaje…";
     else inputEl.placeholder = state.pending > 0 ? "Esperando tu aprobación…" : "Generando respuesta…";
   }
@@ -609,6 +621,7 @@ textarea#input:disabled { opacity: .6; }
     search_memories: "📚 Buscando recuerdos…",
     update_memory: "✏️ Actualizando recuerdo…",
     send_simulated_email: "✉️ Enviando email simulado…",
+    check_python_syntax: "🐍 Revisando la sintaxis…",
     retrieve_tools: "🧰 Buscando herramientas…"
   };
   var TOOL_DONE = {
@@ -620,6 +633,7 @@ textarea#input:disabled { opacity: .6; }
     search_memories: "📚 Recuerdos consultados",
     update_memory: "✏️ Recuerdo actualizado",
     send_simulated_email: "✉️ Email simulado",
+    check_python_syntax: "🐍 Sintaxis revisada",
     retrieve_tools: "🧰 Herramientas"
   };
   /* TOOL-NAMES-END */
@@ -747,6 +761,14 @@ textarea#input:disabled { opacity: .6; }
     [/^Not updated: there is no memory/, "No se actualizó: ese recuerdo no existe"],
     [/^Not updated: /, "No se actualizó: no lo dijiste en la conversación"],
     [/^Not run: the web search budget/, "No se ejecutó: se agotó el presupuesto de búsquedas de este mensaje"],
+    [/^Not run: one search per step/, "No se ejecutó: una sola búsqueda por paso"],
+    [/^Not run: the user declined the in-depth research/, "Sin investigación a fondo (lo rechazaste)"],
+    [/^Not run: this conversation already has research/, "Reutilizó la investigación anterior de esta conversación"],
+    [/^Not run: this message is close to its token cap/, "No se ejecutó: el mensaje está cerca de su tope de tokens"],
+    [/^OK: no syntax errors\./, "Sintaxis correcta"],
+    [/^SyntaxError at line (\d+), column (\d+): ([^\n]*)[\s\S]*$/, "Error de sintaxis en la línea $1, columna $2: $3"],
+    [/^SyntaxError: /, "Error de sintaxis: "],
+    [/^Not checked: /, "No se pudo revisar la sintaxis"],
     [/^Not run: /, "No se ejecutó: se alcanzó el límite de usos de esta herramienta en este mensaje"],
     [/^No results\.$/, "Sin resultados"],
     [/^Tool error \(([^)]*)\): ([\s\S]*?)\. Try another approach\.$/, "Error en la herramienta ($1): $2"],
@@ -869,26 +891,33 @@ textarea#input:disabled { opacity: .6; }
     var acts = ev.action_requests || [];
     acts.forEach(function (a) {
       var box = el("div", "act");
-      var nm = el("b", null, a.name || "acción"); box.appendChild(nm);
+      var name = canonicalTool(String(a.name || ""));
+      box.appendChild(el("b", null, TOOL_DONE[name] || a.name || "acción"));
       if (a.description) box.appendChild(el("p", null, a.description));
-      var pre = el("pre");
-      try { pre.textContent = JSON.stringify(a.args || {}, null, 2); } catch (e) { pre.textContent = String(a.args); }
-      box.appendChild(pre);
+      if (name === "deep_research") {  // confirmación de investigación: se muestra el encargo, no JSON
+        if (a.args && a.args.task) box.appendChild(el("p", "task", "Encargo: " + a.args.task));
+      } else {
+        var pre = el("pre");
+        try { pre.textContent = JSON.stringify(a.args || {}, null, 2); } catch (e) { pre.textContent = String(a.args); }
+        box.appendChild(pre);
+      }
       card.appendChild(box);
     });
     var btns = el("div", "btns");
-    var ok = el("button", "btn primary", "Aprobar"); ok.type = "button";
-    var no = el("button", "btn danger", "Rechazar"); no.type = "button";
+    var research = acts.length === 1 && canonicalTool(String(acts[0].name || "")) === "deep_research";
+    var ok = el("button", "btn primary", research ? "Sí, investiga" : "Aprobar"); ok.type = "button";
+    var no = el("button", "btn danger", research ? "No, responde sin investigar" : "Rechazar"); no.type = "button";
     btns.appendChild(ok); btns.appendChild(no); card.appendChild(btns);
     var self = this, decided = false;
     function decide(approve) {
       if (decided) return; decided = true;
       ok.disabled = true; no.disabled = true;
       btns.remove();
-      var r = el("div", "result", approve ? "✓ Aprobado" : "✗ Rechazado");
+      var r = el("div", "result", research ? (approve ? "✓ Investigando…" : "✗ Sin investigación a fondo")
+                                            : (approve ? "✓ Aprobado" : "✗ Rechazado"));
       card.appendChild(r);
       var n = acts.length || 1, decisions = [];
-      for (var k = 0; k < n; k++) decisions.push(approve ? { type: "approve" } : { type: "reject", message: "El usuario rechazó la acción" });
+      for (var k = 0; k < n; k++) decisions.push(approve ? { type: "approve" } : { type: "reject", message: REJECT_MSG });
       onDecide(decisions);
     }
     ok.addEventListener("click", function () { decide(true); });
@@ -981,6 +1010,7 @@ textarea#input:disabled { opacity: .6; }
     state.streaming = false;
     if (memEl.classList.contains("open")) loadMemories();  // por si guardó un recuerdo en este turno
     if (!state.pending) bubble.finish(); else bubble.live = false;
+    if (state.newQueued) { bubble.finish(); openNewThread(); return; }  // clic en "Nueva conversación" durante el turno
     updateControls();
     if (!inputEl.disabled) inputEl.focus({ preventScroll: true });
     scrollDown(false);
@@ -1075,8 +1105,21 @@ textarea#input:disabled { opacity: .6; }
     memListEl.appendChild(ul);
   }
 
+  function openNewThread() {
+    // una aprobación pendiente se abandona (el hilo anterior queda en pausa); el turno en curso ya terminó
+    state.newQueued = false; state.pending = 0;
+    switchThread(newId(), true);
+    updateControls();
+  }
+  function requestNewThread() {
+    if (state.streaming) { state.newQueued = !state.newQueued; updateControls(); return; }  // 2º clic: cancela
+    openNewThread();
+  }
+  function showThreadId() { $("threadid").textContent = state.threadId || ""; }
+
   function switchThread(id, isNew) {
     state.threadId = id;
+    showThreadId();
     lsSet("currentThread", id);
     setUrlThread(id);
     if (isNew) touchThread(id, ""); else renderThreadSelect();
@@ -1090,7 +1133,7 @@ textarea#input:disabled { opacity: .6; }
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(inputEl.value); }
   });
   inputEl.addEventListener("input", autosize);
-  newBtn.addEventListener("click", function () { if (!state.streaming && !state.pending) switchThread(newId(), true); });
+  newBtn.addEventListener("click", requestNewThread);
   threadSel.addEventListener("change", function () { if (threadSel.value) switchThread(threadSel.value, false); });
   setBtn.addEventListener("click", function () {
     var open = settingsEl.classList.toggle("open");
@@ -1126,6 +1169,7 @@ textarea#input:disabled { opacity: .6; }
   var fresh = false;
   if (!startId) { startId = newId(); fresh = true; }
   state.threadId = startId;
+  showThreadId();
   lsSet("currentThread", startId);
   setUrlThread(startId);
   var known = state.threads.some(function (t) { return t.id === startId; });

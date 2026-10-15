@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "httpx"]
+dev = ["pytest", "httpx", "playwright"]  # playwright: tests de interfaz con Edge/Chrome ya instalados; se saltan si no hay
 
 [build-system]
 requires = ["setuptools>=68"]
