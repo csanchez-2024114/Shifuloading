@@ -19,6 +19,11 @@ uv pip install --python .venv -e ".[dev]"
 copy .env.example .env   # y pon tu OPENAI_API_KEY
 ```
 
+**Antes de actualizar langgraph**, corre la suite completa (`.venv\Scripts\python -m pytest`):
+- `pyproject.toml` fija `langgraph>=1.2.15,<1.3`, la versión con la que se probó.
+- El cierre de un mensaje abortado por `TURN_TOKEN_CAP` en bigtool usa una constante interna, `CONFIG_KEY_RUNTIME` de `langgraph._internal`: `update_state` no le pasa el `store` a la rama del grafo y hay que dárselo a mano.
+- Si una actualización la cambia o la quita, falla `tests/test_cierre_abortado.py::test_aborto_en_bigtool` (y todo ese archivo vigila el cierre con MongoDB real).
+
 ## Variables de entorno (`.env`)
 
 | Variable | Default | Uso |

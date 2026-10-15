@@ -410,7 +410,7 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
                 return SEARCH_LIMIT_MSG
             ok, text, _ = run_search(settings, search_fn, query, budget, thread_id)
             if not ok:
-                stop["reason"] = "searches" if text == WEB_LIMIT_MSG else "tokens"
+                stop["reason"] = {WEB_LIMIT_MSG: "searches", TURN_CAP_TOOL_MSG: "turn_cap"}.get(text, "tokens")
                 return SEARCH_LIMIT_MSG
             stop["started"] += 1
         found.append(f"[{query}]\n{text}")
@@ -430,9 +430,12 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
                 write({"tipo": "progreso", "herramienta": call["name"], "args": call["args"]})
             if not msg.tool_calls:
                 final, cut = msg.text or "", _was_cut(msg)
-        if (token_budget and budget is not None and budget.tokens >= token_budget) or (
-                settings.turn_token_cap and turn_tokens(thread_id) >= settings.turn_token_cap):
-            stop["reason"] = "tokens"  # corte duro: sus propias llamadas ya agotaron el presupuesto o el tope
+        # corte duro: sus propias llamadas ya agotaron el tope del mensaje o el presupuesto del investigador
+        if settings.turn_token_cap and turn_tokens(thread_id) >= settings.turn_token_cap:
+            stop["reason"] = "turn_cap"
+            break
+        if token_budget and budget is not None and budget.tokens >= token_budget:
+            stop["reason"] = "tokens"
             break
 
     notes = []
@@ -440,8 +443,12 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
         notes.append("[Research stopped at the search limit for this message; it covers only what was found. "
                      "Tell the user it is partial; do not run more searches to complete it.]")
     elif stop["reason"] == "tokens":
-        notes.append(f"[Research stopped at the token budget for this message ({token_budget}); it covers only what "
-                     "was found. Tell the user it is partial; do not run more searches to complete it.]")
+        notes.append(f"[Research stopped at the research token budget for this message ({token_budget:,} tokens); it "
+                     "covers only what was found. Tell the user it is partial; do not run more searches to complete it.]")
+    elif stop["reason"] == "turn_cap":
+        notes.append(f"[Research stopped at the overall token cap for this message ({settings.turn_token_cap:,} tokens); "
+                     "it covers only what was found. Tell the user it is partial; do not run more searches to complete "
+                     "it.]")
     if cut or not final.strip():
         notes.append("[The researcher's final summary was cut before it finished; below is what it found so far. "
                      "Tell the user the result is partial; do not run more searches to complete it.]")

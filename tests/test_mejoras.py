@@ -179,7 +179,8 @@ def test_investigador_respeta_el_presupuesto_de_tokens_por_turno():
                      lambda e: None, turn_key=("hilo", uid()))
     assert len(search.calls) == 1  # tras 71k + 71k (+ el estimado de la búsqueda) ya no hay presupuesto
     # se corta antes de otra llamada al modelo: devuelve lo hallado y el agente principal lo resume
-    assert "token budget" in out and "Resultado falso para q0" in out and "Resumen parcial" not in out
+    assert "research token budget for this message (120,000 tokens)" in out and "overall token cap" not in out
+    assert "Resultado falso para q0" in out and "Resumen parcial" not in out
 
 
 def test_investigador_respeta_el_tope_aunque_pida_busquedas_en_paralelo():

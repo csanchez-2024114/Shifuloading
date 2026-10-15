@@ -138,7 +138,9 @@ def test_aborto_dentro_del_investigador(make_settings, mongo_checkpointer, caplo
     assert search.calls == ["q0"] and "tool_end" not in [e["type"] for e in ev]
     _sin_error_de_cierre(caplog)
     msgs = _cerrado(thread, 20000, cancelados=set(), terminados={"inv"})
-    assert "Research stopped" in [m for m in msgs if m.type == "tool"][0].content
+    nota = [m for m in msgs if m.type == "tool"][0].content
+    assert "overall token cap for this message (20,000 tokens)" in nota  # nombra el tope que lo detuvo
+    assert "research token budget" not in nota
     _sigue_usable(agent, llm, make_settings, thread)
 
 
