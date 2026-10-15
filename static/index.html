@@ -740,14 +740,16 @@ textarea#input:disabled { opacity: .6; }
     var allSkipped = !running && skipped === g.total;  // ninguna se ejecutó: nunca "✓"
     chip.className = "chip " + (running ? "running" : allSkipped ? "skipped" : (g.errors === g.total ? "error" : "done"));
     chip.textContent = "";
-    if (running) chip.appendChild(el("span", "spin"));
+    if (running && g.awaiting) chip.appendChild(el("span", "state", "✋"));  // la tarjeta espera: aún no corre
+    else if (running) chip.appendChild(el("span", "spin"));
     else {
       var mark = allSkipped ? "–" : (g.errors === g.total ? "✗" : "✓");
       var st = el("span", "state", mark);
       st.setAttribute("aria-label", allSkipped ? "no realizada" : (g.errors === g.total ? "con error" : "hecho"));
       chip.appendChild(st);
     }
-    var label = running ? (TOOL_LABELS[g.name] || ("⚙️ Usando " + g.name + "…"))
+    var label = running && g.awaiting ? ((TOOL_DONE[g.name] || "").split(" ")[0] + " Esperando tu confirmación").trim()
+              : running ? (TOOL_LABELS[g.name] || ("⚙️ Usando " + g.name + "…"))
                         : allSkipped ? notRunLabel(g.name) : (TOOL_DONE[g.name] || ("⚙️ " + g.name));
     var ran = g.total - skipped;
     if (!allSkipped && ran > 1) label += " ×" + ran;
@@ -873,7 +875,9 @@ textarea#input:disabled { opacity: .6; }
   };
   AssistantBubble.prototype.liveTime = function () {
     var t = performance.now() - this.t0, phase;
-    if (this.running.length) phase = (TOOL_LABELS[this.running[this.running.length - 1]] || "usando herramientas…");
+    var last = this.running[this.running.length - 1], lg = last && this.chips[last];
+    if (lg && lg.awaiting) phase = "esperando tu confirmación";  // la tarjeta espera: la herramienta aún no corre
+    else if (this.running.length) phase = (TOOL_LABELS[last] || "usando herramientas…");
     else if (this.verifying) phase = "verificando…";
     else if (t - this.lastTok < 1500) phase = "escribiendo…";
     else phase = "pensando…";
@@ -931,8 +935,14 @@ textarea#input:disabled { opacity: .6; }
     var no = el("button", "btn danger", research ? "No, responde sin investigar" : "Rechazar"); no.type = "button";
     btns.appendChild(ok); btns.appendChild(no); card.appendChild(btns);
     var self = this, decided = false;
+    // mientras la tarjeta espera, el chip no dice "Investigando a fondo…": nada corre todavía
+    var waiting = acts.map(function (a) { return self.chips[canonicalTool(String(a.name || ""))]; })
+                      .filter(function (g) { return g; });
+    waiting.forEach(function (g) { g.awaiting = true; self.paint(g); });
+    if (this.timing && this.tick) this.liveTime();
     function decide(approve) {
       if (decided) return; decided = true;
+      waiting.forEach(function (g) { g.awaiting = false; self.paint(g); });
       ok.disabled = true; no.disabled = true;
       btns.remove();
       var r = el("div", "result", research ? (approve ? "✓ Investigando…" : "✗ Sin investigación a fondo")

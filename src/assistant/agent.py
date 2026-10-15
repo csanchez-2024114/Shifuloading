@@ -570,7 +570,9 @@ def _update_events(update: dict) -> Iterator[dict]:
                         "name": call.get("name"),
                         "args": call.get("args", {}),
                     }
-            elif node in ("tools", "select_tools") and isinstance(msg, ToolMessage):
+            # el rechazo en la tarjeta de aprobación lo escribe el middleware HITL, no el nodo "tools"
+            elif (node in ("tools", "select_tools") or node.startswith("HumanInTheLoopMiddleware")) \
+                    and isinstance(msg, ToolMessage):
                 output = _content_text(msg)
                 yield {
                     "type": "tool_end",

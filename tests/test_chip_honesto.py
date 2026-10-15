@@ -97,3 +97,16 @@ def test_palabras_de_actualidad_pasan_por_el_clasificador():
         assert necesita_clasificador(corto), corto
     for trivial in ("hola", "gracias", "Hola!", "muchas gracias", "ok", "buenas noches"):
         assert not necesita_clasificador(trivial), trivial
+
+
+def test_rechazo_de_la_tarjeta_emite_tool_end_skipped():
+    """El rechazo de la tarjeta lo escribe el middleware HITL (no el nodo "tools"): también debe llegar a la UI."""
+    from langchain_core.messages import AIMessage, ToolMessage
+
+    from assistant.agent import _update_events
+
+    rechazo = ToolMessage("User rejected the tool call for `deep_research` with reason: no", name="deep_research",
+                          tool_call_id="r1", status="error")
+    update = {"HumanInTheLoopMiddleware.after_model": {"messages": [AIMessage("", tool_calls=[]), rechazo]}}
+    [ev] = list(_update_events(update))
+    assert ev["type"] == "tool_end" and ev["id"] == "r1" and ev["status"] == "skipped"

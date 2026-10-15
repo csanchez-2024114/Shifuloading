@@ -19,7 +19,7 @@ sync_api = pytest.importorskip("playwright.sync_api")
 class Controlable(FakeChat):
     """El mensaje del usuario decide: "lento" (palabra a palabra), "cola" (texto rápido pero el stream tarda en
     cerrarse, como cuando el servidor aún guarda el checkpoint), "tope" (pasa TURN_TOKEN_CAP), "correo" (pide una
-    herramienta con aprobación). Cualquier otro: "ok"."""
+    herramienta con aprobación), "estudio" (deep_research con tarjeta de confirmación). Cualquier otro: "ok"."""
 
     def _stream(self, messages, stop=None, run_manager=None, **kwargs):
         last = next((m for m in reversed(messages) if m.type == "human"), None)
@@ -32,6 +32,8 @@ class Controlable(FakeChat):
             call = ({"name": "send_simulated_email", "args": '{"recipient": "a@b.c", "subject": "s", "body": "b"}'}, 0)
         elif "rechazada" in text and not answered:  # 45k de 50k: la reserva de la búsqueda ya no cabe en el tope
             call = ({"name": "web_search", "args": '{"query": "vuelos"}'}, 45000)
+        elif "estudio" in text and not answered:  # deep_research sin pedirlo explícitamente: tarjeta de confirmación
+            call = ({"name": "deep_research", "args": '{"task": "leyes de IA"}'}, 0)
         elif "tres" in text and not answered:  # tres búsquedas en paralelo: solo se ejecuta la primera
             calls = [{"name": "web_search", "args": f'{{"query": "q{i}"}}', "id": f"w{i}{time.time_ns()}", "index": i,
                       "type": "tool_call_chunk"} for i in range(3)]
@@ -222,3 +224,50 @@ def test_tres_busquedas_en_paralelo_muestran_las_no_realizadas(page, base_url):
     [chip] = [c for c in _chips(page) if "Búsqueda" in c["text"]]
     assert "done" in chip["cls"] and "✓" in chip["text"] and "2 no realizadas" in chip["text"]
     assert "×3" not in chip["text"]  # solo una se ejecutó
+
+
+def _chip_investigacion(page):
+    return next(c for c in _chips(page) if "🧠" in c["text"])
+
+
+def _pide_investigacion(page, base_url):
+    """Envía un mensaje que lanza deep_research y comprueba que, mientras la tarjeta espera, el chip no dice
+    "Investigando a fondo…": todavía no corre nada."""
+    _fresh(page, base_url, True)
+    thread = _tid(page)
+    _send(page, "hazme un estudio de las leyes")
+    page.wait_for_selector("#messages .approval", timeout=10000)
+    chip = _chip_investigacion(page)
+    assert "Esperando tu confirmación" in chip["text"] and "Investigando" not in chip["text"]
+    assert "running" in chip["cls"]
+    return thread
+
+
+def test_investigacion_esperando_confirmacion(page, base_url):
+    _pide_investigacion(page, base_url)
+    assert page.locator("#messages .chip .spin").count() == 0  # sin spinner: nada se está ejecutando
+    page.wait_for_timeout(1200)  # la línea de tiempos (se refresca sola) tampoco dice "Investigando"
+    tiempos = page.locator("#messages .row.assistant").last.inner_text()
+    assert "esperando tu confirmación" in tiempos and "Investigando" not in tiempos, tiempos
+
+
+def test_investigacion_rechazada_en_vivo_y_al_recargar(page, base_url):
+    thread = _pide_investigacion(page, base_url)
+    page.get_by_role("button", name="No, responde sin investigar").click()
+    _idle(page)
+    chip = _chip_investigacion(page)  # en vivo: el rechazo llega como tool_end "skipped"
+    assert "skipped" in chip["cls"] and "Investigación no realizada" in chip["text"], chip
+    assert "Investigando" not in chip["text"] and "✓" not in chip["text"]
+    page.goto(f"{base_url}?thread={thread}")  # al recargar: lo mismo
+    linea = page.locator("#messages .toolline").first
+    linea.wait_for(timeout=10000)
+    assert linea.inner_text() == "🧠 Investigación no realizada" and "skipped" in linea.get_attribute("class")
+
+
+def test_investigacion_aprobada(page, base_url):
+    _pide_investigacion(page, base_url)
+    page.get_by_role("button", name="Sí, investiga").click()
+    _idle(page)
+    chip = _chip_investigacion(page)
+    assert "done" in chip["cls"] and "✓" in chip["text"] and "🧠 Investigación" in chip["text"], chip
+    assert "no realizada" not in chip["text"] and "Esperando" not in chip["text"]

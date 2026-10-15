@@ -375,7 +375,8 @@ _INVESTIGADOR_PROMPT = (
 INVESTIGADOR_DOC = """Delegates in-depth research to a sub-agent that runs several web searches and
 returns a summary with sources. Use it for questions that need cross-checking several
 sources; for a single fact use web_search. Do not call it again for follow-up questions about research
-already done in this conversation: answer from those results unless a needed fact is missing."""
+already done in this conversation: answer from those results unless a needed fact is missing. Call it
+directly; the app asks the user to confirm before it runs."""
 
 SEARCH_LIMIT_MSG = "LIMIT REACHED: no more searches allowed. Write the final summary now with what you already found."
 FOLLOW_UP_MSG = ("Not run: this conversation already has research on this. This is a short follow-up, so answer it "
