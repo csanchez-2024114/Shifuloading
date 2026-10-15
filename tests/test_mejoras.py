@@ -252,7 +252,7 @@ class ConUso(FakeChat):
 
 
 def test_tope_general_por_turno_aborta_con_aviso_y_deja_el_hilo_usable(make_settings):
-    from assistant.agent import TURN_CAP_MSG, get_history
+    from assistant.agent import turn_cap_msg, get_history
 
     s = make_settings(turn_token_cap=50000, model_call_limit=15)
     respuestas = [tool_call("calculator", {"expression": f"{i}+1"}, f"c{i}") for i in range(6)] + ["sigo bien"]
@@ -261,13 +261,13 @@ def test_tope_general_por_turno_aborta_con_aviso_y_deja_el_hilo_usable(make_sett
     thread = uid()
     ev = run_turn(agent, s, "calcula mucho", thread)
     texto = "".join(e["text"] for e in ev if e["type"] == "token")
-    assert TURN_CAP_MSG.format(cap=50000) in texto and ev[-1]["type"] == "done"
+    assert turn_cap_msg(50000) in texto and ev[-1]["type"] == "done"
     assert sum(e["type"] == "tool_start" for e in ev) <= 2  # 30k + 30k ≥ 50k: no siguió llamando
     state = agent.get_state({"configurable": {"thread_id": thread}}).values["messages"]
     llamadas = {c["id"] for m in state if m.type == "ai" for c in m.tool_calls}
     respondidas = {m.tool_call_id for m in state if m.type == "tool"}
     assert llamadas <= respondidas  # ninguna llamada a herramienta quedó colgando
-    assert get_history(agent, thread, s)[-1]["content"] == TURN_CAP_MSG.format(cap=50000).strip()
+    assert get_history(agent, thread, s)[-1]["content"] == turn_cap_msg(50000).strip()
     llm.messages = iter(["otra respuesta"])  # el hilo sigue funcionando en el siguiente mensaje
     s2 = make_settings(turn_token_cap=0, model_call_limit=15)
     ev2 = run_turn(agent, s2, "hola de nuevo", thread)

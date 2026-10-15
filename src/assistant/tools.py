@@ -130,8 +130,13 @@ def fecha_hora(time_zone: str = "local") -> str:
 # --------------------------------------------------------------------------- memoria
 
 
-GUARDAR_RECUERDO_DOC = """Saves a stable fact about the user to long-term memory (name, likes, preferences,
-work context). Only save what the user explicitly said about themselves, never your own assumptions.
+GUARDAR_RECUERDO_DOC = """Saves a lasting fact about the user to long-term memory: name, likes, preferences, job and
+role, and durable technical constraints (language or library versions they must use, libraries they cannot install,
+their operating system or environment). Only save what the user explicitly said about themselves, never your own
+assumptions. Stable facts mentioned in passing while asking for something else (where they live, their diet, what
+they like, their job) are still facts about the user: save them. Never save details of the current task: file names,
+row counts, data values, error messages, amounts, dates or budget of a one-off plan, or what they are working on
+today. Those are not facts about the user.
 
 Args:
     text: The fact as a complete, self-contained sentence written in the user's language
@@ -310,13 +315,35 @@ def run_search(settings: Settings, search_fn, query: str, budget: TurnBudget | N
     return True, f"[engine: {engine}]\n{text}", tokens
 
 
+ONE_SEARCH_MSG = ("Not run: one search per step. Answer with what you have or ask the user; if another search is "
+                  "really needed, run it in your next step.")
+
+
+def extra_search(messages, tool_call_id: str | None = None, query: str | None = None) -> bool:
+    """True si esta llamada no es la primera web_search de la respuesta del modelo que la pidió. Como máximo una
+    búsqueda por llamada al modelo: en la prueba real, un seguimiento breve lanzó 3 en paralelo (35k tokens).
+    Se identifica por el id de la llamada o, en bigtool (sin id inyectado), por la consulta."""
+    for m in reversed(messages or []):
+        searches = [c for c in getattr(m, "tool_calls", None) or [] if c.get("name") in ("web_search", "buscar_web")]
+        if not searches:
+            continue
+        if tool_call_id is not None and any(c.get("id") == tool_call_id for c in searches):
+            return searches[0].get("id") != tool_call_id
+        if query is not None:  # la respuesta más reciente del modelo con búsquedas
+            return (searches[0].get("args") or {}).get("query") != query
+    return False
+
+
 def make_buscar_web(settings: Settings, search_fn: Callable[[str, Settings], tuple[str, str]] = web_search,
                     key_fn: Callable[[], tuple] | None = None) -> BaseTool:
-    """web_search para bigtool (sin estado inyectado). `key_fn() -> (thread_id, turn_key)`; sin él, sin topes."""
+    """web_search para bigtool (sin estado inyectado). `key_fn() -> (thread_id, turn_key, mensajes del hilo)`; sin
+    él, sin topes."""
 
     @tool("web_search", description=BUSCAR_WEB_DOC)
     def buscar_web(query: str) -> str:
-        thread_id, key = key_fn() if key_fn else (None, None)
+        thread_id, key, messages = key_fn() if key_fn else (None, None, [])
+        if extra_search(messages, query=query):
+            return ONE_SEARCH_MSG
         return run_search(settings, search_fn, query, turn_budget(key), thread_id)[1]
 
     return buscar_web
@@ -327,6 +354,8 @@ def make_buscar_web_con_presupuesto(settings: Settings, search_fn=web_search) ->
 
     @tool("web_search", description=BUSCAR_WEB_DOC)
     def buscar_web(query: str, runtime: ToolRuntime[Context]) -> str:
+        if extra_search(runtime.state.get("messages"), runtime.tool_call_id):
+            return ONE_SEARCH_MSG
         thread_id = (runtime.config.get("configurable") or {}).get("thread_id")
         key = turn_key(thread_id, runtime.state.get("messages"))
         return run_search(settings, search_fn, query, turn_budget(key), thread_id)[1]
@@ -475,6 +504,26 @@ def earlier_research(messages, tool_name: str = "deep_research") -> str | None:
     return str(previous[-1].content)[:_RAW_FINDINGS_CHARS] if previous else None
 
 
+DEEP_RESEARCH_CONFIRM = "Esto tardará unos 1-2 minutos y consume bastante más; ¿sigo?"  # al usuario (tarjeta)
+RESEARCH_DECLINED_MSG = ("Not run: the user declined the in-depth research. Answer with what you already know, without "
+                         "searching, and say in one line that it was not researched in depth.")
+# el usuario pide investigar en ESTE mensaje: no hace falta confirmar (texto ya normalizado: sin tildes)
+_EXPLICIT_RESEARCH = re.compile(r"\b(investig\w*|research\w*|a fondo|en profundidad|exhaustiv\w*|in[- ]depth|"
+                                r"thorough\w*|deep dive)\b")
+
+
+def research_needs_confirmation(messages) -> bool:
+    """deep_research tarda 1-2 minutos y gasta mucho más: se confirma con el usuario salvo que lo haya pedido
+    explícitamente en su último mensaje o que sea un seguimiento que reutiliza una investigación anterior (no corre).
+    Prueba real: el primer mensaje de un plan de viaje lanzó la investigación sin pedirla (95 s, 35k tokens)."""
+    messages = messages or []
+    human = next((m for m in reversed(messages) if getattr(m, "type", None) == "human"
+                  and (m.additional_kwargs or {}).get("lc_source") != memory.SUMMARY_SOURCE), None)
+    text = memory._normalize(human.text if human is not None and isinstance(human.content, str) else str(
+        getattr(human, "content", "")))
+    return not _EXPLICIT_RESEARCH.search(text) and earlier_research(messages) is None
+
+
 def investigator_model(model: BaseChatModel, settings: Settings) -> BaseChatModel:
     """MAX_TOKENS no se aplica al investigador: con 2000, su razonamiento agotaba el tope y el resumen salía vacío."""
     if isinstance(model, ChatOpenAI):
@@ -509,12 +558,38 @@ def memory_verifier_for(settings: Settings, checker=None):
     return memory.make_memory_verifier(checker)
 
 
+SYNTAX_MAX_CHARS = 200_000
+SYNTAX_OK_MSG = "OK: no syntax errors. The code was only parsed, not run, so runtime errors are still possible."
+
+
+@tool("check_python_syntax")
+def check_python_syntax(code: str) -> str:
+    """Check whether Python code is syntactically valid WITHOUT running it (it is only parsed). Use it before giving
+    the user Python code longer than 15 lines, and fix any error it reports. Returns OK, or the error with its line
+    and column."""
+    # Solo ast.parse: no compila a bytecode, no ejecuta, no importa, sin archivos ni red.
+    if len(code) > SYNTAX_MAX_CHARS:
+        return f"Not checked: the code is longer than {SYNTAX_MAX_CHARS} characters."
+    try:
+        ast.parse(code, filename="<code>", mode="exec")
+    except SyntaxError as exc:
+        line = (exc.text or "").rstrip("\n")
+        pointer = f"\n{line}\n{' ' * max((exc.offset or 1) - 1, 0)}^" if line else ""
+        if exc.lineno is None:  # p. ej. bytes nulos: el parser no da posición
+            return f"SyntaxError: {exc.msg}"
+        return f"SyntaxError at line {exc.lineno}, column {exc.offset}: {exc.msg}{pointer}"
+    except (ValueError, RecursionError, MemoryError) as exc:  # bytes nulos, anidamiento extremo
+        return f"Not checked: the parser failed ({type(exc).__name__}: {exc})."
+    return SYNTAX_OK_MSG
+
+
 def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, checker=None) -> list[BaseTool]:
     verifier = memory_verifier_for(settings, checker)
     tools: list[BaseTool] = [
         make_buscar_web_con_presupuesto(settings, search_fn),
         calculadora,
         fecha_hora,
+        check_python_syntax,
         make_guardar_recuerdo(verifier),
         make_buscar_recuerdos(settings.memory_min_score),
         make_actualizar_recuerdo(verifier),

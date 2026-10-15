@@ -23,6 +23,7 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph._internal._constants import CONFIG_KEY_RUNTIME
+from langgraph.config import get_config
 from langgraph.errors import GraphRecursionError
 from langgraph.runtime import Runtime
 
@@ -45,7 +46,14 @@ LAST_STEP_NOTE = ("This is your last step for this message: do not call tools. A
                   "you to continue.")
 REPEAT_LIMIT_MSG = ("Not run: {name} was already used {limit} times for this message (limit). Do not call it again: "
                     "answer with what you already have and tell the user the work was cut at the tool limit.")
-CUT_NOTE = "\n\n_La respuesta se cortó por el límite de longitud (MAX_TOKENS). Escribe «continúa» y sigo donde me quedé._"
+CUT_NOTE = ("\n\n⚠️ La respuesta se cortó por el límite de longitud (MAX_TOKENS). Escribe «continúa» y sigo justo "
+            "donde me quedé, sin repetir lo anterior.")
+CONTINUE_NOTE = ("Your previous answer was cut by the output limit (the system removed its cut notice). The user asked "
+                 "you to continue: continue exactly where it stopped. Do not repeat, summarize or rewrite anything "
+                 "already written. If it stopped inside a code block, open a new code block with the same language and "
+                 "continue from the next line.")
+# "continúa", "sigue", "continue"... como mensaje corto tras una respuesta cortada
+_CONTINUE_RE = re.compile(r"^\W*(contin[uú]a|continuar|sigue|segu[ií]|seguir|dale|continue|go on|keep going)\b", re.I)
 
 
 @dataclass
@@ -53,6 +61,7 @@ class Context:
     user_id: str = "anon"
     max_llamadas: int = 15       # 0 = sin tope
     razonamiento: str | None = None  # None = default del modelo
+    max_tokens: int | None = None    # tope de salida de este mensaje (esfuerzo alto); None = MAX_TOKENS
 
 
 # Señales de que un mensaje corto aún necesita clasificarse: dígitos, operadores, código o verbos de trabajo.
@@ -91,9 +100,13 @@ _CLASSIFIER_LEVELS = {"low": "bajo", "medium": "medio", "high": "alto"}  # el pr
 CLASSIFIER_PROMPT = (
     "Classify the effort this message requires from an assistant with tools. "
     "Reply with ONLY one of these words: low, medium, high.\n"
-    "low = greeting, small talk, a simple fact or a single quick lookup;\n"
-    "medium = one web search, one calculation or a normal explanation;\n"
-    "high = several steps or chained calculations, comparing sources, in-depth research, planning or hard reasoning.\n\n"
+    "low = greeting, small talk, a simple fact, a single quick lookup or calculation, or a request the assistant "
+    "cannot do (set alarms, send messages, call someone);\n"
+    "medium = a web search, a short multi-step calculation, a normal explanation, ordinary code (a script, a query, a "
+    "fix) or a plan or text written from the details given;\n"
+    "high = ONLY when the user asks for in-depth research or a comparison across several sources, or for a genuinely "
+    "hard problem (a proof, a complex optimization, debugging a large program). A trip or study plan, ordinary code "
+    "or anything the assistant cannot do is never high.\n\n"
     "Message: "
 )
 
@@ -116,9 +129,14 @@ def contexto_para(user_id: str, settings: Settings, esfuerzo: str | None) -> Con
     if settings.model_call_limit > 0 or esfuerzo not in ESFUERZOS:
         return Context(user_id=user_id, max_llamadas=settings.model_call_limit or 15)
     max_llamadas, razonamiento = ESFUERZOS[esfuerzo]
+    max_tokens = None
     if esfuerzo == "alto":
         max_llamadas = settings.effort_high_max_calls
-    return Context(user_id=user_id, max_llamadas=max_llamadas, razonamiento=razonamiento)
+        # margen de salida: con esfuerzo alto el razonamiento se comía MAX_TOKENS (prueba real: código cortado a
+        # mitad con 7,370 de 8,000 tokens razonando). Sin tocar MAX_TOKENS=0 (sin tope) ni bajar un valor mayor.
+        if settings.max_tokens and settings.effort_high_max_tokens > settings.max_tokens:
+            max_tokens = settings.effort_high_max_tokens
+    return Context(user_id=user_id, max_llamadas=max_llamadas, razonamiento=razonamiento, max_tokens=max_tokens)
 
 
 class LimiteLlamadas(ModelCallLimitMiddleware):
@@ -184,6 +202,7 @@ class AvisoCorte(AgentMiddleware):
     una respuesta vacía aunque la investigación había salido bien."""
 
     def wrap_model_call(self, request, handler):
+        request = _continue_cut(request)
         response = handler(request)
         if _cut_and_empty(response):
             logger.info("Respuesta vacía por MAX_TOKENS (todo fue razonamiento); repito con razonamiento bajo")
@@ -198,8 +217,24 @@ class AvisoCorte(AgentMiddleware):
         if not isinstance(last, AIMessage) or last.tool_calls or reason != "max_output_tokens":
             return None
         runtime.stream_writer({"tipo": "corte"})
-        return {"messages": [AIMessage(id=last.id, content=_content_text(last) + CUT_NOTE,
+        return {"messages": [AIMessage(id=last.id, content=_content_text(last) + CUT_NOTE, additional_kwargs={"cut": True},
                                        response_metadata=meta, usage_metadata=last.usage_metadata)]}
+
+
+def _continue_cut(request):
+    """Tras una respuesta cortada, un "continúa" debe seguir donde quedó, no rehacerla: el modelo ve la respuesta sin el
+    aviso (en español, para el usuario) y CONTINUE_NOTE. Prueba real: rehízo el script entero en vez de continuarlo."""
+    msgs = request.messages
+    if len(msgs) < 2 or msgs[-1].type != "human" or not _CONTINUE_RE.match(_content_text(msgs[-1])):
+        return request
+    i = next((k for k in range(len(msgs) - 2, -1, -1) if isinstance(msgs[k], AIMessage)), None)
+    if i is None or not msgs[i].additional_kwargs.get("cut"):
+        return request
+    text = _content_text(msgs[i])
+    cut = msgs[i].model_copy(update={"content": text[:-len(CUT_NOTE)] if text.endswith(CUT_NOTE) else text})
+    system = request.system_message.text if request.system_message else ""
+    return request.override(messages=[*msgs[:i], cut, *msgs[i + 1:]],
+                            system_message=SystemMessage(content=f"{system}\n\n{CONTINUE_NOTE}".strip()))
 
 
 # Nombres anteriores (en español) de las herramientas. Los hilos guardados antes del cambio los tienen en su
@@ -238,6 +273,8 @@ def _razonamiento(request, handler):
     effort = getattr(request.runtime.context, "razonamiento", None)
     if effort:
         request = request.override(model_settings={**request.model_settings, "reasoning": {"effort": effort}})
+    if max_tokens := getattr(request.runtime.context, "max_tokens", None):
+        request = request.override(model_settings={**request.model_settings, "max_tokens": max_tokens})
     return handler(request)
 
 
@@ -314,6 +351,16 @@ class ResumenPorTurno(SummarizationMiddleware):
             if isinstance(m, HumanMessage) and m.additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
                 m.additional_kwargs["summary_turn"] = human.id
         return update
+
+
+def _confirm_text() -> str:
+    from assistant.tools import DEEP_RESEARCH_CONFIRM
+    return DEEP_RESEARCH_CONFIRM
+
+
+def _research_needs_confirmation(request) -> bool:
+    from assistant.tools import research_needs_confirmation
+    return research_needs_confirmation(request.state.get("messages"))
 
 
 def _on_tool_error(exc: Exception, request) -> str:
@@ -405,9 +452,15 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         _nombres_antiguos,
         _razonamiento,
         LimiteLlamadas(),
+        AterrizajeSuave(settings.turn_token_cap),
         ToolErrorMiddleware(on_error=_on_tool_error),
         LimiteRepeticiones(settings.tool_repeat_limit),
-        HumanInTheLoopMiddleware(interrupt_on={"send_simulated_email": True}),
+        HumanInTheLoopMiddleware(interrupt_on={
+            "send_simulated_email": True,
+            # pausa con la tarjeta de aprobación, salvo que el usuario haya pedido investigar en ese mensaje
+            "deep_research": {"allowed_decisions": ["approve", "reject"], "description": _confirm_text(),
+                              "when": _research_needs_confirmation},
+        }),
         AvisoCorte(),
     ]
     if settings.memory_summarize:
@@ -511,8 +564,29 @@ def _update_events(update: dict) -> Iterator[dict]:
                 }
 
 
-TURN_CAP_MSG = ("\n\n_Detuve este mensaje: superó el tope de {cap:,} tokens por mensaje (TURN_TOKEN_CAP). Lo que "
-                "alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada._")
+# avisos al usuario: texto plano (la interfaz no interpreta _cursiva_ y mostraba los guiones bajos)
+TURN_CAP_MSG = ("\n\n⚠️ Detuve este mensaje: superó el tope de {cap} tokens por mensaje (TURN_TOKEN_CAP). Lo que "
+                "alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.")
+SOFT_CAP_RATIO = 0.8  # al llegar a este % de TURN_TOKEN_CAP, última llamada sin herramientas
+
+
+def turn_cap_msg(cap: int) -> str:
+    return TURN_CAP_MSG.format(cap=f"{cap:,}".replace(",", "."))  # 45.000, como se escribe en español
+
+
+def _step_kind(chunk) -> str | None:
+    """Qué paso del grafo raíz cierra este chunk: "final" (el modelo respondió sin herramientas), "tools" (el modelo
+    pidió herramientas), "other" (otro nodo, p. ej. herramientas) o None (tokens, avisos o subgrafos)."""
+    if chunk.get("ns") or chunk.get("type") != "updates":
+        return None
+    for node, update in (chunk.get("data") or {}).items():
+        msgs = (update or {}).get("messages") if node in MODEL_NODES and isinstance(update, dict) else None
+        if msgs and isinstance(msgs[-1], AIMessage):
+            return "tools" if msgs[-1].tool_calls else "final"
+    return "other"
+SOFT_CAP_NOTE = ("This message is close to its token budget: do not call tools. Answer now using only what you already "
+                 "retrieved, and tell the user in one short line, in their language, what you could not complete and "
+                 "that they can ask for it in a new, narrower message.")
 CANCELLED_TOOL_MSG = "Cancelled: this message reached its token cap before the tool finished."
 
 
@@ -522,6 +596,7 @@ class TurnTokens(BaseCallbackHandler):
 
     def __init__(self):
         self.total = 0
+        self.landing = False  # ya se hizo la última llamada sin herramientas (aterrizaje suave)
         self._lock = threading.Lock()
 
     def on_llm_end(self, response, **kwargs):
@@ -533,6 +608,36 @@ class TurnTokens(BaseCallbackHandler):
 
 
 _ACTIVE_TURNS: dict[str, TurnTokens] = {}  # hilo -> contador del mensaje en curso
+
+
+def landing_due(cap: int) -> TurnTokens | None:
+    """Contador del mensaje en curso si ya llegó al SOFT_CAP_RATIO de TURN_TOKEN_CAP (hay que aterrizar); si no, None.
+    Se llama dentro del grafo: el hilo sale de la config de la ejecución."""
+    if not cap:
+        return None
+    try:
+        thread_id = get_config()["configurable"].get("thread_id")
+    except RuntimeError:  # fuera de un grafo
+        return None
+    counter = _ACTIVE_TURNS.get(thread_id)
+    return counter if counter and counter.total >= cap * SOFT_CAP_RATIO else None
+
+
+class AterrizajeSuave(AgentMiddleware):
+    """TURN_TOKEN_CAP con aterrizaje suave: al llegar al 80% del tope, la siguiente llamada va sin herramientas y con
+    SOFT_CAP_NOTE, así el usuario recibe una respuesta con lo ya recuperado en vez de solo el aviso de aborto."""
+
+    def __init__(self, cap: int):
+        super().__init__()
+        self.cap = cap
+
+    def wrap_model_call(self, request, handler):
+        if request.tools and (counter := landing_due(self.cap)):
+            counter.landing = True
+            system = request.system_message.text if request.system_message else ""
+            request = request.override(tool_choice="none",
+                                       system_message=SystemMessage(content=f"{system}\n\n{SOFT_CAP_NOTE}".strip()))
+        return handler(request)
 
 
 def turn_tokens(thread_id: str | None) -> int:
@@ -595,9 +700,16 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             version="v2",
         )
         for chunk in stream:
-            if cap and counter.total >= cap:
+            # último recurso: se cruzó el tope sin aterrizaje suave (p. ej. del 70% al 110% en una llamada). Se
+            # espera al cierre del paso: si el modelo ya dio la respuesta final, el mensaje termina solo (prueba real:
+            # el aviso se pegaba detrás de una respuesta completa); si pidió herramientas o terminó otro nodo, se
+            # aborta antes de la siguiente llamada. Los tokens de la llamada que cruzó el tope siguen llegando.
+            step = _step_kind(chunk) if cap and counter.total >= cap and not counter.landing else None
+            if step == "final":
+                counter.landing = True
+            elif step in ("tools", "other"):
                 stream.close()  # aborta el turno: no se lanzan más llamadas
-                note = TURN_CAP_MSG.format(cap=cap)
+                note = turn_cap_msg(cap)
                 _close_aborted_turn(agent, config, note)
                 yield {"type": "token", "text": note}
                 break

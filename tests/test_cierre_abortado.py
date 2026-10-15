@@ -62,13 +62,13 @@ def _sin_huerfanos(messages):
 
 def _cerrado(thread, cap, cancelados, terminados=()):
     """El hilo guardado termina con las llamadas canceladas, las terminadas intactas y el aviso."""
-    from assistant.agent import CANCELLED_TOOL_MSG, TURN_CAP_MSG
+    from assistant.agent import CANCELLED_TOOL_MSG, turn_cap_msg
     msgs = _guardados(thread)
     _sin_huerfanos(msgs)
     tools = {m.tool_call_id: m.content for m in msgs if m.type == "tool"}
     assert {k for k, v in tools.items() if v == CANCELLED_TOOL_MSG} == set(cancelados)
     assert all(tools[k] != CANCELLED_TOOL_MSG for k in terminados)
-    assert msgs[-1].type == "ai" and msgs[-1].content == TURN_CAP_MSG.format(cap=cap).strip()
+    assert msgs[-1].type == "ai" and msgs[-1].content == turn_cap_msg(cap).strip()
     return msgs
 
 
@@ -165,7 +165,7 @@ def test_aborto_en_bigtool(make_settings, mongo_checkpointer, caplog):
 
 def test_si_el_cierre_no_se_guarda_avisa_registra_y_el_hilo_sigue(make_settings, mongo_checkpointer, caplog,
                                                                    monkeypatch):
-    from assistant.agent import TURN_CAP_MSG
+    from assistant.agent import turn_cap_msg
 
     s = make_settings(turn_token_cap=20000, model_call_limit=15)
     llm = Visto(messages=iter([tool_call("calculator", {"expression": "1+1"}, "c1")]), vistos=[])
@@ -179,7 +179,7 @@ def test_si_el_cierre_no_se_guarda_avisa_registra_y_el_hilo_sigue(make_settings,
     with caplog.at_level(logging.ERROR, logger="assistant.agent"):
         ev = run_turn(agent, s, "calcula", thread)
     texto = "".join(e["text"] for e in ev if e["type"] == "token")
-    assert TURN_CAP_MSG.format(cap=20000) in texto and ev[-1]["type"] == "done"  # el usuario recibe el aviso
+    assert turn_cap_msg(20000) in texto and ev[-1]["type"] == "done"  # el usuario recibe el aviso
     [r] = [r for r in caplog.records if "NO se guardó su cierre" in r.getMessage()]
     assert thread in r.getMessage() and "1 llamada(s)" in r.getMessage() and "Mongo no disponible" in r.exc_text
     monkeypatch.undo()

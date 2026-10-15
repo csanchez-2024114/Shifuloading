@@ -41,6 +41,7 @@ class Settings:
     investigator_max_searches: int = 4      # búsquedas por investigación
     investigator_token_budget: int = 120000  # tokens (entrada+salida) del investigador por turno
     effort_high_max_calls: int = 15     # tope de llamadas al modelo con esfuerzo alto
+    effort_high_max_tokens: int = 12000  # MAX_TOKENS efectivo con esfuerzo alto (el razonamiento cuenta dentro)
     tool_repeat_limit: int = 8          # veces que una misma herramienta puede usarse en un turno; 0 = sin tope
     sse_ping_seconds: float = 15.0      # comentario ": ping" en el stream SSE durante silencios; 0 = apagado
     search_context_size: str = "low"    # web_search hospedado: low/medium/high (contenido que recupera)
@@ -74,6 +75,7 @@ class Settings:
             investigator_max_searches=int(os.getenv("INVESTIGATOR_MAX_SEARCHES", "4")),
             investigator_token_budget=int(os.getenv("INVESTIGATOR_TOKEN_BUDGET", "120000")),
             effort_high_max_calls=int(os.getenv("EFFORT_HIGH_MAX_CALLS", "15")),
+            effort_high_max_tokens=int(os.getenv("EFFORT_HIGH_MAX_TOKENS", "12000")),
             tool_repeat_limit=int(os.getenv("TOOL_REPEAT_LIMIT", "8")),
             sse_ping_seconds=float(os.getenv("SSE_PING_SECONDS", "15")),
             search_context_size=os.getenv("SEARCH_CONTEXT_SIZE", "low").strip().lower(),

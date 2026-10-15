@@ -25,6 +25,8 @@ from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.tools import BaseTool, StructuredTool, tool
 from langgraph.config import get_config, get_stream_writer
+from langgraph.errors import GraphBubbleUp
+from langgraph.types import interrupt
 from langgraph.prebuilt import InjectedStore
 from langgraph.runtime import get_runtime
 from langgraph.store.base import BaseStore, PutOp
@@ -33,15 +35,16 @@ from langgraph_bigtool import create_agent as create_bigtool_agent
 from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 
 from assistant import memory
-from assistant.agent import OLD_TOOL_NAMES, rename_old_tools, system_prompt_text
+from assistant.agent import OLD_TOOL_NAMES, SOFT_CAP_NOTE, landing_due, rename_old_tools, system_prompt_text
 from assistant.apps.crm_demo import crm_tools
 from assistant.config import Settings
 from assistant.extra_tools import extra_tools
 from assistant.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.tools import (
     ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, GUARDAR_RECUERDO_DOC, INVESTIGADOR_DOC, calculadora,
+    check_python_syntax,
     earlier_research, fecha_hora, investigar, investigator_model, make_buscar_web, memory_verifier_for, turn_key,
-    web_search, FOLLOW_UP_MSG,
+    web_search, DEEP_RESEARCH_CONFIRM, FOLLOW_UP_MSG, RESEARCH_DECLINED_MSG, research_needs_confirmation,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,6 +74,8 @@ def _seguro(t: BaseTool) -> BaseTool:
     def run(**kwargs):
         try:
             return t.invoke(kwargs)
+        except GraphBubbleUp:  # interrupt() (confirmación de deep_research): no es un error de la herramienta
+            raise
         except Exception as exc:  # noqa: BLE001
             return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
@@ -167,7 +172,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
     """Registro id -> herramienta. id = nombre de la herramienta (legible en la UI)."""
     def search_key():
         thread_id, messages = _thread_messages(checkpointer)
-        return thread_id, turn_key(thread_id, messages)
+        return thread_id, turn_key(thread_id, messages), messages
 
     buscar_web = make_buscar_web(settings, search_fn, key_fn=search_key)
     inv_model = investigator_model(model, settings)
@@ -195,10 +200,19 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
         previous = earlier_research(messages)
         if previous is not None:
             return FOLLOW_UP_MSG.format(previous=previous)
+        if research_needs_confirmation(messages):  # bigtool no tiene middleware: misma tarjeta, vía interrupt()
+            answer = interrupt({"action_requests": [{"name": "deep_research", "args": {"task": task},
+                                                     "description": DEEP_RESEARCH_CONFIRM}],
+                                "review_configs": [{"action_name": "deep_research",
+                                                    "allowed_decisions": ["approve", "reject"]}]})
+            decision = ((answer or {}).get("decisions") or [{}])[0] if isinstance(answer, dict) else {}
+            if decision.get("type") != "approve":
+                return RESEARCH_DECLINED_MSG
         return investigar(inv_model, settings, search_fn, task, get_stream_writer(),
                           turn_key=turn_key(thread_id, messages))
 
-    tools = [calculadora, fecha_hora, buscar_web, guardar_recuerdo, buscar_recuerdos, actualizar_recuerdo,
+    tools = [calculadora, fecha_hora, check_python_syntax, buscar_web, guardar_recuerdo, buscar_recuerdos,
+             actualizar_recuerdo,
              investigador_profundo, *extra_tools()]
     if settings.bigtool_demo_tools:
         tools += _herramientas_math() + _herramientas_texto() + crm_tools()
@@ -247,26 +261,40 @@ class PromptedModel:
     """Adaptador mínimo: bigtool no acepta system prompt (issue #7) ni middleware. Antepone el prompt
     dinámico (system.md + fecha + instrucciones de retrieve_tools) y aplica el razonamiento del esfuerzo."""
 
-    def __init__(self, model):
+    def __init__(self, model, cap: int = 0):
         self.model = model
+        self.cap = cap  # TURN_TOKEN_CAP: al 80%, la llamada va sin herramientas (aterrizaje suave)
 
     def bind_tools(self, tools, **kwargs):
         if effort := _ctx("razonamiento"):
             kwargs["reasoning"] = {"effort": effort}
+        if max_tokens := _ctx("max_tokens"):  # margen de salida con esfuerzo alto
+            kwargs["max_tokens"] = max_tokens
         unicas = {}
         for t in tools:  # sin los ids que ya no existen (None) ni duplicados (id viejo + id nuevo)
             name = getattr(t, "name", None) or getattr(t, "__name__", None)
             if t is not None and name not in unicas:
                 unicas[name] = t
         bound = self.model.bind_tools(list(unicas.values()), **kwargs)
-        return RunnableLambda(lambda msgs: [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT),
-                                            *rename_old_tools(msgs)]) | bound
+        landing = self.model.bind_tools(list(unicas.values()), **{**kwargs, "tool_choice": "none"})
+
+        def prompt(msgs):
+            note = f"\n\n{SOFT_CAP_NOTE}" if landing_due(self.cap) else ""
+            return [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT + note), *rename_old_tools(msgs)]
+
+        def route(_):  # devolver un Runnable hace que RunnableLambda lo invoque con la misma entrada
+            if counter := landing_due(self.cap):
+                counter.landing = True
+                return landing
+            return bound
+
+        return RunnableLambda(prompt) | RunnableLambda(route)
 
 
 def build_bigtool_agent(model, settings: Settings, checkpointer=None, memories_store=None,
                         embeddings=None, search_fn: Callable = web_search, checker=None):
     registry = build_registry(model, settings, memories_store, search_fn, checkpointer=checkpointer, checker=checker)
     index = build_tool_index(registry, settings, embeddings)
-    builder = create_bigtool_agent(PromptedModel(model), RegistroTolerante(registry), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
+    builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap), RegistroTolerante(registry), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
                                    retrieve_tools_function=make_retrieve_tools(registry))
     return builder.compile(checkpointer=checkpointer, store=index)
