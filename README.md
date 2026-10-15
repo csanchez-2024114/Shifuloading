@@ -36,6 +36,7 @@ copy .env.example .env   # y pon tu OPENAI_API_KEY
 | `RECURSION_LIMIT` | `100` | pasos máximos del grafo por turno (cada ronda modelo→herramienta usa ~6 pasos por los middlewares; se sube solo a 8 × el tope de llamadas del esfuerzo; el tope real por turno es el de llamadas) |
 | `MODEL_CALL_LIMIT` | `0` | `0` = **automático**: una llamada rápida clasifica cada mensaje (bajo/medio/alto) y fija el tope de llamadas al modelo (5/15/`EFFORT_HIGH_MAX_CALLS`) y el razonamiento de Luna (low/medium/high); `>0` = tope fijo. Ver "Esfuerzo" |
 | `EFFORT_HIGH_MAX_CALLS` | `15` | tope de llamadas al modelo con esfuerzo alto (antes 40) |
+| `EFFORT_HIGH_MAX_TOKENS` | `12000` | `MAX_TOKENS` efectivo solo con esfuerzo alto (el razonamiento cuenta dentro); solo sube el tope: si `MAX_TOKENS` es mayor o `0`, manda el tuyo |
 | `TOOL_REPEAT_LIMIT` | `8` | veces que una misma herramienta puede usarse en un mensaje; las siguientes no se ejecutan y el modelo responde con lo que tiene; `0` = sin tope |
 | `INVESTIGATOR_MAX_TOKENS` | `6000` | tope de salida del investigador (no usa `MAX_TOKENS`); `0` = sin tope |
 | `INVESTIGATOR_MAX_SEARCHES` | `4` | búsquedas por investigación |
@@ -43,7 +44,7 @@ copy .env.example .env   # y pon tu OPENAI_API_KEY
 | `SSE_PING_SECONDS` | `15` | comentario SSE `: ping` cada N segundos sin eventos; `0` = apagado |
 | `TURN_MAX_SEARCHES` | `6` | búsquedas web por mensaje, sumando agente e investigador; `0` = sin tope |
 | `SEARCH_COST_ESTIMATE` | `15000` | tokens que se reservan antes de cada búsqueda; no se lanza si con ellos se pasaría el presupuesto o el tope |
-| `TURN_TOKEN_CAP` | `150000` | tope general por mensaje (entrada+salida de todas las llamadas); al pasarlo se aborta el mensaje con un aviso. Se cuenta al terminar cada llamada, así que el costo real puede llegar a aproximadamente el tope más una llamada al modelo; `0` = sin tope |
+| `TURN_TOKEN_CAP` | `150000` | tope general por mensaje (entrada+salida de todas las llamadas). Al 80% la siguiente llamada va sin herramientas y responde con lo ya recuperado (aterrizaje suave); si una llamada salta el tope sin aterrizar y pide más herramientas, se aborta con un aviso. Se cuenta al terminar cada llamada, así que el costo real puede llegar a aproximadamente el tope más una llamada al modelo; `0` = sin tope |
 | `SEARCH_CONTEXT_SIZE` | `low` | `search_context_size` del web_search hospedado: `low`/`medium`/`high` |
 | `SEARCH_MAX_TOOL_CALLS` | `1` | `max_tool_calls` de cada llamada al web_search hospedado (búsquedas internas); `0` = sin tope |
 | `MEMORY_SEMANTIC` | `0` | `1` = búsqueda semántica de recuerdos con Atlas Vector Search y embeddings `text-embedding-3-small`; con MongoDB local se ignora (log de aviso) y usa búsqueda por palabras |
@@ -221,7 +222,15 @@ Detalles:
   - **Búsquedas de una en una dentro del mismo mensaje:** en paralelo, todas pasaban la comprobación del tope antes de sumar tokens.
   - **Si se corta**, devuelve lo que encontró con un aviso, nunca una respuesta vacía.
   - **Seguimientos:** el prompt pide no relanzar la investigación ante una pregunta breve sobre algo ya investigado.
-- **Respuestas cortadas por `MAX_TOKENS`:** si la respuesta final llega incompleta (`max_output_tokens`), se añade al final "La respuesta se cortó por el límite de longitud (MAX_TOKENS). Escribe «continúa»…". El aviso queda guardado en el historial.
+- **Respuestas cortadas por `MAX_TOKENS`:** si la respuesta final llega incompleta (`max_output_tokens`), se añade al final "⚠️ La respuesta se cortó por el límite de longitud (MAX_TOKENS). Escribe «continúa» y sigo justo donde me quedé…". El aviso queda guardado en el historial.
+  - **«continúa»:** el modelo recibe la respuesta cortada sin el aviso y una instrucción de seguir exactamente donde quedó, sin rehacer lo anterior (si quedó dentro de un bloque de código, abre otro del mismo lenguaje y sigue).
+  - **Esfuerzo alto:** reserva margen de salida con `EFFORT_HIGH_MAX_TOKENS` (12000), sin cambiar tu `MAX_TOKENS` en los demás esfuerzos. Prueba real: con 8000, un script salió cortado tras 70 s (7,370 tokens de razonamiento).
+- **Herramientas caras solo cuando hacen falta** (prueba de 3 escenarios: una investigación no pedida costó 95 s y 35k tokens, y un seguimiento breve lanzó 3 búsquedas en paralelo):
+  - como máximo **una `web_search` por llamada al modelo**: las demás de la misma respuesta no se ejecutan y el modelo recibe "one search per step; answer with what you have or ask the user". Aplica también en bigtool; no al investigador, que sí busca varias veces.
+  - **`deep_research` pide confirmación** con la tarjeta de aprobación ("Esto tardará unos 1-2 minutos y consume bastante más; ¿sigo?", botones "Sí, investiga" / "No, responde sin investigar"), salvo que el mensaje del usuario pida investigar ("investiga", "a fondo", "en profundidad", "research"…) o que sea un seguimiento que reutiliza una investigación anterior. En bigtool, igual vía `interrupt()`.
+  - el **clasificador de esfuerzo** solo pone "alto" a investigación o comparación a fondo y a problemas realmente difíciles; un plan con los datos dados, código normal o algo que el asistente no puede hacer (alarmas, mensajes) ya no salen en alto. Medido con 12 mensajes reales: de 5/12 a 10/12 aciertos y ningún "alto" indebido.
+- **`check_python_syntax`:** herramienta que revisa la sintaxis de código Python con `ast.parse` (no ejecuta, no importa, sin archivos ni red) y devuelve el error con línea y columna. El prompt pide usarla antes de entregar código de más de 15 líneas. Prueba real: un script entregado tenía un `SyntaxError`.
+- **Memoria de restricciones técnicas:** el prompt y la descripción de `save_memory` piden guardar las restricciones duraderas que el usuario diga (versión de Python, librerías prohibidas, sistema operativo) y no guardar detalles pasajeros de una tarea (nombres de fichero, cifras, errores, fechas o presupuesto de un plan puntual). Los datos estables dichos de pasada dentro de una petición (dónde vive, dieta, gustos) sí se guardan.
 - **Textos largos:** el prompt pide no preguntar antes, sino asumir lo que falte, decirlo en una línea y escribir el texto completo.
 - **LaTeX:** el prompt lo prohíbe con ejemplos del formato permitido. Como respaldo, la interfaz convierte `\( \)`, `\[ \]` y `$$ $$` a texto legible (fracciones como a/b, `<sup>`/`<sub>`, símbolos Unicode y `C(n, k)`). La conversión está escrita a mano, sin librerías ni CDN; no es un motor de LaTeX completo.
 - **Idioma:** todo lo que lee el modelo está en inglés: prompts, descripciones y parámetros de herramientas, y los mensajes que devuelven las herramientas. El prompt pide responder siempre en el idioma del usuario sin copiar esos mensajes. La interfaz los traduce al mostrarlos en el tooltip de cada herramienta. No se traducen los recuerdos ni su evidencia: la cita se compara literal con lo que escribiste. `tests/test_idioma.py` falla si se cuela español en esos textos.
@@ -229,7 +238,9 @@ Detalles:
   - todas las búsquedas web del mensaje (agente e investigador) comparten un contador de tokens y de búsquedas y van de una en una;
   - antes de cada búsqueda se reserva `SEARCH_COST_ESTIMATE`: si con eso se pasaría `INVESTIGATOR_TOKEN_BUDGET`, `TURN_MAX_SEARCHES` o `TURN_TOKEN_CAP`, no se lanza y el modelo recibe "responde con lo que tienes y avisa";
   - el presupuesto solo puede superarse si una búsqueda cuesta más que su estimado;
-  - `TURN_TOKEN_CAP` cuenta todas las llamadas del mensaje (agente, investigador, búsquedas, resumen, verificadores). Al llegar, aborta el mensaje y muestra un aviso.
+  - `TURN_TOKEN_CAP` cuenta todas las llamadas del mensaje (agente, investigador, búsquedas, resumen, verificadores).
+    - **Aterrizaje suave:** al llegar al 80%, la siguiente llamada va sin herramientas y con la instrucción de responder con lo ya recuperado y decir qué no se pudo completar. Prueba real (tope temporal de 2,600): respondió el cálculo y la hora y avisó de que no consultó el tipo de cambio.
+    - **Aborto (último recurso):** solo si una llamada salta el tope sin haber aterrizado (p. ej. del 70% al 110%) y el modelo pide más herramientas. Si esa llamada ya era la respuesta final, el mensaje termina normal, sin aviso.
     - **Cuánto puede costar:** los tokens se cuentan al terminar cada llamada, así que el tope se detecta después de la llamada que lo cruza. El costo real puede llegar a aproximadamente el tope más una llamada al modelo (o una búsqueda).
     - **Herramientas a medio correr:** las que ya estaban corriendo terminan y su resultado se guarda; las que el modelo pidió y aún no empezaban quedan respondidas como canceladas. El investigador, si ya corría, se detiene al ver el tope y devuelve lo que encontró.
     - **El hilo queda consistente:** se guarda la respuesta del modelo con sus llamadas, cada llamada con su respuesta y el aviso como respuesta del asistente; el siguiente mensaje funciona normal. Probado con MongoDB real (`tests/test_cierre_abortado.py`). Si ese cierre no se puede guardar, el usuario recibe el aviso igual, el log dice qué no se guardó y el siguiente mensaje parte del último checkpoint guardado.
@@ -273,6 +284,9 @@ Tests (sin gastar tokens). **pytest siempre usa tu MongoDB local** (`mongodb://1
 ```powershell
 .venv\Scripts\python -m pytest
 ```
+
+`tests/test_ui_navegador.py` prueba la interfaz en un navegador real con Playwright (`playwright` está en las dependencias
+`dev`): usa Edge o Chrome ya instalados en modo headless y se salta si no hay navegador. No descarga nada.
 
 ## Si algo falla
 

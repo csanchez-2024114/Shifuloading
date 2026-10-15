@@ -71,6 +71,7 @@ save_memory(text: str, runtime: ToolRuntime, evidence="") -> str   # memory.reme
 search_memories(query: str, runtime: ToolRuntime) -> str # memory.recall → "- [id <key>] texto" por línea, NO_RELEVANT_MSG o NO_MEMORIES_MSG
 update_memory(id: str, text: str, runtime, evidence="") -> str  # memory.revise: solo el user_id del contexto, misma verificación que guardar; previous_text + updated_at
 send_simulated_email(recipient: str, subject: str, body: str) -> str  # NO envía nada; ejemplo HITL
+check_python_syntax(code: str) -> str    # solo ast.parse (no ejecuta ni importa): SYNTAX_OK_MSG o "SyntaxError at line L, column C: ..."
 def web_search(query: str, settings: Settings) -> tuple[str, str]
     # 1) ChatOpenAI(model=settings.llm_model, api_key=..., use_responses_api=True, tags=["nostream"])
     #    .bind_tools([{"type": "web_search"}]).invoke(query) → (resp.text, "openai_web_search")
@@ -78,12 +79,14 @@ def web_search(query: str, settings: Settings) -> tuple[str, str]
     # 2) cualquier excepción → logging.warning con el motivo y DDGS().text(query, max_results=5) → (texto formateado
     #    título/url/resumen, "duckduckgo")
 def make_buscar_web(settings, search_fn=web_search) -> BaseTool
-    # tool "web_search(query: str)": devuelve f"[engine: {engine}]\n{texto}"
+    # tool "web_search(query: str)": devuelve f"[engine: {engine}]\n{texto}"; si no es la primera web_search de la
+    # misma respuesta del modelo, no busca y devuelve ONE_SEARCH_MSG ("Not run: one search per step…")
 def make_investigador(model: BaseChatModel, buscar_web_tool: BaseTool) -> BaseTool
     # tool "deep_research(task: str)": subagente = create_agent(model, [buscar_web_tool], system_prompt=<investigar con 3-5 búsquedas y devolver resumen con fuentes>)
     # invoke({"messages":[{"role":"user","content":tarea}]}) → result["messages"][-1].text
 def build_tools(model, settings, search_fn=web_search) -> list[BaseTool]
-    # [web_search, calculator, current_datetime, save_memory, search_memories, update_memory, deep_research]
+    # [web_search, calculator, current_datetime, check_python_syntax, save_memory, search_memories, update_memory,
+    #  deep_research]  (deep_research pide confirmación salvo petición explícita: research_needs_confirmation)
     # + send_simulated_email si settings.enable_hitl_demo
 ```
 
@@ -139,13 +142,26 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 {"type": "error", "message": "texto legible"}
 {"type": "done", "thread_id": "abc"}
 ```
-Respuesta cortada por MAX_TOKENS: llega como un `token` más al final, con el aviso "_La respuesta se cortó por el límite de
-longitud (MAX_TOKENS). Escribe «continúa»…_" (también queda en el historial). No hay evento nuevo.
+Avisos del sistema al usuario: texto plano, sin marcadores de markdown (la interfaz mostraba los `_` de la cursiva).
 
-Tope por mensaje (TURN_TOKEN_CAP): llega como un `token` final con el aviso "_Detuve este mensaje: superó el tope de N
-tokens por mensaje (TURN_TOKEN_CAP)…_" seguido de `done`. Las herramientas que ya corrían terminan y guardan su resultado;
-las que no habían empezado quedan respondidas con
-"Cancelled: …" en el historial, para que el hilo siga usable. No hay evento nuevo.
+Respuesta cortada por MAX_TOKENS: llega como un `token` más al final, con el aviso "⚠️ La respuesta se cortó por el
+límite de longitud (MAX_TOKENS). Escribe «continúa» y sigo justo donde me quedé, sin repetir lo anterior." (también
+queda en el historial, con `additional_kwargs.cut = true`). No hay evento nuevo.
+
+Tope por mensaje (TURN_TOKEN_CAP): al 80% la siguiente llamada va sin herramientas (aterrizaje suave: respuesta normal,
+sin aviso propio). Solo si se cruza el tope sin aterrizar y el modelo pide más herramientas llega un `token` final con
+"⚠️ Detuve este mensaje: superó el tope de N tokens por mensaje (TURN_TOKEN_CAP)…" (N con punto de miles: 45.000)
+seguido de `done`. Las herramientas que ya corrían terminan y guardan su resultado; las que no habían empezado quedan
+respondidas con "Cancelled: …" en el historial, para que el hilo siga usable. No hay evento nuevo.
+
+Confirmación de deep_research: evento `interrupt` con `action_requests: [{"name": "deep_research", "args": {"task": …},
+"description": "Esto tardará unos 1-2 minutos y consume bastante más; ¿sigo?"}]`. Se reanuda con `/resume` y
+`decisions: [{"type": "approve"}]` o `[{"type": "reject", "message": "The user declined this action. …"}]` (el mensaje
+de rechazo lo lee el modelo: en inglés). No se pide si el mensaje del usuario pide investigar.
+
+Interfaz: "Nueva conversación" nunca se deshabilita. Con un turno en curso, el clic queda en cola (borde discontinuo,
+"Nueva al terminar…"; un segundo clic cancela) y se ejecuta al terminar; con una aprobación pendiente se ejecuta al
+momento. El id del hilo actual se muestra siempre bajo el selector (`#threadid`).
 
 Keep-alive: durante silencios de `SSE_PING_SECONDS` (15 s por defecto) el servidor envía la línea de comentario SSE
 `: ping` seguida de una línea vacía. No es un evento (no tiene `data:`); los clientes deben ignorar las líneas que
