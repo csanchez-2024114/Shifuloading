@@ -1,6 +1,7 @@
 """Memoria: checkpointer (corto plazo) y store (largo plazo) sobre MongoDB, más chequeos de arranque."""
 from __future__ import annotations
 
+import json
 import logging
 import re
 import unicodedata
@@ -23,11 +24,14 @@ _SEARCH_WINDOW = 200
 
 def ping_mongo(uri: str, timeout_ms: int = 2000) -> pymongo.MongoClient:
     """Conecta a MongoDB y hace ping. Lanza ConfigError si no responde."""
-    client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=timeout_ms)
+    client = None
     try:
+        # dentro del try: con mongodb+srv, un host inexistente (DNS) o una URI mal formada fallan al construir el cliente
+        client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=timeout_ms)
         client.admin.command("ping")
-    except PyMongoError as exc:
-        client.close()
+    except (PyMongoError, ValueError) as exc:
+        if client is not None:
+            client.close()
         safe_uri = re.sub(r"//[^@/]+@", "//***@", uri)  # oculta usuario:contraseña
         raise ConfigError(
             f"No pude conectar a MongoDB en {safe_uri}. Verifica que el servicio esté corriendo"
@@ -100,15 +104,166 @@ def memory_namespace(user_id: str) -> tuple[str, str, str]:
     return ("user", user_id, "memories")
 
 
-def save_memory(store, user_id: str, text: str) -> str:
-    """Guarda un recuerdo y devuelve su key (uuid hex)."""
+def save_memory(store, user_id: str, text: str, *, thread_id: str | None = None,
+                evidence: str = "", confidence: str = "unverified") -> str:
+    """Guarda un recuerdo con su procedencia y devuelve su key (uuid hex).
+    confidence: "verified" (lo confirmó el verificador), "quoted" (la cita aparece literal en lo que dijo
+    el usuario) o "unverified" (sin evidencia). Los recuerdos viejos solo tienen text y created_at."""
     key = uuid.uuid4().hex
     store.put(
         memory_namespace(user_id),
         key,
-        {"text": text, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"text": text, "created_at": datetime.now(timezone.utc).isoformat(),
+         "thread_id": thread_id, "evidence": evidence, "confidence": confidence},
     )
     return key
+
+
+def list_memories(store, user_id: str) -> list[dict]:
+    """Recuerdos de un usuario, más recientes primero, con los campos de procedencia (vacíos si son viejos)."""
+    items = [i for i in store.search(memory_namespace(user_id), limit=_SEARCH_WINDOW)
+             if (getattr(i, "value", None) or {}).get("text")]
+    items.sort(key=_created_at, reverse=True)
+    return [{"key": i.key, "text": i.value["text"], "created_at": _created_at(i),
+             "thread_id": i.value.get("thread_id"), "evidence": i.value.get("evidence") or "",
+             "confidence": i.value.get("confidence") or "unverified",
+             "previous_text": i.value.get("previous_text"), "updated_at": i.value.get("updated_at")} for i in items]
+
+
+NO_RELEVANT_MSG = "No hay recuerdos relevantes para esto"
+
+
+def recall(store, user_id: str, query: str, min_score: float = 0.0) -> str:
+    """Texto que devuelve buscar_recuerdos: cada recuerdo con su id, o un aviso explícito si nada es relevante."""
+    items = search_memory_items(store, user_id, query, min_score=min_score)
+    if items:
+        return "\n".join(f"- [id {key}] {text}" for key, text in items)
+    if query.strip() and store.search(memory_namespace(user_id), limit=1):
+        return NO_RELEVANT_MSG  # hay recuerdos, pero ninguno pasa el umbral: no se devuelve el menos malo
+    return "Sin recuerdos"
+
+
+def update_memory(store, user_id: str, key: str, text: str, *, thread_id: str | None = None,
+                  evidence: str = "", confidence: str = "unverified") -> bool:
+    """Reemplaza el texto de un recuerdo del propio usuario. Guarda el anterior en previous_text (para auditar y
+    deshacer) y la fecha en updated_at; created_at se conserva. False si no existe en el namespace de ese usuario."""
+    item = store.get(memory_namespace(user_id), key)
+    if item is None or not (item.value or {}).get("text"):
+        return False
+    store.put(memory_namespace(user_id), key, {
+        **item.value, "text": text, "previous_text": item.value["text"],
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "thread_id": thread_id, "evidence": evidence, "confidence": confidence,
+    })
+    return True
+
+
+def delete_memory(store, user_id: str, key: str) -> bool:
+    """Borra un recuerdo solo dentro del namespace de ese usuario. False si no existe (o es de otro)."""
+    if store.get(memory_namespace(user_id), key) is None:
+        return False
+    store.delete(memory_namespace(user_id), key)
+    return True
+
+
+# --------------------------------------------------------------------------- procedencia y verificación
+
+SUMMARY_SOURCE = "summarization"  # additional_kwargs["lc_source"] del mensaje de SummarizationMiddleware
+
+VERIFY_MEMORY_PROMPT = """You check whether a memory about the user is backed by what the user actually said.
+
+USER MESSAGES (only things the user wrote, oldest first):
+{messages}
+
+CANDIDATE MEMORY:
+{candidate}
+
+The memory is SUPPORTED only if the user explicitly stated it (or asked to remember it) in the messages above.
+Assumptions, inferences, guesses and things the assistant said are NOT supported.
+Reply with JSON only: {{"supported": true or false, "quote": "<the user's exact words that state it, copied verbatim, or empty>"}}"""
+
+
+def user_texts(messages) -> list[str]:
+    """Textos que escribió el usuario. Excluye el resumen de SummarizationMiddleware: es texto del modelo."""
+    out = []
+    for m in messages or []:
+        if getattr(m, "type", None) != "human":
+            continue
+        if (getattr(m, "additional_kwargs", None) or {}).get("lc_source") == SUMMARY_SOURCE:
+            continue
+        text = m.text if isinstance(getattr(m, "text", None), str) else str(m.content)
+        if text.strip():
+            out.append(text)
+    return out
+
+
+def find_quote(quote: str, texts: list[str]) -> str:
+    """Devuelve `quote` si aparece literal (sin importar mayúsculas, acentos ni espacios) en algún texto."""
+    def norm(t: str) -> str:
+        return " ".join(_normalize(t).split()).strip(" .,;:!?¡¿\"'")
+
+    q = norm(quote or "")
+    if len(q) < 3:
+        return ""
+    return quote.strip() if any(q in norm(t) for t in texts) else ""
+
+
+def make_memory_verifier(llm):
+    """Verificador de una llamada: (candidato, textos_usuario) -> (respaldado, cita)."""
+
+    def verify(candidate: str, texts: list[str]) -> tuple[bool, str]:
+        if not texts:
+            return False, ""
+        recent = "\n".join(f"- {t[:1500]}" for t in texts[-20:])
+        try:
+            raw = llm.invoke(VERIFY_MEMORY_PROMPT.format(messages=recent, candidate=candidate)).text
+            data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+        except Exception as exc:  # noqa: BLE001 - si no se puede verificar, no se guarda
+            logger.warning("No pude verificar el recuerdo (%s)", exc)
+            return False, ""
+        return bool(data.get("supported")), str(data.get("quote") or "")
+
+    return verify
+
+
+def _provenance(text: str, quote: str, texts: list[str], verifier) -> tuple[str, str] | None:
+    """(evidence, confidence) para un texto nuevo; None si el verificador dice que el usuario no lo dijo."""
+    if verifier is not None:
+        ok, verifier_quote = verifier(text, texts)
+        if not ok:
+            return None
+        return find_quote(verifier_quote, texts) or find_quote(quote, texts), "verified"
+    evidence = find_quote(quote, texts)
+    return evidence, ("quoted" if evidence else "unverified")
+
+
+def remember(store, user_id: str, text: str, quote: str, texts: list[str], *,
+             thread_id: str | None = None, verifier=None) -> str:
+    """Lógica común de guardar_recuerdo (agente normal y bigtool). Devuelve el mensaje para el agente."""
+    prov = _provenance(text, quote, texts, verifier)
+    if prov is None:
+        return ("Not saved: the user never stated this in the conversation. Do not save assumptions; "
+                "tell the user it was not saved and ask them to confirm if needed.")
+    save_memory(store, user_id, text, thread_id=thread_id, evidence=prov[0], confidence=prov[1])
+    return "Recuerdo guardado."
+
+
+# Mismo mensaje si el id no existe o es de otro usuario: no revela qué ids existen.
+NOT_FOUND_MSG = "Not updated: there is no memory with that id. Use buscar_recuerdos to get the ids."
+
+
+def revise(store, user_id: str, key: str, text: str, quote: str, texts: list[str], *,
+           thread_id: str | None = None, verifier=None) -> str:
+    """Lógica común de actualizar_recuerdo: solo recuerdos del propio user_id y con la misma verificación."""
+    if store.get(memory_namespace(user_id), key) is None:
+        return NOT_FOUND_MSG
+    prov = _provenance(text, quote, texts, verifier)
+    if prov is None:
+        return ("Not updated: the user never stated the new value in the conversation. Do not update with "
+                "assumptions; tell the user it was not updated.")
+    if not update_memory(store, user_id, key, text, thread_id=thread_id, evidence=prov[0], confidence=prov[1]):
+        return NOT_FOUND_MSG
+    return "Recuerdo actualizado."
 
 
 def _normalize(text: str) -> str:
@@ -133,10 +288,19 @@ def _created_at(item) -> str:
 
 def search_memories(store, user_id: str, query: str = "", limit: int = 10) -> list[str]:
     """Devuelve textos de recuerdos: los que mejor coinciden con `query`, o los más recientes."""
+    return [text for _, text in search_memory_items(store, user_id, query, limit)]
+
+
+def search_memory_items(store, user_id: str, query: str = "", limit: int = 10,
+                        min_score: float = 0.0) -> list[tuple[str, str]]:
+    """Como search_memories, pero devuelve (key, texto): el agente necesita la key para actualizar.
+    `min_score` filtra la búsqueda semántica: la búsqueda vectorial siempre devuelve "el menos malo"."""
     if query.strip() and getattr(store, "index_config", None):
-        # Búsqueda semántica. ponytail: recuerdos guardados antes de activarla no tienen embedding y no aparecen aquí.
+        # Búsqueda semántica. Los recuerdos sin embedding (guardados antes de activarla) no aparecen aquí:
+        # scripts/migrate_memories.py los indexa.
         items = store.search(memory_namespace(user_id), query=query, limit=limit)
-        return [i.value["text"] for i in items if (i.value or {}).get("text")]
+        return [(i.key, i.value["text"]) for i in items
+                if (i.value or {}).get("text") and (i.score is None or i.score >= min_score)]
     items = store.search(memory_namespace(user_id), limit=_SEARCH_WINDOW)
     items = [i for i in items if (getattr(i, "value", None) or {}).get("text")]
     # más recientes primero (orden estable: sirve de desempate)
@@ -153,7 +317,7 @@ def search_memories(store, user_id: str, query: str = "", limit: int = 10) -> li
             # sort estable: a igual puntaje se conserva el orden por recencia
             scored.sort(key=lambda p: p[0], reverse=True)
             items = [item for score, item in scored if score > 0]
-    return [i.value["text"] for i in items[:limit]]
+    return [(i.key, i.value["text"]) for i in items[:limit]]
 
 
 def startup_checks(settings: Settings) -> pymongo.MongoClient:

@@ -31,6 +31,12 @@ class Settings:
     use_bigtool: bool = False          # agente alterno con langgraph-bigtool (busca herramientas en un registro)
     bigtool_demo_tools: bool = False   # +50 herramientas inofensivas de demostración en el registro
     embedding_model: str = "text-embedding-3-small"  # índice semántico de herramientas (bigtool)
+    memory_summarize: bool = False      # resume la conversación vieja al pasar el umbral (solo agente normal)
+    summary_trigger_tokens: int = 12000
+    summary_keep_messages: int = 20     # últimos mensajes que se conservan sin resumir
+    memory_verify: bool = False         # verifica con el LLM que un recuerdo lo dijo el usuario antes de guardarlo
+    answer_verify: bool = False         # segundo paso que contrasta la respuesta con lo buscado en la web
+    memory_min_score: float = 0.68      # búsqueda semántica (Atlas): puntuación mínima; calibrado, ver README
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -47,6 +53,12 @@ class Settings:
             use_bigtool=_bool("USE_BIGTOOL"),
             bigtool_demo_tools=_bool("BIGTOOL_DEMO_TOOLS"),
             embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small").strip(),
+            memory_summarize=_bool("MEMORY_SUMMARIZE"),
+            summary_trigger_tokens=int(os.getenv("SUMMARY_TRIGGER_TOKENS", "12000")),
+            summary_keep_messages=int(os.getenv("SUMMARY_KEEP_MESSAGES", "20")),
+            memory_verify=_bool("MEMORY_VERIFY"),
+            answer_verify=_bool("ANSWER_VERIFY"),
+            memory_min_score=float(os.getenv("MEMORY_MIN_SCORE", "0.68")),
         )
 
     def require_api_key(self) -> None:

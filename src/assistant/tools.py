@@ -126,25 +126,71 @@ def fecha_hora(zona: str = "local") -> str:
 # --------------------------------------------------------------------------- memoria
 
 
-@tool
-def guardar_recuerdo(texto: str, runtime: ToolRuntime[Context]) -> str:
-    """Saves a stable fact about the user to long-term memory (name, likes, preferences,
-    work context). Write it as a complete, self-contained sentence in the user's language,
-    e.g. "El usuario se llama Ana y prefiere respuestas cortas".
-    """
-    memory.save_memory(runtime.store, runtime.context.user_id, texto)
-    return "Recuerdo guardado."
+GUARDAR_RECUERDO_DOC = """Saves a stable fact about the user to long-term memory (name, likes, preferences,
+work context). Only save what the user explicitly said about themselves, never your own assumptions.
+
+Args:
+    texto: The fact as a complete, self-contained sentence in the user's language,
+        e.g. "El usuario se llama Ana y prefiere respuestas cortas".
+    evidencia: The user's exact words that state this fact, copied verbatim from their message.
+"""
 
 
-@tool
-def buscar_recuerdos(consulta: str, runtime: ToolRuntime[Context]) -> str:
-    """Searches long-term memory for what is known about the user. Pass topic keywords in the
-    language the memories were saved in, or an empty string to get the most recent memories.
-    """
-    found = memory.search_memories(runtime.store, runtime.context.user_id, consulta)
-    if not found:
-        return "Sin recuerdos"
-    return "\n".join(f"- {t}" for t in found)
+def make_guardar_recuerdo(verifier=None) -> BaseTool:
+    """`verifier` (MEMORY_VERIFY): (candidato, textos_usuario) -> (respaldado, cita); None = sin verificar."""
+
+    @tool(description=GUARDAR_RECUERDO_DOC)
+    def guardar_recuerdo(texto: str, runtime: ToolRuntime[Context], evidencia: str = "") -> str:
+        texts = memory.user_texts(runtime.state.get("messages"))
+        thread_id = (runtime.config.get("configurable") or {}).get("thread_id")
+        return memory.remember(runtime.store, runtime.context.user_id, texto, evidencia, texts,
+                               thread_id=thread_id, verifier=verifier)
+
+    return guardar_recuerdo
+
+
+guardar_recuerdo = make_guardar_recuerdo()
+
+
+BUSCAR_RECUERDOS_DOC = """Searches long-term memory for what is known about the user. Pass topic keywords in the
+language the memories were saved in, or an empty string to get the most recent memories.
+Each result starts with its id, which actualizar_recuerdo needs."""
+
+ACTUALIZAR_RECUERDO_DOC = """Replaces the text of an EXISTING memory (get its id from buscar_recuerdos). Use it when the
+user confirms that a saved fact changed, instead of saving a second, contradictory memory. Only use it with what
+the user explicitly said; never with your own assumptions. It cannot delete memories.
+
+Args:
+    id: The memory id shown by buscar_recuerdos.
+    texto: The new fact as a complete, self-contained sentence in the user's language.
+    evidencia: The user's exact words that state the new value, copied verbatim from their message.
+"""
+
+
+def make_buscar_recuerdos(min_score: float = 0.0) -> BaseTool:
+    """`min_score` (MEMORY_MIN_SCORE) solo filtra la búsqueda semántica (Atlas)."""
+
+    @tool(description=BUSCAR_RECUERDOS_DOC)
+    def buscar_recuerdos(consulta: str, runtime: ToolRuntime[Context]) -> str:
+        return memory.recall(runtime.store, runtime.context.user_id, consulta, min_score)
+
+    return buscar_recuerdos
+
+
+buscar_recuerdos = make_buscar_recuerdos()
+
+
+def make_actualizar_recuerdo(verifier=None) -> BaseTool:
+    """Misma verificación que guardar_recuerdo. Solo toca recuerdos del user_id del contexto."""
+
+    @tool(description=ACTUALIZAR_RECUERDO_DOC)
+    def actualizar_recuerdo(id: str, texto: str, runtime: ToolRuntime[Context], evidencia: str = "") -> str:  # noqa: A002
+        texts = memory.user_texts(runtime.state.get("messages"))
+        thread_id = (runtime.config.get("configurable") or {}).get("thread_id")
+        return memory.revise(runtime.store, runtime.context.user_id, id, texto, evidencia, texts,
+                             thread_id=thread_id, verifier=verifier)
+
+    return actualizar_recuerdo
 
 
 # --------------------------------------------------------------------------- HITL demo
@@ -247,14 +293,27 @@ def make_investigador(model: BaseChatModel, buscar_web_tool: BaseTool) -> BaseTo
     return investigador_profundo
 
 
-def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search) -> list[BaseTool]:
+def memory_verifier_for(settings: Settings, checker=None):
+    """Verificador de recuerdos si MEMORY_VERIFY=1 (checker = modelo barato; se inyecta en tests)."""
+    if not settings.memory_verify:
+        return None
+    if checker is None:
+        from assistant.agent import make_checker_model
+
+        checker = make_checker_model(settings)
+    return memory.make_memory_verifier(checker)
+
+
+def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, checker=None) -> list[BaseTool]:
     buscar_web = make_buscar_web(settings, search_fn)
+    verifier = memory_verifier_for(settings, checker)
     tools: list[BaseTool] = [
         buscar_web,
         calculadora,
         fecha_hora,
-        guardar_recuerdo,
-        buscar_recuerdos,
+        make_guardar_recuerdo(verifier),
+        make_buscar_recuerdos(settings.memory_min_score),
+        make_actualizar_recuerdo(verifier),
         make_investigador(model, buscar_web),
     ]
     if settings.enable_hitl_demo:

@@ -24,7 +24,7 @@ from langchain_core._api.beta_decorator import LangChainBetaWarning
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.tools import BaseTool, StructuredTool, tool
-from langgraph.config import get_stream_writer
+from langgraph.config import get_config, get_stream_writer
 from langgraph.prebuilt import InjectedStore
 from langgraph.runtime import get_runtime
 from langgraph.store.base import BaseStore, PutOp
@@ -39,7 +39,8 @@ from assistant.config import Settings
 from assistant.extra_tools import extra_tools
 from assistant.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.tools import (
-    INVESTIGADOR_DOC, calculadora, fecha_hora, investigar, make_buscar_web, make_subinvestigador, web_search,
+    ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, GUARDAR_RECUERDO_DOC, INVESTIGADOR_DOC, calculadora,
+    fecha_hora, investigar, make_buscar_web, make_subinvestigador, memory_verifier_for, web_search,
 )
 
 logger = logging.getLogger(__name__)
@@ -141,32 +142,49 @@ def _herramientas_math() -> list[BaseTool]:
     return out
 
 
-def build_registry(model, settings: Settings, memories_store, search_fn: Callable = web_search) -> dict[str, BaseTool]:
+def _thread_user_texts(checkpointer) -> tuple[str | None, list[str]]:
+    """(thread_id, textos del usuario) del hilo en curso. Bigtool no inyecta el estado a las herramientas:
+    se lee del último checkpoint, que ya incluye el mensaje del usuario de este turno."""
+    try:
+        thread_id = get_config()["configurable"]["thread_id"]
+    except Exception:  # noqa: BLE001 - fuera de un grafo
+        return None, []
+    if checkpointer is None:
+        return thread_id, []
+    saved = checkpointer.get_tuple({"configurable": {"thread_id": thread_id}})
+    messages = (saved.checkpoint.get("channel_values") or {}).get("messages") if saved else None
+    return thread_id, memory.user_texts(messages)
+
+
+def build_registry(model, settings: Settings, memories_store, search_fn: Callable = web_search,
+                   checkpointer=None, checker=None) -> dict[str, BaseTool]:
     """Registro id -> herramienta. id = nombre de la herramienta (legible en la UI)."""
     buscar_web = make_buscar_web(settings, search_fn)
     sub = make_subinvestigador(model, buscar_web)
+    verifier = memory_verifier_for(settings, checker)
 
-    @tool
-    def guardar_recuerdo(texto: str) -> str:
-        """Saves a stable fact about the user to long-term memory (name, likes, preferences, work
-        context). Write it as a complete, self-contained sentence in the user's language."""
-        memory.save_memory(memories_store, _ctx("user_id", "anon"), texto)
-        return "Recuerdo guardado."
+    @tool(description=GUARDAR_RECUERDO_DOC)
+    def guardar_recuerdo(texto: str, evidencia: str = "") -> str:
+        thread_id, texts = _thread_user_texts(checkpointer)
+        return memory.remember(memories_store, _ctx("user_id", "anon"), texto, evidencia, texts,
+                               thread_id=thread_id, verifier=verifier)
 
-    @tool
+    @tool(description=BUSCAR_RECUERDOS_DOC)
     def buscar_recuerdos(consulta: str) -> str:
-        """Searches long-term memory for what is known about the user (name, likes, preferences).
-        Pass topic keywords in the language the memories were saved in, or an empty string for the
-        most recent ones."""
-        found = memory.search_memories(memories_store, _ctx("user_id", "anon"), consulta)
-        return "\n".join(f"- {t}" for t in found) if found else "Sin recuerdos"
+        return memory.recall(memories_store, _ctx("user_id", "anon"), consulta, settings.memory_min_score)
+
+    @tool(description=ACTUALIZAR_RECUERDO_DOC)
+    def actualizar_recuerdo(id: str, texto: str, evidencia: str = "") -> str:  # noqa: A002
+        thread_id, texts = _thread_user_texts(checkpointer)
+        return memory.revise(memories_store, _ctx("user_id", "anon"), id, texto, evidencia, texts,
+                             thread_id=thread_id, verifier=verifier)
 
     @tool(description=INVESTIGADOR_DOC)
     def investigador_profundo(tarea: str) -> str:
         return investigar(sub, tarea, get_stream_writer())
 
-    tools = [calculadora, fecha_hora, buscar_web, guardar_recuerdo, buscar_recuerdos, investigador_profundo,
-             *extra_tools()]
+    tools = [calculadora, fecha_hora, buscar_web, guardar_recuerdo, buscar_recuerdos, actualizar_recuerdo,
+             investigador_profundo, *extra_tools()]
     if settings.bigtool_demo_tools:
         tools += _herramientas_math() + _herramientas_texto() + crm_tools()
     registry = {t.name: _seguro(t) for t in tools}
@@ -216,8 +234,8 @@ class PromptedModel:
 
 
 def build_bigtool_agent(model, settings: Settings, checkpointer=None, memories_store=None,
-                        embeddings=None, search_fn: Callable = web_search):
-    registry = build_registry(model, settings, memories_store, search_fn)
+                        embeddings=None, search_fn: Callable = web_search, checker=None):
+    registry = build_registry(model, settings, memories_store, search_fn, checkpointer=checkpointer, checker=checker)
     index = build_tool_index(registry, settings, embeddings)
     builder = create_bigtool_agent(PromptedModel(model), registry, limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
                                    retrieve_tools_function=make_retrieve_tools(registry))

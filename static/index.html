@@ -111,6 +111,27 @@ select#thread {
   background: var(--surface); min-width: 0; flex: 1 1 160px; max-width: 280px;
 }
 #settings small { color: var(--muted); flex-basis: 100%; }
+#memories {
+  display: none; padding: 10px 12px; background: var(--surface-2);
+  border-bottom: 1px solid var(--border); max-height: 45vh; overflow-y: auto;
+}
+#memories.open { display: block; }
+#memories h2 { font-size: .95rem; margin: 0 0 8px; }
+#memories ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+#memories li { display: flex; gap: 10px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+#memories li .mtext { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#memories li .mmeta { display: block; color: var(--muted); font-size: .8rem; margin-top: 3px; }
+#memories li .mmeta q { font-style: italic; }
+#memories li .btn { padding: 4px 9px; flex-shrink: 0; }
+#memories .sys { text-align: left; }
+.conf { font-weight: 600; }
+.conf.verified { color: var(--ok); }
+.conf.unverified { color: var(--err); }
+.vnote { margin: 8px 0 0; font-size: .82rem; color: var(--muted); }
+.vnote.corrected { color: var(--err); }
+.vnote details { margin-top: 4px; }
+.vnote summary { cursor: pointer; text-decoration: underline; }
+.vnote .orig { margin-top: 6px; padding: 8px 10px; border-left: 3px solid var(--border); color: var(--text); opacity: .8; }
 /* messages */
 #messages {
   flex: 1; overflow-y: auto; padding: 16px 12px 8px;
@@ -216,12 +237,17 @@ textarea#input:disabled { opacity: .6; }
       <select id="thread"></select>
     </div>
     <button id="newbtn" class="btn" type="button" aria-label="Nueva conversación"><span class="long">Nueva conversación</span><span class="short" aria-hidden="true">+ Nueva</span></button>
+    <button id="membtn" class="btn" type="button" aria-expanded="false" aria-controls="memories" aria-label="Recuerdos" title="Recuerdos guardados">🧠</button>
     <button id="setbtn" class="btn" type="button" aria-expanded="false" aria-controls="settings" aria-label="Ajustes" title="Ajustes">&#9881;&#xFE0E;</button>
   </header>
   <section id="settings" aria-label="Ajustes">
     <label for="userid">ID de usuario</label>
     <input id="userid" type="text" autocomplete="off" spellcheck="false" maxlength="64">
     <small>Se usa para separar los recuerdos de cada persona. Se guarda en este navegador.</small>
+  </section>
+  <section id="memories" aria-label="Recuerdos guardados">
+    <h2>Recuerdos de <span id="memuser"></span></h2>
+    <div id="memlist"></div>
   </section>
   <main id="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Mensajes"></main>
   <form id="composer" autocomplete="off">
@@ -358,7 +384,8 @@ textarea#input:disabled { opacity: .6; }
   var $ = function (id) { return document.getElementById(id); };
   var messagesEl = $("messages"), inputEl = $("input"), sendBtn = $("send"),
       threadSel = $("thread"), newBtn = $("newbtn"), setBtn = $("setbtn"),
-      settingsEl = $("settings"), userEl = $("userid");
+      settingsEl = $("settings"), userEl = $("userid"),
+      memBtn = $("membtn"), memEl = $("memories"), memListEl = $("memlist");
 
   var state = { threadId: null, threads: [], userId: "usuario", streaming: false, pending: 0, loadSeq: 0 };
 
@@ -456,10 +483,24 @@ textarea#input:disabled { opacity: .6; }
     var row = el("div", "row user"), b = el("div", "bubble", text);
     row.appendChild(b); messagesEl.appendChild(row); scrollDown(true);
   }
-  function addAssistantStatic(text) {
+  function addAssistantStatic(text, original, verify) {
     var row = el("div", "row assistant"), b = el("div", "bubble"), seg = el("div", "seg");
     seg.innerHTML = renderMarkdown(text);
-    b.appendChild(seg); row.appendChild(b); messagesEl.appendChild(row);
+    b.appendChild(seg);
+    if (original) b.appendChild(correctionNote(original, verify));
+    row.appendChild(b); messagesEl.appendChild(row);
+  }
+  // nota de ANSWER_VERIFY con la respuesta original desplegable
+  function correctionNote(original, v) {
+    v = v || {};
+    var note = el("div", "vnote corrected");
+    var head = v.status === "kept_original" ? "⚠️ Se conservó la respuesta original" : "✎ Corregida: la verificación encontró afirmaciones o citas sin respaldo en las fuentes.";
+    if (v.notes && v.notes.length) head += " (" + v.notes.join(" · ") + ")";
+    note.appendChild(el("span", null, head));
+    var det = el("details"), orig = el("div", "orig seg");
+    orig.innerHTML = renderMarkdown(String(original || ""));
+    det.appendChild(el("summary", null, "ver original")); det.appendChild(orig); note.appendChild(det);
+    return note;
   }
   function addToolLine(name) {
     // líneas consecutivas de la misma herramienta se agrupan: "usó calculadora ×47"
@@ -482,6 +523,7 @@ textarea#input:disabled { opacity: .6; }
     fecha_hora: "🕒 Consultando la hora…",
     guardar_recuerdo: "💾 Guardando recuerdo…",
     buscar_recuerdos: "📚 Buscando recuerdos…",
+    actualizar_recuerdo: "✏️ Actualizando recuerdo…",
     retrieve_tools: "🧰 Buscando herramientas…"
   };
   var TOOL_DONE = {
@@ -491,6 +533,7 @@ textarea#input:disabled { opacity: .6; }
     fecha_hora: "🕒 Hora consultada",
     guardar_recuerdo: "💾 Recuerdo guardado",
     buscar_recuerdos: "📚 Recuerdos consultados",
+    actualizar_recuerdo: "✏️ Recuerdo actualizado",
     retrieve_tools: "🧰 Herramientas"
   };
   var ENGINES = { duckduckgo: "vía DuckDuckGo", openai_web_search: "vía OpenAI web search" };
@@ -595,6 +638,28 @@ textarea#input:disabled { opacity: .6; }
     if (!g) return;
     if (ev.name === "buscar_web") { g.searches++; g.last = (ev.args && ev.args.consulta) || ""; }
     this.paint(g);
+  };
+  // la conversación anterior se resumió (MEMORY_SUMMARIZE)
+  AssistantBubble.prototype.summarized = function () {
+    var chip = el("div", "chip done");
+    chip.appendChild(el("span", "lbl", "🗜️ Conversación anterior resumida"));
+    chip.title = "Los mensajes viejos se reemplazaron por un resumen; los datos clave se guardan aparte como recuerdos.";
+    this.bubble.insertBefore(chip, this.bubble.firstChild);
+  };
+  // ANSWER_VERIFY: "ok" deja una nota; "corrected" reemplaza la respuesta y deja ver la original (nunca en silencio)
+  AssistantBubble.prototype.verify = function (ev) {
+    this.hideDots(); this.closeSeg();
+    if (typeof ev.text !== "string") {  // el texto no cambió
+      var notes = ev.notes || [];
+      this.bubble.appendChild(el("div", "vnote" + (notes.length ? " corrected" : ""),
+        ev.status === "ok" && !notes.length ? "✔ Verificada contra las fuentes consultadas" : "⚠️ " + notes.join(" · ")));
+      return;
+    }
+    var segs = this.bubble.querySelectorAll(".seg"), last = segs[segs.length - 1];
+    if (!last) { last = el("div", "seg"); this.bubble.appendChild(last); }
+    last.innerHTML = renderMarkdown(ev.text);
+    this.bubble.appendChild(correctionNote(ev.original, ev));
+    scrollDown(false);
   };
   AssistantBubble.prototype.error = function (msg) {
     this.hideDots(); this.closeSeg();
@@ -714,6 +779,8 @@ textarea#input:disabled { opacity: .6; }
         case "tool_start": bubble.toolStart(ev); break;
         case "tool_end": bubble.toolEnd(ev); break;
         case "progress": bubble.progress(ev); break;
+        case "summarized": bubble.summarized(); break;
+        case "verify": bubble.verify(ev); break;
         case "interrupt":
           interrupted = true;
           state.pending++; updateControls();
@@ -727,6 +794,7 @@ textarea#input:disabled { opacity: .6; }
       }
     });
     state.streaming = false;
+    if (memEl.classList.contains("open")) loadMemories();  // por si guardó un recuerdo en este turno
     if (!state.pending) bubble.finish(); else bubble.live = false;
     updateControls();
     if (!inputEl.disabled) inputEl.focus({ preventScroll: true });
@@ -764,11 +832,61 @@ textarea#input:disabled { opacity: .6; }
     var firstUser = "";
     msgs.forEach(function (m) {
       if (m.role === "user") { if (!firstUser) firstUser = String(m.content || ""); addUserBubble(String(m.content || "")); }
-      else if (m.role === "assistant") addAssistantStatic(String(m.content || ""));
+      else if (m.role === "assistant") addAssistantStatic(String(m.content || ""), m.original, m.verify);
       else if (m.role === "tool") addToolLine(String(m.name || "herramienta"));
+      else if (m.role === "summary") messagesEl.appendChild(el("div", "sys", "🗜️ La conversación anterior se resumió; aquí se ven los mensajes conservados."));
     });
     setTitleIfMissing(id, firstUser);
     scrollDown(true);
+  }
+
+  /* ---------- recuerdos ---------- */
+  var CONF = { verified: "✔ verificado", quoted: "❝ con cita", unverified: "sin verificar" };
+  var memSeq = 0;
+  async function loadMemories() {
+    var seq = ++memSeq, uid = userId();
+    $("memuser").textContent = uid;
+    memListEl.textContent = "";
+    memListEl.appendChild(el("p", "sys", "Cargando…"));
+    var data = null;
+    try {
+      var r = await fetch("/memories/" + encodeURIComponent(uid));
+      if (r.ok) data = await r.json();
+    } catch (e) { /* ignore */ }
+    if (seq !== memSeq) return;
+    memListEl.textContent = "";
+    if (!data) { memListEl.appendChild(el("p", "sys", "No pude cargar los recuerdos.")); return; }
+    if (!data.memories.length) { memListEl.appendChild(el("p", "sys", "Sin recuerdos guardados para este usuario.")); return; }
+    var ul = el("ul");
+    data.memories.forEach(function (m) {
+      var li = el("li"), txt = el("div", "mtext", m.text), meta = el("span", "mmeta");
+      var when = "";
+      try { when = m.created_at ? new Date(m.created_at).toLocaleString() : ""; } catch (e) { /* ignore */ }
+      if (when) meta.appendChild(document.createTextNode(when + " · "));
+      meta.appendChild(el("span", "conf " + m.confidence, CONF[m.confidence] || m.confidence));
+      meta.appendChild(document.createTextNode(" · "));
+      if (m.evidence) { meta.appendChild(document.createTextNode("evidencia: ")); meta.appendChild(el("q", null, m.evidence)); }
+      else meta.appendChild(document.createTextNode("sin evidencia"));
+      txt.appendChild(meta);
+      if (m.previous_text) {  // actualizado por el agente: valor anterior para auditar/deshacer
+        var prev = el("span", "mmeta");
+        var up = "";
+        try { up = m.updated_at ? new Date(m.updated_at).toLocaleString() : ""; } catch (e) { /* ignore */ }
+        prev.appendChild(document.createTextNode("✏️ actualizado" + (up ? " " + up : "") + " · antes: "));
+        prev.appendChild(el("q", null, m.previous_text));
+        txt.appendChild(prev);
+      }
+      var del = el("button", "btn danger", "🗑"); del.type = "button";
+      del.setAttribute("aria-label", "Borrar recuerdo: " + m.text); del.title = "Borrar";
+      del.addEventListener("click", async function () {
+        if (!confirm("¿Borrar este recuerdo?\n\n" + m.text)) return;
+        del.disabled = true;
+        try { await fetch("/memories/" + encodeURIComponent(uid) + "/" + encodeURIComponent(m.key), { method: "DELETE" }); } catch (e) { /* ignore */ }
+        loadMemories();
+      });
+      li.appendChild(txt); li.appendChild(del); ul.appendChild(li);
+    });
+    memListEl.appendChild(ul);
   }
 
   function switchThread(id, isNew) {
@@ -793,6 +911,12 @@ textarea#input:disabled { opacity: .6; }
     setBtn.setAttribute("aria-expanded", open ? "true" : "false");
     if (open) userEl.focus();
   });
+  memBtn.addEventListener("click", function () {
+    var open = memEl.classList.toggle("open");
+    memBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) loadMemories();
+  });
+  userEl.addEventListener("change", function () { if (memEl.classList.contains("open")) loadMemories(); });
   userEl.addEventListener("input", function () { state.userId = userEl.value; lsSet("userId", userEl.value.trim() || "usuario"); });
   userEl.addEventListener("blur", function () { if (!userEl.value.trim()) userEl.value = "usuario"; state.userId = userEl.value; });
 

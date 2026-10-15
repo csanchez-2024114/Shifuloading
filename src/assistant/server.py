@@ -3,7 +3,7 @@ import json
 import logging
 import sys
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from langgraph.types import Command
 from pydantic import BaseModel
@@ -29,6 +29,7 @@ class ResumeIn(BaseModel):
 
 
 def _build_real_agent(settings: Settings):
+    """Devuelve (agente, store de recuerdos)."""
     client = memory.startup_checks(settings)
     from assistant.tools import build_tools
 
@@ -39,17 +40,18 @@ def _build_real_agent(settings: Settings):
         from assistant.bigtool_agent import build_bigtool_agent
 
         log.info("Agente: langgraph-bigtool (demo tools: %s)", settings.bigtool_demo_tools)
-        return build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store)
-    return agent_mod.build_agent(model, build_tools(model, settings), settings, checkpointer=checkpointer, store=store)
+        return build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store), store
+    return agent_mod.build_agent(model, build_tools(model, settings), settings, checkpointer=checkpointer,
+                                 store=store), store
 
 
-def create_app(agent=None, settings: Settings | None = None, classify=None) -> FastAPI:
+def create_app(agent=None, settings: Settings | None = None, classify=None, store=None) -> FastAPI:
     settings = settings or Settings.from_env()
     if classify is None:
         # agente inyectado (tests) → sin llamadas reales a OpenAI para clasificar
         classify = agent_mod.clasificar_esfuerzo if agent is None else (lambda s, m: "medio")
     if agent is None:
-        agent = _build_real_agent(settings)
+        agent, store = _build_real_agent(settings)
         host = settings.mongodb_uri.rsplit("@", 1)[-1]  # nunca loguear usuario/contraseña
         log.info("Modelo: %s | MongoDB: %s (db %s)", settings.llm_model, host, settings.mongodb_db)
 
@@ -84,6 +86,22 @@ def create_app(agent=None, settings: Settings | None = None, classify=None) -> F
     @app.get("/history/{thread_id}")
     def history(thread_id: str):
         return {"thread_id": thread_id, "messages": agent_mod.get_history(agent, thread_id, settings)}
+
+    def _store():
+        if store is None:
+            raise HTTPException(503, "El almacén de recuerdos no está disponible")
+        return store
+
+    # ponytail: sin autenticación; user_id es texto libre (app local). Cada endpoint solo toca su namespace.
+    @app.get("/memories/{user_id}")
+    def list_memories(user_id: str):
+        return {"user_id": user_id, "memories": memory.list_memories(_store(), user_id)}
+
+    @app.delete("/memories/{user_id}/{key}")
+    def delete_memory(user_id: str, key: str):
+        if not memory.delete_memory(_store(), user_id, key):
+            raise HTTPException(404, "Recuerdo no encontrado")
+        return {"deleted": key}
 
     return app
 
