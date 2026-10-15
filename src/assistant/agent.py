@@ -68,7 +68,10 @@ class Context:
 _SIGNAL_RE = re.compile(r"\d|[+*/=^%×÷√<>]|```")
 _SIGNAL_WORDS = ("calcul", "resuelv", "resolv", "optimi", "demuestr", "demostr", "plan", "disen", "codigo",
                  "program", "investig", "compar", "analiz", "calculate", "solve", "optimiz", "prove", "design",
-                 "code", "research", "compare")
+                 "code", "research", "compare",
+                 # actualidad: "¿quién ganó el último partido?" es corto pero necesita buscar (sin tildes: ya normalizado)
+                 "ultim", "hoy", "ayer", "gano", "ganador", "precio", "noticia", "cotiza",
+                 "latest", "last", "today", "yesterday", "won", "winner", "price", "news")
 SHORT_MESSAGE_CHARS = 60
 
 
@@ -405,6 +408,19 @@ ANSWER:
 {answer}"""
 
 
+# resultados de herramientas que NO se ejecutaron: límites, cancelaciones por tope y rechazos del usuario
+NOT_RUN_PREFIXES = ("Not run:", "Cancelled:", "User rejected the tool call")
+_REUSED_RESEARCH = "Not run: this conversation already has research"  # trae los resultados anteriores: sí es evidencia
+
+
+def tool_ran(output: str) -> bool:
+    return not output.lstrip().startswith(NOT_RUN_PREFIXES)
+
+
+def is_evidence(output: str) -> bool:
+    return tool_ran(output) or output.lstrip().startswith(_REUSED_RESEARCH)
+
+
 class AnswerVerifier(AgentMiddleware):
     """ANSWER_VERIFY: al terminar el turno, si se usó web_search/deep_research, una llamada barata
     contrasta la respuesta con lo recuperado. Si corrige, reemplaza el mensaje (mismo id) y avisa a la UI con el
@@ -418,7 +434,9 @@ class AnswerVerifier(AgentMiddleware):
         messages = state.get("messages") or []
         start = max((i for i, m in enumerate(messages) if m.type == "human"), default=-1) + 1
         turn = messages[start:]
-        evidence = [_content_text(m) for m in turn if isinstance(m, ToolMessage) and m.name in EVIDENCE_TOOLS]
+        # solo lo que se ejecutó de verdad es evidencia: una búsqueda rechazada ("Not run: …") no aporta nada
+        evidence = [_content_text(m) for m in turn if isinstance(m, ToolMessage) and m.name in EVIDENCE_TOOLS
+                    and is_evidence(_content_text(m))]
         last = turn[-1] if turn else None
         if not evidence or not isinstance(last, AIMessage) or last.tool_calls or not _content_text(last).strip():
             return None
@@ -559,7 +577,7 @@ def _update_events(update: dict) -> Iterator[dict]:
                     "id": msg.tool_call_id,
                     "name": msg.name or ("retrieve_tools" if node == "select_tools" else None),
                     "output": output[:OUTPUT_PREVIEW_CHARS],
-                    "status": "error" if msg.status == "error" else "success",
+                    "status": _tool_status(msg, output),
                     "engine": _engine_from_output(output),
                 }
 
@@ -751,10 +769,19 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
     yield {"type": "done", "thread_id": thread_id}
 
 
+def _tool_status(msg: ToolMessage, output: str) -> str:
+    """"skipped" si la herramienta no se ejecutó (la UI no debe mostrar "✓"), "error" o "success"."""
+    if not tool_ran(output):
+        return "skipped"
+    return "error" if msg.status == "error" else "success"
+
+
 def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
     state = agent.get_state(run_config(thread_id, settings))
     out: list[dict] = []
-    for msg in (state.values or {}).get("messages", []):
+    messages = (state.values or {}).get("messages", [])
+    results = {m.tool_call_id: m for m in messages if isinstance(m, ToolMessage)}
+    for msg in messages:
         if isinstance(msg, HumanMessage) and msg.additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
             out.append({"role": "summary"})  # la conversación anterior se resumió (MEMORY_SUMMARIZE)
         elif isinstance(msg, HumanMessage):
@@ -768,4 +795,7 @@ def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
                     out[-1]["verify"] = {"status": corrected.get("status", "corrected"), "notes": corrected.get("notes", [])}
             for call in msg.tool_calls:
                 out.append({"role": "tool", "name": call.get("name")})
+                result = results.get(call.get("id"))
+                if result is not None and (status := _tool_status(result, _content_text(result))) != "success":
+                    out[-1]["status"] = status  # "skipped" o "error": se ve igual al recargar
     return out

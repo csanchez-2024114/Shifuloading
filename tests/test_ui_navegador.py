@@ -30,6 +30,13 @@ class Controlable(FakeChat):
             call = ({"name": "calculator", "args": '{"expression": "1+1"}'}, 90000)
         elif "correo" in text and not answered:
             call = ({"name": "send_simulated_email", "args": '{"recipient": "a@b.c", "subject": "s", "body": "b"}'}, 0)
+        elif "rechazada" in text and not answered:  # 45k de 50k: la reserva de la búsqueda ya no cabe en el tope
+            call = ({"name": "web_search", "args": '{"query": "vuelos"}'}, 45000)
+        elif "tres" in text and not answered:  # tres búsquedas en paralelo: solo se ejecuta la primera
+            calls = [{"name": "web_search", "args": f'{{"query": "q{i}"}}', "id": f"w{i}{time.time_ns()}", "index": i,
+                      "type": "tool_call_chunk"} for i in range(3)]
+            yield ChatGenerationChunk(message=AIMessageChunk(content="", tool_call_chunks=calls, chunk_position="last"))
+            return
         if call:
             usage = {"input_tokens": call[1], "output_tokens": 0, "total_tokens": call[1]}
             yield ChatGenerationChunk(message=AIMessageChunk(content="", usage_metadata=usage, chunk_position="last",
@@ -188,3 +195,30 @@ def test_segundo_clic_cancela_la_cola(page, base_url):
     _idle(page)
     page.wait_for_timeout(500)
     assert _tid(page) == antes
+
+
+def _chips(page):
+    return page.evaluate("() => [...[...document.querySelectorAll('#messages .row.assistant')].pop()"
+                         ".querySelectorAll('.chip')].map(c => ({cls: c.className, text: c.textContent}))")
+
+
+def test_busqueda_no_realizada_no_se_marca_como_hecha_ni_al_recargar(page, base_url):
+    _fresh(page, base_url, True)
+    thread = _tid(page)
+    _send(page, "busca vuelos rechazada")
+    _idle(page)
+    [chip] = [c for c in _chips(page) if "Búsqueda" in c["text"]]
+    assert "skipped" in chip["cls"] and "Búsqueda no realizada" in chip["text"] and "✓" not in chip["text"]
+    page.goto(f"{base_url}?thread={thread}")  # recargar: el historial muestra lo mismo
+    linea = page.locator("#messages .toolline").first
+    linea.wait_for(timeout=10000)
+    assert linea.inner_text() == "🔎 Búsqueda no realizada" and "skipped" in linea.get_attribute("class")
+
+
+def test_tres_busquedas_en_paralelo_muestran_las_no_realizadas(page, base_url):
+    _fresh(page, base_url, True)
+    _send(page, "busca tres cosas")
+    _idle(page)
+    [chip] = [c for c in _chips(page) if "Búsqueda" in c["text"]]
+    assert "done" in chip["cls"] and "✓" in chip["text"] and "2 no realizadas" in chip["text"]
+    assert "×3" not in chip["text"]  # solo una se ejecutó

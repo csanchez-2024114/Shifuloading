@@ -380,7 +380,7 @@ def test_tope_de_herramienta_repetida(make_settings):
     s = make_settings(tool_repeat_limit=2)
     agent = _agent(s, fake_llm(*[tool_call("calculator", {"expression": f"{i}+1"}, f"c{i}") for i in range(3)], "fin"))
     fines = [e for e in run_turn(agent, s, "suma", uid()) if e["type"] == "tool_end"]
-    assert [e["status"] for e in fines] == ["success", "success", "error"]
+    assert [e["status"] for e in fines] == ["success", "success", "skipped"]  # no se ejecutó: la UI no pone "✓"
     assert fines[2]["output"] == REPEAT_LIMIT_MSG.format(name="calculator", limit=2)
 
 

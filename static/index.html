@@ -200,6 +200,8 @@ body.no-times .timing { display: none; }
 .chip.running .spin { width: 11px; height: 11px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
 .chip.done { background: var(--ok-bg); color: var(--ok); }
 .chip.error { background: var(--err-bg); color: var(--err); border: 1px solid var(--err-border); }
+.chip.skipped { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--border); }
+.toolline.skipped { font-style: italic; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .errmsg { color: var(--err); margin: .4em 0 0; }
 /* approval */
@@ -588,17 +590,19 @@ textarea#input:disabled { opacity: .6; }
     det.appendChild(el("summary", null, "ver original")); det.appendChild(orig); note.appendChild(det);
     return note;
   }
-  function addToolLine(name) {
-    // líneas consecutivas de la misma herramienta se agrupan: "🧮 Cálculo ×47"
-    var label = TOOL_DONE[name] || ("usó " + name);
+  function addToolLine(name, status) {
+    // líneas consecutivas de la misma herramienta (y el mismo estado) se agrupan: "🧮 Cálculo ×47"
+    var skipped = status === "skipped";
+    var label = skipped ? notRunLabel(name) : (TOOL_DONE[name] || ("usó " + name));
+    var key = name + (skipped ? ":skipped" : "");
     var last = messagesEl.lastElementChild;
-    if (last && last.classList.contains("toolline") && last.dataset.tool === name) {
+    if (last && last.classList.contains("toolline") && last.dataset.tool === key) {
       last.dataset.n = String(+last.dataset.n + 1);
       last.textContent = label + " ×" + last.dataset.n;
       return;
     }
-    var line = el("div", "toolline", label);
-    line.dataset.tool = name; line.dataset.n = "1";
+    var line = el("div", "toolline" + (skipped ? " skipped" : ""), label);
+    line.dataset.tool = key; line.dataset.n = "1";
     messagesEl.appendChild(line);
   }
 
@@ -636,6 +640,13 @@ textarea#input:disabled { opacity: .6; }
     check_python_syntax: "🐍 Sintaxis revisada",
     retrieve_tools: "🧰 Herramientas"
   };
+  // la herramienta no se ejecutó (límite de una búsqueda por paso, tope del mensaje, rechazada): nunca "✓"
+  var NOT_RUN = {
+    web_search: "🔎 Búsqueda no realizada",
+    deep_research: "🧠 Investigación no realizada",
+    send_simulated_email: "✉️ Email no enviado"
+  };
+  function notRunLabel(name) { return NOT_RUN[name] || ((TOOL_DONE[name] || name) + " (no realizada)"); }
   /* TOOL-NAMES-END */
   var ENGINES = { duckduckgo: "vía DuckDuckGo", openai_web_search: "vía OpenAI web search" };
 
@@ -725,13 +736,22 @@ textarea#input:disabled { opacity: .6; }
     return g;
   };
   AssistantBubble.prototype.paint = function (g) {
-    var running = g.done < g.total, chip = g.chip;
-    chip.className = "chip " + (running ? "running" : (g.errors === g.total ? "error" : "done"));
+    var running = g.done < g.total, chip = g.chip, skipped = g.skipped || 0;
+    var allSkipped = !running && skipped === g.total;  // ninguna se ejecutó: nunca "✓"
+    chip.className = "chip " + (running ? "running" : allSkipped ? "skipped" : (g.errors === g.total ? "error" : "done"));
     chip.textContent = "";
     if (running) chip.appendChild(el("span", "spin"));
-    else { var st = el("span", "state", g.errors === g.total ? "✗" : "✓"); st.setAttribute("aria-label", g.errors === g.total ? "con error" : "hecho"); chip.appendChild(st); }
-    var label = running ? (TOOL_LABELS[g.name] || ("⚙️ Usando " + g.name + "…")) : (TOOL_DONE[g.name] || ("⚙️ " + g.name));
-    if (g.total > 1) label += " ×" + g.total;
+    else {
+      var mark = allSkipped ? "–" : (g.errors === g.total ? "✗" : "✓");
+      var st = el("span", "state", mark);
+      st.setAttribute("aria-label", allSkipped ? "no realizada" : (g.errors === g.total ? "con error" : "hecho"));
+      chip.appendChild(st);
+    }
+    var label = running ? (TOOL_LABELS[g.name] || ("⚙️ Usando " + g.name + "…"))
+                        : allSkipped ? notRunLabel(g.name) : (TOOL_DONE[g.name] || ("⚙️ " + g.name));
+    var ran = g.total - skipped;
+    if (!allSkipped && ran > 1) label += " ×" + ran;
+    if (allSkipped && g.total > 1) label += " ×" + g.total;
     chip.appendChild(el("span", "lbl", label));
     if (g.searches) {
       var extra = g.searches + (g.searches === 1 ? " búsqueda" : " búsquedas");
@@ -741,6 +761,7 @@ textarea#input:disabled { opacity: .6; }
     if (g.found && g.found.length) chip.appendChild(el("span", "eng", g.found.join(", ")));
     if (g.engine) chip.appendChild(el("span", "eng", ENGINES[g.engine] || ("vía " + g.engine)));
     if (g.errors && g.errors < g.total) chip.appendChild(el("span", "eng", "· " + g.errors + " fallaron"));
+    if (skipped && !allSkipped) chip.appendChild(el("span", "eng", "· " + skipped + (skipped === 1 ? " no realizada" : " no realizadas")));
     scrollDown(false);
   };
   AssistantBubble.prototype.toolStart = function (ev) {
@@ -793,6 +814,7 @@ textarea#input:disabled { opacity: .6; }
     if (g.total <= g.done) g.total++;  // tool_end sin tool_start previo
     g.done++;
     if (ev.status === "error") g.errors++;
+    if (ev.status === "skipped") g.skipped = (g.skipped || 0) + 1;
     if (ev.engine) g.engine = ev.engine;
     // bigtool: "Available tools: ['acos', 'log2']" -> herramientas encontradas
     var av = /^Available tools:\s*\[(.*)\]/.exec(ev.output || "");
@@ -1049,7 +1071,7 @@ textarea#input:disabled { opacity: .6; }
     msgs.forEach(function (m) {
       if (m.role === "user") { if (!firstUser) firstUser = String(m.content || ""); addUserBubble(String(m.content || "")); }
       else if (m.role === "assistant") addAssistantStatic(String(m.content || ""), m.original, m.verify);
-      else if (m.role === "tool") addToolLine(canonicalTool(String(m.name || "herramienta")));
+      else if (m.role === "tool") addToolLine(canonicalTool(String(m.name || "herramienta")), m.status);
       else if (m.role === "summary") messagesEl.appendChild(el("div", "sys", "🗜️ La conversación anterior se resumió; aquí se ven los mensajes conservados."));
     });
     setTitleIfMissing(id, firstUser);

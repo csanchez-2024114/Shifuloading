@@ -127,7 +127,8 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 ```json
 {"type": "token", "text": "Hola"}
 {"type": "tool_start", "id": "call_1", "name": "web_search", "args": {"query": "..."}}
-{"type": "tool_end", "id": "call_1", "name": "web_search", "output": "primeros 500 chars", "status": "success"|"error", "engine": "duckduckgo"|"openai_web_search"|null}
+{"type": "tool_end", "id": "call_1", "name": "web_search", "output": "primeros 500 chars", "status": "success"|"error"|"skipped", "engine": "duckduckgo"|"openai_web_search"|null}
+# "skipped": la herramienta NO se ejecutó (output "Not run: …", "Cancelled: …" o rechazo del usuario). La UI no pone "✓"
 {"type": "interrupt", "id": "<interrupt id>", "action_requests": [{"name": "send_simulated_email", "args": {...}, "description": "..."}]}
 {"type": "effort", "level": "bajo"|"medio"|"alto", "max_calls": 5, "reasoning": "low", "source": "auto"|"regla"|"manual"}
 // primero, solo con MODEL_CALL_LIMIT=0. source: "auto" = clasificador, "regla" = mensaje corto sin señales (sin
@@ -174,7 +175,7 @@ empiezan con `:`.
 | GET | `/` | sirve `static/index.html` |
 | POST | `/chat` | body `{"message": str, "thread_id": str, "user_id": str, "effort"?: "bajo"\|"medio"\|"alto"\|null}` → `text/event-stream` con los eventos de arriba. `effort` (selector de la UI) manda sobre el clasificador; null o ausente = automático |
 | POST | `/resume` | body `{"thread_id": str, "user_id": str, "decisions": [{"type": "approve"} \| {"type": "reject", "message": str}]}` → mismo stream SSE. Internamente `Command(resume={"decisions": decisions})` |
-| GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str,"original"?:str} \| {"role":"tool","name":str} \| {"role":"summary"}]}` (vacío si no existe; `original` = respuesta antes de ANSWER_VERIFY) |
+| GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str,"original"?:str} \| {"role":"tool","name":str,"status"?:"skipped"\|"error"} \| {"role":"summary"}]}` (vacío si no existe; `original` = respuesta antes de ANSWER_VERIFY; `status` solo si la herramienta no se ejecutó o falló) |
 | GET | `/memories/{user_id}` | `{"user_id": str, "memories": [{"key","text","created_at","thread_id","evidence","confidence","previous_text","updated_at"}]}` (más recientes primero; 503 sin store) |
 | DELETE | `/memories/{user_id}/{key}` | `{"deleted": key}`; 404 si no existe en el namespace de ese usuario |
 | GET | `/health` | `{"ok": true, "model": str}` |
