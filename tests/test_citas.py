@@ -30,24 +30,24 @@ def test_correccion_que_pierde_cita_respaldada_la_restaura():
     original = ("Francia tiene 69,1 millones ([INSEE](https://insee.fr/fr/statistiques/2012692)). "
                 "La ministra es Brigitte Haas ([biografía](https://regierung.li/regierungsmitglied/16690/lebenslauf/brigitte-haas)).")
     correccion = "Francia tiene 69,1 millones de habitantes. La ministra es Brigitte Haas."
-    texto, status, notas = enforce(original, correccion, EVIDENCIA)
+    text, status, notas = enforce(original, correccion, EVIDENCIA)
     assert status == "corrected" and "se restauraron fuentes" in notas[-1]
-    assert "(https://insee.fr/fr/statistiques/2012692)" in texto
-    assert "brigitte-haas)" in texto
+    assert "(https://insee.fr/fr/statistiques/2012692)" in text
+    assert "brigitte-haas)" in text
 
 
 def test_url_inventada_se_elimina_aunque_el_verificador_diga_ok():
     original = "Francia tiene 69,1 millones ([fuente](https://ejemplo-inventado.com/francia))."
-    texto, status, notas = enforce(original, None, EVIDENCIA)
-    assert "ejemplo-inventado.com" not in texto and "fuente" in texto
+    text, status, notas = enforce(original, None, EVIDENCIA)
+    assert "ejemplo-inventado.com" not in text and "fuente" in text
     assert status == "corrected" and "sin respaldo" in notas[0]
 
 
 def test_correccion_con_cifras_nuevas_se_descarta():
     original = "Francia tiene muchos habitantes ([INSEE](https://insee.fr/fr/statistiques/2012692))."
     correccion = "Francia tiene 71,3 millones de habitantes desde 2031."
-    texto, status, notas = enforce(original, correccion, EVIDENCIA)
-    assert texto == original and status == "kept_original" and "no se pudo corregir" in notas[0]
+    text, status, notas = enforce(original, correccion, EVIDENCIA)
+    assert text == original and status == "kept_original" and "no se pudo corregir" in notas[0]
 
 
 def test_answer_verify_de_punta_a_punta_restaura_cita(make_settings):
@@ -58,7 +58,7 @@ def test_answer_verify_de_punta_a_punta_restaura_cita(make_settings):
         return EVIDENCIA, "openai_web_search"
 
     s = make_settings(answer_verify=True)
-    llm = fake_llm(tool_call("buscar_web", {"consulta": "población de Francia"}, "w1"),
+    llm = fake_llm(tool_call("web_search", {"query": "población de Francia"}, "w1"),
                    "Francia tiene 70 millones ([INSEE](https://insee.fr/fr/statistiques/2012692)).")
     checker = fake_llm("Francia tiene 69,1 millones de habitantes.")  # corrige la cifra pero pierde la cita
     agent = build_agent(llm, build_tools(llm, s, search_fn=search), s, checker=checker,

@@ -32,9 +32,9 @@ def test_memoria_compartida_entre_threads(settings, store):
     user = uid("user")
     agent = build_test_agent(
         [
-            tool_call("guardar_recuerdo", {"texto": "Mi color favorito es el verde"}, "call_a"),
+            tool_call("save_memory", {"text": "Mi color favorito es el verde"}, "call_a"),
             "Guardado",
-            tool_call("buscar_recuerdos", {"consulta": "color favorito"}, "call_b"),
+            tool_call("search_memories", {"query": "color favorito"}, "call_b"),
             "Tu color favorito es el verde",
         ],
         settings,
@@ -47,7 +47,7 @@ def test_memoria_compartida_entre_threads(settings, store):
 
     ev_b = run_turn(agent, settings, "cual es mi color favorito?", uid("thread-b"), user)
     end = next(e for e in ev_b if e["type"] == "tool_end")
-    assert end["name"] == "buscar_recuerdos"
+    assert end["name"] == "search_memories"
     assert "verde" in end["output"].lower()
 
 
@@ -55,9 +55,9 @@ def test_memoria_no_se_filtra_a_otro_usuario(settings, store):
     owner, other = uid("owner"), uid("other")
     agent = build_test_agent(
         [
-            tool_call("guardar_recuerdo", {"texto": "Mi clave secreta es naranja"}, "call_a"),
+            tool_call("save_memory", {"text": "Mi clave secreta es naranja"}, "call_a"),
             "Guardado",
-            tool_call("buscar_recuerdos", {"consulta": "clave secreta naranja"}, "call_b"),
+            tool_call("search_memories", {"query": "clave secreta naranja"}, "call_b"),
             "No se nada",
         ],
         settings,

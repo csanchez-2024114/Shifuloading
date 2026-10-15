@@ -5,20 +5,20 @@ from datetime import datetime
 def test_calculadora_aritmetica():
     from assistant.tools import calculadora
 
-    assert "14" in calculadora.invoke({"expresion": "2 + 3 * 4"})
-    assert "3" in calculadora.invoke({"expresion": "(10 - 4) / 2"})
+    assert "14" in calculadora.invoke({"expression": "2 + 3 * 4"})
+    assert "3" in calculadora.invoke({"expression": "(10 - 4) / 2"})
 
 
 def test_calculadora_potencia():
     from assistant.tools import calculadora
 
-    assert "1024" in calculadora.invoke({"expresion": "2 ** 10"})
+    assert "1024" in calculadora.invoke({"expression": "2 ** 10"})
 
 
 def test_calculadora_sqrt():
     from assistant.tools import calculadora
 
-    assert "4" in calculadora.invoke({"expresion": "math.sqrt(16)"})
+    assert "4" in calculadora.invoke({"expression": "math.sqrt(16)"})
 
 
 def test_calculadora_rechaza_codigo_sin_ejecutarlo(monkeypatch):
@@ -29,7 +29,7 @@ def test_calculadora_rechaza_codigo_sin_ejecutarlo(monkeypatch):
         "__import__('os').getcwd()",
         "__import__('os').environ.__setitem__('PWNED', '1')",
     ):
-        out = calculadora.invoke({"expresion": expr})
+        out = calculadora.invoke({"expression": expr})
         assert isinstance(out, str)
         assert "error" in out.lower()
     assert "PWNED" not in os.environ

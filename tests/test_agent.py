@@ -18,7 +18,7 @@ def test_stream_emite_tokens_y_done(settings):
 
 def test_stream_tool_start_y_tool_end_en_orden(settings):
     agent = build_test_agent(
-        [tool_call("calculadora", {"expresion": "2+2"}), "El resultado es 4"],
+        [tool_call("calculator", {"expression": "2+2"}), "El resultado es 4"],
         settings,
         checkpointer=InMemorySaver(),
     )
@@ -30,8 +30,8 @@ def test_stream_tool_start_y_tool_end_en_orden(settings):
     start = next(e for e in events if e["type"] == "tool_start")
     end = next(e for e in events if e["type"] == "tool_end")
     assert start["id"] == end["id"] == "call_1"
-    assert start["name"] == end["name"] == "calculadora"
-    assert start["args"] == {"expresion": "2+2"}
+    assert start["name"] == end["name"] == "calculator"
+    assert start["args"] == {"expression": "2+2"}
     assert end["status"] == "success" and "4" in end["output"]
     assert end.get("engine") is None
     assert t[-1] == "done"
@@ -40,7 +40,7 @@ def test_stream_tool_start_y_tool_end_en_orden(settings):
 def test_buscar_web_expone_engine_duckduckgo(settings):
     search = FakeSearch(engine="duckduckgo")
     agent = build_test_agent(
-        [tool_call("buscar_web", {"consulta": "langgraph"}), "Encontre info"],
+        [tool_call("web_search", {"query": "langgraph"}), "Encontre info"],
         settings,
         checkpointer=InMemorySaver(),
         search_fn=search,
@@ -48,7 +48,7 @@ def test_buscar_web_expone_engine_duckduckgo(settings):
     events = run_turn(agent, settings, "busca langgraph", uid())
 
     end = next(e for e in events if e["type"] == "tool_end")
-    assert end["name"] == "buscar_web"
+    assert end["name"] == "web_search"
     assert end["engine"] == "duckduckgo"
     assert search.calls == ["langgraph"]
     assert types(events)[-1] == "done"
@@ -58,8 +58,8 @@ def test_hitl_interrupt_y_resume(hitl_settings):
     settings = hitl_settings
     agent = build_test_agent(
         [
-            tool_call("enviar_email_simulado",
-                      {"destinatario": "a@b.com", "asunto": "Hola", "cuerpo": "Texto"}),
+            tool_call("send_simulated_email",
+                      {"recipient": "a@b.com", "subject": "Hola", "body": "Texto"}),
             "Listo, email enviado",
         ],
         settings,
@@ -70,7 +70,7 @@ def test_hitl_interrupt_y_resume(hitl_settings):
 
     interrupts = [e for e in events if e["type"] == "interrupt"]
     assert len(interrupts) == 1
-    assert interrupts[0]["action_requests"][0]["name"] == "enviar_email_simulado"
+    assert interrupts[0]["action_requests"][0]["name"] == "send_simulated_email"
     assert "tool_end" not in types(events)  # la herramienta aun no se ejecuto
 
     from assistant.agent import stream_events
@@ -81,14 +81,14 @@ def test_hitl_interrupt_y_resume(hitl_settings):
     t = types(resumed)
     assert "tool_end" in t and "done" in t
     assert t.index("tool_end") < t.index("done")
-    assert next(e for e in resumed if e["type"] == "tool_end")["name"] == "enviar_email_simulado"
+    assert next(e for e in resumed if e["type"] == "tool_end")["name"] == "send_simulated_email"
 
 
 def test_investigador_emite_progreso_sin_filtrar_tokens(settings):
     # mismo modelo falso para agente y subagente: el orden de respuestas es compartido
     respuestas = [
-        tool_call("investigador_profundo", {"tarea": "compara A y B"}, "call_inv"),  # agente principal
-        tool_call("buscar_web", {"consulta": "A vs B"}, "call_sub"),                 # subagente
+        tool_call("deep_research", {"task": "compara A y B"}, "call_inv"),  # agente principal
+        tool_call("web_search", {"query": "A vs B"}, "call_sub"),                 # subagente
         "RESUMEN-INTERNO del subagente",                                               # subagente
         "Respuesta final",                                                             # agente principal
     ]
@@ -96,8 +96,8 @@ def test_investigador_emite_progreso_sin_filtrar_tokens(settings):
     events = run_turn(agent, settings, "investiga A vs B", uid())
 
     progreso = [e for e in events if e["type"] == "progress"]
-    assert progreso == [{"type": "progress", "name": "buscar_web", "args": {"consulta": "A vs B"}}]
+    assert progreso == [{"type": "progress", "name": "web_search", "args": {"query": "A vs B"}}]
     tokens = "".join(e["text"] for e in events if e["type"] == "token")
     assert "RESUMEN-INTERNO" not in tokens and "Respuesta final" in tokens
-    fin = next(e for e in events if e["type"] == "tool_end" and e["name"] == "investigador_profundo")
+    fin = next(e for e in events if e["type"] == "tool_end" and e["name"] == "deep_research")
     assert "RESUMEN-INTERNO" in fin["output"]

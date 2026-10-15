@@ -1,7 +1,10 @@
 ﻿"""FastAPI: chat con streaming SSE, historial y reanudación human-in-the-loop."""
+import contextvars
 import json
 import logging
+import queue
 import sys
+import threading
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
@@ -20,6 +23,7 @@ class ChatIn(BaseModel):
     message: str
     thread_id: str
     user_id: str = "anon"
+    effort: str | None = None  # bajo/medio/alto desde el selector de la UI; None o "auto" = clasificador
 
 
 class ResumeIn(BaseModel):
@@ -45,6 +49,52 @@ def _build_real_agent(settings: Settings):
                                  store=store), store
 
 
+PING = ": ping\n\n"  # comentario SSE: el cliente lo ignora, pero mantiene viva la conexión en proxies
+_END = object()
+
+
+def with_keepalive(events, interval: float):
+    """Reenvía `events` (iterador bloqueante) y emite PING cada `interval` segundos sin eventos.
+    El iterador corre en un hilo aparte (con el contexto actual); si el cliente se va, se detiene en el
+    siguiente evento."""
+    if not interval or interval <= 0:
+        yield from events
+        return
+    q: queue.Queue = queue.Queue()
+    stop = threading.Event()
+
+    def produce():
+        try:
+            for item in events:
+                q.put(item)
+                if stop.is_set():
+                    break
+        except BaseException as exc:  # noqa: BLE001 - se re-lanza en el hilo del servidor
+            q.put(exc)
+        finally:
+            close = getattr(events, "close", None)
+            if close:
+                close()
+            q.put(_END)
+
+    ctx = contextvars.copy_context()
+    threading.Thread(target=ctx.run, args=(produce,), daemon=True).start()
+    try:
+        while True:
+            try:
+                item = q.get(timeout=interval)
+            except queue.Empty:
+                yield PING
+                continue
+            if item is _END:
+                return
+            if isinstance(item, BaseException):
+                raise item
+            yield item
+    finally:
+        stop.set()
+
+
 def create_app(agent=None, settings: Settings | None = None, classify=None, store=None) -> FastAPI:
     settings = settings or Settings.from_env()
     if classify is None:
@@ -57,9 +107,10 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     app = FastAPI(title="Agente 0")
 
-    def sse(payload, thread_id: str, user_id: str, esfuerzo: str | None = None):
-        for event in agent_mod.stream_events(agent, payload, thread_id, user_id, settings, esfuerzo):
-            yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
+    def sse(payload, thread_id: str, user_id: str, esfuerzo: str | None = None, origen: str = "auto"):
+        events = (f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n" for event in
+                  agent_mod.stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen))
+        return with_keepalive(events, settings.sse_ping_seconds)
 
     def sse_response(gen):
         return StreamingResponse(gen, media_type="text/event-stream",
@@ -76,8 +127,8 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     @app.post("/chat")
     def chat(body: ChatIn):
         payload = {"messages": [{"role": "user", "content": body.message}]}
-        esfuerzo = classify(settings, body.message) if settings.model_call_limit == 0 else None
-        return sse_response(sse(payload, body.thread_id, body.user_id, esfuerzo))
+        esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify)
+        return sse_response(sse(payload, body.thread_id, body.user_id, esfuerzo, origen))
 
     @app.post("/resume")
     def resume(body: ResumeIn):

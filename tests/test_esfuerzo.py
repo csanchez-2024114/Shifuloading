@@ -6,7 +6,7 @@ from conftest import build_test_agent, tool_call, types, uid
 
 def _bucle(n):
     # el modelo falso pide la calculadora una y otra vez (simula un bucle)
-    return [tool_call("calculadora", {"expresion": "1+1"}, f"call_{i}") for i in range(n)]
+    return [tool_call("calculator", {"expression": "1+1"}, f"call_{i}") for i in range(n)]
 
 
 def _run(agent, settings, esfuerzo):
@@ -22,7 +22,7 @@ def test_esfuerzo_bajo_corta_en_5_llamadas(make_settings):
     s = make_settings(model_call_limit=0)
     agent = build_test_agent(_bucle(20), s, checkpointer=InMemorySaver())
     ev = _run(agent, s, "bajo")
-    assert ev[0] == {"type": "effort", "level": "bajo", "max_calls": 5, "reasoning": "low"}
+    assert ev[0] == {"type": "effort", "level": "bajo", "max_calls": 5, "reasoning": "low", "source": "auto"}
     assert types(ev).count("tool_start") == 5
     assert any(e["type"] == "token" and LIMIT_MSG in e["text"] for e in ev)
     assert ev[-1]["type"] == "done"

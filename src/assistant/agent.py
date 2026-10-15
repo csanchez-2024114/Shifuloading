@@ -1,5 +1,9 @@
 """Construcción del agente y traducción de su stream a eventos SSE (dicts). Todo síncrono."""
 import logging
+import re
+import threading
+import unicodedata
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Iterator
@@ -15,9 +19,12 @@ from langchain.agents.middleware import (
     wrap_model_call,
 )
 from langchain.agents.middleware.types import hook_config
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
+from langgraph._internal._constants import CONFIG_KEY_RUNTIME
 from langgraph.errors import GraphRecursionError
+from langgraph.runtime import Runtime
 
 from assistant import citations
 from assistant.config import Settings, read_system_prompt
@@ -28,9 +35,17 @@ logger = logging.getLogger(__name__)
 OUTPUT_PREVIEW_CHARS = 500
 MODEL_NODES = ("model", "agent")  # "agent" = nodo del modelo en langgraph-bigtool
 
-# Esfuerzo automático: nivel -> (tope de llamadas al modelo en el turno, reasoning effort de Luna)
-ESFUERZOS = {"bajo": (5, "low"), "medio": (15, "medium"), "alto": (40, "high")}
+# Esfuerzo automático: nivel -> (tope de llamadas al modelo en el turno, reasoning effort de Luna).
+# El tope de "alto" sale de EFFORT_HIGH_MAX_CALLS (ver contexto_para).
+ESFUERZOS = {"bajo": (5, "low"), "medio": (15, "medium"), "alto": (15, "high")}
+ESFUERZO_SIN_CLASIFICAR = "bajo"  # mensajes cortos y triviales: no se llama al clasificador
 LIMIT_MSG = "Se alcanzó el límite de llamadas al modelo para este mensaje; detuve el proceso. Escribe «continúa» para seguir."
+LAST_STEP_NOTE = ("This is your last step for this message: do not call tools. Answer now with what you already have and "
+                  "say in one short line, in the user's language, that you stopped at the step limit and they can ask "
+                  "you to continue.")
+REPEAT_LIMIT_MSG = ("Not run: {name} was already used {limit} times for this message (limit). Do not call it again: "
+                    "answer with what you already have and tell the user the work was cut at the tool limit.")
+CUT_NOTE = "\n\n_La respuesta se cortó por el límite de longitud (MAX_TOKENS). Escribe «continúa» y sigo donde me quedé._"
 
 
 @dataclass
@@ -40,22 +55,57 @@ class Context:
     razonamiento: str | None = None  # None = default del modelo
 
 
+# Señales de que un mensaje corto aún necesita clasificarse: dígitos, operadores, código o verbos de trabajo.
+_SIGNAL_RE = re.compile(r"\d|[+*/=^%×÷√<>]|```")
+_SIGNAL_WORDS = ("calcul", "resuelv", "resolv", "optimi", "demuestr", "demostr", "plan", "disen", "codigo",
+                 "program", "investig", "compar", "analiz", "calculate", "solve", "optimiz", "prove", "design",
+                 "code", "research", "compare")
+SHORT_MESSAGE_CHARS = 60
+
+
+def necesita_clasificador(mensaje: str) -> bool:
+    """False solo para mensajes cortos sin dígitos, operadores, código ni palabras de trabajo ("hola", "gracias")."""
+    texto = _strip_accents(mensaje.strip().lower())
+    if len(texto) > SHORT_MESSAGE_CHARS or _SIGNAL_RE.search(texto):
+        return True
+    return any(w.startswith(sig) for w in re.findall(r"\w+", texto) for sig in _SIGNAL_WORDS)
+
+
+def _strip_accents(text: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
+
+
+def elegir_esfuerzo(settings: Settings, mensaje: str, elegido: str | None, classify) -> tuple[str | None, str]:
+    """(esfuerzo, origen). origen: "manual" (selector de la UI), "auto" (clasificador) o "regla" (mensaje corto).
+    Con MODEL_CALL_LIMIT>0 no hay esfuerzo (tope fijo)."""
+    if settings.model_call_limit > 0:
+        return None, "fijo"
+    if elegido in ESFUERZOS:
+        return elegido, "manual"
+    if not necesita_clasificador(mensaje):
+        return ESFUERZO_SIN_CLASIFICAR, "regla"
+    return classify(settings, mensaje), "auto"
+
+
+_CLASSIFIER_LEVELS = {"low": "bajo", "medium": "medio", "high": "alto"}  # el prompt del modelo va en inglés
+CLASSIFIER_PROMPT = (
+    "Classify the effort this message requires from an assistant with tools. "
+    "Reply with ONLY one of these words: low, medium, high.\n"
+    "low = greeting, small talk, a simple fact or a single quick lookup;\n"
+    "medium = one web search, one calculation or a normal explanation;\n"
+    "high = several steps or chained calculations, comparing sources, in-depth research, planning or hard reasoning.\n\n"
+    "Message: "
+)
+
+
 def clasificar_esfuerzo(settings: Settings, mensaje: str) -> str:
     """Clasifica el esfuerzo del mensaje (bajo/medio/alto) con una llamada rápida sin razonamiento.
     Ante cualquier fallo devuelve "medio"."""
     try:
         llm = ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None,
                          use_responses_api=True, reasoning={"effort": "none"}, max_tokens=16)
-        prompt = (
-            "Classify the effort this message requires from an assistant with tools. "
-            "Reply with ONLY one of these words: bajo, medio, alto.\n"
-            "bajo = greeting, small talk, a simple fact or a single quick lookup;\n"
-            "medio = one web search, one calculation or a normal explanation;\n"
-            "alto = several steps or chained calculations, comparing sources, in-depth research, planning or hard reasoning.\n\n"
-            f"Message: {mensaje[:2000]}"
-        )
-        palabra = llm.invoke(prompt).text.strip().lower()
-        return next((n for n in ESFUERZOS if n in palabra), "medio")
+        palabra = llm.invoke(CLASSIFIER_PROMPT + mensaje[:2000]).text.strip().lower()
+        return next((nivel for word, nivel in _CLASSIFIER_LEVELS.items() if word in palabra), "medio")
     except Exception as exc:  # noqa: BLE001
         logger.warning("No pude clasificar el esfuerzo (%s); uso 'medio'", exc)
         return "medio"
@@ -66,11 +116,14 @@ def contexto_para(user_id: str, settings: Settings, esfuerzo: str | None) -> Con
     if settings.model_call_limit > 0 or esfuerzo not in ESFUERZOS:
         return Context(user_id=user_id, max_llamadas=settings.model_call_limit or 15)
     max_llamadas, razonamiento = ESFUERZOS[esfuerzo]
+    if esfuerzo == "alto":
+        max_llamadas = settings.effort_high_max_calls
     return Context(user_id=user_id, max_llamadas=max_llamadas, razonamiento=razonamiento)
 
 
 class LimiteLlamadas(ModelCallLimitMiddleware):
-    """Como ModelCallLimitMiddleware, pero el tope sale de runtime.context.max_llamadas (por mensaje)."""
+    """Como ModelCallLimitMiddleware, pero el tope sale de runtime.context.max_llamadas (por mensaje).
+    La última llamada permitida va sin herramientas: el modelo responde con lo que tiene y avisa del corte."""
 
     def __init__(self):
         super().__init__(run_limit=10**9, exit_behavior="end")  # el tope real viene del contexto
@@ -81,6 +134,103 @@ class LimiteLlamadas(ModelCallLimitMiddleware):
         if limite and state.get("run_model_call_count", 0) >= limite:
             return {"jump_to": "end", "messages": [AIMessage(content=LIMIT_MSG)]}
         return None
+
+    def wrap_model_call(self, request, handler):
+        limite = getattr(request.runtime.context, "max_llamadas", 0)
+        if limite > 1 and request.tools and request.state.get("run_model_call_count", 0) == limite - 1:
+            system = request.system_message.text if request.system_message else ""
+            request = request.override(tool_choice="none",
+                                       system_message=SystemMessage(content=f"{system}\n\n{LAST_STEP_NOTE}".strip()))
+        return handler(request)
+
+
+def _turn_messages(messages) -> list:
+    """Mensajes del turno en curso: desde el último mensaje del usuario (el resumen no cuenta como usuario)."""
+    start = max((i for i, m in enumerate(messages) if m.type == "human"
+                 and m.additional_kwargs.get("lc_source") != SUMMARY_SOURCE), default=-1)
+    return messages[start + 1:]
+
+
+class LimiteRepeticiones(AgentMiddleware):
+    """TOOL_REPEAT_LIMIT: una misma herramienta no corre más de N veces por mensaje; a partir de ahí devuelve un
+    aviso (sin ejecutarla) para que el modelo responda con lo que tiene."""
+
+    def __init__(self, limit: int):
+        super().__init__()
+        self.limit = limit
+
+    def wrap_tool_call(self, request, handler):
+        name, call_id = request.tool_call["name"], request.tool_call.get("id")
+        calls = [c.get("id") for m in _turn_messages(request.state.get("messages") or [])
+                 if isinstance(m, AIMessage) for c in m.tool_calls if c.get("name") == name]
+        if self.limit and call_id in calls and calls.index(call_id) >= self.limit:
+            return ToolMessage(content=REPEAT_LIMIT_MSG.format(name=name, limit=self.limit),
+                               tool_call_id=call_id, name=name, status="error")
+        return handler(request)
+
+
+def _cut_and_empty(response) -> bool:
+    msg = next((m for m in reversed(getattr(response, "result", None) or []) if isinstance(m, AIMessage)), None)
+    meta = getattr(msg, "response_metadata", None) or {}
+    return (msg is not None and not msg.tool_calls and not _content_text(msg).strip()
+            and (meta.get("incomplete_details") or {}).get("reason") == "max_output_tokens")
+
+
+class AvisoCorte(AgentMiddleware):
+    """Si la respuesta final se cortó por MAX_TOKENS (max_output_tokens), lo dice al final del mensaje y ofrece
+    continuar, en vez de terminar a media frase sin explicación.
+    Si se cortó SIN texto (MAX_TOKENS incluye el razonamiento: con esfuerzo alto puede agotarse antes de escribir),
+    repite esa llamada una vez con razonamiento bajo. Prueba real: H12 con MAX_TOKENS=2000 y esfuerzo alto terminó en
+    una respuesta vacía aunque la investigación había salido bien."""
+
+    def wrap_model_call(self, request, handler):
+        response = handler(request)
+        if _cut_and_empty(response):
+            logger.info("Respuesta vacía por MAX_TOKENS (todo fue razonamiento); repito con razonamiento bajo")
+            response = handler(request.override(
+                model_settings={**request.model_settings, "reasoning": {"effort": "low"}}))
+        return response
+
+    def after_model(self, state, runtime):
+        last = (state.get("messages") or [None])[-1]
+        meta = getattr(last, "response_metadata", None) or {}
+        reason = (meta.get("incomplete_details") or {}).get("reason")
+        if not isinstance(last, AIMessage) or last.tool_calls or reason != "max_output_tokens":
+            return None
+        runtime.stream_writer({"tipo": "corte"})
+        return {"messages": [AIMessage(id=last.id, content=_content_text(last) + CUT_NOTE,
+                                       response_metadata=meta, usage_metadata=last.usage_metadata)]}
+
+
+# Nombres anteriores (en español) de las herramientas. Los hilos guardados antes del cambio los tienen en su
+# historial (llamadas y resultados) y bigtool en selected_tool_ids.
+OLD_TOOL_NAMES = {"buscar_web": "web_search", "calculadora": "calculator", "fecha_hora": "current_datetime",
+                  "guardar_recuerdo": "save_memory", "buscar_recuerdos": "search_memories",
+                  "actualizar_recuerdo": "update_memory", "investigador_profundo": "deep_research",
+                  "enviar_email_simulado": "send_simulated_email"}
+
+
+def rename_old_tools(messages) -> list:
+    """Copia de los mensajes con los nombres antiguos de herramientas cambiados por los actuales, para que el modelo
+    no vea llamadas a herramientas que ya no existen. No toca el historial guardado."""
+    out = []
+    for m in messages:
+        if isinstance(m, AIMessage) and any(c.get("name") in OLD_TOOL_NAMES for c in m.tool_calls):
+            calls = [{**c, "name": OLD_TOOL_NAMES.get(c["name"], c["name"])} for c in m.tool_calls]
+            content = m.content
+            if isinstance(content, list):  # Responses API: también hay bloques function_call con el nombre
+                content = [{**b, "name": OLD_TOOL_NAMES[b["name"]]} if isinstance(b, dict) and b.get("name")
+                           in OLD_TOOL_NAMES else b for b in content]
+            m = m.model_copy(update={"tool_calls": calls, "content": content})
+        elif isinstance(m, ToolMessage) and m.name in OLD_TOOL_NAMES:
+            m = m.model_copy(update={"name": OLD_TOOL_NAMES[m.name]})
+        out.append(m)
+    return out
+
+
+@wrap_model_call
+def _nombres_antiguos(request, handler):
+    return handler(request.override(messages=rename_old_tools(request.messages)))
 
 
 @wrap_model_call
@@ -122,8 +272,12 @@ Keep VERBATIM (exact spelling, values and units):
 - names of people, places, products, projects and organizations;
 - every number, amount, date, time, quantity and result of calculations;
 - decisions the user made and options they rejected, with their reasons;
-- the user's stated preferences, likes, dislikes and personal facts, attributed to the user;
+- the user's stated preferences, likes, dislikes and personal facts (name, job, city...), attributed to the user;
 - open questions, pending tasks and commitments the assistant made.
+
+Always end with a section "Problems solved so far": one bullet per problem, question or task already answered
+(the oldest first), each with its final result or answer verbatim (numbers, names, chosen option). Keep every item
+from the earlier summary's list and add the new ones; never drop one.
 
 Rules:
 - If the messages start with an earlier summary, merge it in: keep all of its facts unless the user corrected them.
@@ -136,8 +290,34 @@ Rules:
 </messages>"""
 
 
+class ResumenPorTurno(SummarizationMiddleware):
+    """SummarizationMiddleware con dos cambios (MEMORY_SUMMARIZE):
+    - como máximo un resumen por turno: el mensaje de resumen guarda el id del mensaje del usuario que abría el turno;
+    - el disparo mira solo los tokens de los mensajes, igual que `keep`. El nativo también dispara con el uso
+      reportado por el último AIMessage, que suma system prompt, herramientas y salida: tras resumir seguía por
+      encima del umbral y volvía a resumir en cada llamada (hasta 3 resúmenes en un turno en la prueba larga)."""
+
+    def _should_summarize_based_on_reported_tokens(self, messages, threshold):
+        return False
+
+    def before_model(self, state, runtime):
+        messages = state["messages"]
+        self._ensure_message_ids(messages)
+        human = next((m for m in reversed(messages) if m.type == "human"
+                      and m.additional_kwargs.get("lc_source") != SUMMARY_SOURCE), None)
+        # sin mensaje del usuario en el estado: el resumen de este turno ya se lo llevó
+        if human is None or any(m.additional_kwargs.get("summary_turn") == human.id for m in messages
+                                if m.type == "human"):
+            return None
+        update = super().before_model(state, runtime)
+        for m in (update or {}).get("messages", []):
+            if isinstance(m, HumanMessage) and m.additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
+                m.additional_kwargs["summary_turn"] = human.id
+        return update
+
+
 def _on_tool_error(exc: Exception, request) -> str:
-    return f"Error en la herramienta ({type(exc).__name__}): {exc}. Intenta otra cosa."
+    return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
 
 def system_prompt_text() -> str:
@@ -155,7 +335,7 @@ def _system_prompt(request) -> str:
     return system_prompt_text()
 
 
-EVIDENCE_TOOLS = ("buscar_web", "investigador_profundo")
+EVIDENCE_TOOLS = ("web_search", "deep_research")
 _EVIDENCE_CHARS = 12000
 
 VERIFY_ANSWER_PROMPT = """You are a fact-checker. Given an ANSWER and the EVIDENCE the assistant retrieved in this turn, \
@@ -179,7 +359,7 @@ ANSWER:
 
 
 class AnswerVerifier(AgentMiddleware):
-    """ANSWER_VERIFY: al terminar el turno, si se usó buscar_web/investigador_profundo, una llamada barata
+    """ANSWER_VERIFY: al terminar el turno, si se usó web_search/deep_research, una llamada barata
     contrasta la respuesta con lo recuperado. Si corrige, reemplaza el mensaje (mismo id) y avisa a la UI con el
     original: el cambio nunca es silencioso. Sin búsqueda en el turno no hace nada (0 tokens)."""
 
@@ -196,6 +376,7 @@ class AnswerVerifier(AgentMiddleware):
         if not evidence or not isinstance(last, AIMessage) or last.tool_calls or not _content_text(last).strip():
             return None
         original = _content_text(last)
+        runtime.stream_writer({"tipo": "fase", "fase": "verifying"})  # la UI muestra "verificando…" mientras tanto
         try:
             resp = self.checker.invoke(VERIFY_ANSWER_PROMPT.format(
                 evidence="\n\n---\n\n".join(evidence)[-_EVIDENCE_CHARS:], answer=original))
@@ -221,16 +402,20 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     """`summarizer`/`checker`: modelos para MEMORY_SUMMARIZE/ANSWER_VERIFY (se inyectan en tests)."""
     middleware = [
         _system_prompt,
+        _nombres_antiguos,
         _razonamiento,
         LimiteLlamadas(),
         ToolErrorMiddleware(on_error=_on_tool_error),
-        HumanInTheLoopMiddleware(interrupt_on={"enviar_email_simulado": True}),
+        LimiteRepeticiones(settings.tool_repeat_limit),
+        HumanInTheLoopMiddleware(interrupt_on={"send_simulated_email": True}),
+        AvisoCorte(),
     ]
     if settings.memory_summarize:
-        middleware.insert(0, SummarizationMiddleware(
+        middleware.insert(0, ResumenPorTurno(
             summarizer or make_summary_model(settings),
             trigger=("tokens", settings.summary_trigger_tokens),
-            keep=("messages", settings.summary_keep_messages),
+            # lo conservado queda muy por debajo del umbral: si no, el siguiente mensaje vuelve a dispararlo
+            keep=("tokens", min(settings.summary_keep_tokens, settings.summary_trigger_tokens // 2)),
             summary_prompt=SUMMARY_PROMPT,
             # ponytail: el default (4000, estrategia "last") recorta lo más viejo antes de resumir, y eso incluye el
             # resumen anterior: los datos del inicio se perderían en el segundo resumen. El umbral ya acota la entrada.
@@ -257,8 +442,8 @@ def run_config(thread_id: str, settings: Settings) -> dict:
 
 def _engine_from_output(output: str) -> str | None:
     first = output.split("\n", 1)[0].strip()
-    if first.startswith("[motor:") and first.endswith("]"):
-        return first[len("[motor:"):-1].strip() or None
+    if first.startswith("[engine:") and first.endswith("]"):
+        return first[len("[engine:"):-1].strip() or None
     return None
 
 
@@ -295,7 +480,7 @@ def _update_events(update: dict) -> Iterator[dict]:
             continue
         if not isinstance(node_update, dict):
             continue
-        if node.startswith("SummarizationMiddleware") and node_update.get("messages"):
+        if node.startswith(("ResumenPorTurno", "SummarizationMiddleware")) and node_update.get("messages"):
             yield {"type": "summarized"}
             continue
         if node.startswith("AnswerVerifier"):
@@ -326,14 +511,81 @@ def _update_events(update: dict) -> Iterator[dict]:
                 }
 
 
+TURN_CAP_MSG = ("\n\n_Detuve este mensaje: superó el tope de {cap:,} tokens por mensaje (TURN_TOKEN_CAP). Lo que "
+                "alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada._")
+CANCELLED_TOOL_MSG = "Cancelled: this message reached its token cap before the tool finished."
+
+
+class TurnTokens(BaseCallbackHandler):
+    """TURN_TOKEN_CAP: suma entrada+salida de todas las llamadas al modelo de un mensaje (agente, resumen,
+    verificadores, investigador y búsquedas hospedadas, que heredan los callbacks de la config)."""
+
+    def __init__(self):
+        self.total = 0
+        self._lock = threading.Lock()
+
+    def on_llm_end(self, response, **kwargs):
+        for gens in response.generations:
+            for g in gens:
+                usage = getattr(getattr(g, "message", None), "usage_metadata", None) or {}
+                with self._lock:
+                    self.total += usage.get("total_tokens", 0) or 0
+
+
+_ACTIVE_TURNS: dict[str, TurnTokens] = {}  # hilo -> contador del mensaje en curso
+
+
+def turn_tokens(thread_id: str | None) -> int:
+    """Tokens gastados por el mensaje en curso del hilo (0 si no hay ninguno). Las búsquedas lo consultan antes de
+    lanzarse."""
+    counter = _ACTIVE_TURNS.get(thread_id) if thread_id else None
+    return counter.total if counter else 0
+
+
+def _close_aborted_turn(agent, config, note: str) -> None:
+    """Deja el hilo consistente tras abortar: las llamadas a herramientas sin respuesta reciben un "cancelado" (si no,
+    el siguiente mensaje fallaría en la API) y el aviso queda guardado como respuesta del asistente.
+
+    El aborto suele llegar a mitad de un paso del grafo: lo que ya produjo el paso (la respuesta del modelo con sus
+    llamadas, las herramientas que terminaron) solo está en las escrituras pendientes del último checkpoint.
+    `update_state` reutilizaría el id de tarea de ese nodo y escribiría en el mismo checkpoint con el mismo índice
+    (MongoDB lo rechaza con E11000). Por eso va con un id de tarea propio y reenvía los mensajes del turno tal como
+    los ve `get_state` (que incluye lo pendiente): `add_messages` reemplaza por id los ya guardados y agrega el resto."""
+    cancelled: list = []
+    try:
+        messages = (agent.get_state(config).values or {}).get("messages") or []
+        turn = _turn_messages(messages)
+        answered = {m.tool_call_id for m in turn if isinstance(m, ToolMessage)}
+        cancelled = [ToolMessage(content=CANCELLED_TOOL_MSG, tool_call_id=c["id"], name=c.get("name"), status="error")
+                     for m in turn if isinstance(m, AIMessage) for c in m.tool_calls if c.get("id") not in answered]
+        node = "model" if "model" in agent.nodes else "agent"  # create_agent / langgraph-bigtool
+        cfg = config
+        if getattr(agent, "store", None) is not None:
+            # update_state no da el store a las ramas (el bucle del grafo sí, vía Runtime en la config): sin esto,
+            # la rama should_continue de bigtool falla con "Missing required config key 'store'"
+            cfg = {**config, "configurable": {**config["configurable"], CONFIG_KEY_RUNTIME: Runtime(store=agent.store)}}
+        agent.update_state(cfg, {"messages": [*turn, *cancelled, AIMessage(content=note.strip())]},
+                           as_node=node, task_id=str(uuid.uuid4()))
+    except Exception:  # noqa: BLE001 - el aviso al usuario sale igual
+        logger.exception(
+            "Mensaje abortado por TURN_TOKEN_CAP en el hilo %s: NO se guardó su cierre (%d llamada(s) a herramientas "
+            "como canceladas y el aviso al usuario). El usuario sí recibió el aviso; el siguiente mensaje parte del "
+            "último checkpoint guardado.", config.get("configurable", {}).get("thread_id"), len(cancelled))
+
+
 def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settings,
-                  esfuerzo: str | None = None) -> Iterator[dict]:
+                  esfuerzo: str | None = None, origen: str = "auto") -> Iterator[dict]:
     ctx = contexto_para(user_id, settings, esfuerzo)
     if esfuerzo in ESFUERZOS and settings.model_call_limit == 0:
-        yield {"type": "effort", "level": esfuerzo, "max_calls": ctx.max_llamadas, "reasoning": ctx.razonamiento}
+        yield {"type": "effort", "level": esfuerzo, "max_calls": ctx.max_llamadas, "reasoning": ctx.razonamiento,
+               "source": origen}
     config = run_config(thread_id, settings)
-    # cada llamada al modelo gasta ~5 pasos del grafo (middlewares + tools): el límite de pasos acompaña al tope
-    config["recursion_limit"] = max(config["recursion_limit"], ctx.max_llamadas * 6)
+    # cada llamada al modelo gasta ~6 pasos del grafo (middlewares + tools): el límite de pasos acompaña al tope
+    config["recursion_limit"] = max(config["recursion_limit"], ctx.max_llamadas * 8)
+    counter = TurnTokens()
+    config["callbacks"] = [counter]  # cuenta todas las llamadas del mensaje (agente, investigador, búsquedas...)
+    _ACTIVE_TURNS[thread_id] = counter
+    cap = settings.turn_token_cap
     try:
         stream = agent.stream(
             payload,
@@ -343,6 +595,12 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             version="v2",
         )
         for chunk in stream:
+            if cap and counter.total >= cap:
+                stream.close()  # aborta el turno: no se lanzan más llamadas
+                note = TURN_CAP_MSG.format(cap=cap)
+                _close_aborted_turn(agent, config, note)
+                yield {"type": "token", "text": note}
+                break
             if chunk.get("ns"):  # solo el grafo raíz; ignora subagentes
                 continue
             kind, data = chunk["type"], chunk["data"]
@@ -360,6 +618,10 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "progreso":
                 # avance del investigador profundo (búsquedas internas mientras trabaja)
                 yield {"type": "progress", "name": data.get("herramienta"), "args": data.get("args", {})}
+            elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "fase":
+                yield {"type": "phase", "phase": data.get("fase")}
+            elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "corte":
+                yield {"type": "token", "text": CUT_NOTE}  # la respuesta se cortó por MAX_TOKENS
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "verificacion":
                 yield {"type": "verify", **{k: v for k, v in data.items() if k != "tipo"}}
     except GraphRecursionError:
@@ -372,6 +634,8 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
         logger.exception("Error durante el stream del agente")
         yield {"type": "error", "message": f"{type(exc).__name__}: {exc}"}
         return
+    finally:
+        _ACTIVE_TURNS.pop(thread_id, None)
     yield {"type": "done", "thread_id": thread_id}
 
 

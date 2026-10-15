@@ -9,7 +9,7 @@ Diferencias con el agente principal (bigtool no soporta middleware):
   ToolNode con la firma vieja. user_id y el escritor de stream se leen con get_runtime()/get_stream_writer().
 
 Dos stores separados: el InMemoryStore con el índice de herramientas va al grafo (compile(store=...));
-el MongoDBStore de recuerdos lo usan guardar_recuerdo/buscar_recuerdos por cierre. No chocan.
+el MongoDBStore de recuerdos lo usan save_memory/search_memories por cierre. No chocan.
 """
 import logging
 import math
@@ -33,14 +33,15 @@ from langgraph_bigtool import create_agent as create_bigtool_agent
 from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 
 from assistant import memory
-from assistant.agent import system_prompt_text
+from assistant.agent import OLD_TOOL_NAMES, rename_old_tools, system_prompt_text
 from assistant.apps.crm_demo import crm_tools
 from assistant.config import Settings
 from assistant.extra_tools import extra_tools
 from assistant.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.tools import (
     ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, GUARDAR_RECUERDO_DOC, INVESTIGADOR_DOC, calculadora,
-    fecha_hora, investigar, make_buscar_web, make_subinvestigador, memory_verifier_for, web_search,
+    earlier_research, fecha_hora, investigar, investigator_model, make_buscar_web, memory_verifier_for, turn_key,
+    web_search, FOLLOW_UP_MSG,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ def _seguro(t: BaseTool) -> BaseTool:
         try:
             return t.invoke(kwargs)
         except Exception as exc:  # noqa: BLE001
-            return f"Error en la herramienta ({type(exc).__name__}): {exc}. Intenta otra cosa."
+            return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
     return StructuredTool.from_function(func=run, name=t.name, description=t.description, args_schema=t.args_schema,
                                         metadata=t.metadata)  # conserva la ficha de @tool_spec
@@ -110,7 +111,7 @@ def _herramientas_texto() -> list[BaseTool]:
 
     @tool
     def remove_accents(text: str) -> str:
-        """Remove accents/diacritics from a text (á -> a)."""
+        """Remove accents/diacritics from a text (an accented vowel becomes the plain vowel)."""
         return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
 
     @tool
@@ -142,8 +143,8 @@ def _herramientas_math() -> list[BaseTool]:
     return out
 
 
-def _thread_user_texts(checkpointer) -> tuple[str | None, list[str]]:
-    """(thread_id, textos del usuario) del hilo en curso. Bigtool no inyecta el estado a las herramientas:
+def _thread_messages(checkpointer) -> tuple[str | None, list]:
+    """(thread_id, mensajes) del hilo en curso. Bigtool no inyecta el estado a las herramientas:
     se lee del último checkpoint, que ya incluye el mensaje del usuario de este turno."""
     try:
         thread_id = get_config()["configurable"]["thread_id"]
@@ -153,35 +154,49 @@ def _thread_user_texts(checkpointer) -> tuple[str | None, list[str]]:
         return thread_id, []
     saved = checkpointer.get_tuple({"configurable": {"thread_id": thread_id}})
     messages = (saved.checkpoint.get("channel_values") or {}).get("messages") if saved else None
+    return thread_id, messages or []
+
+
+def _thread_user_texts(checkpointer) -> tuple[str | None, list[str]]:
+    thread_id, messages = _thread_messages(checkpointer)
     return thread_id, memory.user_texts(messages)
 
 
 def build_registry(model, settings: Settings, memories_store, search_fn: Callable = web_search,
                    checkpointer=None, checker=None) -> dict[str, BaseTool]:
     """Registro id -> herramienta. id = nombre de la herramienta (legible en la UI)."""
-    buscar_web = make_buscar_web(settings, search_fn)
-    sub = make_subinvestigador(model, buscar_web)
+    def search_key():
+        thread_id, messages = _thread_messages(checkpointer)
+        return thread_id, turn_key(thread_id, messages)
+
+    buscar_web = make_buscar_web(settings, search_fn, key_fn=search_key)
+    inv_model = investigator_model(model, settings)
     verifier = memory_verifier_for(settings, checker)
 
-    @tool(description=GUARDAR_RECUERDO_DOC)
-    def guardar_recuerdo(texto: str, evidencia: str = "") -> str:
+    @tool("save_memory", description=GUARDAR_RECUERDO_DOC)
+    def guardar_recuerdo(text: str, evidence: str = "") -> str:
         thread_id, texts = _thread_user_texts(checkpointer)
-        return memory.remember(memories_store, _ctx("user_id", "anon"), texto, evidencia, texts,
+        return memory.remember(memories_store, _ctx("user_id", "anon"), text, evidence, texts,
                                thread_id=thread_id, verifier=verifier)
 
-    @tool(description=BUSCAR_RECUERDOS_DOC)
-    def buscar_recuerdos(consulta: str) -> str:
-        return memory.recall(memories_store, _ctx("user_id", "anon"), consulta, settings.memory_min_score)
+    @tool("search_memories", description=BUSCAR_RECUERDOS_DOC)
+    def buscar_recuerdos(query: str) -> str:
+        return memory.recall(memories_store, _ctx("user_id", "anon"), query, settings.memory_min_score)
 
-    @tool(description=ACTUALIZAR_RECUERDO_DOC)
-    def actualizar_recuerdo(id: str, texto: str, evidencia: str = "") -> str:  # noqa: A002
+    @tool("update_memory", description=ACTUALIZAR_RECUERDO_DOC)
+    def actualizar_recuerdo(id: str, text: str, evidence: str = "") -> str:  # noqa: A002
         thread_id, texts = _thread_user_texts(checkpointer)
-        return memory.revise(memories_store, _ctx("user_id", "anon"), id, texto, evidencia, texts,
+        return memory.revise(memories_store, _ctx("user_id", "anon"), id, text, evidence, texts,
                              thread_id=thread_id, verifier=verifier)
 
-    @tool(description=INVESTIGADOR_DOC)
-    def investigador_profundo(tarea: str) -> str:
-        return investigar(sub, tarea, get_stream_writer())
+    @tool("deep_research", description=INVESTIGADOR_DOC)
+    def investigador_profundo(task: str) -> str:
+        thread_id, messages = _thread_messages(checkpointer)
+        previous = earlier_research(messages)
+        if previous is not None:
+            return FOLLOW_UP_MSG.format(previous=previous)
+        return investigar(inv_model, settings, search_fn, task, get_stream_writer(),
+                          turn_key=turn_key(thread_id, messages))
 
     tools = [calculadora, fecha_hora, buscar_web, guardar_recuerdo, buscar_recuerdos, actualizar_recuerdo,
              investigador_profundo, *extra_tools()]
@@ -219,6 +234,15 @@ def build_tool_index(registry: dict[str, BaseTool], settings: Settings, embeddin
     return store
 
 
+class RegistroTolerante(dict):
+    """bigtool hace tool_registry[id] con los ids de selected_tool_ids guardados en el checkpoint. Un id antiguo
+    (herramienta renombrada) se resuelve a la actual; uno que ya no existe da None y PromptedModel lo descarta, en vez
+    de un KeyError que rompería el hilo."""
+
+    def __missing__(self, key):
+        return self.get(OLD_TOOL_NAMES.get(key))
+
+
 class PromptedModel:
     """Adaptador mínimo: bigtool no acepta system prompt (issue #7) ni middleware. Antepone el prompt
     dinámico (system.md + fecha + instrucciones de retrieve_tools) y aplica el razonamiento del esfuerzo."""
@@ -229,14 +253,20 @@ class PromptedModel:
     def bind_tools(self, tools, **kwargs):
         if effort := _ctx("razonamiento"):
             kwargs["reasoning"] = {"effort": effort}
-        bound = self.model.bind_tools(tools, **kwargs)
-        return RunnableLambda(lambda msgs: [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT), *msgs]) | bound
+        unicas = {}
+        for t in tools:  # sin los ids que ya no existen (None) ni duplicados (id viejo + id nuevo)
+            name = getattr(t, "name", None) or getattr(t, "__name__", None)
+            if t is not None and name not in unicas:
+                unicas[name] = t
+        bound = self.model.bind_tools(list(unicas.values()), **kwargs)
+        return RunnableLambda(lambda msgs: [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT),
+                                            *rename_old_tools(msgs)]) | bound
 
 
 def build_bigtool_agent(model, settings: Settings, checkpointer=None, memories_store=None,
                         embeddings=None, search_fn: Callable = web_search, checker=None):
     registry = build_registry(model, settings, memories_store, search_fn, checkpointer=checkpointer, checker=checker)
     index = build_tool_index(registry, settings, embeddings)
-    builder = create_bigtool_agent(PromptedModel(model), registry, limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
+    builder = create_bigtool_agent(PromptedModel(model), RegistroTolerante(registry), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
                                    retrieve_tools_function=make_retrieve_tools(registry))
     return builder.compile(checkpointer=checkpointer, store=index)

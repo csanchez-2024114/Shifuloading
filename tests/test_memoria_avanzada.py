@@ -57,7 +57,7 @@ def test_resumen_se_dispara_en_el_umbral_y_conserva_el_dato(make_settings):
     from assistant.agent import SUMMARY_PROMPT
 
     trigger = 600
-    s = make_settings(memory_summarize=True, summary_trigger_tokens=trigger, summary_keep_messages=4)
+    s = make_settings(memory_summarize=True, summary_trigger_tokens=trigger, summary_keep_tokens=250)
     turnos = 7
     main = recorder(*[f"respuesta {i}" for i in range(turnos)])
     summarizer = recorder(*["- The user said their name is Zorba and their favorite color is turquoise."] * turnos)
@@ -88,7 +88,7 @@ def test_sin_interruptor_no_hay_resumen(settings):
     from assistant.agent import build_agent
 
     nodes = build_agent(fake_llm("x"), [], settings).get_graph().nodes
-    assert not any("Summarization" in n or "AnswerVerifier" in n for n in nodes)
+    assert not any("ResumenPorTurno" in n or "Summarization" in n or "AnswerVerifier" in n for n in nodes)
 
 
 # --------------------------------------------------------------------------- 2. procedencia y compatibilidad
@@ -113,8 +113,8 @@ def test_recuerdos_viejos_sin_campos_siguen_funcionando(store):
 def test_cita_literal_da_quoted_y_cita_inventada_queda_sin_evidencia(settings):
     store = InMemoryStore()
     agent = _agent(settings, fake_llm(
-        tool_call("guardar_recuerdo", {"texto": "El usuario se llama Ana", "evidencia": "me llamo Ana"}, "g1"),
-        tool_call("guardar_recuerdo", {"texto": "El usuario es médico", "evidencia": "soy médico"}, "g2"),
+        tool_call("save_memory", {"text": "El usuario se llama Ana", "evidence": "me llamo Ana"}, "g1"),
+        tool_call("save_memory", {"text": "El usuario es médico", "evidence": "soy médico"}, "g2"),
         "Anotado"), store=store)
     thread = uid()
     run_turn(agent, settings, "Hola, me llamo Ana y busco recetas", thread, user_id="ana")
@@ -135,11 +135,11 @@ def test_recuerdo_no_respaldado_no_se_guarda(make_settings):
     s = make_settings(memory_verify=True)
     store = InMemoryStore()
     checker = fake_llm('{"supported": false, "quote": ""}')
-    agent = _agent(s, fake_llm(tool_call("guardar_recuerdo", {"texto": "El usuario es médico"}, "g1"),
+    agent = _agent(s, fake_llm(tool_call("save_memory", {"text": "El usuario es médico"}, "g1"),
                                "No lo guardé"), store=store, checker=checker)
     ev = run_turn(agent, s, "¿Qué opinas de los hospitales?", uid(), user_id="u-v")
 
-    fin = next(e for e in ev if e["type"] == "tool_end" and e["name"] == "guardar_recuerdo")
+    fin = next(e for e in ev if e["type"] == "tool_end" and e["name"] == "save_memory")
     assert fin["output"].startswith("Not saved")
     assert _values(store, "u-v") == []
 
@@ -148,7 +148,7 @@ def test_recuerdo_respaldado_se_guarda_verificado(make_settings):
     s = make_settings(memory_verify=True)
     store = InMemoryStore()
     checker = fake_llm('{"supported": true, "quote": "mi perro se llama Rex"}')
-    agent = _agent(s, fake_llm(tool_call("guardar_recuerdo", {"texto": "Su perro se llama Rex"}, "g1"), "Listo"),
+    agent = _agent(s, fake_llm(tool_call("save_memory", {"text": "Su perro se llama Rex"}, "g1"), "Listo"),
                    store=store, checker=checker)
     thread = uid()
     run_turn(agent, s, "Oye, mi perro se llama Rex", thread, user_id="u-ok")
@@ -217,7 +217,7 @@ def test_answer_verify_corrige_con_evidencia_y_conserva_original(make_settings):
     s = make_settings(answer_verify=True)
     checker = recorder("París tiene unos 2.1 millones de habitantes.")
     # FakeSearch repite la consulta: así la evidencia contiene la cifra correcta (2.1 millones)
-    agent = _agent(s, fake_llm(tool_call("buscar_web", {"consulta": "población de París 2.1 millones"}, "w1"),
+    agent = _agent(s, fake_llm(tool_call("web_search", {"query": "población de París 2.1 millones"}, "w1"),
                                "París tiene 50 millones de habitantes."), checker=checker)
     thread = uid()
     ev = run_turn(agent, s, "¿Cuántos habitantes tiene París?", thread)
@@ -233,7 +233,7 @@ def test_answer_verify_corrige_con_evidencia_y_conserva_original(make_settings):
 def test_answer_verify_ok_y_sin_busqueda_no_llama(make_settings):
     s = make_settings(answer_verify=True)
     checker = recorder("OK")
-    agent = _agent(s, fake_llm(tool_call("buscar_web", {"consulta": "x"}, "w1"), "Dato con respaldo",
+    agent = _agent(s, fake_llm(tool_call("web_search", {"query": "x"}, "w1"), "Dato con respaldo",
                                "Hola, ¿qué tal?"), checker=checker)
     thread = uid()
     ev = run_turn(agent, s, "busca x", thread)
@@ -250,14 +250,14 @@ def test_bigtool_guarda_con_procedencia_y_verificacion(make_settings):
     from assistant.bigtool_agent import build_bigtool_agent, build_registry
 
     s = make_settings(use_bigtool=True, memory_verify=True)
-    t = build_registry(None, s, InMemoryStore(), checker=fake_llm())["guardar_recuerdo"]
+    t = build_registry(None, s, InMemoryStore(), checker=fake_llm())["save_memory"]
     query = f"{t.name}: {t.description}"
     store = InMemoryStore()
     checker = fake_llm('{"supported": true, "quote": "me gusta el café de olla"}', '{"supported": false, "quote": ""}')
     agent = build_bigtool_agent(fake_llm(
         tool_call("retrieve_tools", {"query": query}, "r1"),
-        tool_call("guardar_recuerdo", {"texto": "Le gusta el café de olla"}, "g1"),
-        tool_call("guardar_recuerdo", {"texto": "Es vegetariano"}, "g2"),
+        tool_call("save_memory", {"text": "Le gusta el café de olla"}, "g1"),
+        tool_call("save_memory", {"text": "Es vegetariano"}, "g2"),
         "Anotado"), s, checkpointer=InMemorySaver(), memories_store=store,
         embeddings=DeterministicFakeEmbedding(size=64), search_fn=FakeSearch(), checker=checker)
     thread = uid()
@@ -266,8 +266,9 @@ def test_bigtool_guarda_con_procedencia_y_verificacion(make_settings):
     [v] = _values(store, "u-bt")  # el no respaldado no se guardó
     assert v["text"] == "Le gusta el café de olla" and v["confidence"] == "verified"
     assert v["evidence"] == "me gusta el café de olla" and v["thread_id"] == thread
-    outs = [e["output"] for e in ev if e["type"] == "tool_end" and e["name"] == "guardar_recuerdo"]
-    assert outs[0] == "Recuerdo guardado." and outs[1].startswith("Not saved")
+    outs = [e["output"] for e in ev if e["type"] == "tool_end" and e["name"] == "save_memory"]
+    from assistant.memory import SAVED_MSG
+    assert outs[0] == SAVED_MSG and outs[1].startswith("Not saved")
 
 
 # --------------------------------------------------------------------------- actualizar_recuerdo
@@ -284,15 +285,15 @@ def test_resolver_cafe_vs_te_deja_un_solo_recuerdo_con_previous_text(make_settin
     u = uid("u")
     key = memory.save_memory(store, u, "Su bebida favorita es el café de olla", confidence="verified")
     agent = _agent(s, fake_llm(
-        tool_call("buscar_recuerdos", {"consulta": "bebida favorita"}, "b1"),
-        tool_call("actualizar_recuerdo", {"id": key, "texto": "Su bebida favorita es el té verde",
-                                          "evidencia": "ahora mi bebida favorita es el té verde"}, "a1"),
+        tool_call("search_memories", {"query": "bebida favorita"}, "b1"),
+        tool_call("update_memory", {"id": key, "text": "Su bebida favorita es el té verde",
+                                          "evidence": "ahora mi bebida favorita es el té verde"}, "a1"),
         "Actualizado"), store=store, checker=fake_llm('{"supported": true, "quote": "ahora mi bebida favorita es el té verde"}'))
     thread = uid()
     ev = run_turn(agent, s, "Sí, ahora mi bebida favorita es el té verde", thread, user_id=u)
 
-    assert f"[id {key}] Su bebida favorita es el café de olla" in _end(ev, "buscar_recuerdos")
-    assert _end(ev, "actualizar_recuerdo") == "Recuerdo actualizado."
+    assert f"[id {key}] Su bebida favorita es el café de olla" in _end(ev, "search_memories")
+    assert _end(ev, "update_memory") == memory.UPDATED_MSG
     [m] = memory.list_memories(store, u)  # uno solo, no dos contradictorios
     assert m["key"] == key and m["text"] == "Su bebida favorita es el té verde"
     assert m["previous_text"] == "Su bebida favorita es el café de olla" and m["updated_at"]
@@ -306,13 +307,13 @@ def test_id_de_otro_usuario_se_rechaza_sin_revelar_y_no_cambia(settings, store):
     a, b = uid("a"), uid("b")
     key_b = memory.save_memory(store, b, "B: su color es el rojo")
     agent = _agent(settings, fake_llm(
-        tool_call("actualizar_recuerdo", {"id": key_b, "texto": "su color es el azul", "evidencia": "mi color es el azul"}, "a1"),
-        tool_call("actualizar_recuerdo", {"id": "no-existe-123", "texto": "su color es el azul",
-                                          "evidencia": "mi color es el azul"}, "a2"),
+        tool_call("update_memory", {"id": key_b, "text": "su color es el azul", "evidence": "mi color es el azul"}, "a1"),
+        tool_call("update_memory", {"id": "no-existe-123", "text": "su color es el azul",
+                                          "evidence": "mi color es el azul"}, "a2"),
         "No pude"), store=store)
     ev = run_turn(agent, settings, "mi color es el azul", uid(), user_id=a)
 
-    outs = [e["output"] for e in ev if e["type"] == "tool_end" and e["name"] == "actualizar_recuerdo"]
+    outs = [e["output"] for e in ev if e["type"] == "tool_end" and e["name"] == "update_memory"]
     assert outs[0] == outs[1] == memory.NOT_FOUND_MSG  # mismo mensaje: no revela que el id existe
     [m] = memory.list_memories(store, b)
     assert m["text"] == "B: su color es el rojo" and m["previous_text"] is None
@@ -325,12 +326,12 @@ def test_actualizacion_sin_respaldo_se_rechaza(make_settings, store):
     s = make_settings(memory_verify=True)
     u = uid("u")
     key = memory.save_memory(store, u, "Vive en Puebla")
-    agent = _agent(s, fake_llm(tool_call("actualizar_recuerdo", {"id": key, "texto": "Vive en Monterrey"}, "a1"),
+    agent = _agent(s, fake_llm(tool_call("update_memory", {"id": key, "text": "Vive en Monterrey"}, "a1"),
                                "No lo actualicé"),
                    store=store, checker=fake_llm('{"supported": false, "quote": ""}'))
     ev = run_turn(agent, s, "Tal vez algún día me mude, no sé", uid(), user_id=u)
 
-    assert _end(ev, "actualizar_recuerdo").startswith("Not updated: the user never stated")
+    assert _end(ev, "update_memory").startswith("Not updated: the user never stated")
     [m] = memory.list_memories(store, u)
     assert m["text"] == "Vive en Puebla" and m["previous_text"] is None
 
@@ -341,11 +342,11 @@ def test_recuerdo_viejo_sin_campos_se_puede_actualizar(settings, store):
     u = uid("u")
     store.put(memory.memory_namespace(u), "viejo", {"text": "Le gusta el jazz"})
     agent = _agent(settings, fake_llm(
-        tool_call("actualizar_recuerdo", {"id": "viejo", "texto": "Le gusta el blues", "evidencia": "ahora me gusta el blues"}, "a1"),
+        tool_call("update_memory", {"id": "viejo", "text": "Le gusta el blues", "evidence": "ahora me gusta el blues"}, "a1"),
         "Listo"), store=store)
     ev = run_turn(agent, settings, "ya no el jazz, ahora me gusta el blues", uid(), user_id=u)
 
-    assert _end(ev, "actualizar_recuerdo") == "Recuerdo actualizado."
+    assert _end(ev, "update_memory") == memory.UPDATED_MSG
     [m] = memory.list_memories(store, u)
     assert m["text"] == "Le gusta el blues" and m["previous_text"] == "Le gusta el jazz"
     assert m["confidence"] == "quoted" and m["evidence"] == "ahora me gusta el blues"
@@ -355,10 +356,10 @@ def test_recuerdo_viejo_sin_campos_se_puede_actualizar(settings, store):
 def test_bigtool_tiene_actualizar_recuerdo_sin_argumentos_inyectados(make_settings):
     from assistant.bigtool_agent import build_registry
 
-    t = build_registry(None, make_settings(use_bigtool=True), InMemoryStore())["actualizar_recuerdo"]
-    assert set(t.args) == {"id", "texto", "evidencia"}
+    t = build_registry(None, make_settings(use_bigtool=True), InMemoryStore())["update_memory"]
+    assert set(t.args) == {"id", "text", "evidence"}
     from assistant.tools import build_tools
-    assert "actualizar_recuerdo" in {x.name for x in build_tools(fake_llm(), make_settings(), search_fn=FakeSearch())}
+    assert "update_memory" in {x.name for x in build_tools(fake_llm(), make_settings(), search_fn=FakeSearch())}
 
 
 # --------------------------------------------------------------------------- MEMORY_MIN_SCORE
@@ -377,7 +378,7 @@ def test_umbral_relevante_si_irrelevante_no_y_es_configurable():
     assert memory.recall(st, "u", "Su perro se llama Rex", 0.68) == f"- [id {key}] Su perro se llama Rex"
     assert memory.recall(st, "u", "equipo de fútbol favorito", 0.68) == memory.NO_RELEVANT_MSG  # no el menos malo
     assert "Rex" in memory.recall(st, "u", "equipo de fútbol favorito", -1.0)  # umbral configurable
-    assert memory.recall(st, "otro", "equipo de fútbol favorito", 0.68) == "Sin recuerdos"
+    assert memory.recall(st, "otro", "equipo de fútbol favorito", 0.68) == memory.NO_MEMORIES_MSG
     # la búsqueda vacía (recientes) y el panel no usan el umbral
     assert "Rex" in memory.recall(st, "u", "", 0.99)
     assert [m["text"] for m in memory.list_memories(st, "u")] == ["Su perro se llama Rex"]
@@ -390,8 +391,8 @@ def test_buscar_recuerdos_usa_memory_min_score_de_settings(make_settings):
 
     def turno(min_score):
         s = make_settings(memory_min_score=min_score)
-        agent = _agent(s, fake_llm(tool_call("buscar_recuerdos", {"consulta": "nombre de mi gato"}, "b1"), "ok"), store=st)
-        return _end(run_turn(agent, s, "¿cómo se llama mi gato?", uid(), user_id="u-s"), "buscar_recuerdos")
+        agent = _agent(s, fake_llm(tool_call("search_memories", {"query": "nombre de mi gato"}, "b1"), "ok"), store=st)
+        return _end(run_turn(agent, s, "¿cómo se llama mi gato?", uid(), user_id="u-s"), "search_memories")
 
     assert turno(0.68) == memory.NO_RELEVANT_MSG
     assert "Rex" in turno(-1.0)

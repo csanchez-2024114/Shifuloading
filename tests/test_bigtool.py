@@ -34,9 +34,9 @@ def test_registro_tiene_40_o_mas_y_nada_peligroso(bt_settings, make_settings):
 
     reg = build_registry(None, bt_settings, InMemoryStore())
     assert len(reg) >= 40 and "acos" in reg
-    assert {"calculadora", "fecha_hora", "buscar_web", "guardar_recuerdo", "buscar_recuerdos",
-            "investigador_profundo"} <= set(reg)
-    assert "enviar_email_simulado" not in reg
+    assert {"calculator", "current_datetime", "web_search", "save_memory", "search_memories",
+            "deep_research"} <= set(reg)
+    assert "send_simulated_email" not in reg
     sin_demo = build_registry(None, make_settings(use_bigtool=True), InMemoryStore())
     assert "acos" not in sin_demo and "weather_forecast" in sin_demo  # extras siempre, demo solo con flag
 
@@ -82,27 +82,28 @@ def test_herramienta_que_falla_devuelve_error_sin_tumbar_el_turno(bt_settings):
     ], bt_settings)
     ev = run_turn(agent, bt_settings, "acos de 2", uid())
     fin = next(e for e in ev if e["type"] == "tool_end" and e["name"] == "acos")
-    assert fin["output"].startswith("Error en la herramienta (ValueError)")
+    assert fin["output"].startswith("Tool error (ValueError)")
     assert ev[-1]["type"] == "done"
 
 
 def test_memoria_por_user_id_entre_threads(bt_settings, store):
     """user_id llega a las herramientas del grafo bigtool (sin context_schema) vía get_runtime().context."""
     u, otro = uid("u"), uid("u")
-    guardar = _query("guardar_recuerdo", bt_settings)
-    buscar = _query("buscar_recuerdos", bt_settings)
+    guardar = _query("save_memory", bt_settings)
+    buscar = _query("search_memories", bt_settings)
 
     a = _agent([tool_call("retrieve_tools", {"query": guardar}, "r1"),
-                tool_call("guardar_recuerdo", {"texto": "Le gusta el cafe de olla"}, "g1"), "Anotado"],
+                tool_call("save_memory", {"text": "Le gusta el cafe de olla"}, "g1"), "Anotado"],
                bt_settings, memories_store=store)
     run_turn(a, bt_settings, "me gusta el cafe de olla", uid(), user_id=u)
 
     def buscar_como(user):
         b = _agent([tool_call("retrieve_tools", {"query": buscar}, "r1"),
-                    tool_call("buscar_recuerdos", {"consulta": "cafe"}, "b1"), "listo"],
+                    tool_call("search_memories", {"query": "cafe"}, "b1"), "listo"],
                    bt_settings, memories_store=store)
         ev = run_turn(b, bt_settings, "que me gusta?", uid(), user_id=user)
-        return next(e for e in ev if e["type"] == "tool_end" and e["name"] == "buscar_recuerdos")["output"]
+        return next(e for e in ev if e["type"] == "tool_end" and e["name"] == "search_memories")["output"]
 
     assert "cafe de olla" in buscar_como(u)
-    assert buscar_como(otro) == "Sin recuerdos"
+    from assistant.memory import NO_MEMORIES_MSG
+    assert buscar_como(otro) == NO_MEMORIES_MSG

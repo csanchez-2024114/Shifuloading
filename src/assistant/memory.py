@@ -130,17 +130,29 @@ def list_memories(store, user_id: str) -> list[dict]:
              "previous_text": i.value.get("previous_text"), "updated_at": i.value.get("updated_at")} for i in items]
 
 
-NO_RELEVANT_MSG = "No hay recuerdos relevantes para esto"
+NO_RELEVANT_MSG = "No relevant memories for this query."
+KEYWORD_MARK = "(keyword match, less reliable)"
+NO_MEMORIES_MSG = "No memories saved for this user."
+SAVED_MSG = "Memory saved."
+UPDATED_MSG = "Memory updated."
 
 
 def recall(store, user_id: str, query: str, min_score: float = 0.0) -> str:
-    """Texto que devuelve buscar_recuerdos: cada recuerdo con su id, o un aviso explícito si nada es relevante."""
+    """Texto que devuelve search_memories: cada recuerdo con su id, o un aviso explícito si nada es relevante.
+    Con búsqueda semántica, los que solo coinciden por palabras clave van marcados como menos confiables."""
     items = search_memory_items(store, user_id, query, min_score=min_score)
-    if items:
+    if getattr(store, "index_config", None) and query.strip():
+        seen = {key for key, _ in items}
+        extra = [(k, t) for k, t in keyword_matches(store, user_id, query) if k not in seen]
+        lines = [f"- [id {key}] {text}" for key, text in items]
+        lines += [f"- [id {key}] {KEYWORD_MARK} {text}" for key, text in extra]
+        if lines:
+            return "\n".join(lines)
+    elif items:
         return "\n".join(f"- [id {key}] {text}" for key, text in items)
     if query.strip() and store.search(memory_namespace(user_id), limit=1):
         return NO_RELEVANT_MSG  # hay recuerdos, pero ninguno pasa el umbral: no se devuelve el menos malo
-    return "Sin recuerdos"
+    return NO_MEMORIES_MSG
 
 
 def update_memory(store, user_id: str, key: str, text: str, *, thread_id: str | None = None,
@@ -239,22 +251,22 @@ def _provenance(text: str, quote: str, texts: list[str], verifier) -> tuple[str,
 
 def remember(store, user_id: str, text: str, quote: str, texts: list[str], *,
              thread_id: str | None = None, verifier=None) -> str:
-    """Lógica común de guardar_recuerdo (agente normal y bigtool). Devuelve el mensaje para el agente."""
+    """Lógica común de save_memory (agente normal y bigtool). Devuelve el mensaje para el agente."""
     prov = _provenance(text, quote, texts, verifier)
     if prov is None:
         return ("Not saved: the user never stated this in the conversation. Do not save assumptions; "
                 "tell the user it was not saved and ask them to confirm if needed.")
     save_memory(store, user_id, text, thread_id=thread_id, evidence=prov[0], confidence=prov[1])
-    return "Recuerdo guardado."
+    return SAVED_MSG
 
 
 # Mismo mensaje si el id no existe o es de otro usuario: no revela qué ids existen.
-NOT_FOUND_MSG = "Not updated: there is no memory with that id. Use buscar_recuerdos to get the ids."
+NOT_FOUND_MSG = "Not updated: there is no memory with that id. Use search_memories to get the ids."
 
 
 def revise(store, user_id: str, key: str, text: str, quote: str, texts: list[str], *,
            thread_id: str | None = None, verifier=None) -> str:
-    """Lógica común de actualizar_recuerdo: solo recuerdos del propio user_id y con la misma verificación."""
+    """Lógica común de update_memory: solo recuerdos del propio user_id y con la misma verificación."""
     if store.get(memory_namespace(user_id), key) is None:
         return NOT_FOUND_MSG
     prov = _provenance(text, quote, texts, verifier)
@@ -263,7 +275,7 @@ def revise(store, user_id: str, key: str, text: str, quote: str, texts: list[str
                 "assumptions; tell the user it was not updated.")
     if not update_memory(store, user_id, key, text, thread_id=thread_id, evidence=prov[0], confidence=prov[1]):
         return NOT_FOUND_MSG
-    return "Recuerdo actualizado."
+    return UPDATED_MSG
 
 
 def _normalize(text: str) -> str:
@@ -273,6 +285,66 @@ def _normalize(text: str) -> str:
 
 def _words(text: str) -> list[str]:
     return [w for w in re.findall(r"\w+", _normalize(text)) if len(w) >= 3]
+
+
+# Palabras que no aportan tema (español e inglés, sin acentos). Incluye genéricas de los recuerdos y preguntas
+# ("usuario", "nombre", "llama", "favorito"...): con ellas "nombre de mi gato" encontraría "su perro se llama Rex"
+# y "color favorito" encontraría "su bebida favorita".
+_STOPWORDS = set("""
+a al algo como con cual cuales cuando cuanto de del donde e el ella ellos en entre es esa ese eso esta este esto
+fue ha hay la las le les lo los mas me mi mis muy no nos o para pero por que quien se sea ser si sin sobre son su
+sus tambien te ti tu tus un una uno unos y ya yo era soy estoy esta estan tiene tengo tener hace hago dime dame
+sabes saber recuerdas recuerda recuerdo recuerdos dato datos informacion usuario usuaria nombre nombres llama llamo
+llamas llamado llamada favorito favorita favoritos favoritas preferido preferida prefiero prefiere prefieres
+preferencia preferencias gusta gustan gusto fecha cosa cosas actual ahora
+the and or of to in on at for with my me your his her their is are was what which who where when how about do does
+user name named called favorite favourite prefer prefers like likes know remember
+""".split())
+
+
+# Sinónimos de los datos personales más consultados: "ciudad" no comparte palabras con "vive en Querétaro".
+# Raíz (tras _stem) -> tema. Pocos y concretos, para no traer recuerdos de otro tema.
+_TOPICS = {**dict.fromkeys(("viv", "vivo", "ciuda", "resid", "domic", "mud", "radic", "live", "lives", "city"), "~vivir"),
+           **dict.fromkeys(("traba", "emple", "profe", "ofici", "puest", "work", "works", "job"), "~trabajo")}
+
+
+def _stem(word: str) -> str:
+    """Raíz aproximada para comparar variantes ("trabajo"/"trabaja", "vivo"/"vive", "ciudades"/"ciudad")."""
+    if len(word) > 4:
+        word = re.sub(r"(es|s)$", "", word)
+    if len(word) > 3:
+        word = re.sub(r"[aeiou]$", "", word)
+    return _TOPICS.get(word[:5], word[:5])
+
+
+def content_stems(text: str, query: bool = False) -> set[str]:
+    """Palabras con contenido como raíces. En un recuerdo, las palabras con mayúscula (nombres propios) solo valen
+    completas ("=tomas"), para que "qué tomo" no encuentre a "Tomás"; la consulta aporta raíz y palabra completa."""
+    out = set()
+    for raw in re.findall(r"\w+", text):
+        w = _normalize(raw)
+        if len(w) < 3 or w in _STOPWORDS or w.isdigit():
+            continue
+        if query:
+            out |= {_stem(w), "=" + w}
+        else:
+            out.add("=" + w if raw[0].isupper() else _stem(w))
+    return out
+
+
+def keyword_matches(store, user_id: str, query: str, limit: int = 5) -> list[tuple[str, str]]:
+    """Respaldo de la búsqueda semántica: recuerdos que comparten al menos una palabra con contenido (sin palabras
+    vacías) con la consulta, más coincidencias primero. Sirve para consultas con varios temas ("dónde trabajo y
+    vivo"), cuya similitud con cada recuerdo queda bajo el umbral."""
+    wanted = content_stems(query, query=True)
+    if not wanted:
+        return []
+    items = [i for i in store.search(memory_namespace(user_id), limit=_SEARCH_WINDOW)
+             if (getattr(i, "value", None) or {}).get("text")]
+    scored = [(len(wanted & content_stems(i.value["text"])), i) for i in items]
+    scored = [(n, i) for n, i in scored if n > 0]
+    scored.sort(key=lambda p: p[0], reverse=True)
+    return [(i.key, i.value["text"]) for _, i in scored[:limit]]
 
 
 def _created_at(item) -> str:
