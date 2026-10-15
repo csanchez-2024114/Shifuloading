@@ -5,7 +5,7 @@
 import * as E from './estadistica'
 import {
   anchoTexto, anchoVal, cortar, cajaTexto, choca, cabeEn, sinChoques, usePintura, useOrden, tope, escala, ticks, fEje, plano, Rejilla, EjeX,
-  planLeyenda, areaCon, Leyenda, punto, sector, Cuenta, Svg, etiquetasCirculo, nivelesCalor, cajaEnSector, SEPARADOR,
+  planLeyenda, areaCon, Leyenda, punto, sector, Cuenta, Svg, etiquetasCirculo, nivelesCalor, cajaEnSector, SEPARADOR, rotularSector, Placa, anchoPlaca, ALTO_PLACA, altoTexto, partirNombre,
 } from './graficos-base'
 import {
   ACENTO, sumaDe, fechaCorta, fechaLarga, campoDe, fnDe, medirDe, tipoDe, queMide, nombre, FALTA, SIN_DATOS, calcCategorias, calcMeses,
@@ -195,20 +195,29 @@ function Bala({ w, h, d, ix }) {
 }
 
 // ── 4. Waffle 10 × 10 ─────────────────────────────────────────────────────────────────────────────
-function Waffle({ w, h, d, ix }) {
+function Waffle({ w, h, d, ix, uid }) {
   const pin = usePintura()
   const variante = useOrden()(0, 3)
   const items = d.items.filter((i) => i.valor > 0)
   const cuentas = E.repartir100(items.map((i) => i.valor))
-  const leyItems = items.map((it, k) => ({ id: it.id, nombre: it.etiqueta, color: it.color, suave: true, valor: `${cuentas[k]} %`, filas: [[d.que, fmt(d.tipo, it.valor), pin.col(it.color)], ['Del total', fmtPct(it.valor / d.total)]] }))
-  const ley = planLeyenda(w, h, leyItems)
-  const a = areaCon(ley, w, h)
-  const lado = Math.max(20, Math.min(a.w, a.h) - 4)
-  const gap = Math.max(1.5, lado / 10 * 0.12)
-  const s = (lado - 9 * gap) / 10
+  const leyDe = (conRefs) => items.map((it, k) => ({ id: it.id, nombre: it.etiqueta, color: it.color, suave: true, ref: conRefs ? k + 1 : undefined, refId: conRefs ? `${uid}-lr${k}` : undefined, valor: `${cuentas[k]} %`, filas: [[d.que, fmt(d.tipo, it.valor), pin.col(it.color)], ['Del total', fmtPct(it.valor / d.total)]] }))
+  const medir = (lista) => {
+    const ley = planLeyenda(w, h, lista)
+    const a = areaCon(ley, w, h)
+    const lado = Math.max(20, Math.min(a.w, a.h) - 4)
+    const gap = Math.max(1.5, lado / 10 * 0.12)
+    return { ley, a, lado, gap, s: (lado - 9 * gap) / 10 }
+  }
+  // Las casillas no llevan texto; si son grandes, la primera de cada categoría lleva su número, repetido en la leyenda.
+  const cabePlaca = (m) => m.ley.lado && m.s - 2 >= Math.max(ALTO_PLACA, anchoPlaca(items.length))
+  let conRefs = false; let m = medir(leyDe(false))
+  if (cabePlaca(m)) { const m2 = medir(leyDe(true)); if (cabePlaca(m2)) { m = m2; conRefs = true } }
+  const { ley, a, lado, gap, s } = m
+  const leyItems = leyDe(conRefs)
   const x0 = (a.w - lado) / 2; const y0 = (a.h - lado) / 2
   const celdas = []
   items.forEach((it, k) => { for (let j = 0; j < cuentas[k]; j++) celdas.push(it) })
+  const primera = new Map(); celdas.forEach((it, i) => { if (!primera.has(it.id)) primera.set(it.id, i) })
   const orden = (fila, col) => (variante === 1 ? fila * 10 + (fila % 2 ? 9 - col : col) : variante === 2 ? (fila + col) * 4 : fila * 10 + col)
   return (
     <Svg w={w} h={h} aria={`${d.pie}: ${items.map((it, k) => `${it.etiqueta} ${cuentas[k]} %`).join(', ')}`}>
@@ -216,10 +225,14 @@ function Waffle({ w, h, d, ix }) {
         {Array.from({ length: 100 }, (_, i) => {
           const fila = Math.floor(i / 10); const col = i % 10
           const it = celdas[i]
+          const x = x0 + col * (s + gap); const y = y0 + fila * (s + gap)
+          const k = it ? items.indexOf(it) : -1
           return (
-            <rect key={i} className={`gr-celda gr-a-casilla${it ? ix.c(it.id) : ''}`} x={x0 + col * (s + gap)} y={y0 + fila * (s + gap)} width={s} height={s} rx={Math.min(3, s / 4)}
-              style={{ fill: it ? pin.relleno(it.color) : undefined, '--o': orden(fila, col) }}
-              {...(it ? ix.p(it.id, it.larga, [[d.que, fmt(d.tipo, it.valor), pin.col(it.color)], ['Del total', fmtPct(it.valor / d.total)], ['Casillas', `${cuentas[items.indexOf(it)]} de 100`]]) : {})} />
+            <g key={i} className={`gr-a-casilla${it ? ix.c(it.id) : ''}`} style={{ '--o': orden(fila, col) }}
+              {...(it ? ix.p(it.id, it.larga, [[d.que, fmt(d.tipo, it.valor), pin.col(it.color)], ['Del total', fmtPct(it.valor / d.total)], ['Casillas', `${cuentas[k]} de 100`]]) : {})}>
+              <rect className="gr-celda" x={x} y={y} width={s} height={s} rx={Math.min(3, s / 4)} style={{ fill: it ? pin.relleno(it.color) : undefined }} />
+              {conRefs && it && primera.get(it.id) === i && <Placa n={k + 1} x={x + s / 2} y={y + s / 2} fondo={pin.relleno(it.color)} id={`${uid}-wp${k}`} pin={pin} />}
+            </g>
           )
         })}
       </g>
@@ -294,6 +307,14 @@ function calcSol(regs, campos, o) {
   if (!(total > 0)) return SIN_DATOS
   return { grupos, total, tipo: tipoDe(o, campos), que: queMide(o, campos), pie: `${queMide(o, campos)}: ${ce.nombre.toLowerCase()} (centro) → ${ct.nombre.toLowerCase()} (afuera, 3 principales + otros)` }
 }
+/** Texto de un tramo de anillo (horizontal o radial) con nombre en 11 px y valor en 12 px. */
+function TextoSector({ e, forma, color, o }) {
+  return (
+    <text className="gr-dentro gr-aparece" data-forma={forma} x={e.x} y={e.y} dy="0.35em" textAnchor="middle" transform={e.giro ? `rotate(${e.giro.toFixed(2)} ${e.x.toFixed(2)} ${e.y.toFixed(2)})` : undefined} style={{ fill: color, '--o': o }}>
+      {e.nombre && <tspan>{e.nombre}{e.valor ? ' · ' : ''}</tspan>}{e.valor && <tspan className="gr-valor" style={{ fill: color }}>{e.valor}</tspan>}
+    </text>
+  )
+}
 function Sol({ w, h, d, ix, uid }) {
   const pin = usePintura(); const ord = useOrden()
   const { grupos, total, tipo } = d
@@ -306,7 +327,18 @@ function Sol({ w, h, d, ix, uid }) {
   const origen = { transformOrigin: `${cx}px ${cy}px` }
   let acum = 0
   const partes = grupos.map((g, i) => { const f = g.valor / total; const a0 = acum * 2 * Math.PI; acum += f; return { it: g, i, f, a0, a1: acum * 2 * Math.PI } })
-  const etq = etiquetasCirculo({ partes, cx, cy, r0, R: r1, a, fuera: false })
+  // Anillo interno: el % (horizontal o radial). Anillo externo: nombre · %, nombre corto (≥ 6 letras) · % o solo el %.
+  const etqIn = partes.map((p) => rotularSector({ cx, cy, r0, r1, a0: p.a0, a1: p.a1, opciones: [{ valor: fmtPct(p.f) }] }))
+  const largoExt = R - (r1 + 1) - 6
+  const etqExt = partes.map((p) => {
+    let ac = p.a0
+    return p.it.hijos.map((x) => {
+      const b0 = ac; const b1 = ac + (x.valor / p.it.valor) * (p.a1 - p.a0); ac = b1
+      const pct = fmtPct(x.valor / total)
+      const corto = partirNombre(x.etiqueta, largoExt - anchoTexto(' · ') - anchoVal(pct), 1)
+      return rotularSector({ cx, cy, r0: r1 + 1, r1: R, a0: b0, a1: b1, opciones: [{ nombre: x.etiqueta, valor: pct }, corto && !corto.completo ? { nombre: corto.lineas[0], valor: pct } : null, { valor: pct }] })
+    })
+  })
   const TONOS = [0.82, 0.62, 0.46, 0.34]
   const totalTxt = fmtCorto(tipo, total)
   let tam = Math.round(Math.max(12, Math.min(22, r0 * 0.5)))
@@ -325,7 +357,7 @@ function Sol({ w, h, d, ix, uid }) {
               {g.hijos.map((x, k) => {
                 const b0 = ac2; const b1 = ac2 + (x.valor / g.valor) * (a1 - a0); ac2 = b1
                 const fh = pin.relleno(g.color, TONOS[k % TONOS.length])
-                return <path key={x.id} className={`gr-a-gajo gr-m${ix.c(x.id, g.id)}`} d={sector(cx, cy, r1 + 1, R, b0, b1)} style={{ fill: fh, stroke: pin.sup, strokeWidth: SEPARADOR, ...origen, '--o': ord(i, grupos.length) + 4 + k }}
+                return <path key={x.id} id={`${uid}-sx${i}-${k}`} className={`gr-a-gajo gr-m${ix.c(x.id, g.id)}`} d={sector(cx, cy, r1 + 1, R, b0, b1)} style={{ fill: fh, stroke: pin.sup, strokeWidth: SEPARADOR, ...origen, '--o': ord(i, grupos.length) + 4 + k }}
                   {...ix.p(x.id, `${g.etiqueta} › ${x.etiqueta}`, [[d.que, fmt(tipo, x.valor), fh], [`De ${g.etiqueta}`, fmtPct(x.valor / g.valor)], ['Del total', fmtPct(x.valor / total)], ['Registros', fmt('numero', x.n)]])} />
               })}
             </g>
@@ -333,7 +365,8 @@ function Sol({ w, h, d, ix, uid }) {
         })}
       </g>
       <g pointerEvents="none">
-        {etq.filter((e) => e.modo === 'dentro').map((e) => <text key={e.it.id} className="gr-valor gr-dentro gr-aparece" data-forma={`${uid}-s${e.i}`} x={e.x} y={e.y} dy="0.35em" textAnchor="middle" style={{ fill: pin.texto(pin.relleno(e.it.color)), '--o': 10 + e.i }}>{e.t}</text>)}
+        {etqIn.map((e, i) => e && <TextoSector key={`i${i}`} e={e} forma={`${uid}-s${i}`} color={pin.texto(pin.relleno(partes[i].it.color))} o={10 + i} />)}
+        {etqExt.map((fila, i) => fila.map((e, k) => e && <TextoSector key={`e${i}-${k}`} e={e} forma={`${uid}-sx${i}-${k}`} color={pin.texto(pin.relleno(partes[i].it.color, TONOS[k % TONOS.length]))} o={14 + i} />))}
         {conCentro && <text x={cx} y={cy} dy="0.35em" textAnchor="middle" className="gr-grande" style={{ fontSize: tam }}><Cuenta v={total} f={(x) => fmtCorto(tipo, x)} /></text>}
       </g>
       <Leyenda plan={ley} w={w} h={h} ix={ix} items={leyItems} />

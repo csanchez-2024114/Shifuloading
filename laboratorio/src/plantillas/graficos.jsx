@@ -20,12 +20,13 @@ import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useStat
 import { createPortal } from 'react-dom'
 import { AnimarContext, VelContext } from './vistas'
 import * as E from './estadistica'
+import { region } from './regional'
 import { registrosDe } from './datosEjemplo'
 import { camposDe } from './validar'
 import {
   anchoTexto, anchoVal, cortar, cajaTexto, choca, cabeEn, sinChoques, usePintura, leerPintura, PinturaContext, VarianteContext,
   useOrden, tope, escala, ticks, fEje, plano, Rejilla, EjeX, planLeyenda, filasAbajo, areaCon, Leyenda, porSerie, claseSerie,
-  punto, sector, Cuenta, Svg, sinMovimiento, olvidarAnchos, etiquetasCirculo, nivelesCalor, SEPARADOR, altoTexto,
+  punto, sector, Cuenta, Svg, sinMovimiento, olvidarAnchos, etiquetasCirculo, nivelesCalor, SEPARADOR, altoTexto, Placa, anchoPlaca, ALTO_PLACA, esquinasGiradas, puntosEnSector, partirNombre,
 } from './graficos-base'
 import {
   ACENTO, GRIS, sumaDe, fechaCorta, fechaLarga, CLASES, cumple, base, campoDe, fnDe, medirDe, tipoDe, queMide, nombre, FALTA, SIN_DATOS,
@@ -36,7 +37,7 @@ import '@base/crm.css'
 import '@base/crm-extra.css'
 import './graficos.css'
 
-export { CLASES }
+export { CLASES, partirNombre }
 const { COLORES, fmt, fmtPct, fmtCorto } = E
 const VERDE = COLORES[1]
 const ROJO = COLORES[3]
@@ -118,13 +119,18 @@ function ColumnasApiladas({ w, h, d, ix, uid, normalizar }) {
                   if (!v) return null
                   const y0 = p.y(acum); acum += v; const y1 = p.y(acum)
                   const fondo = pin.relleno(s.color)
-                  const pct = normalizar ? fmtPct(v) : ''
+                  // Valor dentro del tramo: horizontal si cabe; si el tramo es alto y la columna angosta, vertical; si no, nada
+                  // (la serie la dice el color de la leyenda y el número exacto, el tooltip).
+                  const txt = normalizar ? fmtPct(v) : fmtCorto(tipo, v)
                   const id = `${uid}-c${i}-${k}`
-                  const cabe = normalizar && y0 - y1 >= 18 && bw >= anchoTexto(pct, 11, 600) + 8
+                  const alto = y0 - y1 - SEPARADOR; const ancho = bw - SEPARADOR
+                  const tw = anchoTexto(txt, 11, 600)
+                  const modo = alto >= altoTexto(11) + 3 && ancho >= tw + 6 ? 'h' : ancho >= altoTexto(11) + 3 && alto >= tw + 6 ? 'v' : null
+                  const ym = (y0 + y1) / 2
                   return (
                     <g key={s.id} className={`gr-seg${claseSerie(ix, s.id)}`}>
                       <rect id={id} className="gr-forma" x={xc - bw / 2} y={y1} width={bw} height={Math.max(0.5, y0 - y1)} style={{ fill: fondo, stroke: pin.sup, strokeWidth: SEPARADOR }} />
-                      {cabe && <text className="gr-dentro gr-chico" data-forma={id} x={xc} y={(y0 + y1) / 2} dy="0.35em" textAnchor="middle" style={{ fill: pin.texto(fondo) }} pointerEvents="none">{pct}</text>}
+                      {modo && <text className="gr-dentro gr-chico" data-forma={id} x={xc} y={ym} dy="0.35em" textAnchor="middle" transform={modo === 'v' ? `rotate(-90 ${xc} ${ym})` : undefined} style={{ fill: pin.texto(fondo) }} pointerEvents="none">{txt}</text>}
                     </g>
                   )
                 })}
@@ -231,37 +237,62 @@ function Barra100({ w, h, d, ix, uid }) {
   const pin = usePintura()
   const { items, tipo, total } = d
   const conPartes = items.filter((i) => i.valor > 0)
-  const leyItems = items.map((i) => ({ id: i.id, nombre: i.etiqueta, color: i.color, suave: true, valor: fmtPct(E.porcentajeDelTotal(i.valor, total)), filas: [[d.que, fmt(tipo, i.valor), pin.col(i.color)]] }))
-  const altoLey = filasAbajo(w, leyItems) * 18 + 6
-  const ley = h - altoLey >= 34 ? { lado: 'abajo', alto: altoLey } : { lado: null }
-  const enLinea = ley.lado ? ley.alto : 0
-  const bh = Math.max(14, Math.min(48, (h - enLinea) * 0.4))
-  const yb = Math.max(4, (h - enLinea - bh) / 2)
   const x0 = 2; const x1 = w - 2
+  const sep = conPartes.length > 1 ? SEPARADOR : 0
+  /**
+   * Qué lleva cada segmento, de más a menos: el % horizontal; el % vertical (si la barra es alta); una placa con un número
+   * que se repite en la leyenda; nada (tooltip). Cuenta lo VISIBLE: separación, aire y la punta redondeada de los extremos.
+   */
+  const planear = (bh, conRefs) => {
+    let acum = 0; let n = 0
+    const rx = Math.min(10, bh / 2)
+    return conPartes.map((it, i) => {
+      const f = it.valor / total
+      const xa = x0 + (x1 - x0) * acum; acum += f; const ancho = (x1 - x0) * f
+      const pct = fmtPct(f)
+      const extremo = i === 0 || i === conPartes.length - 1
+      const dy = Math.max(0, altoTexto(12) / 2 - (bh / 2 - rx))
+      const punta = extremo ? rx - Math.sqrt(Math.max(0, rx * rx - dy * dy)) : 0
+      const util = ancho - sep - 4 - 2 * punta
+      let modo = null; let ref = null
+      if (bh >= altoTexto(12) + 4 && util >= anchoVal(pct)) modo = 'h'
+      else if (bh - 8 >= anchoVal(pct) && ancho - sep - (extremo ? rx : 0) - 2 >= altoTexto(12)) modo = 'v'
+      else if (conRefs && bh >= ALTO_PLACA + 4 && ancho - sep - 4 - (extremo ? rx : 0) >= anchoPlaca(n + 1)) { modo = 'ref'; ref = ++n }
+      return { it, i, f, xa, ancho, pct, punta, modo, ref }
+    })
+  }
+  const leyDe = (partes) => items.map((i) => {
+    const p = partes.find((x) => x.it.id === i.id)
+    return { id: i.id, nombre: i.etiqueta, color: i.color, suave: true, ref: p?.ref || undefined, refId: p?.ref ? `${uid}-lr${p.ref}` : undefined, valor: fmtPct(E.porcentajeDelTotal(i.valor, total)), filas: [[d.que, fmt(tipo, i.valor), pin.col(i.color)]] }
+  })
+  const medidas = (lista) => { const altoLey = filasAbajo(w, lista) * 18 + 6; const ley = h - altoLey >= 34 ? { lado: 'abajo', alto: altoLey } : { lado: null }; const enLinea = ley.lado ? ley.alto : 0; const bh = Math.max(14, Math.min(48, (h - enLinea) * 0.4)); return { ley, bh, yb: Math.max(4, (h - enLinea - bh) / 2) } }
+  // Primero sin referencias; si hay leyenda, se agregan y se vuelve a medir (la leyenda puede crecer y la barra achicarse).
+  let m = medidas(leyDe([])); let partes = planear(m.bh, false)
+  if (m.ley.lado && partes.some((p) => !p.modo)) {
+    const conRefs = planear(m.bh, true)
+    const m2 = medidas(leyDe(conRefs))
+    const otra = planear(m2.bh, true)
+    if (m2.ley.lado && otra.map((p) => p.ref).join() === conRefs.map((p) => p.ref).join()) { m = m2; partes = otra }
+  }
+  const { ley, bh, yb } = m
+  const leyItems = leyDe(partes)
   const clip = `gr-b100-${uid}`
-  let acum = 0
   return (
     <Svg w={w} h={h} aria={`${d.pie}: ${items.map((i) => `${i.etiqueta} ${fmtPct(E.porcentajeDelTotal(i.valor, total))}`).join(', ')}`}>
       <defs><clipPath id={clip}><rect x={x0} y={yb} width={x1 - x0} height={bh} rx={Math.min(10, bh / 2)} /></clipPath></defs>
       <rect className="gr-pista" x={x0} y={yb} width={x1 - x0} height={bh} rx={Math.min(10, bh / 2)} />
       <g className="gr-marcas" clipPath={`url(#${clip})`}>
-        {conPartes.map((it, i) => {
-          const f = it.valor / total
-          const xa = x0 + (x1 - x0) * acum; acum += f; const ancho = (x1 - x0) * f
-          const pct = fmtPct(f)
+        {partes.map(({ it, i, xa, ancho, pct, punta, modo, ref }) => {
           const fondo = pin.relleno(it.color)
           const id = `${uid}-b${i}`
-          // Cabe si el texto entra en lo VISIBLE del segmento: menos la separación, el aire y, solo en los
-          // extremos, lo que la punta redondeada recorta a la altura del texto. (2 px de aire por lado; el ancho del % se mide exacto.)
-          const rx = Math.min(10, bh / 2)
-          const medioT = altoTexto(12) / 2
-          const dy = Math.max(0, medioT - (bh / 2 - rx))
-          const punta = i === 0 || i === conPartes.length - 1 ? rx - Math.sqrt(Math.max(0, rx * rx - dy * dy)) : 0
-          const cabe = bh >= altoTexto(12) + 4 && ancho - (conPartes.length > 1 ? SEPARADOR : 0) - 4 - 2 * punta >= anchoVal(pct)
+          const xc = xa + ancho / 2 + (modo === 'h' ? (i === 0 ? punta / 2 : i === conPartes.length - 1 ? -punta / 2 : 0) : 0)
+          const yc = yb + bh / 2
           return (
             <g key={it.id} className={`gr-m${ix.c(it.id)}`} {...ix.p(it.id, it.larga, [[d.que, fmt(tipo, it.valor), pin.col(it.color)], ['Del total', pct]])}>
-              <rect id={id} className="gr-forma gr-a-barra" x={xa} y={yb} width={Math.max(0.5, ancho)} height={bh} style={{ fill: fondo, stroke: pin.sup, strokeWidth: conPartes.length > 1 ? SEPARADOR : 0, '--o': i }} />
-              {cabe && <text className="gr-valor gr-dentro gr-aparece" data-forma={id} x={xa + ancho / 2 + (i === 0 ? punta / 2 : i === conPartes.length - 1 ? -punta / 2 : 0)} y={yb + bh / 2} dy="0.35em" textAnchor="middle" style={{ fill: pin.texto(fondo), '--o': i + 2 }} pointerEvents="none">{pct}</text>}
+              <rect id={id} className="gr-forma gr-a-barra" x={xa} y={yb} width={Math.max(0.5, ancho)} height={bh} style={{ fill: fondo, stroke: pin.sup, strokeWidth: sep, '--o': i }} />
+              {modo === 'h' && <text className="gr-valor gr-dentro gr-aparece" data-forma={id} x={xc} y={yc} dy="0.35em" textAnchor="middle" style={{ fill: pin.texto(fondo), '--o': i + 2 }} pointerEvents="none">{pct}</text>}
+              {modo === 'v' && <text className="gr-valor gr-dentro gr-aparece" data-forma={id} x={xc} y={yc} dy="0.35em" textAnchor="middle" transform={`rotate(-90 ${xc} ${yc})`} style={{ fill: pin.texto(fondo), '--o': i + 2 }} pointerEvents="none">{pct}</text>}
+              {modo === 'ref' && <g className="gr-aparece" style={{ '--o': i + 2 }}><Placa n={ref} x={xc} y={yc} fondo={fondo} id={`${uid}-bp${i}`} pin={pin} /></g>}
             </g>
           )
         })}
@@ -489,7 +520,7 @@ function Medidor({ w, h, d, ix }) {
   const arco = `M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}`
   const f = Math.max(0, Math.min(1, d.f))
   const ang = Math.PI * (1 - f)
-  const grande = `${(Math.round(d.f * 1000) / 10).toLocaleString('es')} %`
+  const grande = E.fmtPct(d.f)
   let tam = Math.round(Math.max(13, Math.min(30, R * 0.36)))
   while (tam > 12 && anchoTexto(grande, tam, 600) > r * 1.5) tam--
   const objetivo = cortar(d.objetivo, Math.max(40, Math.min(w - 8, R >= 84 ? r * 1.2 : w - 8)))
@@ -500,7 +531,7 @@ function Medidor({ w, h, d, ix }) {
         {f > 0 && <path className={`gr-arco gr-a-arco gr-m${ix.c('medidor')}`} d={arco} pathLength="1" strokeDasharray={`${f} 1`} style={{ stroke: pin.relleno(d.color), strokeWidth: sw, strokeLinecap: 'round', '--sw': `${sw}px` }} />}
         {R >= 40 && <circle className="gr-a-pop" cx={cx + Math.cos(ang) * r} cy={cy - Math.sin(ang) * r} r={sw * 0.3} style={{ fill: pin.col(d.color), stroke: pin.sup, strokeWidth: 2, '--o': 12 }} />}
       </g>
-      <text x={cx} y={cy - (R >= 50 ? 6 : 2)} textAnchor="middle" className="gr-grande" style={{ fontSize: tam }}><Cuenta v={d.f * 100} f={(x) => `${(Math.round(x * 10) / 10).toLocaleString('es')} %`} /></text>
+      <text x={cx} y={cy - (R >= 50 ? 6 : 2)} textAnchor="middle" className="gr-grande" style={{ fontSize: tam }}><Cuenta v={d.f * 100} f={(x) => E.fmtPct(x / 100)} /></text>
       {R >= 84 && cy + sw / 2 + 17 <= h && <><text x={cx - r} y={cy + sw / 2 + 14} textAnchor="middle" className="gr-sutil">0 %</text><text x={cx + r} y={cy + sw / 2 + 14} textAnchor="middle" className="gr-sutil">100 %</text></>}
       {objetivo && <text x={cx} y={cy + 16} textAnchor="middle">{objetivo}</text>}
       {h >= 110 && <text x={cx} y={cy + 31} textAnchor="middle" className="gr-sutil">{cortar(`${fmt('numero', d.n)} de ${fmt('numero', d.total)} registros`, w - 8)}</text>}
@@ -521,7 +552,7 @@ function Meta({ w, h, d, ix }) {
   const color = f >= 1 ? VERDE : ACENTO
   const [ex1, ey1] = punto(cx, cy, R + 1, d.esperado * 2 * Math.PI)
   const [ex2, ey2] = punto(cx, cy, R - sw - 1, d.esperado * 2 * Math.PI)
-  const pctTxt = `${Math.round(f * 100).toLocaleString('es')} %`
+  const pctTxt = region().pct(Math.round(f * 100) / 100)
   let tam = Math.round(Math.max(13, Math.min(30, r * 0.4)))
   while (tam > 12 && anchoTexto(pctTxt, tam, 600) > (r - sw / 2) * 1.6) tam--
   const linea2 = `${fmtCorto(d.tipo, d.valor)} de ${fmtCorto(d.tipo, d.meta)}`
@@ -537,7 +568,7 @@ function Meta({ w, h, d, ix }) {
         {R >= 34 && <line className="gr-esperado gr-aparece" x1={ex1} y1={ey1} x2={ex2} y2={ey2} style={{ '--o': 12 }} />}
       </g>
       <g pointerEvents="none">
-        <text x={cx} y={con2 ? cy - 6 : cy} dy="0.35em" textAnchor="middle" className="gr-grande" style={{ fontSize: tam }}><Cuenta v={f * 100} f={(x) => `${Math.round(x).toLocaleString('es')} %`} /></text>
+        <text x={cx} y={con2 ? cy - 6 : cy} dy="0.35em" textAnchor="middle" className="gr-grande" style={{ fontSize: tam }}><Cuenta v={f * 100} f={(x) => region().pct(Math.round(x) / 100)} /></text>
         {con2 && <text x={cx} y={cy + tam / 2 + 6} dy="0.35em" textAnchor="middle" className="gr-valor">{linea2}</text>}
         {con3 && <text x={cx} y={cy + tam / 2 + 22} dy="0.35em" textAnchor="middle" className="gr-sutil">{linea3}</text>}
       </g>
@@ -625,36 +656,6 @@ export function squarify(items, x, y, w, h) {
   return out
 }
 /**
- * Parte un nombre en hasta `lineas` renglones de ancho `max`, por palabras. Una palabra que no cabe sola se corta con «…».
- * Si el nombre entero no cabe, el último renglón termina en «…» — pero SOLO si quedan al menos 6 caracteres visibles
- * del nombre (si no, devuelve null). Devuelve { lineas: [...], completo } o null. Nunca corta una palabra sin «…».
- */
-export function partirNombre(nombre, max, lineas = 2, px = 11, peso = 500) {
-  const palabras = String(nombre ?? '').trim().split(/\s+/).filter(Boolean)
-  if (!palabras.length || max < px) return null
-  const cabe = (t) => anchoTexto(t, px, peso) <= max
-  const out = []
-  let i = 0
-  while (i < palabras.length && out.length < lineas) {
-    let linea = palabras[i]
-    if (!cabe(linea)) break // la palabra sola no cabe: se resuelve abajo con «…»
-    i++
-    while (i < palabras.length && cabe(`${linea} ${palabras[i]}`)) linea += ` ${palabras[i++]}`
-    out.push(linea)
-  }
-  if (i >= palabras.length) return { lineas: out, completo: true }
-  // No cupo todo: el último renglón disponible termina en «…».
-  const resto = palabras.slice(out.length < lineas ? i : i - (out[out.length - 1] || '').split(' ').length).join(' ')
-  const previas = out.length < lineas ? out : out.slice(0, -1)
-  let n = resto.length
-  let ult = ''
-  while (n > 0) { const t = `${resto.slice(0, n).trimEnd()}…`; if (cabe(t)) { ult = t; break } n-- }
-  if (!ult) return null
-  const visibles = previas.join(' ').replace(/\s/g, '').length + ult.slice(0, -1).replace(/\s/g, '').length
-  if (visibles < 6) return null
-  return { lineas: [...previas, ult], completo: false }
-}
-/**
  * Etiqueta de un recuadro, de más a menos: nombre en 1 renglón + valor·%, nombre + %, nombre en 2 renglones (por palabras)
  * + valor·% o %, nombre truncado con «…» (≥ 6 caracteres) + %, solo %, nada (queda el tooltip). Todo medido.
  * Devuelve { nombre: [renglones], valor } o null.
@@ -665,21 +666,61 @@ function etiquetaRecuadro(cw, ch, nombreTxt, valorTxt, pct) {
   const vp = `${valorTxt} · ${pct}`
   const p1 = partirNombre(nombreTxt, util, 1)
   const p2 = partirNombre(nombreTxt, util, 2)
-  const opciones = []
-  if (p1?.completo) opciones.push({ n: p1.lineas, v: vp }, { n: p1.lineas, v: pct })
-  if (p2?.completo) opciones.push({ n: p2.lineas, v: vp }, { n: p2.lineas, v: pct })
-  if (p2 && !p2.completo) opciones.push({ n: p2.lineas, v: pct })
-  if (p1 && !p1.completo) opciones.push({ n: p1.lineas, v: pct })
-  for (const o of opciones) if (ch >= alto(o.n.length, true) && util >= anchoVal(o.v)) return { nombre: o.n, valor: o.v }
-  if (ch >= 24 && cw - 14 >= anchoVal(pct)) return { nombre: [], valor: pct }
+  const cabeH = (o) => ch >= alto(o.n.length, true) && util >= anchoVal(o.v)
+  // Recuadro alto y angosto: texto vertical (girado −90°) a lo largo del recuadro.
+  const ancho = cw - 3; const largo = ch - 3 - 12
+  const vertical = ancho >= altoTexto(12) + 2
+  const pv = vertical ? partirNombre(nombreTxt, largo - anchoTexto(' · ') - anchoVal(pct), 1) : null
+  // Orden: el nombre COMPLETO (horizontal y luego vertical) va antes que cualquier nombre truncado.
+  const completas = []
+  if (p1?.completo) completas.push({ n: p1.lineas, v: vp }, { n: p1.lineas, v: pct })
+  if (p2?.completo) completas.push({ n: p2.lineas, v: vp }, { n: p2.lineas, v: pct })
+  for (const o of completas) if (cabeH(o)) return { modo: 'h', nombre: o.n, valor: o.v }
+  if (pv?.completo) return { modo: 'v', nombre: pv.lineas[0], valor: pct }
+  const truncas = []
+  if (p2 && !p2.completo) truncas.push({ n: p2.lineas, v: pct })
+  if (p1 && !p1.completo) truncas.push({ n: p1.lineas, v: pct })
+  for (const o of truncas) if (cabeH(o)) return { modo: 'h', nombre: o.n, valor: o.v }
+  if (pv) return { modo: 'v', nombre: pv.lineas[0], valor: pct }
+  if (ch >= 24 && cw - 14 >= anchoVal(pct)) return { modo: 'h', nombre: [], valor: pct }
+  if (vertical && largo >= anchoVal(pct)) return { modo: 'v', nombre: '', valor: pct }
   return null
 }
+/** Treemap con etiquetas que se adaptan; los recuadros donde nada cabe llevan un número que se repite en la leyenda. */
 function Arbol({ w, h, d, ix, uid }) {
   const pin = usePintura()
   const variante = useOrden()(0, 3) // 0, 1 o 2 según la variante de este montaje
   const { tipo, total } = d
   const items = d.items.filter((i) => i.valor > 0).sort((a, b) => b.valor - a.valor)
-  const celdas = squarify(items, 0, 0, w, h)
+  const armar = (alto, conRefs) => {
+    const celdas = squarify(items, 0, 0, w, alto)
+    let n = 0
+    const etq = celdas.map(({ it, w: cw, h: ch }) => {
+      const e = etiquetaRecuadro(cw, ch, it.etiqueta, fmtCorto(tipo, it.valor), fmtPct(it.valor / total))
+      if (e || !conRefs) return e
+      const ref = n + 1
+      if (cw - 7 >= anchoPlaca(ref) && ch - 7 >= ALTO_PLACA) { n = ref; return { modo: 'ref', ref } }
+      return null
+    })
+    return { celdas, etq }
+  }
+  const refsDe = (r) => r.celdas.map((c, i) => ({ c, e: r.etq[i] })).filter(({ e }) => e?.modo === 'ref')
+    .map(({ c, e }) => ({ id: `ref:${c.it.id}`, nombre: c.it.etiqueta, color: c.it.color, ref: e.ref, refId: `${uid}-lr${e.ref}`, valor: fmtPct(c.it.valor / total) }))
+  // Se reserva abajo el alto de la leyenda de referencias y se vuelve a armar (el mosaico cambia); se repite hasta que se estabiliza.
+  let alto = h; let r = armar(h, false); let refs = []
+  if (r.etq.some((e) => !e)) {
+    for (let k = 0; k < 4; k++) {
+      const prueba = armar(alto, true)
+      const lista = refsDe(prueba)
+      const altoLey = lista.length ? filasAbajo(w, lista) * 18 + 6 : 0
+      if (h - altoLey < Math.max(60, h * 0.55)) break // no hay lugar para la leyenda: quedan en el tooltip
+      r = prueba; refs = lista
+      if (h - altoLey === alto) break
+      alto = h - altoLey
+    }
+    if (refs.length && filasAbajo(w, refs) * 18 + 6 > h - alto) { r = armar(h, false); refs = []; alto = h } // no convergió: sin referencias
+  }
+  const { celdas, etq } = r
   // Orden del mosaico: en diagonal (0), del más grande al más chico (1) o en diagonal inversa (2).
   const rango = celdas.map((c, i) => [variante === 1 ? i : variante === 2 ? -(c.x + c.y) : c.x + c.y, i]).sort((a, b) => a[0] - b[0]).map(([, i]) => i)
   const ordenDe = new Map(rango.map((i, k) => [i, k]))
@@ -690,19 +731,26 @@ function Arbol({ w, h, d, ix, uid }) {
           const pct = fmtPct(it.valor / total)
           const fondo = pin.relleno(it.color)
           const id = `${uid}-t${i}`
-          const etq = etiquetaRecuadro(cw, ch, it.etiqueta, fmtCorto(tipo, it.valor), pct)
+          const e = etq[i]
           const tx = pin.texto(fondo)
           return (
-            <g key={it.id} className={`gr-m${ix.c(it.id)}`} {...ix.p(it.id, it.larga, [[d.que, fmt(tipo, it.valor), pin.col(it.color)], ['Del total', pct], ['Registros', fmt('numero', it.n)]])}>
+            <g key={it.id} className={`gr-m${ix.c(it.id, `ref:${it.id}`)}`} {...ix.p(it.id, it.larga, [[d.que, fmt(tipo, it.valor), pin.col(it.color)], ['Del total', pct], ['Registros', fmt('numero', it.n)]])}>
               <g className="gr-a-mosaico" style={{ '--o': ordenDe.get(i) }}>
                 <rect id={id} className="gr-forma" x={x + 1.5} y={y + 1.5} width={Math.max(0, cw - 3)} height={Math.max(0, ch - 3)} rx={Math.min(8, cw / 4, ch / 4)} style={{ fill: fondo, stroke: pin.col(it.color) }} />
-                {etq && etq.nombre.map((t, k) => <text key={k} className="gr-dentro" data-forma={id} x={x + 9} y={y + 17 + k * 15} dy="0.35em" style={{ fill: tx }} pointerEvents="none">{t}</text>)}
-                {etq && <text className="gr-valor gr-dentro" data-forma={id} x={x + (etq.nombre.length ? 9 : 8)} y={etq.nombre.length ? y + 17 + (etq.nombre.length - 1) * 15 + 16 : y + 14} dy="0.35em" style={{ fill: tx }} pointerEvents="none">{etq.valor}</text>}
+                {e?.modo === 'h' && e.nombre.map((t, k) => <text key={k} className="gr-dentro" data-forma={id} x={x + 9} y={y + 17 + k * 15} dy="0.35em" style={{ fill: tx }} pointerEvents="none">{t}</text>)}
+                {e?.modo === 'h' && <text className="gr-valor gr-dentro" data-forma={id} x={x + (e.nombre.length ? 9 : 8)} y={e.nombre.length ? y + 17 + (e.nombre.length - 1) * 15 + 16 : y + 14} dy="0.35em" style={{ fill: tx }} pointerEvents="none">{e.valor}</text>}
+                {e?.modo === 'v' && (
+                  <text className="gr-dentro" data-forma={id} x={x + cw / 2} y={y + ch / 2} dy="0.35em" textAnchor="middle" transform={`rotate(-90 ${x + cw / 2} ${y + ch / 2})`} style={{ fill: tx }} pointerEvents="none">
+                    {e.nombre && <tspan>{e.nombre} · </tspan>}<tspan className="gr-valor" style={{ fill: tx }}>{e.valor}</tspan>
+                  </text>
+                )}
+                {e?.modo === 'ref' && <Placa n={e.ref} x={x + 3.5 + anchoPlaca(e.ref) / 2} y={y + 3.5 + ALTO_PLACA / 2} fondo={fondo} id={`${uid}-r${i}`} pin={pin} />}
               </g>
             </g>
           )
         })}
       </g>
+      {refs.length > 0 && <Leyenda plan={{ lado: 'abajo', alto: h - alto }} w={w} h={h} ix={ix} items={refs.map((x) => ({ ...x, filas: [[x.nombre, x.valor, pin.col(x.color)]] }))} />}
     </Svg>
   )
 }
@@ -1584,7 +1632,7 @@ export function GaleriaGraficos({ plantilla, datos, seccionId, animar = true, ve
           <header className="gr-galeria-cab">
             <div>
               <h1>Gráficos · {seccion.titulo}</h1>
-              <p>{lista.length} tipos compatibles con sus campos ({campos.map((c) => `${c.nombre}: ${c.tipo}`).join(', ')}) · {registros.length.toLocaleString('es')} registros</p>
+              <p>{lista.length} tipos compatibles con sus campos ({campos.map((c) => `${c.nombre}: ${c.tipo}`).join(', ')}) · {region().numero(registros.length)} registros</p>
             </div>
             <div className="gr-galeria-ctl">
               <label>Sección

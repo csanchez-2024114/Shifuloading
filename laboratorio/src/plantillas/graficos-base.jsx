@@ -214,7 +214,9 @@ export function EjeX({ p, items }) {
 }
 
 // ── Leyenda ───────────────────────────────────────────────────────────────────────────────────────
-const anchoItem = (it) => 14 + anchoTexto(it.nombre) + (it.valor ? anchoVal(it.valor) + 8 : 0) + 12
+/** Ancho de la muestra de color, o de la placa con el número de referencia (it.ref). */
+const anchoMuestra = (it) => (it.ref ? anchoPlaca(it.ref) + 5 : 14)
+const anchoItem = (it) => anchoMuestra(it) + anchoTexto(it.nombre) + (it.valor ? anchoVal(it.valor) + 8 : 0) + 12
 /** Cuántas filas ocupa una leyenda que fluye a lo ancho `w`. */
 export function filasAbajo(w, items) {
   let filas = 1; let x = 0
@@ -238,6 +240,7 @@ export function planLeyenda(w, h, items) {
 export const areaCon = (plan, w, h) => ({ w: plan.lado === 'der' ? Math.max(40, w - plan.ancho - 10) : w, h: plan.lado === 'abajo' ? Math.max(30, h - plan.alto) : h })
 
 function Muestra({ it, pin }) {
+  if (it.ref) return <Placa n={it.ref} x={anchoPlaca(it.ref) / 2} y={0} fondo={pin.relleno(it.color)} id={it.refId} pin={pin} />
   return <rect x="0" y="-5" width="10" height="10" rx="3" style={it.raya ? { fill: 'none', stroke: pin.col(it.color), strokeWidth: 2, strokeDasharray: '3 2' } : { fill: it.suave ? pin.relleno(it.color) : pin.col(it.color), stroke: pin.col(it.color), strokeWidth: it.suave ? 1 : 0 }} />
 }
 export function Leyenda({ plan, items, w, h, ix }) {
@@ -252,11 +255,11 @@ export function Leyenda({ plan, items, w, h, ix }) {
       <g className="gr-ley">
         {ver.map((it, i) => {
           const vw = it.valor ? anchoVal(it.valor) + 6 : 0
-          const nom = cortar(it.nombre, plan.ancho - 22 - vw)
+          const nom = cortar(it.nombre, plan.ancho - anchoMuestra(it) - 8 - vw)
           return (
             <g key={it.id} transform={`translate(${x},${y0 + i * 18})`} className={`gr-ley-it${ix.c(it.id)}`} style={{ '--i': tope(i) }} {...ix.p(it.id, it.nombre, it.filas || [])}>
               <Muestra it={it} pin={pin} />
-              {nom && <text x="16" dy="0.35em">{nom}</text>}
+              {nom && <text x={anchoMuestra(it) + 2} dy="0.35em">{nom}</text>}
               {it.valor && <text x={plan.ancho - 2} dy="0.35em" textAnchor="end" className="gr-ley-v">{it.valor}</text>}
             </g>
           )
@@ -278,11 +281,11 @@ export function Leyenda({ plan, items, w, h, ix }) {
     <g className="gr-ley">
       {items.map((it, i) => {
         const vw = it.valor ? anchoVal(it.valor) + 5 : 0
-        const nom = cortar(it.nombre, pos[i].a - 26 - vw)
+        const nom = cortar(it.nombre, pos[i].a - anchoMuestra(it) - 12 - vw)
         return (
           <g key={it.id} transform={`translate(${pos[i].x},${pos[i].y})`} className={`gr-ley-it${ix.c(it.id)}`} style={{ '--i': tope(i) }} {...ix.p(it.id, it.nombre, it.filas || [])}>
             <Muestra it={it} pin={pin} />
-            <text x="15" dy="0.35em">{nom}{it.valor && <tspan className="gr-ley-v" dx={nom ? 5 : 0}>{it.valor}</tspan>}</text>
+            <text x={anchoMuestra(it) + 1} dy="0.35em">{nom}{it.valor && <tspan className="gr-ley-v" dx={nom ? 5 : 0}>{it.valor}</tspan>}</text>
           </g>
         )
       })}
@@ -369,6 +372,90 @@ export function etiquetasCirculo({ partes, cx, cy, r0, R, a, fuera }) {
 
 /** Niveles de intensidad: el acento mezclado con la superficie (nada saturado a tope). */
 export const nivelesCalor = (pin) => [0, 0.26, 0.46, 0.66, 0.86].map((k) => (k ? E.mezclar(pin.acento, pin.sup, k) : null))
+
+// ── Texto rotado y placas de referencia ───────────────────────────────────────────────────────────
+/** Esquinas de la caja de un texto centrado en (x, y) y girado `grados` (sentido horario, como transform rotate). */
+export function esquinasGiradas(x, y, w, h, grados) {
+  const a = (grados * Math.PI) / 180; const c = Math.cos(a); const s = Math.sin(a)
+  return [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(([u, v]) => [x + u * c - v * s, y + u * s + v * c])
+}
+/** ¿Todos los puntos caen dentro del tramo de anillo (con margen)? */
+export function puntosEnSector(pts, cx, cy, r0, r1, a0, a1, m = 2) {
+  const dos = 2 * Math.PI
+  return pts.every(([x, y]) => {
+    const dx = x - cx; const dy = y - cy; const r = Math.hypot(dx, dy)
+    if (r > r1 - m || r < r0 + m) return false
+    if (a1 - a0 >= dos - 1e-6) return true
+    const rel = (((Math.atan2(dx, -dy) - a0) % dos) + dos) % dos
+    const marg = r > 0 ? m / r : 0
+    return rel >= marg && rel <= a1 - a0 - marg
+  })
+}
+/**
+ * Parte un nombre en hasta `lineas` renglones de ancho `max`, por palabras. Una palabra que no cabe sola se corta con «…».
+ * Si el nombre entero no cabe, el último renglón termina en «…» — pero SOLO si quedan al menos 6 caracteres visibles
+ * del nombre (si no, devuelve null). Devuelve { lineas: [...], completo } o null. Nunca corta una palabra sin «…».
+ */
+export function partirNombre(nombre, max, lineas = 2, px = 11, peso = 500) {
+  const palabras = String(nombre ?? '').trim().split(/\s+/).filter(Boolean)
+  if (!palabras.length || max < px) return null
+  const cabe = (t) => anchoTexto(t, px, peso) <= max
+  const out = []
+  let i = 0
+  while (i < palabras.length && out.length < lineas) {
+    let linea = palabras[i]
+    if (!cabe(linea)) break // la palabra sola no cabe: se resuelve abajo con «…»
+    i++
+    while (i < palabras.length && cabe(`${linea} ${palabras[i]}`)) linea += ` ${palabras[i++]}`
+    out.push(linea)
+  }
+  if (i >= palabras.length) return { lineas: out, completo: true }
+  // No cupo todo: el último renglón disponible termina en «…».
+  const resto = palabras.slice(out.length < lineas ? i : i - (out[out.length - 1] || '').split(' ').length).join(' ')
+  const previas = out.length < lineas ? out : out.slice(0, -1)
+  let n = resto.length
+  let ult = ''
+  while (n > 0) { const t = `${resto.slice(0, n).trimEnd()}…`; if (cabe(t)) { ult = t; break } n-- }
+  if (!ult) return null
+  const visibles = previas.join(' ').replace(/\s/g, '').length + ult.slice(0, -1).replace(/\s/g, '').length
+  if (visibles < 6) return null
+  return { lineas: [...previas, ult], completo: false }
+}
+
+/**
+ * Etiqueta para un tramo de anillo: prueba cada opción de texto primero horizontal (centrada en el radio medio) y luego
+ * RADIAL (girada a lo largo del radio, sin quedar de cabeza). opciones = [{ nombre, valor }] (nombre 11 px, valor 12 px).
+ * Devuelve { x, y, giro, nombre, valor } o null (no cabe nada: queda el tooltip).
+ */
+export function rotularSector({ cx, cy, r0, r1, a0, a1, opciones, m = 2.5 }) {
+  const am = (a0 + a1) / 2; const rm = (r0 + r1) / 2
+  const [x, y] = punto(cx, cy, rm, am)
+  const grados = (am * 180) / Math.PI
+  const giro = grados > 180 ? grados + 90 - 360 : grados - 90 // a lo largo del radio, siempre legible
+  const ancho = (o) => (o.nombre ? anchoTexto(`${o.nombre}${o.valor ? ' · ' : ''}`) : 0) + (o.valor ? anchoVal(o.valor) : 0)
+  for (const g of [0, giro]) {
+    for (const o of opciones) {
+      if (!o) continue
+      const pts = esquinasGiradas(x, y, ancho(o), altoTexto(o.valor ? 12 : 11), g)
+      if (puntosEnSector([...pts, [x, y]], cx, cy, r0, r1, a0, a1, m)) return { x, y, giro: g, ...o }
+    }
+  }
+  return null
+}
+
+/** Placa con un número de referencia (se repite en la leyenda). 17 px de alto; el número va en 11 px/600. */
+export const anchoPlaca = (n) => Math.max(17, anchoTexto(String(n), 11, 600) + 8)
+export const ALTO_PLACA = 17
+export function Placa({ n, x, y, fondo, id, pin }) {
+  const w = anchoPlaca(n)
+  const placa = pin.texto(fondo) // la placa toma el color de texto de más contraste; el número, el del relleno
+  return (
+    <g className="gr-placa" pointerEvents="none">
+      <rect id={id} className="gr-forma-placa" x={x - w / 2} y={y - ALTO_PLACA / 2} width={w} height={ALTO_PLACA} rx="5" style={{ fill: placa }} />
+      <text className="gr-chico gr-dentro" data-forma={id} x={x} y={y} dy="0.35em" textAnchor="middle" style={{ fill: fondo }}>{n}</text>
+    </g>
+  )
+}
 
 // ── Otros ─────────────────────────────────────────────────────────────────────────────────────────
 /** Número que sube desde 0 hasta su valor (solo en estilos animados). El valor final es el exacto. */
