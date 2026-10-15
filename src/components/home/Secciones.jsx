@@ -157,7 +157,7 @@ export function CrmAMedida() {
         </div>
         <div className="intl-texto">
           <b>Describe tu negocio y Shifu arma tu CRM</b>
-          <p>Cuéntale cómo vendes y te propone etapas, campos y recordatorios. Lo ajustas con un clic, o partes de una <a href="#plantillas">plantilla de tu rubro</a>. Sin código ni semanas de configuración.</p>
+          <p>Cuéntale cómo vendes y te propone etapas, campos y recordatorios. Lo ajustas con un clic. Sin código ni semanas de configuración.</p>
         </div>
       </Aparece>
     </section>

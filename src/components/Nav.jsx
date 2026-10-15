@@ -14,10 +14,10 @@ function MenuPorQue() {
           ['Cambia a Shifu', 'Trae tus contactos desde Excel y no pierdas ningún seguimiento.', 'g2'],
           ['Los equipos de ventas confían en nosotros', 'Da igual el tamaño de tu negocio: tu CRM crece contigo.', 'g3'],
         ].map(([t, d, g]) => (
-          <a key={t} href="#inicio" className="mega-card">
+          <Link key={t} to="/" className="mega-card">
             <span className={`mega-arte ${g}`} />
             <b>{t}</b><small>{d}</small>
-          </a>
+          </Link>
         ))}
       </div>
       <div className="mega-lado">

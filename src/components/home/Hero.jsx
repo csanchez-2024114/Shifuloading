@@ -10,7 +10,7 @@ const ESCENAS = [
 ]
 
 /** Título que cambia de palabra solo, con un fondo que cambia a la par. */
-export default function Hero({ onVideo }) {
+export default function Hero() {
   const [i, setI] = useState(0)
   const [sale, setSale] = useState(false)
   useEffect(() => {
@@ -36,7 +36,6 @@ export default function Hero({ onVideo }) {
         <div className="hero-acciones">
           <Link to="/login" className="btn-pildora btn-grande">Comenzar gratis</Link>
           <a href="#planes" className="btn-borde btn-grande">Ver planes</a>
-          <button type="button" className="hero-enlace" onClick={onVideo}><i aria-hidden="true">▸</i> Por qué creamos Shifu</button>
         </div>
       </div>
     </section>

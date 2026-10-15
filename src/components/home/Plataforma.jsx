@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Aparece } from './Secciones'
 
 const APPS = ['◈', '♪', '✦', '◉', '▣', '☰', '◐', '⬡', '✚', '◍', '▲', '❖', '☷', '◆', '✉', '⚑', '◎', '▤', '♣', '✿', '⌘', '☼', '◇', '▦']
@@ -15,7 +16,7 @@ export function Integraciones() {
     <section className="sec sec-apps" id="integraciones">
       <Aparece className="apps-texto">
         <h2 className="titulo-sec">Conéctalo con todo lo que ya usas</h2>
-        <p>Shifu se conecta con tu WhatsApp, tu correo, tu calendario, tus hojas de cálculo y más, para que los datos de tus clientes fluyan solos. <a href="#integraciones">Ver el directorio de integraciones</a>.</p>
+        <p>Shifu se conecta con tu WhatsApp, tu correo, tu calendario, tus hojas de cálculo y más, para que los datos de tus clientes fluyan solos. <Link to="/integraciones">Ver el directorio de integraciones</Link>.</p>
       </Aparece>
       <div className="apps-rejilla" aria-hidden="true">
         {[...APPS, ...APPS].map((a, k) => <span key={k} className={`app-ico t${k % 7} ${on.has(k) ? 'app-on' : ''}`}>{a}</span>)}
@@ -29,7 +30,7 @@ export function Desarrolladores() {
     <section className="sec sec-dev">
       <Aparece className="dev-texto">
         <h2 className="titulo-sec">Impulsado por la IA.<br />Un CRM sin límites</h2>
-        <p>La <a href="#dev">API y los webhooks</a> de Shifu le dan a tu equipo técnico el poder para conectar el CRM con cualquier sistema y automatizar lo que haga falta, con la ayuda de la IA.</p>
+        <p>La <Link to="/desarrolladores">API y los webhooks</Link> de Shifu le dan a tu equipo técnico el poder para conectar el CRM con cualquier sistema y automatizar lo que haga falta, con la ayuda de la IA.</p>
       </Aparece>
       <Aparece className="dev-panel" retraso={100}>
         <div className="dev-chips"><span>API y webhooks</span><span>Automatizaciones</span><span>Campos personalizados</span></div>
