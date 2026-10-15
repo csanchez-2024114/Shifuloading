@@ -125,6 +125,8 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 {"type": "tool_start", "id": "call_1", "name": "buscar_web", "args": {"consulta": "..."}}
 {"type": "tool_end", "id": "call_1", "name": "buscar_web", "output": "primeros 500 chars", "status": "success"|"error", "engine": "duckduckgo"|"openai_web_search"|null}
 {"type": "interrupt", "id": "<interrupt id>", "action_requests": [{"name": "enviar_email_simulado", "args": {...}, "description": "..."}]}
+{"type": "effort", "level": "bajo"|"medio"|"alto", "max_calls": 5, "reasoning": "low"}   // primero, solo en modo automático
+{"type": "progress", "name": "buscar_web", "args": {"consulta": "..."}}                  // búsqueda interna del investigador profundo
 {"type": "error", "message": "texto legible"}
 {"type": "done", "thread_id": "abc"}
 ```

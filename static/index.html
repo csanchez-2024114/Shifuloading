@@ -143,6 +143,11 @@ select#thread {
 .seg pre code { background: none; padding: 0; font-size: .85rem; white-space: pre; }
 .seg a { color: var(--link); }
 .seg blockquote { margin: .6em 0; padding: .1em .9em; border-left: 3px solid var(--border); color: var(--muted); }
+.seg .tbl { overflow-x: auto; margin: .6em 0; }
+.seg table { border-collapse: collapse; font-size: .92em; }
+.seg th, .seg td { border: 1px solid var(--border); padding: .35em .6em; text-align: left; vertical-align: top; }
+.seg th { background: var(--border); white-space: nowrap; }
+.seg th, .seg td { overflow-wrap: normal; word-break: normal; }
 .seg hr { border: 0; border-top: 1px solid var(--border); margin: .9em 0; }
 .caret { display: inline-block; width: .55em; height: 1em; vertical-align: text-bottom; background: var(--muted); margin-left: 2px; border-radius: 2px; animation: blink 1s steps(2, start) infinite; }
 @keyframes blink { to { visibility: hidden; } }
@@ -293,6 +298,15 @@ textarea#input:disabled { opacity: .6; }
         var lv = Math.min(6, m[1].length + 1);
         out.push("<h" + lv + ">" + inline(m[2]) + "</h" + lv + ">");
         i++; continue;
+      }
+      // tabla: | a | b |  seguida de |---|---|
+      if (/^\s*\|.*\|\s*$/.test(l) && i + 1 < lines.length && /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(lines[i + 1])) {
+        var cells = function (row) { return row.trim().replace(/^\||\|$/g, "").split("|").map(function (c) { return inline(c.trim()); }); };
+        var html = "<div class=\"tbl\"><table><thead><tr><th>" + cells(l).join("</th><th>") + "</th></tr></thead><tbody>";
+        i += 2;
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { html += "<tr><td>" + cells(lines[i]).join("</td><td>") + "</td></tr>"; i++; }
+        out.push(html + "</tbody></table></div>");
+        continue;
       }
       if (reHr.test(l) && !reUl.test(l)) { out.push("<hr>"); i++; continue; }
       if (reQuote.test(l)) {
@@ -447,7 +461,18 @@ textarea#input:disabled { opacity: .6; }
     seg.innerHTML = renderMarkdown(text);
     b.appendChild(seg); row.appendChild(b); messagesEl.appendChild(row);
   }
-  function addToolLine(name) { messagesEl.appendChild(el("div", "toolline", "usó " + name)); }
+  function addToolLine(name) {
+    // líneas consecutivas de la misma herramienta se agrupan: "usó calculadora ×47"
+    var last = messagesEl.lastElementChild;
+    if (last && last.classList.contains("toolline") && last.dataset.tool === name) {
+      last.dataset.n = String(+last.dataset.n + 1);
+      last.textContent = "usó " + name + " ×" + last.dataset.n;
+      return;
+    }
+    var line = el("div", "toolline", "usó " + name);
+    line.dataset.tool = name; line.dataset.n = "1";
+    messagesEl.appendChild(line);
+  }
 
   /* ---------- burbuja del asistente en streaming ---------- */
   var TOOL_LABELS = {
@@ -510,36 +535,57 @@ textarea#input:disabled { opacity: .6; }
     chip.title = "Hasta " + ev.max_calls + " llamadas al modelo · razonamiento " + (ev.reasoning || "por defecto");
     this.bubble.insertBefore(chip, this.bubble.firstChild);
   };
-  AssistantBubble.prototype.toolStart = function (ev) {
-    this.hideDots(); this.closeSeg();
-    var chip = el("div", "chip running");
-    chip.appendChild(el("span", "spin"));
-    chip.appendChild(el("span", "lbl", TOOL_LABELS[ev.name] || ("⚙️ Usando " + ev.name + "…")));
-    try { chip.title = JSON.stringify(ev.args || {}); } catch (e) { /* ignore */ }
-    this.bubble.appendChild(chip);
-    this.chips[ev.id || ev.name] = chip;
+  // Un chip por herramienta, con contador (p. ej. "🧮 Cálculo ×47"), en vez de un chip por llamada.
+  AssistantBubble.prototype.group = function (name) {
+    var g = this.chips[name];
+    if (!g) {
+      this.closeSeg();
+      g = this.chips[name] = { name: name, total: 0, done: 0, errors: 0, engine: null, searches: 0, last: "", chip: el("div", "chip") };
+      this.bubble.appendChild(g.chip);
+    }
+    return g;
+  };
+  AssistantBubble.prototype.paint = function (g) {
+    var running = g.done < g.total, chip = g.chip;
+    chip.className = "chip " + (running ? "running" : (g.errors === g.total ? "error" : "done"));
+    chip.textContent = "";
+    if (running) chip.appendChild(el("span", "spin"));
+    else { var st = el("span", "state", g.errors === g.total ? "✗" : "✓"); st.setAttribute("aria-label", g.errors === g.total ? "con error" : "hecho"); chip.appendChild(st); }
+    var label = running ? (TOOL_LABELS[g.name] || ("⚙️ Usando " + g.name + "…")) : (TOOL_DONE[g.name] || ("⚙️ " + g.name));
+    if (g.total > 1) label += " ×" + g.total;
+    chip.appendChild(el("span", "lbl", label));
+    if (g.searches) {
+      var extra = g.searches + (g.searches === 1 ? " búsqueda" : " búsquedas");
+      if (running && g.last) extra += " · «" + g.last.slice(0, 60) + "»";
+      chip.appendChild(el("span", "eng", extra));
+    }
+    if (g.engine) chip.appendChild(el("span", "eng", ENGINES[g.engine] || ("vía " + g.engine)));
+    if (g.errors && g.errors < g.total) chip.appendChild(el("span", "eng", "· " + g.errors + " fallaron"));
     scrollDown(false);
+  };
+  AssistantBubble.prototype.toolStart = function (ev) {
+    this.hideDots();
+    var g = this.group(ev.name);
+    g.total++;
+    try { g.chip.title = JSON.stringify(ev.args || {}); } catch (e) { /* ignore */ }
+    this.paint(g);
   };
   AssistantBubble.prototype.toolEnd = function (ev) {
     this.hideDots();
-    var key = ev.id || ev.name, chip = this.chips[key];
-    if (!chip) {
-      this.closeSeg();
-      chip = el("div", "chip"); chip.appendChild(el("span", "spin")); chip.appendChild(el("span", "lbl", ""));
-      this.bubble.appendChild(chip); this.chips[key] = chip;
-    }
-    var ok = ev.status !== "error";
-    chip.className = "chip " + (ok ? "done" : "error");
-    var sp = chip.querySelector(".spin"); if (sp) sp.remove();
-    var lbl = chip.querySelector(".lbl");
-    if (ok) lbl.textContent = TOOL_DONE[ev.name] || ("⚙️ " + ev.name);
-    else lbl.textContent = "⚠️ Falló " + ev.name;
-    var st = el("span", "state", ok ? "✓" : "✗"); st.setAttribute("aria-label", ok ? "hecho" : "con error");
-    chip.insertBefore(st, chip.firstChild);
-    if (ok && ev.engine && ENGINES[ev.engine]) chip.appendChild(el("span", "eng", ENGINES[ev.engine]));
-    else if (ok && ev.engine) chip.appendChild(el("span", "eng", "vía " + ev.engine));
-    if (ev.output) chip.title = String(ev.output).slice(0, 500);
-    scrollDown(false);
+    var g = this.group(ev.name);
+    if (g.total <= g.done) g.total++;  // tool_end sin tool_start previo
+    g.done++;
+    if (ev.status === "error") g.errors++;
+    if (ev.engine) g.engine = ev.engine;
+    this.paint(g);
+    if (ev.output) g.chip.title = String(ev.output).slice(0, 500);
+  };
+  // avance del investigador profundo: búsquedas internas mientras trabaja
+  AssistantBubble.prototype.progress = function (ev) {
+    var g = this.chips.investigador_profundo;
+    if (!g) return;
+    if (ev.name === "buscar_web") { g.searches++; g.last = (ev.args && ev.args.consulta) || ""; }
+    this.paint(g);
   };
   AssistantBubble.prototype.error = function (msg) {
     this.hideDots(); this.closeSeg();
@@ -658,6 +704,7 @@ textarea#input:disabled { opacity: .6; }
         case "effort": bubble.effort(ev); break;
         case "tool_start": bubble.toolStart(ev); break;
         case "tool_end": bubble.toolEnd(ev); break;
+        case "progress": bubble.progress(ev); break;
         case "interrupt":
           interrupted = true;
           state.pending++; updateControls();

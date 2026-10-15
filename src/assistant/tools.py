@@ -217,17 +217,25 @@ def make_investigador(model: BaseChatModel, buscar_web_tool: BaseTool) -> BaseTo
     sub = create_agent(model, [buscar_web_tool], system_prompt=_INVESTIGADOR_PROMPT)
 
     @tool
-    def investigador_profundo(tarea: str) -> str:
+    def investigador_profundo(tarea: str, runtime: ToolRuntime[Context]) -> str:
         """Delega una investigación a fondo en un subagente que hace varias búsquedas web y
         devuelve un resumen con fuentes. Úsalo para preguntas que requieren contrastar varias
         fuentes; para datos puntuales usa buscar_web.
         """
         # tags=["nostream"]: sus tokens no deben llegar al stream del agente principal.
-        result = sub.invoke(
+        # Se usa stream (no invoke) para avisar a la UI de cada búsqueda interna mientras trabaja.
+        final = ""
+        for update in sub.stream(
             {"messages": [{"role": "user", "content": f"Fecha actual: {datetime.now().astimezone():%Y-%m-%d}.\n\n{tarea}"}]},
             config={"tags": ["nostream"], "recursion_limit": 25},
-        )
-        return result["messages"][-1].text
+            stream_mode="updates",
+        ):
+            for msg in (update.get("model") or {}).get("messages", []):
+                for call in msg.tool_calls:
+                    runtime.stream_writer({"tipo": "progreso", "herramienta": call["name"], "args": call["args"]})
+                if not msg.tool_calls and msg.text:
+                    final = msg.text
+        return final
 
     return investigador_profundo
 

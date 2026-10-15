@@ -82,3 +82,22 @@ def test_hitl_interrupt_y_resume(hitl_settings):
     assert "tool_end" in t and "done" in t
     assert t.index("tool_end") < t.index("done")
     assert next(e for e in resumed if e["type"] == "tool_end")["name"] == "enviar_email_simulado"
+
+
+def test_investigador_emite_progreso_sin_filtrar_tokens(settings):
+    # mismo modelo falso para agente y subagente: el orden de respuestas es compartido
+    respuestas = [
+        tool_call("investigador_profundo", {"tarea": "compara A y B"}, "call_inv"),  # agente principal
+        tool_call("buscar_web", {"consulta": "A vs B"}, "call_sub"),                 # subagente
+        "RESUMEN-INTERNO del subagente",                                               # subagente
+        "Respuesta final",                                                             # agente principal
+    ]
+    agent = build_test_agent(respuestas, settings, checkpointer=InMemorySaver())
+    events = run_turn(agent, settings, "investiga A vs B", uid())
+
+    progreso = [e for e in events if e["type"] == "progress"]
+    assert progreso == [{"type": "progress", "name": "buscar_web", "args": {"consulta": "A vs B"}}]
+    tokens = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "RESUMEN-INTERNO" not in tokens and "Respuesta final" in tokens
+    fin = next(e for e in events if e["type"] == "tool_end" and e["name"] == "investigador_profundo")
+    assert "RESUMEN-INTERNO" in fin["output"]

@@ -37,6 +37,21 @@ copy .env.example .env   # y pon tu OPENAI_API_KEY
 
 Pon en `.env` la URI `mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/` (Atlas → Connect → Drivers) y `MEMORY_SEMANTIC=1`. Al arrancar se crea solo el índice vectorial `vector_index` en la colección `memories` (puede tardar hasta un minuto la primera vez). Tu IP debe estar en Network Access. Los recuerdos guardados antes de activar la semántica no tienen embedding y no aparecen en búsquedas semánticas.
 
+### Observabilidad con LangSmith (opcional, desactivada por defecto)
+
+| Variable | Default | Uso |
+|---|---|---|
+| `LANGSMITH_TRACING` | `false` | `true` activa el envío de trazas |
+| `LANGSMITH_API_KEY` | (vacía) | tu clave de LangSmith (smith.langchain.com → Settings → API Keys) |
+| `LANGSMITH_PROJECT` | `agente-0` | proyecto donde se agrupan las trazas (si no se define, LangSmith usa `default`) |
+| `LANGSMITH_ENDPOINT` | (US) | solo cuentas EU: `https://eu.api.smith.langchain.com`, sin `/` al final |
+
+No requiere código: `config.py` carga `.env` en el entorno y LangChain/LangGraph activan el tracer solos. Reinicia el servidor después de cambiarlas.
+
+> **Importante:** con `LANGSMITH_TRACING=true`, cada conversación se **envía a la nube de LangSmith**: tus mensajes, las respuestas, los argumentos y resultados de las herramientas (búsquedas, cálculos) y los recuerdos guardados o consultados. No lo actives con datos que no quieras compartir con ese servicio.
+
+Cada mensaje genera **una sola traza** con el agente principal y, anidado dentro de la herramienta `investigador_profundo`, el subagente investigador con su modelo y sus `buscar_web`. Esto funciona porque LangChain propaga el contexto de trazado con `contextvars` (automático en Python 3.11+). La clasificación de esfuerzo corre antes del agente y aparece como una traza aparte, pequeña.
+
 ## Correr
 
 ```powershell

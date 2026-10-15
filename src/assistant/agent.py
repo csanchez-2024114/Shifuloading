@@ -218,7 +218,7 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             payload,
             config=config,
             context=ctx,
-            stream_mode=["messages", "updates"],
+            stream_mode=["messages", "updates", "custom"],
             version="v2",
         )
         for chunk in stream:
@@ -236,6 +236,9 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
                     yield {"type": "token", "text": text}
             elif kind == "updates":
                 yield from _update_events(data)
+            elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "progreso":
+                # avance del investigador profundo (búsquedas internas mientras trabaja)
+                yield {"type": "progress", "name": data.get("herramienta"), "args": data.get("args", {})}
     except GraphRecursionError:
         yield {"type": "error", "message": (
             f"Me detuve: la tarea superó {settings.recursion_limit} pasos internos. "
