@@ -6,7 +6,7 @@ langgraph-checkpoint-mongodb 0.5.1, langgraph-store-mongodb 0.4.0, pymongo 4.19,
 Python: `.venv\Scripts\python`. Paquete instalado editable (`src/assistant`), importa como `assistant.*`.
 
 **Todo es SÍNCRONO** (MongoDBSaver es sync). Usa `agent.stream(...)` / `agent.invoke(...)`, nunca `astream`.
-Sin Docker. MongoDB local en `mongodb://127.0.0.1:27017` ya está corriendo; no lo arranques.
+Sin Docker. El servidor usa la `MONGODB_URI` de `.env` (hoy Atlas; default local `mongodb://127.0.0.1:27017`). pytest usa SIEMPRE el MongoDB local (conftest fuerza la URI). No arranques ni instales Mongo.
 
 ## Archivos y dueños
 | Archivo | Dueño |
@@ -68,7 +68,8 @@ Herramientas en español, todas `@tool` de `langchain.tools`, con docstring clar
 calculadora(expresion: str) -> str       # evaluación con ast (+ - * / // % **, paréntesis, math.sqrt/sin/cos/log/pi/e...), sin eval
 fecha_hora(zona: str = "local") -> str   # fecha/hora actual ISO + día de la semana; zona IANA opcional (zoneinfo)
 guardar_recuerdo(texto: str, runtime: ToolRuntime) -> str   # memory.save_memory(runtime.store, runtime.context.user_id, texto)
-buscar_recuerdos(consulta: str, runtime: ToolRuntime) -> str # memory.search_memories(...) → lista con viñetas o "Sin recuerdos"
+buscar_recuerdos(consulta: str, runtime: ToolRuntime) -> str # memory.search_memory_items(...) → "- [id <key>] texto" por línea o "Sin recuerdos"
+actualizar_recuerdo(id: str, texto: str, runtime, evidencia="") -> str  # memory.revise: solo el user_id del contexto, misma verificación que guardar; previous_text + updated_at
 enviar_email_simulado(destinatario: str, asunto: str, cuerpo: str) -> str  # NO envía nada; ejemplo HITL
 def web_search(query: str, settings: Settings) -> tuple[str, str]
     # 1) ChatOpenAI(model=settings.llm_model, api_key=..., use_responses_api=True, tags=["nostream"])
@@ -82,7 +83,7 @@ def make_investigador(model: BaseChatModel, buscar_web_tool: BaseTool) -> BaseTo
     # tool "investigador_profundo(tarea: str)": subagente = create_agent(model, [buscar_web_tool], system_prompt=<investigar con 3-5 búsquedas y devolver resumen con fuentes>)
     # invoke({"messages":[{"role":"user","content":tarea}]}) → result["messages"][-1].text
 def build_tools(model, settings, search_fn=web_search) -> list[BaseTool]
-    # [buscar_web, calculadora, fecha_hora, guardar_recuerdo, buscar_recuerdos, investigador_profundo]
+    # [buscar_web, calculadora, fecha_hora, guardar_recuerdo, buscar_recuerdos, actualizar_recuerdo, investigador_profundo]
     # + enviar_email_simulado si settings.enable_hitl_demo
 ```
 
@@ -127,6 +128,11 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 {"type": "interrupt", "id": "<interrupt id>", "action_requests": [{"name": "enviar_email_simulado", "args": {...}, "description": "..."}]}
 {"type": "effort", "level": "bajo"|"medio"|"alto", "max_calls": 5, "reasoning": "low"}   // primero, solo en modo automático
 {"type": "progress", "name": "buscar_web", "args": {"consulta": "..."}}                  // búsqueda interna del investigador profundo
+{"type": "summarized"}                                                                    // MEMORY_SUMMARIZE: se resumió la conversación vieja
+{"type": "verify", "status": "ok", "notes": [], "tokens": 812}                           // ANSWER_VERIFY, solo si el turno usó buscar_web/investigador
+{"type": "verify", "status": "corrected"|"kept_original", "text": "texto final", "original": "respuesta original", "notes": ["..."], "tokens": 950}
+// "text"/"original" solo si el texto cambió. kept_original = se descartó la corrección del verificador (p. ej. traía cifras
+// que no están en la evidencia); puede venir con citas inventadas quitadas. Reglas de citas en citations.py (en código).
 {"type": "error", "message": "texto legible"}
 {"type": "done", "thread_id": "abc"}
 ```
@@ -138,7 +144,9 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 | GET | `/` | sirve `static/index.html` |
 | POST | `/chat` | body `{"message": str, "thread_id": str, "user_id": str}` → `text/event-stream` con los eventos de arriba |
 | POST | `/resume` | body `{"thread_id": str, "user_id": str, "decisions": [{"type": "approve"} \| {"type": "reject", "message": str}]}` → mismo stream SSE. Internamente `Command(resume={"decisions": decisions})` |
-| GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str} \| {"role":"tool","name":str}]}` (vacío si no existe) |
+| GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str,"original"?:str} \| {"role":"tool","name":str} \| {"role":"summary"}]}` (vacío si no existe; `original` = respuesta antes de ANSWER_VERIFY) |
+| GET | `/memories/{user_id}` | `{"user_id": str, "memories": [{"key","text","created_at","thread_id","evidence","confidence","previous_text","updated_at"}]}` (más recientes primero; 503 sin store) |
+| DELETE | `/memories/{user_id}/{key}` | `{"deleted": key}`; 404 si no existe en el namespace de ese usuario |
 | GET | `/health` | `{"ok": true, "model": str}` |
 
 `server.create_app(agent=None) -> FastAPI`: si recibe `agent`, NO hace chequeos de arranque (para tests).
