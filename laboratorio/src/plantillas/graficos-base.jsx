@@ -28,7 +28,10 @@ export function anchoTexto(s, px = 11, peso = 500) {
     ctxTexto ||= document.createElement('canvas').getContext('2d')
     ctxTexto.font = `${peso} ${px}px ${familia}`
     // Los valores usan cifras tabulares (todas del ancho del «0»): se miden así para no quedarse cortos.
-    w = ctxTexto.measureText(t.replace(/\d/g, '0')).width * 1.03 + 1
+    // Medido en Chrome: con cifras como «0» la estimación de números/porcentajes es exacta (41,98 vs 41,80 px); los textos
+    // con letras llegan a 1,016 × la estimación, así que solo ellos llevan holgura.
+    const soloCifras = /^[\d\s.,%+\-−·]*$/.test(t)
+    w = ctxTexto.measureText(t.replace(/\d/g, '0')).width * (soloCifras ? 1 : 1.02) + 0.5
     anchos.set(k, w)
   }
   return w
@@ -76,7 +79,7 @@ export const PinturaContext = createContext(null)
 /** Variante de animación de este montaje (0, 1 o 2): cambia el ORDEN en que se arman las marcas. */
 export const VarianteContext = createContext(0)
 
-export function crearPintura({ sup = '#0c1211', acento = '#7c5cff', gris = '#98a0aa' } = {}) {
+export function crearPintura({ sup = '#0c1211', acento = '#7c5cff', gris = '#98a0aa', vars = {} } = {}) {
   const oscuro = E.luminancia(sup) < 0.4
   const k = oscuro ? 0.76 : 0.7 // ~70–80 % del color en oscuro, ~65–75 % en claro
   const cache = new Map()
@@ -89,7 +92,7 @@ export function crearPintura({ sup = '#0c1211', acento = '#7c5cff', gris = '#98a
   }
   /** Texto (oscuro de marca o blanco) con más contraste sobre un relleno. */
   const texto = (fondo) => E.textoSobre(fondo).color
-  return { sup, oscuro, acento, gris, col, relleno, texto, k }
+  return { sup, oscuro, acento, gris, col, relleno, texto, k, vars }
 }
 const PINTURA_DEF = crearPintura()
 export const usePintura = () => useContext(PinturaContext) || PINTURA_DEF
@@ -117,9 +120,15 @@ export function leerPintura(el) {
   for (const c of capas.reverse()) b = [0, 1, 2].map((i) => c[i] * c[3] + b[i] * (1 - c[3]))
   const cs = getComputedStyle(el)
   fijarFuente(cs.fontFamily)
-  return crearPintura({ sup: E.aHex(b), acento: normalizar(cs.getPropertyValue('--acento')) || '#7c5cff', gris: normalizar(cs.getPropertyValue('--tx3')) || '#98a0aa' })
+  // Variables del tema para el tooltip (que se dibuja fuera del gráfico, en <body>, para que ninguna tarjeta lo recorte).
+  const vars = Object.fromEntries(['--card', '--linea', '--tx', '--tx2', '--tx3', '--sombra', '--ink', '--fuente'].map((k) => [k, cs.getPropertyValue(k).trim()]).filter(([, v]) => v))
+  return crearPintura({ vars, sup: E.aHex(b), acento: normalizar(cs.getPropertyValue('--acento')) || '#7c5cff', gris: normalizar(cs.getPropertyValue('--tx3')) || '#98a0aa' })
 }
 const normalizarRgba = (s) => String(s || '').replace(/^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)$/, (_, r, g, b, a) => `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a ?? 1})`)
+
+/** Separación entre partes de un total (pastel, dona, rosa, sol, apiladas, barra 100 %): 1 px del color REAL de la
+ *  superficie, igual de liviana en claro y en oscuro. */
+export const SEPARADOR = 1
 
 // ── Orden de animación ────────────────────────────────────────────────────────────────────────────
 /** Índice de demora para la marca i de n según la variante: 0 en orden, 1 desde el centro, 2 al revés. */

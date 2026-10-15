@@ -5,7 +5,7 @@
 import * as E from './estadistica'
 import {
   anchoTexto, anchoVal, cortar, cajaTexto, choca, cabeEn, sinChoques, usePintura, useOrden, tope, escala, ticks, fEje, plano, Rejilla, EjeX,
-  planLeyenda, areaCon, Leyenda, punto, sector, Cuenta, Svg, etiquetasCirculo, nivelesCalor, cajaEnSector,
+  planLeyenda, areaCon, Leyenda, punto, sector, Cuenta, Svg, etiquetasCirculo, nivelesCalor, cajaEnSector, SEPARADOR,
 } from './graficos-base'
 import {
   ACENTO, sumaDe, fechaCorta, fechaLarga, campoDe, fnDe, medirDe, tipoDe, queMide, nombre, FALTA, SIN_DATOS, calcCategorias, calcMeses,
@@ -270,7 +270,7 @@ function Rosa({ w, h, d, ix, uid }) {
           return (
             <g key={it.id} className={`gr-m${ix.c(it.id)}`} {...ix.p(it.id, it.larga, [[d.que, fmt(tipo, it.valor), pin.col(it.color)], ['Del total', fmtPct(E.porcentajeDelTotal(it.valor, total))]])}>
               <path className="gr-hit" d={sector(cx, cy, 0, R, paso * i, paso * (i + 1))} />
-              {r > 0.5 && <path id={`${uid}-r${i}`} className="gr-forma gr-a-petalo" d={sector(cx, cy, 0, r, paso * i, paso * (i + 1))} style={{ fill: fondo, stroke: pin.sup, strokeWidth: 2, strokeLinejoin: 'round', ...origen, '--o': ord(i, n) }} />}
+              {r > 0.5 && <path id={`${uid}-r${i}`} className="gr-forma gr-a-petalo" d={sector(cx, cy, 0, r, paso * i, paso * (i + 1))} style={{ fill: fondo, stroke: pin.sup, strokeWidth: SEPARADOR, strokeLinejoin: 'round', ...origen, '--o': ord(i, n) }} />}
               {okEtq.has(i) && <text className="gr-aparece" x={etq[i].x} y={etq[i].y} dy="0.35em" textAnchor={etq[i].ancla} style={{ '--o': n + 2 }}>{textos[i]}</text>}
             </g>
           )
@@ -320,12 +320,12 @@ function Sol({ w, h, d, ix, uid }) {
           let ac2 = a0
           return (
             <g key={g.id}>
-              <path id={`${uid}-s${i}`} className={`gr-forma gr-a-gajo gr-m${ix.c(g.id)}`} d={sector(cx, cy, r0, r1, a0, a1)} style={{ fill: fondo, stroke: pin.sup, strokeWidth: grupos.length > 1 ? 1.5 : 0, ...origen, '--o': ord(i, grupos.length) }}
+              <path id={`${uid}-s${i}`} className={`gr-forma gr-a-gajo gr-m${ix.c(g.id)}`} d={sector(cx, cy, r0, r1, a0, a1)} style={{ fill: fondo, stroke: pin.sup, strokeWidth: grupos.length > 1 ? SEPARADOR : 0, ...origen, '--o': ord(i, grupos.length) }}
                 {...ix.p(g.id, g.etiqueta, [[d.que, fmt(tipo, g.valor), pin.col(g.color)], ['Del total', fmtPct(f)], ...g.hijos.map((x) => [x.etiqueta, fmt(tipo, x.valor)])])} />
               {g.hijos.map((x, k) => {
                 const b0 = ac2; const b1 = ac2 + (x.valor / g.valor) * (a1 - a0); ac2 = b1
                 const fh = pin.relleno(g.color, TONOS[k % TONOS.length])
-                return <path key={x.id} className={`gr-a-gajo gr-m${ix.c(x.id, g.id)}`} d={sector(cx, cy, r1 + 1.5, R, b0, b1)} style={{ fill: fh, stroke: pin.sup, strokeWidth: 1.5, ...origen, '--o': ord(i, grupos.length) + 4 + k }}
+                return <path key={x.id} className={`gr-a-gajo gr-m${ix.c(x.id, g.id)}`} d={sector(cx, cy, r1 + 1, R, b0, b1)} style={{ fill: fh, stroke: pin.sup, strokeWidth: SEPARADOR, ...origen, '--o': ord(i, grupos.length) + 4 + k }}
                   {...ix.p(x.id, `${g.etiqueta} › ${x.etiqueta}`, [[d.que, fmt(tipo, x.valor), fh], [`De ${g.etiqueta}`, fmtPct(x.valor / g.valor)], ['Del total', fmtPct(x.valor / total)], ['Registros', fmt('numero', x.n)]])} />
               })}
             </g>
@@ -709,7 +709,7 @@ function MediaDona({ w, h, d, ix, uid }) {
       <g className="gr-marcas gr-a-abanico" style={origen}>
         {partes.map(({ it, i, f, a0, a1 }) => (
           <path key={it.id} id={`${uid}-m${i}`} className={`gr-forma gr-a-gajo gr-m${ix.c(it.id)}`} d={sector(cx, cy, r0, R, a0, a1)}
-            style={{ fill: pin.relleno(it.color), stroke: pin.sup, strokeWidth: partes.length > 1 ? 2 : 0, strokeLinejoin: 'round', ...origen, '--o': ord(i, partes.length) }}
+            style={{ fill: pin.relleno(it.color), stroke: pin.sup, strokeWidth: partes.length > 1 ? SEPARADOR : 0, strokeLinejoin: 'round', ...origen, '--o': ord(i, partes.length) }}
             {...ix.p(it.id, it.larga, [[d.que, fmt(tipo, it.valor), pin.col(it.color)], ['Del total', fmtPct(f)], ['Registros', fmt('numero', it.n)]])} />
         ))}
       </g>

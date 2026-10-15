@@ -74,7 +74,7 @@ export function calcMeses(regs, campos, o, hoy) {
     .map((it, i, xs) => ({ ...it, id: it.clave, parcial: i === xs.length - 1 }))
   const tramo = compararTramos(regs, cf.id, o, hoy)
   return { items, tipo: tipoDe(o, campos), que: queMide(o, campos), entero: fnDe(o) === 'conteo', tramo,
-    pie: `${queMide(o, campos)} por mes de ${nombre(campos, o.fecha)} · últimos ${items.length} meses (${items[items.length - 1]?.etiqueta} en curso)` }
+    pie: `${queMide(o, campos)} por mes de ${nombre(campos, o.fecha)} · ${items.length} meses (${items[items.length - 1]?.etiqueta} en curso)`, pieCorto: `${queMide(o, campos)} por mes de ${nombre(campos, o.fecha)} (${items[items.length - 1]?.etiqueta} en curso)` }
 }
 
 /** Matriz categorías × series del estado (para apiladas). `filas` = 'mes' o un campo texto. */

@@ -17,6 +17,7 @@
  *  - GRAFICOS, CLASES
  *  - <GaleriaGraficos plantilla datos /> (página de prueba) */
 import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimarContext, VelContext } from './vistas'
 import * as E from './estadistica'
 import { registrosDe } from './datosEjemplo'
@@ -24,7 +25,7 @@ import { camposDe } from './validar'
 import {
   anchoTexto, anchoVal, cortar, cajaTexto, choca, cabeEn, sinChoques, usePintura, leerPintura, PinturaContext, VarianteContext,
   useOrden, tope, escala, ticks, fEje, plano, Rejilla, EjeX, planLeyenda, filasAbajo, areaCon, Leyenda, porSerie, claseSerie,
-  punto, sector, Cuenta, Svg, sinMovimiento, olvidarAnchos, etiquetasCirculo, nivelesCalor,
+  punto, sector, Cuenta, Svg, sinMovimiento, olvidarAnchos, etiquetasCirculo, nivelesCalor, SEPARADOR, altoTexto,
 } from './graficos-base'
 import {
   ACENTO, GRIS, sumaDe, fechaCorta, fechaLarga, CLASES, cumple, base, campoDe, fnDe, medirDe, tipoDe, queMide, nombre, FALTA, SIN_DATOS,
@@ -122,7 +123,7 @@ function ColumnasApiladas({ w, h, d, ix, uid, normalizar }) {
                   const cabe = normalizar && y0 - y1 >= 18 && bw >= anchoTexto(pct, 11, 600) + 8
                   return (
                     <g key={s.id} className={`gr-seg${claseSerie(ix, s.id)}`}>
-                      <rect id={id} className="gr-forma" x={xc - bw / 2} y={y1} width={bw} height={Math.max(0.5, y0 - y1)} style={{ fill: fondo, stroke: pin.sup, strokeWidth: 1.5 }} />
+                      <rect id={id} className="gr-forma" x={xc - bw / 2} y={y1} width={bw} height={Math.max(0.5, y0 - y1)} style={{ fill: fondo, stroke: pin.sup, strokeWidth: SEPARADOR }} />
                       {cabe && <text className="gr-dentro gr-chico" data-forma={id} x={xc} y={(y0 + y1) / 2} dy="0.35em" textAnchor="middle" style={{ fill: pin.texto(fondo) }} pointerEvents="none">{pct}</text>}
                     </g>
                   )
@@ -211,7 +212,7 @@ function BarrasApiladas({ w, h, d, ix }) {
                   const v = m[i][k]
                   if (!v) return null
                   const xa = x(acum); acum += v; const xb = x(acum)
-                  return <rect key={s.id} className={`gr-seg${claseSerie(ix, s.id)}`} x={xa} y={yc - bh / 2} width={Math.max(0.5, xb - xa)} height={bh} style={{ fill: pin.relleno(s.color), stroke: pin.sup, strokeWidth: 1.5 }} />
+                  return <rect key={s.id} className={`gr-seg${claseSerie(ix, s.id)}`} x={xa} y={yc - bh / 2} width={Math.max(0.5, xb - xa)} height={bh} style={{ fill: pin.relleno(s.color), stroke: pin.sup, strokeWidth: SEPARADOR }} />
                 })}
               </g>
               {etq && <text x={x0 - 8} y={yc} dy="0.35em" textAnchor="end">{etq}</text>}
@@ -250,11 +251,17 @@ function Barra100({ w, h, d, ix, uid }) {
           const pct = fmtPct(f)
           const fondo = pin.relleno(it.color)
           const id = `${uid}-b${i}`
-          const cabe = bh >= 20 && ancho >= anchoVal(pct) + 12
+          // Cabe si el texto entra en lo VISIBLE del segmento: menos la separación, el aire y, solo en los
+          // extremos, lo que la punta redondeada recorta a la altura del texto. (2 px de aire por lado; el ancho del % se mide exacto.)
+          const rx = Math.min(10, bh / 2)
+          const medioT = altoTexto(12) / 2
+          const dy = Math.max(0, medioT - (bh / 2 - rx))
+          const punta = i === 0 || i === conPartes.length - 1 ? rx - Math.sqrt(Math.max(0, rx * rx - dy * dy)) : 0
+          const cabe = bh >= altoTexto(12) + 4 && ancho - (conPartes.length > 1 ? SEPARADOR : 0) - 4 - 2 * punta >= anchoVal(pct)
           return (
             <g key={it.id} className={`gr-m${ix.c(it.id)}`} {...ix.p(it.id, it.larga, [[d.que, fmt(tipo, it.valor), pin.col(it.color)], ['Del total', pct]])}>
-              <rect id={id} className="gr-forma gr-a-barra" x={xa} y={yb} width={Math.max(0.5, ancho)} height={bh} style={{ fill: fondo, stroke: pin.sup, strokeWidth: conPartes.length > 1 ? 2 : 0, '--o': i }} />
-              {cabe && <text className="gr-valor gr-dentro gr-aparece" data-forma={id} x={xa + ancho / 2} y={yb + bh / 2} dy="0.35em" textAnchor="middle" style={{ fill: pin.texto(fondo), '--o': i + 2 }} pointerEvents="none">{pct}</text>}
+              <rect id={id} className="gr-forma gr-a-barra" x={xa} y={yb} width={Math.max(0.5, ancho)} height={bh} style={{ fill: fondo, stroke: pin.sup, strokeWidth: conPartes.length > 1 ? SEPARADOR : 0, '--o': i }} />
+              {cabe && <text className="gr-valor gr-dentro gr-aparece" data-forma={id} x={xa + ancho / 2 + (i === 0 ? punta / 2 : i === conPartes.length - 1 ? -punta / 2 : 0)} y={yb + bh / 2} dy="0.35em" textAnchor="middle" style={{ fill: pin.texto(fondo), '--o': i + 2 }} pointerEvents="none">{pct}</text>}
             </g>
           )
         })}
@@ -387,7 +394,7 @@ function Circular({ w, h, d, ix, uid, dona }) {
     if (R2 >= 42) { R = R2; etq = etiquetasCirculo({ partes, cx, cy, r0: 0, R, a, fuera: true }) }
   }
   const r0 = dona ? R - grosor(R) : 0
-  const sep = partes.length > 1 ? 2 : 0
+  const sep = partes.length > 1 ? SEPARADOR : 0
   const origen = { transformOrigin: `${cx}px ${cy}px` }
   // Centro de la dona: total que cuenta, a un tamaño que cabe en el hueco.
   const totalTxt = fmt(tipo, total)
@@ -617,12 +624,54 @@ export function squarify(items, x, y, w, h) {
   }
   return out
 }
-/** Etiqueta de un recuadro: 2 niveles si caben (medidos), si no solo %, si tampoco nada (queda el tooltip). */
+/**
+ * Parte un nombre en hasta `lineas` renglones de ancho `max`, por palabras. Una palabra que no cabe sola se corta con «…».
+ * Si el nombre entero no cabe, el último renglón termina en «…» — pero SOLO si quedan al menos 6 caracteres visibles
+ * del nombre (si no, devuelve null). Devuelve { lineas: [...], completo } o null. Nunca corta una palabra sin «…».
+ */
+export function partirNombre(nombre, max, lineas = 2, px = 11, peso = 500) {
+  const palabras = String(nombre ?? '').trim().split(/\s+/).filter(Boolean)
+  if (!palabras.length || max < px) return null
+  const cabe = (t) => anchoTexto(t, px, peso) <= max
+  const out = []
+  let i = 0
+  while (i < palabras.length && out.length < lineas) {
+    let linea = palabras[i]
+    if (!cabe(linea)) break // la palabra sola no cabe: se resuelve abajo con «…»
+    i++
+    while (i < palabras.length && cabe(`${linea} ${palabras[i]}`)) linea += ` ${palabras[i++]}`
+    out.push(linea)
+  }
+  if (i >= palabras.length) return { lineas: out, completo: true }
+  // No cupo todo: el último renglón disponible termina en «…».
+  const resto = palabras.slice(out.length < lineas ? i : i - (out[out.length - 1] || '').split(' ').length).join(' ')
+  const previas = out.length < lineas ? out : out.slice(0, -1)
+  let n = resto.length
+  let ult = ''
+  while (n > 0) { const t = `${resto.slice(0, n).trimEnd()}…`; if (cabe(t)) { ult = t; break } n-- }
+  if (!ult) return null
+  const visibles = previas.join(' ').replace(/\s/g, '').length + ult.slice(0, -1).replace(/\s/g, '').length
+  if (visibles < 6) return null
+  return { lineas: [...previas, ult], completo: false }
+}
+/**
+ * Etiqueta de un recuadro, de más a menos: nombre en 1 renglón + valor·%, nombre + %, nombre en 2 renglones (por palabras)
+ * + valor·% o %, nombre truncado con «…» (≥ 6 caracteres) + %, solo %, nada (queda el tooltip). Todo medido.
+ * Devuelve { nombre: [renglones], valor } o null.
+ */
 function etiquetaRecuadro(cw, ch, nombreTxt, valorTxt, pct) {
   const util = cw - 16
-  if (ch >= 44 && util >= anchoTexto(nombreTxt) && util >= anchoVal(`${valorTxt} · ${pct}`)) return [nombreTxt, `${valorTxt} · ${pct}`]
-  if (ch >= 44 && util >= anchoTexto(nombreTxt) && util >= anchoVal(pct)) return [nombreTxt, pct]
-  if (ch >= 24 && cw - 14 >= anchoVal(pct)) return [null, pct]
+  const alto = (renglones, conValor) => 17 + (renglones - 1) * 15 + (conValor ? 16 : 0) + 9 // centro del último + medio texto + aire
+  const vp = `${valorTxt} · ${pct}`
+  const p1 = partirNombre(nombreTxt, util, 1)
+  const p2 = partirNombre(nombreTxt, util, 2)
+  const opciones = []
+  if (p1?.completo) opciones.push({ n: p1.lineas, v: vp }, { n: p1.lineas, v: pct })
+  if (p2?.completo) opciones.push({ n: p2.lineas, v: vp }, { n: p2.lineas, v: pct })
+  if (p2 && !p2.completo) opciones.push({ n: p2.lineas, v: pct })
+  if (p1 && !p1.completo) opciones.push({ n: p1.lineas, v: pct })
+  for (const o of opciones) if (ch >= alto(o.n.length, true) && util >= anchoVal(o.v)) return { nombre: o.n, valor: o.v }
+  if (ch >= 24 && cw - 14 >= anchoVal(pct)) return { nombre: [], valor: pct }
   return null
 }
 function Arbol({ w, h, d, ix, uid }) {
@@ -647,8 +696,8 @@ function Arbol({ w, h, d, ix, uid }) {
             <g key={it.id} className={`gr-m${ix.c(it.id)}`} {...ix.p(it.id, it.larga, [[d.que, fmt(tipo, it.valor), pin.col(it.color)], ['Del total', pct], ['Registros', fmt('numero', it.n)]])}>
               <g className="gr-a-mosaico" style={{ '--o': ordenDe.get(i) }}>
                 <rect id={id} className="gr-forma" x={x + 1.5} y={y + 1.5} width={Math.max(0, cw - 3)} height={Math.max(0, ch - 3)} rx={Math.min(8, cw / 4, ch / 4)} style={{ fill: fondo, stroke: pin.col(it.color) }} />
-                {etq && etq[0] && <text className="gr-dentro" data-forma={id} x={x + 9} y={y + 17} dy="0.35em" style={{ fill: tx }} pointerEvents="none">{etq[0]}</text>}
-                {etq && <text className="gr-valor gr-dentro" data-forma={id} x={x + (etq[0] ? 9 : 8)} y={y + (etq[0] ? 33 : 14)} dy="0.35em" style={{ fill: tx }} pointerEvents="none">{etq[1]}</text>}
+                {etq && etq.nombre.map((t, k) => <text key={k} className="gr-dentro" data-forma={id} x={x + 9} y={y + 17 + k * 15} dy="0.35em" style={{ fill: tx }} pointerEvents="none">{t}</text>)}
+                {etq && <text className="gr-valor gr-dentro" data-forma={id} x={x + (etq.nombre.length ? 9 : 8)} y={etq.nombre.length ? y + 17 + (etq.nombre.length - 1) * 15 + 16 : y + 14} dy="0.35em" style={{ fill: tx }} pointerEvents="none">{etq.valor}</text>}
               </g>
             </g>
           )
@@ -1072,6 +1121,10 @@ function Estadisticas({ w, h, d, ix }) {
     ['Total', s.suma, `Suma de ${s.n} registros con valor`],
   ]
   let cols = w < 260 ? 2 : w >= 560 && h < 200 ? 6 : 3
+  // Si ni el valor compacto cabe en la casilla (14 px), una columna menos.
+  const casilla = (c) => (w - (c - 1) * 6) / c - 20
+  const anchoMin = Math.max(...[s.promedio, s.mediana, s.min, s.max, s.desv, s.suma].map((v) => anchoTexto(fmtCorto(tipo, v), 14, 600)))
+  while (cols > 1 && cols <= 3 && anchoMin > casilla(cols)) cols--
   const lista = h < Math.ceil(6 / cols) * 46
   const largo = Math.max(...[s.promedio, s.mediana, s.min, s.max, s.desv, s.suma].map((v) => anchoVal(fmt(tipo, v)))) + 78
   if (lista) cols = Math.max(1, Math.min(3, Math.floor((w + 14) / (largo + 14))))
@@ -1317,7 +1370,7 @@ export const GRAFICOS = {
       const tl = E.tendenciaLineal(d.items.map((i) => i.valor))
       const v = Math.max(1, Math.floor(o.ventana || 3))
       const t = `${tl.pendiente >= 0 ? '+' : '−'}${fmtCorto(d.tipo, Math.abs(tl.pendiente))}/mes`
-      return { ...d, ventana: v, pie: `${d.pie} · tendencia ${t}${tl.r2 !== null ? ` (r² ${fmt('numero', tl.r2)})` : ''}`,
+      return { ...d, ventana: v, pie: `${d.pieCorto} · tendencia ${t}${tl.r2 !== null ? `, r² ${fmt('numero', tl.r2)}` : ''}`,
         leyenda: [{ id: 'l:valor', nombre: d.que, color: ACENTO }, { id: 'l:mm', nombre: `Media móvil ${v} m`, color: COLORES[5] }, { id: 'l:tend', nombre: `Tendencia ${t}`, color: COLORES[2], raya: true }] }
     } },
   dona: { nombre: 'Dona', familia: F.ci, requiere: { categoria: 1 }, Componente: (p) => <Circular {...p} dona />,
@@ -1408,6 +1461,32 @@ function usePinturaDe(ref, w, h) {
 }
 
 /**
+ * Tooltip en <body> (posición absoluta de página): ninguna tarjeta con overflow lo recorta. Se mide y se mantiene
+ * dentro de la ventana; si no cabe a la derecha/abajo del puntero, se voltea. Lleva copiadas las variables del tema.
+ */
+function Tip({ tip, vars }) {
+  const ref = useRef(null)
+  const [pos, setPos] = useState(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const w = el.offsetWidth; const h = el.offsetHeight
+    const vw = document.documentElement.clientWidth; const vh = window.innerHeight
+    let x = tip.cx + 14; if (x + w > vw - 4) x = tip.cx - 14 - w
+    let y = tip.cy + 14; if (y + h > vh - 4) y = tip.cy - 12 - h
+    x = Math.max(4, Math.min(vw - 4 - w, x)); y = Math.max(4, Math.min(vh - 4 - h, y))
+    setPos((p) => (p && p.x === x + window.scrollX && p.y === y + window.scrollY ? p : { x: x + window.scrollX, y: y + window.scrollY }))
+  }, [tip.cx, tip.cy, tip.id])
+  return createPortal(
+    <div ref={ref} className="gr-tip" role="status" style={{ ...vars, left: pos ? pos.x : 0, top: pos ? pos.y : 0, visibility: pos ? 'visible' : 'hidden' }}>
+      <b>{tip.titulo}</b>
+      {tip.filas.map(([k, v, c], i) => <span key={i}>{c ? <i style={{ background: c }} /> : null}{k}{v !== '' && <em>{v}</em>}</span>)}
+    </div>,
+    document.body,
+  )
+}
+
+/**
  * Dibuja un gráfico del catálogo con los registros de una sección.
  * @param {string} tipo       id del catálogo GRAFICOS (p. ej. 'dona', 'linea-tendencia')
  * @param {object} seccion    la sección (se usa su título en textos accesibles)
@@ -1439,7 +1518,7 @@ export function Grafico({ tipo, seccion, campos = [], registros = [], opciones =
   const mostrar = (e, id, titulo, filas) => {
     const r = lienzo.current?.getBoundingClientRect()
     if (!r) return
-    setTip({ id, titulo, filas, x: e.clientX - r.left, y: e.clientY - r.top })
+    setTip({ id, titulo, filas, cx: e.clientX, cy: e.clientY })
   }
   const ix = {
     activo: tip?.id ?? null,
@@ -1466,12 +1545,7 @@ export function Grafico({ tipo, seccion, campos = [], registros = [], opciones =
             </VarianteContext.Provider>
           </PinturaContext.Provider>
         )}
-        {tip && !vacio && (
-          <div className="gr-tip" role="status" style={{ left: tip.x, top: tip.y, transform: `translate(${tip.x > w * 0.55 ? 'calc(-100% - 12px)' : '12px'}, ${tip.y > h * 0.5 ? 'calc(-100% - 10px)' : '12px'})` }}>
-            <b>{tip.titulo}</b>
-            {tip.filas.map(([k, v, c], i) => <span key={i}>{c ? <i style={{ background: c }} /> : null}{k}{v !== '' && <em>{v}</em>}</span>)}
-          </div>
-        )}
+        {tip && !vacio && pin && <Tip tip={tip} vars={pin.vars} />}
       </div>
       {conPie && <figcaption className="gr-pie" title={pieTxt}>{pieTxt}</figcaption>}
     </figure>

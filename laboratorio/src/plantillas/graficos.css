@@ -105,7 +105,7 @@
 .gr-conector { stroke: rgba(var(--ink), .3); stroke-width: 1; stroke-dasharray: 2 2; }
 
 /* ── Tooltip ── */
-.gr-tip { position: absolute; z-index: 5; pointer-events: none; display: grid; gap: 3px; min-width: 120px; max-width: 240px; padding: 8px 10px; border-radius: 10px;
+.gr-tip { position: absolute; z-index: 1000; box-sizing: border-box; pointer-events: none; display: grid; gap: 3px; min-width: 120px; max-width: 240px; padding: 8px 10px; border-radius: 10px;
   background: var(--card); border: 1px solid var(--linea); box-shadow: 0 8px 24px rgba(var(--sombra), .28); color: var(--tx); font: 12px/1.35 var(--fuente); animation: gr-tip .15s ease-out; }
 .gr-tip b { font-weight: 700; }
 .gr-tip span { display: flex; align-items: center; gap: 6px; color: var(--tx2); }
