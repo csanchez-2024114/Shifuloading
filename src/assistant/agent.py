@@ -6,8 +6,10 @@ from typing import Any, Iterator
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
+    AgentMiddleware,
     HumanInTheLoopMiddleware,
     ModelCallLimitMiddleware,
+    SummarizationMiddleware,
     ToolErrorMiddleware,
     dynamic_prompt,
     wrap_model_call,
@@ -17,7 +19,9 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 
+from assistant import citations
 from assistant.config import Settings, read_system_prompt
+from assistant.memory import SUMMARY_SOURCE
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +103,39 @@ def make_model(settings: Settings) -> ChatOpenAI:
     )
 
 
+def make_checker_model(settings: Settings) -> ChatOpenAI:
+    """Modelo barato para verificaciones (recuerdos, respuestas): sin razonamiento y fuera del stream."""
+    return ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None, use_responses_api=True,
+                      reasoning={"effort": "none"}, tags=["nostream"])
+
+
+def make_summary_model(settings: Settings) -> ChatOpenAI:
+    # tags=["nostream"]: sin esto el texto del resumen llega a la UI como tokens (stream_mode="messages").
+    return ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None, use_responses_api=True,
+                      reasoning={"effort": "low"}, tags=["nostream"])
+
+
+SUMMARY_PROMPT = """Summarize the earlier part of a conversation between a user and an assistant so the assistant can \
+continue it without the original messages. The summary replaces those messages, so anything you leave out is lost.
+
+Keep VERBATIM (exact spelling, values and units):
+- names of people, places, products, projects and organizations;
+- every number, amount, date, time, quantity and result of calculations;
+- decisions the user made and options they rejected, with their reasons;
+- the user's stated preferences, likes, dislikes and personal facts, attributed to the user;
+- open questions, pending tasks and commitments the assistant made.
+
+Rules:
+- If the messages start with an earlier summary, merge it in: keep all of its facts unless the user corrected them.
+- Write facts the user stated as "The user said ...". Do not add facts, guesses or interpretations.
+- Mark clearly what came from tools (web results, calculations) versus from the user.
+- Write in the conversation's language. Use short bullet points grouped by topic. No preamble.
+
+<messages>
+{messages}
+</messages>"""
+
+
 def _on_tool_error(exc: Exception, request) -> str:
     return f"Error en la herramienta ({type(exc).__name__}): {exc}. Intenta otra cosa."
 
@@ -118,20 +155,96 @@ def _system_prompt(request) -> str:
     return system_prompt_text()
 
 
-def build_agent(model, tools, settings: Settings, checkpointer=None, store=None):
+EVIDENCE_TOOLS = ("buscar_web", "investigador_profundo")
+_EVIDENCE_CHARS = 12000
+
+VERIFY_ANSWER_PROMPT = """You are a fact-checker. Given an ANSWER and the EVIDENCE the assistant retrieved in this turn, \
+check every factual claim in the ANSWER (names, numbers, dates, quotes, citations).
+A claim is SUPPORTED only if the EVIDENCE states it or directly implies it.
+Common general knowledge, opinions, advice and things the user said need no support.
+Citations are checked separately: two URLs are the same if domain and path match (ignore ?utm_source and other query
+parameters). Never remove or change a citation link whose URL appears in the EVIDENCE.
+
+Output:
+- If every claim is supported: output exactly OK (do not rewrite or rephrase a correct answer).
+- Otherwise: output only the corrected answer. Keep the language, wording, structure, citation links and supported
+  content unchanged; remove or soften only the unsupported claims (e.g. "I couldn't verify X", in the answer's
+  language); fix wrong numbers using the EVIDENCE. Never add new claims, numbers or dates.
+
+EVIDENCE:
+{evidence}
+
+ANSWER:
+{answer}"""
+
+
+class AnswerVerifier(AgentMiddleware):
+    """ANSWER_VERIFY: al terminar el turno, si se usó buscar_web/investigador_profundo, una llamada barata
+    contrasta la respuesta con lo recuperado. Si corrige, reemplaza el mensaje (mismo id) y avisa a la UI con el
+    original: el cambio nunca es silencioso. Sin búsqueda en el turno no hace nada (0 tokens)."""
+
+    def __init__(self, checker):
+        super().__init__()
+        self.checker = checker
+
+    def after_agent(self, state, runtime):
+        messages = state.get("messages") or []
+        start = max((i for i, m in enumerate(messages) if m.type == "human"), default=-1) + 1
+        turn = messages[start:]
+        evidence = [_content_text(m) for m in turn if isinstance(m, ToolMessage) and m.name in EVIDENCE_TOOLS]
+        last = turn[-1] if turn else None
+        if not evidence or not isinstance(last, AIMessage) or last.tool_calls or not _content_text(last).strip():
+            return None
+        original = _content_text(last)
+        try:
+            resp = self.checker.invoke(VERIFY_ANSWER_PROMPT.format(
+                evidence="\n\n---\n\n".join(evidence)[-_EVIDENCE_CHARS:], answer=original))
+        except Exception as exc:  # noqa: BLE001 - la verificación es opcional: si falla, se deja la respuesta
+            logger.warning("No pude verificar la respuesta (%s)", exc)
+            return None
+        verdict = (resp.text or "").strip()
+        tokens = (getattr(resp, "usage_metadata", None) or {}).get("total_tokens")
+        correction = None if not verdict or verdict.strip(" .").upper() == "OK" else verdict
+        # las reglas de citas y de datos nuevos se aplican en código sobre lo que diga el verificador
+        text, status, notes = citations.enforce(original, correction, "\n\n".join(evidence))
+        event = {"tipo": "verificacion", "status": status, "notes": notes, "tokens": tokens}
+        if text == original:
+            runtime.stream_writer(event)
+            return None
+        runtime.stream_writer({**event, "text": text, "original": original})
+        # el original queda guardado en el mensaje: al recargar el historial la corrección sigue siendo visible
+        return {"messages": [AIMessage(id=last.id, content=text, additional_kwargs={
+            "answer_verify": {"original": original, "status": status, "notes": notes}})]}
+
+
+def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None):
+    """`summarizer`/`checker`: modelos para MEMORY_SUMMARIZE/ANSWER_VERIFY (se inyectan en tests)."""
+    middleware = [
+        _system_prompt,
+        _razonamiento,
+        LimiteLlamadas(),
+        ToolErrorMiddleware(on_error=_on_tool_error),
+        HumanInTheLoopMiddleware(interrupt_on={"enviar_email_simulado": True}),
+    ]
+    if settings.memory_summarize:
+        middleware.insert(0, SummarizationMiddleware(
+            summarizer or make_summary_model(settings),
+            trigger=("tokens", settings.summary_trigger_tokens),
+            keep=("messages", settings.summary_keep_messages),
+            summary_prompt=SUMMARY_PROMPT,
+            # ponytail: el default (4000, estrategia "last") recorta lo más viejo antes de resumir, y eso incluye el
+            # resumen anterior: los datos del inicio se perderían en el segundo resumen. El umbral ya acota la entrada.
+            trim_tokens_to_summarize=None,
+        ))
+    if settings.answer_verify:
+        middleware.append(AnswerVerifier(checker or make_checker_model(settings)))
     return create_agent(
         model,
         tools,
         context_schema=Context,
         checkpointer=checkpointer,
         store=store,
-        middleware=[
-            _system_prompt,
-            _razonamiento,
-            LimiteLlamadas(),
-            ToolErrorMiddleware(on_error=_on_tool_error),
-            HumanInTheLoopMiddleware(interrupt_on={"enviar_email_simulado": True}),
-        ],
+        middleware=middleware,
     )
 
 
@@ -182,6 +295,11 @@ def _update_events(update: dict) -> Iterator[dict]:
             continue
         if not isinstance(node_update, dict):
             continue
+        if node.startswith("SummarizationMiddleware") and node_update.get("messages"):
+            yield {"type": "summarized"}
+            continue
+        if node.startswith("AnswerVerifier"):
+            continue  # la corrección ya llegó como evento "verify"
         if node.startswith("LimiteLlamadas") and node_update.get("messages"):
             # el middleware corta el turno con un AIMessage que no se streamea.
             yield {"type": "token", "text": f"\n\n_{LIMIT_MSG}_"}
@@ -232,7 +350,7 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
                 token, metadata = data
                 if metadata.get("langgraph_node") not in MODEL_NODES:
                     continue
-                if "nostream" in (metadata.get("tags") or []):
+                if "nostream" in (metadata.get("tags") or []) or metadata.get("lc_source") == SUMMARY_SOURCE:
                     continue
                 text = _content_text(token)
                 if text:
@@ -242,6 +360,8 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "progreso":
                 # avance del investigador profundo (búsquedas internas mientras trabaja)
                 yield {"type": "progress", "name": data.get("herramienta"), "args": data.get("args", {})}
+            elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "verificacion":
+                yield {"type": "verify", **{k: v for k, v in data.items() if k != "tipo"}}
     except GraphRecursionError:
         yield {"type": "error", "message": (
             f"Me detuve: la tarea superó {settings.recursion_limit} pasos internos. "
@@ -259,12 +379,17 @@ def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
     state = agent.get_state(run_config(thread_id, settings))
     out: list[dict] = []
     for msg in (state.values or {}).get("messages", []):
-        if isinstance(msg, HumanMessage):
+        if isinstance(msg, HumanMessage) and msg.additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
+            out.append({"role": "summary"})  # la conversación anterior se resumió (MEMORY_SUMMARIZE)
+        elif isinstance(msg, HumanMessage):
             out.append({"role": "user", "content": _content_text(msg)})
         elif isinstance(msg, AIMessage):
             text = _content_text(msg)
             if text:
                 out.append({"role": "assistant", "content": text})
+                if corrected := msg.additional_kwargs.get("answer_verify"):
+                    out[-1]["original"] = corrected.get("original", "")
+                    out[-1]["verify"] = {"status": corrected.get("status", "corrected"), "notes": corrected.get("notes", [])}
             for call in msg.tool_calls:
                 out.append({"role": "tool", "name": call.get("name")})
     return out
