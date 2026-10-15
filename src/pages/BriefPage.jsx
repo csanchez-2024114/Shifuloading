@@ -148,7 +148,6 @@ export default function BriefPage() {
       <header className="brief-cab">
         <Link to="/" aria-label="Shifu"><Logo height={26} color="#14211d" /></Link>
         {!fin && <span className="brief-paso" aria-live="polite">{idx + 1} de {TOTAL}</span>}
-        {!fin && <Link to="/" className="brief-omitir">Omitir por ahora</Link>}
       </header>
 
       <main className="brief-main">
