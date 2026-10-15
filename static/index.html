@@ -128,6 +128,17 @@ select#thread {
 .conf.verified { color: var(--ok); }
 .conf.unverified { color: var(--err); }
 .vnote { margin: 8px 0 0; font-size: .82rem; color: var(--muted); }
+/* tiempos de respuesta (interruptor en Ajustes) */
+.row.assistant { flex-direction: column; align-items: flex-start; }
+.timing { margin: 3px 0 0 6px; font-size: .75rem; color: var(--muted); cursor: pointer; user-select: none; font-variant-numeric: tabular-nums; }
+.timing .tdetail { display: none; margin-left: 6px; }
+.math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", Georgia, serif; white-space: nowrap; }
+.math.block { display: block; text-align: center; margin: 6px 0; white-space: normal; }
+#settings select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: inherit; }
+.timing.open .tdetail { display: inline; }
+body.no-times .timing { display: none; }
+#settings .switch { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; color: var(--muted); }
+#settings .switch input { flex: none; min-width: 0; padding: 0; }
 .vnote.corrected { color: var(--err); }
 .vnote details { margin-top: 4px; }
 .vnote summary { cursor: pointer; text-decoration: underline; }
@@ -244,6 +255,15 @@ textarea#input:disabled { opacity: .6; }
     <label for="userid">ID de usuario</label>
     <input id="userid" type="text" autocomplete="off" spellcheck="false" maxlength="64">
     <small>Se usa para separar los recuerdos de cada persona. Se guarda en este navegador.</small>
+    <label class="switch"><input id="showtimes" type="checkbox" checked> Mostrar tiempos de respuesta</label>
+    <label for="effortsel">Esfuerzo</label>
+    <select id="effortsel">
+      <option value="auto">Automático</option>
+      <option value="bajo">Bajo</option>
+      <option value="medio">Medio</option>
+      <option value="alto">Alto</option>
+    </select>
+    <small>Automático: lo decide el asistente según el mensaje. Bajo/medio/alto lo fijan para cada mensaje.</small>
   </section>
   <section id="memories" aria-label="Recuerdos guardados">
     <h2>Recuerdos de <span id="memuser"></span></h2>
@@ -277,11 +297,58 @@ textarea#input:disabled { opacity: .6; }
     while ((m = /[.,;:!?)\]]$/.exec(u))) { tail = m[0] + tail; u = u.slice(0, -1); }
     return [u, tail];
   }
+  /* MATH-START */
+  // Respaldo por si el modelo escribe LaTeX (\( \), \[ \], $$ $$): lo convierte a texto legible con símbolos
+  // Unicode, <sup> y <sub>, sin librerías externas. Recibe texto ya escapado (esc) y devuelve HTML.
+  var TEX_SYMBOLS = {
+    cdot: "·", times: "×", div: "÷", pm: "±", mp: "∓", le: "≤", leq: "≤", ge: "≥", geq: "≥", neq: "≠", ne: "≠",
+    approx: "≈", equiv: "≡", sim: "∼", infty: "∞", sum: "Σ", prod: "Π", int: "∫", to: "→", rightarrow: "→",
+    leftarrow: "←", Rightarrow: "⇒", Leftrightarrow: "⇔", implies: "⇒", iff: "⇔", ldots: "…", dots: "…",
+    cdots: "⋯", in: "∈", notin: "∉", subset: "⊂", subseteq: "⊆", cup: "∪", cap: "∩", forall: "∀", exists: "∃",
+    partial: "∂", nabla: "∇", lfloor: "⌊", rfloor: "⌋", lceil: "⌈", rceil: "⌉", mid: "|", lvert: "|", rvert: "|",
+    vert: "|", circ: "∘", degree: "°", neg: "¬", land: "∧", lor: "∨", emptyset: "∅", angle: "∠", prime: "′",
+    alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε", zeta: "ζ", eta: "η",
+    theta: "θ", iota: "ι", kappa: "κ", lambda: "λ", mu: "μ", nu: "ν", xi: "ξ", pi: "π", rho: "ρ", sigma: "σ",
+    tau: "τ", upsilon: "υ", phi: "φ", varphi: "φ", chi: "χ", psi: "ψ", omega: "ω", Gamma: "Γ", Delta: "Δ",
+    Theta: "Θ", Lambda: "Λ", Xi: "Ξ", Pi: "Π", Sigma: "Σ", Phi: "Φ", Psi: "Ψ", Omega: "Ω",
+    quad: " ", qquad: "  ", mod: " mod ", bmod: " mod ", log: "log", ln: "ln", sin: "sin", cos: "cos",
+    tan: "tan", exp: "exp", max: "max", min: "min", lim: "lim", gcd: "mcd"
+  };
+  function texToHtml(t) {
+    var prev;
+    t = t.replace(/\\(left|right|big|Big|bigg|Bigg)(?![a-zA-Z])/g, "");
+    t = t.replace(/\\[,;:! ]/g, " ").replace(/\\(%|\{|\}|\$|#|&amp;|_)/g, function (m, c) { return c === "_" ? "\u0002" : c; });
+    t = t.replace(/\\(?:text|mathrm|mathbf|mathit|mathsf|mathtt|operatorname|boldsymbol)\{([^{}]*)\}/g, "$1");
+    do {
+      prev = t;
+      t = t.replace(/\\[dt]?frac\{([^{}]*)\}\{([^{}]*)\}/g, function (m, a, b) {
+        var simple = function (x) { return /^[\w.·′]+$/.test(x); };
+        return (simple(a) ? a : "(" + a + ")") + "/" + (simple(b) ? b : "(" + b + ")");
+      });
+      t = t.replace(/\\binom\{([^{}]*)\}\{([^{}]*)\}/g, "C($1, $2)");
+      t = t.replace(/\\sqrt\[([^\]]*)\]\{([^{}]*)\}/g, "<sup>$1</sup>√($2)");
+      t = t.replace(/\\sqrt\{([^{}]*)\}/g, function (m, a) { return /^\w+$/.test(a) ? "√" + a : "√(" + a + ")"; });
+      t = t.replace(/\\pmod\{([^{}]*)\}/g, " (mod $1)");
+      t = t.replace(/\^\{([^{}]*)\}/g, "<sup>$1</sup>").replace(/_\{([^{}]*)\}/g, "<sub>$1</sub>");
+    } while (t !== prev);
+    t = t.replace(/\\([a-zA-Z]+)/g, function (m, name) { return TEX_SYMBOLS.hasOwnProperty(name) ? TEX_SYMBOLS[name] : name; });
+    t = t.replace(/\^(\\?[\w′]|[+\-])/g, "<sup>$1</sup>").replace(/_([\w])/g, "<sub>$1</sub>");
+    t = t.replace(/[{}]/g, "").replace(/\u0002/g, "_").replace(/\s{2,}/g, " ");
+    return t.trim();
+  }
+  function replaceMath(s, keep) {
+    s = s.replace(/\$\$([^$]+?)\$\$|\\\[(.+?)\\\]/g, function (m, a, b) {
+      return keep('<span class="math block">' + texToHtml(a !== undefined ? a : b) + "</span>");
+    });
+    return s.replace(/\\\((.+?)\\\)/g, function (m, a) { return keep('<span class="math">' + texToHtml(a) + "</span>"); });
+  }
+  /* MATH-END */
   function inline(s, noLinks) {
     var stash = [];
     function keep(html) { stash.push(html); return "\u0001" + (stash.length - 1) + "\u0001"; }
     s = s.replace(/[\u0000\u0001]/g, "");
     s = s.replace(/`([^`\n]+)`/g, function (m, c) { return keep("<code>" + c + "</code>"); });
+    s = replaceMath(s, keep);
     if (!noLinks) {
       s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, function (m, t, u) {
         return keep('<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + inline(t, true) + "</a>");
@@ -296,8 +363,14 @@ textarea#input:disabled { opacity: .6; }
     s = s.replace(/\u0001(\d+)\u0001/g, function (m, i) { return stash[+i]; });
     return s;
   }
+  function joinDisplayMath(src) {
+    return src.split(/(```[\s\S]*?(?:```|$))/).map(function (part, k) {
+      if (k % 2) return part;
+      return part.replace(/\\\[([\s\S]+?)\\\]|\$\$([\s\S]+?)\$\$/g, function (m) { return m.replace(/\s*\n\s*/g, " "); });
+    }).join("");
+  }
   function renderMarkdown(src) {
-    var lines = esc(src.replace(/\r\n?/g, "\n")).split("\n");
+    var lines = esc(joinDisplayMath(src.replace(/\r\n?/g, "\n"))).split("\n");
     var out = [];
     var i = 0;
     var reFence = /^\s*```\s*([\w+-]*)\s*$/;
@@ -385,7 +458,8 @@ textarea#input:disabled { opacity: .6; }
   var messagesEl = $("messages"), inputEl = $("input"), sendBtn = $("send"),
       threadSel = $("thread"), newBtn = $("newbtn"), setBtn = $("setbtn"),
       settingsEl = $("settings"), userEl = $("userid"),
-      memBtn = $("membtn"), memEl = $("memories"), memListEl = $("memlist");
+      memBtn = $("membtn"), memEl = $("memories"), memListEl = $("memlist"), timesEl = $("showtimes"),
+      effortEl = $("effortsel");
 
   var state = { threadId: null, threads: [], userId: "usuario", streaming: false, pending: 0, loadSeq: 0 };
 
@@ -503,46 +577,89 @@ textarea#input:disabled { opacity: .6; }
     return note;
   }
   function addToolLine(name) {
-    // líneas consecutivas de la misma herramienta se agrupan: "usó calculadora ×47"
+    // líneas consecutivas de la misma herramienta se agrupan: "🧮 Cálculo ×47"
+    var label = TOOL_DONE[name] || ("usó " + name);
     var last = messagesEl.lastElementChild;
     if (last && last.classList.contains("toolline") && last.dataset.tool === name) {
       last.dataset.n = String(+last.dataset.n + 1);
-      last.textContent = "usó " + name + " ×" + last.dataset.n;
+      last.textContent = label + " ×" + last.dataset.n;
       return;
     }
-    var line = el("div", "toolline", "usó " + name);
+    var line = el("div", "toolline", label);
     line.dataset.tool = name; line.dataset.n = "1";
     messagesEl.appendChild(line);
   }
 
   /* ---------- burbuja del asistente en streaming ---------- */
+  /* TOOL-NAMES-START */
+  // Las herramientas se llaman en inglés; la interfaz muestra etiquetas en español. Los hilos guardados antes del
+  // cambio traen los nombres antiguos: se traducen al nombre actual antes de buscar la etiqueta.
+  var OLD_TOOL_NAMES = {
+    buscar_web: "web_search", calculadora: "calculator", fecha_hora: "current_datetime",
+    guardar_recuerdo: "save_memory", buscar_recuerdos: "search_memories", actualizar_recuerdo: "update_memory",
+    investigador_profundo: "deep_research", enviar_email_simulado: "send_simulated_email"
+  };
+  function canonicalTool(name) { return OLD_TOOL_NAMES[name] || name; }
   var TOOL_LABELS = {
-    buscar_web: "🔎 Buscando en la web…",
-    investigador_profundo: "🧠 Investigando a fondo…",
-    calculadora: "🧮 Calculando…",
-    fecha_hora: "🕒 Consultando la hora…",
-    guardar_recuerdo: "💾 Guardando recuerdo…",
-    buscar_recuerdos: "📚 Buscando recuerdos…",
-    actualizar_recuerdo: "✏️ Actualizando recuerdo…",
+    web_search: "🔎 Buscando en la web…",
+    deep_research: "🧠 Investigando a fondo…",
+    calculator: "🧮 Calculando…",
+    current_datetime: "🕒 Consultando la hora…",
+    save_memory: "💾 Guardando recuerdo…",
+    search_memories: "📚 Buscando recuerdos…",
+    update_memory: "✏️ Actualizando recuerdo…",
+    send_simulated_email: "✉️ Enviando email simulado…",
     retrieve_tools: "🧰 Buscando herramientas…"
   };
   var TOOL_DONE = {
-    buscar_web: "🔎 Búsqueda web",
-    investigador_profundo: "🧠 Investigación",
-    calculadora: "🧮 Cálculo",
-    fecha_hora: "🕒 Hora consultada",
-    guardar_recuerdo: "💾 Recuerdo guardado",
-    buscar_recuerdos: "📚 Recuerdos consultados",
-    actualizar_recuerdo: "✏️ Recuerdo actualizado",
+    web_search: "🔎 Búsqueda web",
+    deep_research: "🧠 Investigación",
+    calculator: "🧮 Cálculo",
+    current_datetime: "🕒 Hora consultada",
+    save_memory: "💾 Recuerdo guardado",
+    search_memories: "📚 Recuerdos consultados",
+    update_memory: "✏️ Recuerdo actualizado",
+    send_simulated_email: "✉️ Email simulado",
     retrieve_tools: "🧰 Herramientas"
   };
+  /* TOOL-NAMES-END */
   var ENGINES = { duckduckgo: "vía DuckDuckGo", openai_web_search: "vía OpenAI web search" };
+
+  /* BREAKDOWN-START */
+  // Desglose de un turno a partir de sus eventos [{t: ms desde el envío, type, name}] y la duración total endT.
+  // "thinking" es lo que queda: el modelo razonando y escribiendo (incluye el tiempo de red).
+  function computeBreakdown(events, endT) {
+    var r = { total: endT, classify: 0, tools: 0, verify: 0, summary: 0, thinking: 0 };
+    var running = 0, toolFrom = 0, lastText = null, prev = 0, verifyFrom = null;
+    events.forEach(function (e) {
+      if (e.type === "effort") r.classify = e.t;  // el servidor clasifica el esfuerzo antes de abrir el stream
+      else if (e.type === "tool_start") { if (running++ === 0) toolFrom = e.t; }
+      else if (e.type === "tool_end") { if (running > 0 && --running === 0) r.tools += e.t - toolFrom; }
+      else if (e.type === "token") lastText = e.t;
+      else if (e.type === "phase" && e.name === "verifying") verifyFrom = e.t;
+      else if (e.type === "verify") r.verify += e.t - (verifyFrom !== null ? verifyFrom : (lastText !== null ? lastText : prev));
+      else if (e.type === "summarized") r.summary += e.t - prev;  // el aviso llega al terminar de resumir
+      prev = e.t;
+    });
+    if (running > 0) r.tools += endT - toolFrom;  // herramientas que no terminaron (error o corte)
+    r.thinking = Math.max(0, r.total - r.classify - r.tools - r.verify - r.summary);
+    return r;
+  }
+  /* BREAKDOWN-END */
+  function secs(ms) { return (ms / 1000).toFixed(1) + " s"; }
 
   function AssistantBubble() {
     var self = this;
     this.row = el("div", "row assistant");
     this.bubble = el("div", "bubble");
     this.row.appendChild(this.bubble);
+    // tiempos: contador en vivo con la fase actual y, al terminar, el total con su desglose
+    this.t0 = performance.now(); this.tev = []; this.running = []; this.verifying = false; this.lastTok = -1e9;
+    this.timing = el("div", "timing"); this.timing.setAttribute("role", "button"); this.timing.tabIndex = 0;
+    this.timing.addEventListener("click", function () { self.timing.classList.toggle("open"); });
+    this.timing.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); self.timing.classList.toggle("open"); } });
+    this.row.appendChild(this.timing);
+    this.tick = setInterval(function () { self.liveTime(); }, 200);
     this.dots = el("span", "dots"); this.dots.setAttribute("aria-label", "Pensando");
     this.dots.innerHTML = "<i></i><i></i><i></i>";
     this.bubble.appendChild(this.dots);
@@ -574,10 +691,13 @@ textarea#input:disabled { opacity: .6; }
     this.schedule();
   };
   var EFFORT_LABELS = { bajo: "⚡ Esfuerzo bajo", medio: "⚙️ Esfuerzo medio", alto: "🧠 Esfuerzo alto" };
+  var EFFORT_SOURCES = { manual: "elegido en Ajustes", auto: "automático", regla: "mensaje corto" };
   AssistantBubble.prototype.effort = function (ev) {
     var chip = el("div", "chip done");
-    chip.appendChild(el("span", "lbl", EFFORT_LABELS[ev.level] || ("Esfuerzo " + ev.level)));
-    chip.title = "Hasta " + ev.max_calls + " llamadas al modelo · razonamiento " + (ev.reasoning || "por defecto");
+    this.effortText = "esfuerzo " + ev.level + (EFFORT_SOURCES[ev.source] ? " (" + EFFORT_SOURCES[ev.source] + ")" : "");
+    chip.appendChild(el("span", "lbl", (EFFORT_LABELS[ev.level] || ("Esfuerzo " + ev.level)) + (ev.source === "manual" ? " · elegido" : "")));
+    chip.title = "Hasta " + ev.max_calls + " llamadas al modelo · razonamiento " + (ev.reasoning || "por defecto") +
+      (EFFORT_SOURCES[ev.source] ? " · " + EFFORT_SOURCES[ev.source] : "");
     this.bubble.insertBefore(chip, this.bubble.firstChild);
   };
   // Un chip por herramienta, con contador (p. ej. "🧮 Cálculo ×47"), en vez de un chip por llamada.
@@ -616,6 +736,35 @@ textarea#input:disabled { opacity: .6; }
     try { g.chip.title = JSON.stringify(ev.args || {}); } catch (e) { /* ignore */ }
     this.paint(g);
   };
+  /* TOOL-LABELS-START */
+  // Las herramientas responden al modelo en inglés; la interfaz no muestra ese texto tal cual: lo pasa a español.
+  var TOOL_MESSAGES = [
+    [/^Memory saved\.$/, "Recuerdo guardado"],
+    [/^Memory updated\.$/, "Recuerdo actualizado"],
+    [/^No relevant memories for this query\.$/, "No hay recuerdos relevantes para esto"],
+    [/^No memories saved for this user\.$/, "Sin recuerdos guardados"],
+    [/^Not saved: /, "No se guardó: no lo dijiste en la conversación"],
+    [/^Not updated: there is no memory/, "No se actualizó: ese recuerdo no existe"],
+    [/^Not updated: /, "No se actualizó: no lo dijiste en la conversación"],
+    [/^Not run: the web search budget/, "No se ejecutó: se agotó el presupuesto de búsquedas de este mensaje"],
+    [/^Not run: /, "No se ejecutó: se alcanzó el límite de usos de esta herramienta en este mensaje"],
+    [/^No results\.$/, "Sin resultados"],
+    [/^Tool error \(([^)]*)\): ([\s\S]*?)\. Try another approach\.$/, "Error en la herramienta ($1): $2"],
+    [/^Error: division by zero\.$/, "Error: división entre cero"],
+    [/^Error: invalid expression: /, "Error: expresión inválida: "],
+    [/^Error: unknown or unavailable time zone: /, "Error: zona horaria desconocida: "]
+  ];
+  function toolOutputLabel(out) {
+    for (var i = 0; i < TOOL_MESSAGES.length; i++) {
+      // con $1 o terminada en ": " se conserva el detalle; si no, solo la etiqueta (el resto es instrucción al modelo)
+      var label = TOOL_MESSAGES[i][1];
+      if (TOOL_MESSAGES[i][0].test(out)) return /\$\d|: $/.test(label) ? out.replace(TOOL_MESSAGES[i][0], label) : label;
+    }
+    return out.replace(/^\[engine: [^\]]*\]\n?/, "")
+              .replace(/\(keyword match, less reliable\)/g, "(coincidencia por palabras, menos confiable)")
+              .replace(/^(\[(Research stopped|The researcher's final summary)[^\]]*\]\n?)+/, "[Investigación parcial] ");
+  }
+  /* TOOL-LABELS-END */
   AssistantBubble.prototype.toolEnd = function (ev) {
     this.hideDots();
     var g = this.group(ev.name);
@@ -630,13 +779,13 @@ textarea#input:disabled { opacity: .6; }
       av[1].split(",").forEach(function (s) { s = s.trim().replace(/^['"]|['"]$/g, ""); if (s && g.found.indexOf(s) < 0) g.found.push(s); });
     }
     this.paint(g);
-    if (ev.output) g.chip.title = String(ev.output).slice(0, 500);
+    if (ev.output) g.chip.title = toolOutputLabel(String(ev.output)).slice(0, 500);
   };
   // avance del investigador profundo: búsquedas internas mientras trabaja
   AssistantBubble.prototype.progress = function (ev) {
-    var g = this.chips.investigador_profundo;
+    var g = this.chips.deep_research;
     if (!g) return;
-    if (ev.name === "buscar_web") { g.searches++; g.last = (ev.args && ev.args.consulta) || ""; }
+    if (ev.name === "web_search") { g.searches++; g.last = (ev.args && (ev.args.query || ev.args.consulta)) || ""; }
     this.paint(g);
   };
   // la conversación anterior se resumió (MEMORY_SUMMARIZE)
@@ -669,7 +818,41 @@ textarea#input:disabled { opacity: .6; }
     this.bubble.appendChild(p);
     scrollDown(true);
   };
+  AssistantBubble.prototype.mark = function (ev) {
+    var t = performance.now() - this.t0;
+    this.tev.push({ t: t, type: ev.type, name: ev.type === "phase" ? ev.phase : ev.name });
+    if (ev.type === "tool_start") this.running.push(ev.name);
+    else if (ev.type === "tool_end") { var i = this.running.indexOf(ev.name); if (i >= 0) this.running.splice(i, 1); }
+    else if (ev.type === "token") this.lastTok = t;
+    else if (ev.type === "phase") this.verifying = ev.phase === "verifying";
+    else if (ev.type === "verify") this.verifying = false;
+  };
+  AssistantBubble.prototype.liveTime = function () {
+    var t = performance.now() - this.t0, phase;
+    if (this.running.length) phase = (TOOL_LABELS[this.running[this.running.length - 1]] || "usando herramientas…");
+    else if (this.verifying) phase = "verificando…";
+    else if (t - this.lastTok < 1500) phase = "escribiendo…";
+    else phase = "pensando…";
+    this.timing.textContent = "⏱ " + secs(t) + " · " + phase;
+  };
+  AssistantBubble.prototype.stopTiming = function () {
+    if (!this.tick) return;
+    clearInterval(this.tick); this.tick = 0;
+    var b = computeBreakdown(this.tev, performance.now() - this.t0), parts = [];
+    if (b.classify) parts.push("clasificar esfuerzo " + secs(b.classify));
+    parts.push("pensando " + secs(b.thinking));
+    if (b.tools) parts.push("herramientas " + secs(b.tools));
+    if (b.verify) parts.push("verificación " + secs(b.verify));
+    if (b.summary) parts.push("resumen " + secs(b.summary));
+    this.timing.textContent = "";
+    var head = "⏱ " + secs(b.total) + (this.effortText ? " · " + this.effortText : "");
+    this.timing.appendChild(document.createTextNode(head));
+    this.timing.appendChild(el("span", "tdetail", " · " + parts.join(" · ")));
+    this.timing.title = (this.effortText ? this.effortText + "\n" : "") + parts.join("\n");
+    this.timing.setAttribute("aria-label", "Tiempo de respuesta " + head.slice(2) + ": " + parts.join(", "));
+  };
   AssistantBubble.prototype.finish = function () {
+    this.stopTiming();
     this.live = false; this.hideDots();
     if (this.seg) { this.closeSeg(); }
     // marca como abortados los chips que sigan "en curso"
@@ -773,6 +956,8 @@ textarea#input:disabled { opacity: .6; }
     state.streaming = true; bubble.live = true; updateControls();
     var gotDone = false, interrupted = false;
     await streamSSE(path, body, bubble, function (ev) {
+      if (ev.name) ev.name = canonicalTool(ev.name);
+      bubble.mark(ev);
       switch (ev.type) {
         case "token": if (typeof ev.text === "string") bubble.token(ev.text); break;
         case "effort": bubble.effort(ev); break;
@@ -810,7 +995,8 @@ textarea#input:disabled { opacity: .6; }
     inputEl.value = ""; autosize();
     var bubble = new AssistantBubble();
     scrollDown(true);
-    runTurn("/chat", { message: text, thread_id: state.threadId, user_id: userId() }, bubble);
+    var effort = effortEl.value === "auto" ? null : effortEl.value;  // el selector manda sobre el clasificador
+    runTurn("/chat", { message: text, thread_id: state.threadId, user_id: userId(), effort: effort }, bubble);
   }
 
   /* ---------- historial ---------- */
@@ -833,7 +1019,7 @@ textarea#input:disabled { opacity: .6; }
     msgs.forEach(function (m) {
       if (m.role === "user") { if (!firstUser) firstUser = String(m.content || ""); addUserBubble(String(m.content || "")); }
       else if (m.role === "assistant") addAssistantStatic(String(m.content || ""), m.original, m.verify);
-      else if (m.role === "tool") addToolLine(String(m.name || "herramienta"));
+      else if (m.role === "tool") addToolLine(canonicalTool(String(m.name || "herramienta")));
       else if (m.role === "summary") messagesEl.appendChild(el("div", "sys", "🗜️ La conversación anterior se resumió; aquí se ven los mensajes conservados."));
     });
     setTitleIfMissing(id, firstUser);
@@ -921,6 +1107,15 @@ textarea#input:disabled { opacity: .6; }
   userEl.addEventListener("blur", function () { if (!userEl.value.trim()) userEl.value = "usuario"; state.userId = userEl.value; });
 
   /* ---------- init ---------- */
+  timesEl.checked = lsGet("showTimes") !== "0";  // encendido por defecto
+  document.body.classList.toggle("no-times", !timesEl.checked);
+  timesEl.addEventListener("change", function () {
+    document.body.classList.toggle("no-times", !timesEl.checked);
+    lsSet("showTimes", timesEl.checked ? "1" : "0");
+  });
+  var savedEffort = lsGet("effort");
+  if (["auto", "bajo", "medio", "alto"].indexOf(savedEffort) >= 0) effortEl.value = savedEffort;
+  effortEl.addEventListener("change", function () { lsSet("effort", effortEl.value); });
   state.userId = lsGet("userId") || "usuario";
   userEl.value = state.userId;
   state.threads = loadThreads();
