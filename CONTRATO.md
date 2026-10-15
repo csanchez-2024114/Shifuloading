@@ -28,7 +28,7 @@ class ConfigError(Exception)        # mensaje claro para el usuario; server lo i
     openai_api_key: str; llm_model: str  # default "gpt-6-luna"
     mongodb_uri: str  # default "mongodb://127.0.0.1:27017"
     mongodb_db: str   # default "assistant"
-    max_tokens: int   # 4000 (tope de tokens de salida por llamada al modelo)
+    max_tokens: int   # 8000 (tope de tokens de salida por llamada, razonamiento incluido; 0 = sin tope)
     recursion_limit: int  # 25
     model_call_limit: int # 15 (llamadas al modelo por turno)
     memory_semantic: bool # False (MongoDB local no tiene Atlas Vector Search)
@@ -63,14 +63,14 @@ def startup_checks(settings: Settings) -> pymongo.MongoClient
 ```
 
 ## tools.py (subagente agente)
-Herramientas en español, todas `@tool` de `langchain.tools`, con docstring clara (el modelo la lee).
+Herramientas con nombre en inglés (antes en español: `agent.OLD_TOOL_NAMES` guarda el mapa), todas `@tool` de `langchain.tools`. Los hilos viejos siguen funcionando: `_nombres_antiguos` reescribe los nombres antiguos del historial antes de cada llamada al modelo, bigtool usa `RegistroTolerante` (ids antiguos → actuales; ids que ya no existen se ignoran) y la UI traduce nombres viejos y nuevos a la misma etiqueta. Lo que lee el modelo va en inglés: descripciones, nombres y descripciones de parámetros y los mensajes que devuelven ("Memory saved.", "No relevant memories for this query.", "Tool error (...)"…). La UI traduce esos mensajes al mostrarlos (`toolOutputLabel` en index.html); `tests/test_idioma.py` falla si se cuela español.
 ```python
-calculadora(expresion: str) -> str       # evaluación con ast (+ - * / // % **, paréntesis, math.sqrt/sin/cos/log/pi/e...), sin eval
-fecha_hora(zona: str = "local") -> str   # fecha/hora actual ISO + día de la semana; zona IANA opcional (zoneinfo)
-guardar_recuerdo(texto: str, runtime: ToolRuntime) -> str   # memory.save_memory(runtime.store, runtime.context.user_id, texto)
-buscar_recuerdos(consulta: str, runtime: ToolRuntime) -> str # memory.search_memory_items(...) → "- [id <key>] texto" por línea o "Sin recuerdos"
-actualizar_recuerdo(id: str, texto: str, runtime, evidencia="") -> str  # memory.revise: solo el user_id del contexto, misma verificación que guardar; previous_text + updated_at
-enviar_email_simulado(destinatario: str, asunto: str, cuerpo: str) -> str  # NO envía nada; ejemplo HITL
+calculator(expression: str) -> str       # evaluación con ast (+ - * / // % **, paréntesis, math.sqrt/sin/cos/log/pi/e...), sin eval
+current_datetime(time_zone: str = "local") -> str   # fecha/hora actual ISO + día de la semana; zona IANA opcional (zoneinfo)
+save_memory(text: str, runtime: ToolRuntime, evidence="") -> str   # memory.remember → "Memory saved." o "Not saved: ..."
+search_memories(query: str, runtime: ToolRuntime) -> str # memory.recall → "- [id <key>] texto" por línea, NO_RELEVANT_MSG o NO_MEMORIES_MSG
+update_memory(id: str, text: str, runtime, evidence="") -> str  # memory.revise: solo el user_id del contexto, misma verificación que guardar; previous_text + updated_at
+send_simulated_email(recipient: str, subject: str, body: str) -> str  # NO envía nada; ejemplo HITL
 def web_search(query: str, settings: Settings) -> tuple[str, str]
     # 1) ChatOpenAI(model=settings.llm_model, api_key=..., use_responses_api=True, tags=["nostream"])
     #    .bind_tools([{"type": "web_search"}]).invoke(query) → (resp.text, "openai_web_search")
@@ -78,13 +78,13 @@ def web_search(query: str, settings: Settings) -> tuple[str, str]
     # 2) cualquier excepción → logging.warning con el motivo y DDGS().text(query, max_results=5) → (texto formateado
     #    título/url/resumen, "duckduckgo")
 def make_buscar_web(settings, search_fn=web_search) -> BaseTool
-    # tool "buscar_web(consulta: str)": devuelve f"[motor: {engine}]\n{texto}"
+    # tool "web_search(query: str)": devuelve f"[engine: {engine}]\n{texto}"
 def make_investigador(model: BaseChatModel, buscar_web_tool: BaseTool) -> BaseTool
-    # tool "investigador_profundo(tarea: str)": subagente = create_agent(model, [buscar_web_tool], system_prompt=<investigar con 3-5 búsquedas y devolver resumen con fuentes>)
+    # tool "deep_research(task: str)": subagente = create_agent(model, [buscar_web_tool], system_prompt=<investigar con 3-5 búsquedas y devolver resumen con fuentes>)
     # invoke({"messages":[{"role":"user","content":tarea}]}) → result["messages"][-1].text
 def build_tools(model, settings, search_fn=web_search) -> list[BaseTool]
-    # [buscar_web, calculadora, fecha_hora, guardar_recuerdo, buscar_recuerdos, actualizar_recuerdo, investigador_profundo]
-    # + enviar_email_simulado si settings.enable_hitl_demo
+    # [web_search, calculator, current_datetime, save_memory, search_memories, update_memory, deep_research]
+    # + send_simulated_email si settings.enable_hitl_demo
 ```
 
 ## agent.py (subagente agente)
@@ -100,7 +100,7 @@ def build_agent(model, tools, settings, checkpointer=None, store=None)
     #   checkpointer=checkpointer, store=store, middleware=[
     #     ModelCallLimitMiddleware(run_limit=settings.model_call_limit, exit_behavior="end"),
     #     ToolErrorMiddleware(on_error=lambda exc, req: f"Error en la herramienta ({type(exc).__name__}): {exc}. Intenta otra cosa."),
-    #     HumanInTheLoopMiddleware(interrupt_on={"enviar_email_simulado": True}),  # patrón HITL listo
+    #     HumanInTheLoopMiddleware(interrupt_on={"send_simulated_email": True}),  # patrón HITL listo
     #   ])
 def run_config(thread_id: str, settings) -> dict  # {"configurable": {"thread_id": thread_id}, "recursion_limit": settings.recursion_limit}
 def stream_events(agent, payload, thread_id: str, user_id: str, settings) -> Iterator[dict]
@@ -123,26 +123,40 @@ def get_history(agent, thread_id: str, settings) -> list[dict]
 Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un objeto JSON por evento:
 ```json
 {"type": "token", "text": "Hola"}
-{"type": "tool_start", "id": "call_1", "name": "buscar_web", "args": {"consulta": "..."}}
-{"type": "tool_end", "id": "call_1", "name": "buscar_web", "output": "primeros 500 chars", "status": "success"|"error", "engine": "duckduckgo"|"openai_web_search"|null}
-{"type": "interrupt", "id": "<interrupt id>", "action_requests": [{"name": "enviar_email_simulado", "args": {...}, "description": "..."}]}
-{"type": "effort", "level": "bajo"|"medio"|"alto", "max_calls": 5, "reasoning": "low"}   // primero, solo en modo automático
-{"type": "progress", "name": "buscar_web", "args": {"consulta": "..."}}                  // búsqueda interna del investigador profundo
+{"type": "tool_start", "id": "call_1", "name": "web_search", "args": {"query": "..."}}
+{"type": "tool_end", "id": "call_1", "name": "web_search", "output": "primeros 500 chars", "status": "success"|"error", "engine": "duckduckgo"|"openai_web_search"|null}
+{"type": "interrupt", "id": "<interrupt id>", "action_requests": [{"name": "send_simulated_email", "args": {...}, "description": "..."}]}
+{"type": "effort", "level": "bajo"|"medio"|"alto", "max_calls": 5, "reasoning": "low", "source": "auto"|"regla"|"manual"}
+// primero, solo con MODEL_CALL_LIMIT=0. source: "auto" = clasificador, "regla" = mensaje corto sin señales (sin
+// clasificador, esfuerzo bajo), "manual" = selector de Ajustes (campo "effort" del body de /chat)
+{"type": "progress", "name": "web_search", "args": {"query": "..."}}                     // búsqueda interna del investigador profundo
+{"type": "phase", "phase": "verifying"}                                                  // ANSWER_VERIFY empieza a verificar (la UI muestra "verificando…")
 {"type": "summarized"}                                                                    // MEMORY_SUMMARIZE: se resumió la conversación vieja
-{"type": "verify", "status": "ok", "notes": [], "tokens": 812}                           // ANSWER_VERIFY, solo si el turno usó buscar_web/investigador
+{"type": "verify", "status": "ok", "notes": [], "tokens": 812}                           // ANSWER_VERIFY, solo si el turno usó web_search/investigador
 {"type": "verify", "status": "corrected"|"kept_original", "text": "texto final", "original": "respuesta original", "notes": ["..."], "tokens": 950}
 // "text"/"original" solo si el texto cambió. kept_original = se descartó la corrección del verificador (p. ej. traía cifras
 // que no están en la evidencia); puede venir con citas inventadas quitadas. Reglas de citas en citations.py (en código).
 {"type": "error", "message": "texto legible"}
 {"type": "done", "thread_id": "abc"}
 ```
-`engine` en tool_end: se extrae de la primera línea `[motor: X]` del output (null si no aplica).
+Respuesta cortada por MAX_TOKENS: llega como un `token` más al final, con el aviso "_La respuesta se cortó por el límite de
+longitud (MAX_TOKENS). Escribe «continúa»…_" (también queda en el historial). No hay evento nuevo.
+
+Tope por mensaje (TURN_TOKEN_CAP): llega como un `token` final con el aviso "_Detuve este mensaje: superó el tope de N
+tokens por mensaje (TURN_TOKEN_CAP)…_" seguido de `done`. Las herramientas que ya corrían terminan y guardan su resultado;
+las que no habían empezado quedan respondidas con
+"Cancelled: …" en el historial, para que el hilo siga usable. No hay evento nuevo.
+
+Keep-alive: durante silencios de `SSE_PING_SECONDS` (15 s por defecto) el servidor envía la línea de comentario SSE
+`: ping` seguida de una línea vacía. No es un evento (no tiene `data:`); los clientes deben ignorar las líneas que
+empiezan con `:`.
+`engine` en tool_end: se extrae de la primera línea `[engine: X]` del output (null si no aplica).
 
 ## Endpoints (server.py, principal)
 | Método | Ruta | Body / respuesta |
 |---|---|---|
 | GET | `/` | sirve `static/index.html` |
-| POST | `/chat` | body `{"message": str, "thread_id": str, "user_id": str}` → `text/event-stream` con los eventos de arriba |
+| POST | `/chat` | body `{"message": str, "thread_id": str, "user_id": str, "effort"?: "bajo"\|"medio"\|"alto"\|null}` → `text/event-stream` con los eventos de arriba. `effort` (selector de la UI) manda sobre el clasificador; null o ausente = automático |
 | POST | `/resume` | body `{"thread_id": str, "user_id": str, "decisions": [{"type": "approve"} \| {"type": "reject", "message": str}]}` → mismo stream SSE. Internamente `Command(resume={"decisions": decisions})` |
 | GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str,"original"?:str} \| {"role":"tool","name":str} \| {"role":"summary"}]}` (vacío si no existe; `original` = respuesta antes de ANSWER_VERIFY) |
 | GET | `/memories/{user_id}` | `{"user_id": str, "memories": [{"key","text","created_at","thread_id","evidence","confidence","previous_text","updated_at"}]}` (más recientes primero; 503 sin store) |
