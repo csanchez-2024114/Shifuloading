@@ -36,6 +36,10 @@ const SUGERENCIAS = [
   ['Vencimientos', 'Quita "De 8 a 30" y pon "De 1 a 45"'],
   ['Agregar', 'Agrega una dona por estado'],
   ['Marca', 'Pon mis colores: azul #1E40AF y naranja #F97316, letra Poppins'],
+  ['Toma', 'Diséñame un inicio nuevo para controlar mis cobros'],
+  ['Crear', 'Quiero llevar el inventario con cantidad, mínimo y proveedor'],
+  ['Enlace', 'Toma los colores de mi web https://www.spotify.com'],
+  ['Gráficas', '¿Qué gráficas puedo poner?'],
 ]
 
 /** Guion de la demo del flujo completo (modo "Demo IA" del laboratorio): pedidos reales a la IA real, uno tras otro. */
@@ -57,6 +61,24 @@ export const GUION_TOMA = [
   'No, mejor barras en vez de dona',
   'Sí',
 ]
+
+/** Fila de ideas que se desplaza: flechas ‹ ›, rueda del mouse (vertical → horizontal) y desvanecido en los bordes. */
+function Sugerencias({ deshabilitado, onElegir }) {
+  const fila = useRef(null)
+  const [bordes, setBordes] = useState({ ini: true, fin: false })
+  const medir = () => { const f = fila.current; if (f) setBordes({ ini: f.scrollLeft < 4, fin: f.scrollLeft + f.clientWidth >= f.scrollWidth - 4 }) }
+  useEffect(() => { medir() }, [])
+  const mover = (d) => { fila.current?.scrollBy({ left: d * 220 }); setTimeout(medir, 350) }
+  return (
+    <div className="lab-sug">
+      <button type="button" onClick={() => mover(-1)} disabled={bordes.ini} aria-label="Ideas anteriores">‹</button>
+      <div ref={fila} className="mc-chat-sug" aria-label="Ideas" onScroll={medir} onWheel={(e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.currentTarget.scrollLeft += e.deltaY } }}>
+        {SUGERENCIAS.map(([p, s]) => <button key={s} type="button" disabled={deshabilitado} onClick={() => onElegir(s)}><em>{p}</em>{s}</button>)}
+      </div>
+      <button type="button" onClick={() => mover(1)} disabled={bordes.fin} aria-label="Más ideas">›</button>
+    </div>
+  )
+}
 
 export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion }) {
   const [abierto, setAbierto] = useState(true)
@@ -146,9 +168,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
             {escribiendo && <div className="cb shifu"><ShifuAvatar size={26} /><p className="puntos" aria-label="Shifu está escribiendo"><i /><i /><i /></p></div>}
             <div ref={fin} />
           </div>
-          <div className="mc-chat-sug" aria-label="Ideas">
-            {SUGERENCIAS.map(([p, s]) => <button key={s} type="button" disabled={escribiendo} onClick={() => enviar(s)}><em>{p}</em>{s}</button>)}
-          </div>
+          <Sugerencias deshabilitado={escribiendo} onElegir={(t) => enviar(t)} />
           {(imagen || errorImg) && (
             <div className="mc-adjunto" role="status">
               {imagen?.url && <img src={imagen.url} alt="Captura lista para enviar" />}{imagen?.pdf && <span>📄 {imagen.nombre}</span>}
