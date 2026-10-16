@@ -38,3 +38,17 @@
 .lab-grab { display: grid; gap: 24px; max-width: 1100px; }
 .lab-grab video { width: 100%; border-radius: 12px; background: #000; }
 .lab-grab figcaption a { margin-left: 8px; }
+
+/* Panel compacto: demos en rejilla de 2, plantillas en una línea, cuestionario plegable. */
+.lab-panel { padding: 14px 12px; }
+.lab-panel h2 { margin: 12px 0 6px; }
+.lab-demos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.lab-demos button { width: 100%; padding: 7px 8px; border: 1px solid #e3e6ea; border-radius: 9px; background: #fff; font: 600 12.5px var(--fuente); color: #1d2329; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lab-demos button.on { border-color: #7c5cff; background: #f2efff; }
+.lab-compacta { gap: 3px; max-height: 260px; overflow-y: auto; }
+.lab-compacta button { padding: 6px 10px; font-size: 13px; font-weight: 600; }
+.lab-lista button { padding: 7px 10px; }
+.lab-plegable { margin-top: 10px; font-size: 13px; }
+.lab-plegable summary { cursor: pointer; color: #6b7480; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.lab-plegable .lab-brief { margin-top: 6px; }
+.lab-botones button { padding: 5px 8px; font-size: 12px; }

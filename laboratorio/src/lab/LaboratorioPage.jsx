@@ -84,16 +84,16 @@ export default function LaboratorioPage() {
         <p className="lab-nota">Solo en desarrollo. Datos de ejemplo, nada se guarda.</p>
 
         <h2>Demos y vistas</h2>
-        <ul className="lab-lista">{[
-          ['demo', '🤖 Demo IA · flujo completo', '8 pedidos reales: marca, crear, embudo, mover, algo que no existe, quitar'],
-          ['toma', '📝 Toma de diseño', 'Pedir un inicio nuevo → ficha → ajuste → «sí» → se arma'],
-          ['nuevo', '👋 Usuario nuevo · primer ingreso', 'Recorrido con datos de ejemplo que se borran al final'],
-          ['vacio', '🌫️ Sin datos (sombría)', 'Cómo se ve antes del primer registro'],
-          ['una', '💬 Chat libre con Shifu', 'Probar cualquier pedido (marca, enlaces, PDF, crear secciones…)'],
-          ['galeria', '📊 Galería de gráficos', 'Los 43 tipos con datos de la plantilla'],
-          ['grabaciones', '🎬 Grabaciones en video', 'Revisadas antes de mostrarse, en 4 resoluciones'],
-        ].map(([v, t, d]) => <li key={v}><button type="button" className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}><b>{t}</b><small>{d}</small></button></li>)}</ul>
-        <h2>Simular cuestionario (asignación)</h2>
+        <ul className="lab-demos">{[
+          ['demo', '🤖 Demo IA', '8 pedidos reales: marca, crear, embudo, mover, algo que no existe, quitar'],
+          ['toma', '📝 Toma', 'Pedir un inicio nuevo → ficha → ajuste → «sí» → se arma'],
+          ['nuevo', '👋 1er ingreso', 'Recorrido con datos de ejemplo que se borran al final'],
+          ['vacio', '🌫️ Sin datos', 'Cómo se ve antes del primer registro'],
+          ['una', '💬 Chat libre', 'Probar cualquier pedido (marca, enlaces, PDF, crear secciones…)'],
+          ['galeria', '📊 Gráficos', 'Los 43 tipos con datos de la plantilla'],
+          ['grabaciones', '🎬 Videos', 'Revisadas antes de mostrarse, en 4 resoluciones'],
+        ].map(([v, t, d]) => <li key={v}><button type="button" title={d} className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}>{t}</button></li>)}</ul>
+        <details className="lab-plegable"><summary>Simular cuestionario (asignación)</summary>
         <div className="lab-brief">
           <select value={brief.rubro} onChange={(e) => setBrief({ ...brief, rubro: e.target.value })} aria-label="Rubro">{['servicios', 'agencia', 'comercio', 'salud', 'educacion', 'tecnologia', 'inmobiliaria', 'otro'].map((r) => <option key={r}>{r}</option>)}</select>
           <select value={brief.ciclo} onChange={(e) => setBrief({ ...brief, ciclo: e.target.value })} aria-label="Ciclo">{['cotizacion', 'rapida', 'recurrente', 'mezcla'].map((r) => <option key={r}>{r}</option>)}</select>
@@ -104,11 +104,13 @@ export default function LaboratorioPage() {
           <div className="lab-botones"><button type="button" className={RECORRIDO ? 'on' : ''} onClick={() => fijar('recorrido', RECORRIDO ? '0' : '1')}>{RECORRIDO ? '✓ Recorrido de primera entrada' : 'Ver como primera entrada (recorrido)'}</button></div>
         </div>
 
+        </details>
+
         <h2>Plantilla</h2>
-        <ul className="lab-lista">
+        <ul className="lab-lista lab-compacta">
           {PLANTILLAS.map((p) => {
             const n = validarPlantilla(p).length
-            return <li key={p.id}><button type="button" className={plantilla === p.id ? 'on' : ''} onClick={() => fijar('plantilla', p.id)}><b>{p.nombre}</b><small>{p.para}</small>{n > 0 && <em>{n} errores</em>}</button></li>
+            return <li key={p.id}><button type="button" title={p.para} className={plantilla === p.id ? 'on' : ''} onClick={() => fijar('plantilla', p.id)}>{p.nombre}{n > 0 && <em> · {n} errores</em>}</button></li>
           })}
         </ul>
         <details className="lab-rotas"><summary>Rotas a propósito (prueban el validador)</summary>
@@ -116,7 +118,7 @@ export default function LaboratorioPage() {
         </details>
 
         <h2>Estilo</h2>
-        <ul className="lab-lista">{ESTILOS.filter((e) => !e.oculto).map((e) => <li key={e.id}><button type="button" className={estilo === e.id ? 'on' : ''} onClick={() => fijar('estilo', e.id)}><b>{e.nombre}</b><small>{e.idea}</small></button></li>)}</ul>
+        <ul className="lab-lista">{ESTILOS.filter((e) => !e.oculto).map((e) => <li key={e.id}><button type="button" className={estilo === e.id ? 'on' : ''} onClick={() => fijar('estilo', e.id)}><b>{e.nombre}</b></button></li>)}</ul>
 
         <h2>Velocidad de animación</h2>
         <div className="lab-botones">{[['1', 'Rápida'], ['1.6', 'Calmada'], ['2.2', 'Lenta'], ['3', 'Muy lenta']].map(([v, t]) => <button key={v} type="button" className={VEL === v ? 'on' : ''} onClick={() => fijar('vel', v)}>{t}</button>)}</div>
