@@ -4,6 +4,7 @@
  * Lo que el modelo pide fuera de esto (una vista que no existe, un campo equivocado) se rechaza aquí, no se dibuja mal. */
 import { VISTAS, revisarVista, camposDe } from './validar.js'
 import { compatibles, GRAFICOS } from './graficos.jsx'
+import { FUENTES, esHex, tokensDeMarca, revisarLogo } from './marca.js'
 
 export const ANCHOS_COL = [3, 4, 6, 8, 12]
 export const ALTO_MAX = 4
@@ -42,6 +43,7 @@ export function describirPantalla(plantilla, estado) {
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   return {
     plantilla: plantilla.nombre,
+    marca: { ...(estado.marca || {}), logo: estado.marca?.logo ? '(tiene logo)' : '(sin logo)', fuentes_permitidas: Object.keys(FUENTES), nota: 'Branding: cualquier color (hex) de fondo, superficie, texto, principal y secundario, y tipografía de títulos y de texto. El código ajusta lo que no se lea.' },
     rejilla: 'Inicio en 12 columnas. ancho ∈ [3,4,6,8,12] (3 = cuatro por fila, 12 = ancho completo). alto ∈ 1..4 filas. Todo debe caber en una pantalla: más bloques = bloques más bajos.',
     bloques: estado.bloques.map((b, i) => ({ id: b.uid, posicion: i + 1, donde_se_ve: ubicacion(ubicar(estado.bloques)[b.uid]), vista: b.vista, seccion: b.seccion, titulo_seccion: porId[b.seccion]?.titulo, opciones: b.opciones, ancho: b.ancho, alto: b.alto,
       // Los grupos que la persona VE ahora (los por defecto no viven en opciones): sin esto el modelo no sabe qué conservar.
@@ -126,6 +128,29 @@ function ejecutarSin(plantilla, estado, nombre, args = {}, contexto = {}) {
         `Rangos del bloque ${b.uid}: ${rangos.map((r) => (r.desde === null ? 'Vencidos' : `${r.desde}-${r.hasta} días`)).join(', ')}.`
         + (pisados.length ? ` AVISO: se pisan (${pisados.join('; ')}): quien vence en esos días aparece en los dos grupos. Díselo a la persona en una línea y ofrece ajustarlo.` : ''))
     }
+    case 'cambiar_marca': {
+      const m = { ...(estado.marca || {}) }
+      for (const k of ['primario', 'secundario', 'fondo', 'superficie', 'texto']) {
+        if (args[k] === null || args[k] === '') delete m[k]
+        else if (args[k] !== undefined) { if (!esHex(args[k])) return no(`«${k}» debe ser un color hexadecimal como #1E40AF (llegó «${args[k]}»).`); m[k] = args[k].startsWith('#') ? args[k] : `#${args[k]}` }
+      }
+      for (const k of ['fuenteTitulos', 'fuenteTexto']) {
+        if (args[k] === null || args[k] === '') delete m[k]
+        else if (args[k] !== undefined) { if (!FUENTES[args[k]]) return no(`la tipografía «${args[k]}» no está disponible. Disponibles: ${Object.keys(FUENTES).join(', ')}.`); m[k] = args[k] }
+      }
+      if (args.nombre !== undefined) m.nombre = String(args.nombre).slice(0, 40)
+      // El código prueba la marca en los dos temas y dice qué tuvo que ajustar para que se lea.
+      const ajustes = [...tokensDeMarca(m, 'claro').ajustes, ...tokensDeMarca(m, 'oscuro').ajustes]
+      return si({ ...estado, marca: m }, `Marca aplicada: ${Object.entries(m).filter(([k]) => k !== 'logo').map(([k, v]) => `${k} ${v}`).join(', ') || 'base de Shifu'}.` + (ajustes.length ? ` AJUSTES para que se lea: ${ajustes.join('; ')}. Díselo en una línea.` : ''))
+    }
+    case 'usar_logo': {
+      const err = revisarLogo(contexto.imagen)
+      if (err) return no(err)
+      return si({ ...estado, marca: { ...(estado.marca || {}), logo: contexto.imagen } }, 'Logo puesto en el encabezado. En tema oscuro, si el logo es oscuro, se muestra una versión clara automática.')
+    }
+    case 'restablecer_marca':
+      if (!contexto.pideQuitar && !/marca|colores|original|shifu/i.test(contexto.texto || '')) return no('la persona no pidió volver a los colores originales.')
+      return si({ ...estado, marca: {} }, 'Volvió el diseño base de Shifu (colores, fondos y tipografía originales, sin logo).')
     case 'abrir_seccion': {
       const s = seccionDe(plantilla, args.seccion); if (!s && args.seccion !== 'inicio') return no(`la sección «${args.seccion}» no existe.`)
       return si({ ...estado, vista: s ? s.id : 'inicio' }, `Abierta la sección ${s ? s.titulo : 'Inicio'}.`)
@@ -147,4 +172,9 @@ export const HERRAMIENTAS = [
   ['cambiar_rangos', 'Define los grupos de un bloque de vencimientos. Reemplaza TODOS los rangos: incluye los que se quedan.', {
     bloque: { type: 'string' }, rangos: { type: 'array', items: { type: 'object', properties: { vencidos: { type: 'boolean' }, desde: { type: 'integer' }, hasta: { type: 'integer' } } } } }, ['bloque', 'rangos']],
   ['abrir_seccion', 'Muestra una sección del menú (o "inicio").', { seccion: { type: 'string' } }, ['seccion']],
+  ['cambiar_marca', 'Cambia el branding del CRM: colores en hex (primario = color de marca principal, secundario, fondo, superficie = tarjetas, texto), tipografías y nombre. Solo manda lo que cambia; "" para volver al de base en ese punto.', {
+    primario: { type: 'string' }, secundario: { type: 'string' }, fondo: { type: 'string' }, superficie: { type: 'string' }, texto: { type: 'string' },
+    fuenteTitulos: { type: 'string', enum: Object.keys(FUENTES) }, fuenteTexto: { type: 'string', enum: Object.keys(FUENTES) }, nombre: { type: 'string' } }, []],
+  ['usar_logo', 'Pone como logo del negocio la imagen que la persona adjuntó EN ESTE mensaje (SVG/PNG/WebP con fondo transparente).', {}, []],
+  ['restablecer_marca', 'Vuelve al diseño base de Shifu (quita colores, tipografías y logo propios).', {}, []],
 ].map(([name, description, properties, required]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } }))

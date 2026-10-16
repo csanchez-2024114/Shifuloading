@@ -1,0 +1,22 @@
+/* GENERADO por laboratorio/servidor/generar-marca-css.py — no editar a mano. */
+.pl .carga-fondo i:first-child { background: radial-gradient(circle, color-mix(in srgb, var(--morado) 50%, transparent), transparent 65%); }
+.pl .carga-fondo i:last-child { background: radial-gradient(circle, color-mix(in srgb, var(--acento) 45%, transparent), transparent 65%); }
+.pl .carga-shifu { filter: drop-shadow(0 18px 30px color-mix(in srgb, var(--acento) 25%, transparent)); }
+.pl .mc-negocio { background: color-mix(in srgb, var(--morado) 16%, transparent); border: 1px solid color-mix(in srgb, var(--morado) 35%, transparent); }
+.pl .mc-menu li button.on { background: linear-gradient(135deg, color-mix(in srgb, var(--morado) 30%, transparent), color-mix(in srgb, var(--acento) 16%, transparent)); }
+.pl .mc-shifu { background: linear-gradient(135deg, color-mix(in srgb, var(--morado) 16%, transparent), color-mix(in srgb, var(--acento) 10%, transparent)); border: 1px solid color-mix(in srgb, var(--morado) 30%, transparent); }
+.pl .mc-tabs .mc-ia { background: linear-gradient(135deg, color-mix(in srgb, var(--morado) 35%, transparent), color-mix(in srgb, var(--acento) 25%, transparent)); border-color: color-mix(in srgb, var(--morado) 50%, transparent); }
+.pl .mc-vend.abierto { border-color: color-mix(in srgb, var(--acento) 30%, transparent); }
+.pl .mc-canal { background: color-mix(in srgb, var(--acento) 14%, transparent); }
+.pl .mc-estado.pagado { background: color-mix(in srgb, var(--acento) 16%, transparent); }
+.pl .mc-feed li span { background: color-mix(in srgb, var(--morado) 18%, transparent); }
+.pl .mc-persona em { background: color-mix(in srgb, var(--acento) 14%, transparent); }
+.pl .mc-tarea:hover { border-color: color-mix(in srgb, var(--acento) 50%, transparent); }
+.pl .mc-autos li.on { border-color: color-mix(in srgb, var(--acento) 35%, transparent); }
+.pl .mc-pilar { background: color-mix(in srgb, var(--morado) 20%, transparent); }
+.pl .mc-subir:hover { background: color-mix(in srgb, var(--acento) 8%, transparent); }
+.pl .mc-imp-nota { background: color-mix(in srgb, var(--morado) 16%, transparent); border: 1px solid color-mix(in srgb, var(--morado) 35%, transparent); }
+.pl .mc-imp-ok { background: color-mix(in srgb, var(--acento) 14%, transparent); border: 1px solid color-mix(in srgb, var(--acento) 40%, transparent); }
+.pl .mc-chat-btn { box-shadow: 0 10px 30px rgba(var(--sombra),.5), 0 0 0 4px color-mix(in srgb, var(--morado) 20%, transparent); }
+.pl .mc-chat-panel header { background: linear-gradient(135deg, color-mix(in srgb, var(--morado) 22%, transparent), color-mix(in srgb, var(--acento) 12%, transparent)); }
+.mc.pl[data-tema="claro"] .mc-chat-btn, .pl .mc-chat[data-tema="claro"] .mc-chat-btn { box-shadow: 0 8px 22px rgba(20, 33, 29, .25), 0 0 0 4px color-mix(in srgb, var(--morado) 18%, transparent); }

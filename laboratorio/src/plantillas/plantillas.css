@@ -49,7 +49,7 @@
 .pl-dia h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin: 0; font-size: 12px; color: var(--tx3); text-transform: capitalize; }
 .pl-dia h3 b { color: var(--tx); font-size: 13px; }
 .pl-dia h3 i { margin-left: auto; }
-.pl-cita { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 8px; border-radius: 8px; background: rgba(124, 92, 255, .12); font-size: 12.5px; }
+.pl-cita { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 8px; border-radius: 8px; background: color-mix(in srgb, var(--morado) 12%, transparent); font-size: 12.5px; }
 .pl-cita time { color: var(--morado-t); font-weight: 700; font-variant-numeric: tabular-nums; }
 .pl-cita span { min-width: 0; display: grid; }
 .pl-cita b, .pl-cita small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -263,3 +263,16 @@
   .pl .mc-cuerpo { transition: padding-right calc(.5s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1); }
   .pl.con-chat .mc-cuerpo { padding-right: 420px; }
 }
+
+/* Marca del negocio: logo y tipografía de títulos (los colores llegan como tokens en el style de .pl). */
+.pl-logo { height: 28px; max-width: 160px; object-fit: contain; display: block; }
+.pl :is(h1, h2, h3, .mc-negocio) { font-family: var(--fuente-titulos, var(--fuente)); }
+.pl { font-family: var(--fuente); transition: background-color calc(.6s * var(--vel, 1)), color calc(.6s * var(--vel, 1)); }
+
+/* ── Vista sombría sin datos (D25) ── la forma real de la vista, apagada; los números fantasma no se leen. */
+.pl-sombra { position: relative; height: 100%; min-height: 120px; }
+.pl-sombra-forma { height: 100%; filter: grayscale(1) blur(2.5px); opacity: .35; pointer-events: none; user-select: none; }
+.pl-sombra-forma, .pl-sombra-forma * { animation: none !important; transition: none !important; }
+.pl-sombra-msg { position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content; display: grid; gap: 4px; text-align: center; padding: 10px 16px; border-radius: 14px; background: color-mix(in srgb, var(--card) 85%, transparent); border: 1px solid var(--linea); }
+.pl-sombra-msg b { font-size: 14px; color: var(--tx2); }
+.pl-sombra-msg span { font-size: 12px; color: var(--tx3); }

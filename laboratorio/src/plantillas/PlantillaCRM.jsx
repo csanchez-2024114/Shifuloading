@@ -1,22 +1,24 @@
 /* Dibuja un CRM completo a partir de una plantilla (estructura + vistas) y unos datos. Usa el mismo marco visual que
  * CrmPage (.mc, .mc-top, .mc-menu, .mc-main y los temas de crm-extra.css) para que lo que se prueba sea lo que se integra.
  * Si la plantilla no pasa `validarPlantilla`, muestra los errores en vez de dibujarla mal. */
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { flushSync } from 'react-dom'
 import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
 import { COMPONENTES, AnimarContext, VelContext } from './vistas'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
-import { registrosDe } from './datosEjemplo'
+import { registrosDe, datosEjemplo } from './datosEjemplo'
 import ChatLab from './ChatLab'
 import { fijarRegion } from './regional'
+import { tokensDeMarca, cargarFuentes } from './marca'
 import { Grafico, GRAFICOS } from './graficos'
 import '@base/crm.css'
 import '@base/crm-extra.css'
 import '@base/crm-captura.css'
 import './plantillas.css'
 import './estilos.css'
+import './marca-base.css'
 
 const ICONOS = { usuarios: LuUsers, calendario: LuCalendarDays, caja: LuPackage, tarjeta: LuCreditCard, tablero: LuFolderKanban, tabla: LuTable,
   actividad: LuActivity, equipo: LuIdCard, rayo: LuZap, documento: LuFileText, camion: LuTruck, reloj: LuCalendarClock }
@@ -37,6 +39,21 @@ function conTamano(bloques) {
     ancho: b.ancho || (ANCHO_COMPLETO.includes(b.vista) || b.uid === solo ? 12 : 6),
     alto: b.alto || (b.vista === 'kpis' ? 1 : b.vista === 'tablero' || b.vista === 'agenda' ? 2 : 2) }))
 }
+/** Logo del negocio. Si es oscuro y el tema es oscuro (o claro sobre claro), muestra una versión de alto contraste automática. */
+function LogoMarca({ src, tema }) {
+  const [luz, setLuz] = useState(null) // luminancia media de los píxeles visibles del logo (0 negro … 1 blanco)
+  useEffect(() => {
+    const img = new Image(); img.onload = () => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = Math.max(1, Math.round(64 * img.height / img.width))
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height)
+      const d = x.getImageData(0, 0, c.width, c.height).data; let t = 0, n = 0
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 40) { t += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; n++ }
+      setLuz(n ? t / n : 0.5)
+    }; img.src = src
+  }, [src])
+  const invertir = luz !== null && ((tema === 'oscuro' && luz < 0.35) || (tema === 'claro' && luz > 0.8))
+  return <img className="pl-logo" src={src} alt="Logo del negocio" style={invertir ? { filter: tema === 'oscuro' ? 'brightness(0) invert(1)' : 'brightness(0)' } : undefined} />
+}
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
 export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt' }) {
@@ -48,6 +65,9 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
   // El inicio SOLO lo cambia la IA (chat): recibe un estado nuevo y la pantalla se transforma animada.
   const [bloques, setBloques] = useState(() => conTamano(plantilla.inicio.map((w, i) => ({ ...w, uid: `b${i}` }))))
   const [saliendo, setSaliendo] = useState([])
+  // Marca del negocio (D19): la cambia solo Shifu. Base = tokens actuales; la marca los reemplaza y el código cuida el contraste.
+  const [marca, setMarca] = useState({})
+  useEffect(() => { cargarFuentes(marca) }, [marca])
   const [chatAbierto, setChatAbierto] = useState(true)
   const ir = (id) => conTransicion(() => setVista(id))
   /** Aplica el estado que devolvió Shifu: lo que se va sale primero (desenfoque), después el resto se reacomoda y lo nuevo nace. */
@@ -59,25 +79,39 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
       setSaliendo([])
       setBloques(nuevo.bloques.map((b) => (viejos.has(b.uid) ? { ...b, nuevo: false } : { ...b, nuevo: true })))
       if (nuevo.vista && nuevo.vista !== vista) setVista(nuevo.vista)
+      if (nuevo.marca) setMarca(nuevo.marca)
     })
     if (!fuera.length || !animado || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return final()
     setSaliendo(fuera); setTimeout(final, 700 * vel)
   }
-  const estadoParaIA = () => ({ vista, bloques: bloques.map(({ nuevo: _n, ...b }) => b) })
+  const estadoParaIA = () => ({ vista, marca, bloques: bloques.map(({ nuevo: _n, ...b }) => b) })
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
-  const dibujar = (s, nombreVista, opciones) => {
-    if (nombreVista === 'grafico') return <Grafico key={opciones?.tipo} tipo={opciones?.tipo} seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, datos)} opciones={opciones || {}} />
+  // Vista "sombría" (D25): sin datos, la misma vista se dibuja con datos fantasma, apagada, y un mensaje encima. Así cada
+  // vista y gráfico muestra su forma (qué va a ver) sin fingir números: los datos fantasma no se leen ni se pueden tocar.
+  const fantasma = useMemo(() => datosEjemplo(plantilla, 'pocos'), [plantilla])
+  const dibujarCon = (s, nombreVista, opciones, d) => {
+    if (nombreVista === 'grafico') return <Grafico key={opciones?.tipo} tipo={opciones?.tipo} seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, d)} opciones={opciones || {}} />
     const V = COMPONENTES[nombreVista]
-    return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, datos)} opciones={opciones || {}} datos={datos} /> : null
+    return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, d)} opciones={opciones || {}} datos={d} /> : null
+  }
+  const dibujar = (s, nombreVista, opciones) => {
+    const sinDatos = (s.campos || s.fuente) && !registrosDe(s, datos).length
+    if (!sinDatos) return dibujarCon(s, nombreVista, opciones, datos)
+    return (
+      <div className="pl-sombra">
+        <div className="pl-sombra-forma" aria-hidden="true" inert="">{dibujarCon(s, nombreVista, opciones, fantasma)}</div>
+        <p className="pl-sombra-msg"><b>Todavía no hay datos</b><span>Se llena con tu primer registro en {s.titulo}.</span></p>
+      </div>
+    )
   }
   return (
     <AnimarContext.Provider value={animado}><VelContext.Provider value={vel}>
-    <div className={`mc pl${chatAbierto ? ' con-chat' : ''}`} data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel }}>
+    <div className={`mc pl${chatAbierto ? ' con-chat' : ''}`} data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel, ...tokensDeMarca(marca, tema).vars }}>
       <header className="mc-top">
-        <Logo height={24} color="var(--tx)" />
-        <span className="mc-negocio">{negocio}</span>
+        {marca.logo ? <LogoMarca src={marca.logo} tema={tema} /> : <Logo height={24} color="var(--tx)" />}
+        <span className="mc-negocio">{marca.nombre || negocio}</span>
         <span className="pl-plantilla" title={plantilla.para}>Plantilla: {plantilla.nombre}</span>
       </header>
       <div className="mc-cuerpo">

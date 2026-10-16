@@ -132,4 +132,8 @@ export const PLANTILLAS = [
   },
 ]
 
+// Biblioteca ampliada: una plantilla por archivo en ./biblioteca (las crean agentes y pasan el filtro de calidad).
+const BIBLIO = Object.values(import.meta.glob('./biblioteca/*.js', { eager: true })).map((m) => m.default).filter(Boolean)
+PLANTILLAS.push(...BIBLIO.filter((b) => !PLANTILLAS.some((p) => p.id === b.id)))
+
 export const plantillaPorId = (id) => PLANTILLAS.find((p) => p.id === id)

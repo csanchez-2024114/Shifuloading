@@ -3,7 +3,7 @@
  * de inicio del laboratorio. Es la ÚNICA forma de cambiar el diseño: no hay botones manuales. */
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { LuCamera, LuSend, LuX } from 'react-icons/lu'
+import { LuCamera, LuPaperclip, LuSend, LuX } from 'react-icons/lu'
 import ShifuAvatar from '@base/components/ShifuAvatar'
 import TextoChat from '@base/components/TextoChat'
 import { capturarRegion, imagenDeArchivo, SelectorCaptura } from '@base/components/CapturaPantalla'
@@ -14,7 +14,7 @@ const SUGERENCIAS = [
   ['Diseño', 'Haz la gráfica más chica y ponla a la derecha'],
   ['Vencimientos', 'Quita "De 8 a 30" y pon "De 1 a 45"'],
   ['Agregar', 'Agrega una dona por estado'],
-  ['Orden', 'Pon el resumen al final'],
+  ['Marca', 'Pon mis colores: azul #1E40AF y naranja #F97316, letra Poppins'],
 ]
 
 export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto }) {
@@ -60,8 +60,19 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     const archivo = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith('image/'))
     if (!archivo) return
     e.preventDefault()
-    try { setImagen(await imagenDeArchivo(archivo)); setErrorImg('') } catch { setErrorImg('No pude usar esa imagen.') }
+    await adjuntar(archivo)
   }
+  // Un logo (SVG/PNG/WebP) viaja tal cual, con su transparencia; el resto se convierte como en el CRM base (JPG liviano).
+  const adjuntar = async (archivo) => {
+    try {
+      if (['image/svg+xml', 'image/png', 'image/webp'].includes(archivo.type) && archivo.size <= 1_500_000) {
+        const url = await new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = mal; r.readAsDataURL(archivo) })
+        setImagen({ url })
+      } else setImagen(await imagenDeArchivo(archivo))
+      setErrorImg('')
+    } catch { setErrorImg('No pude usar esa imagen.') }
+  }
+  const archivoRef = useRef(null)
 
   return createPortal(
     <div className="mc-chat" data-tema={tema}>
@@ -89,6 +100,8 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
           )}
           <form onSubmit={(e) => { e.preventDefault(); enviar(txt, imagen) }}>
             <button type="button" className="mc-chat-cam" onClick={() => setEligiendo(true)} disabled={escribiendo} aria-label="Capturar una parte de la pantalla" title="Capturar una parte de la pantalla"><LuCamera /></button>
+            <button type="button" className="mc-chat-cam" onClick={() => archivoRef.current?.click()} disabled={escribiendo} aria-label="Adjuntar una imagen o tu logo" title="Adjuntar una imagen o tu logo (SVG o PNG)"><LuPaperclip /></button>
+            <input ref={archivoRef} type="file" accept="image/svg+xml,image/png,image/webp,image/jpeg" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) adjuntar(f); e.target.value = '' }} />
             <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres cambiar aquí…' : 'Escribe, captura o pega una imagen…'} aria-label="Mensaje para Shifu" maxLength={600} />
             <button type="submit" disabled={(!txt.trim() && !imagen) || escribiendo} aria-label="Enviar"><LuSend /></button>
           </form>

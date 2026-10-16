@@ -9,7 +9,7 @@
 @keyframes es-crece { from { transform: scaleX(0); } }
 @keyframes es-dibuja { from { stroke-dasharray: 0 1; } }
 @keyframes es-linea-x { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes es-late { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 166, .35); } 50% { box-shadow: 0 0 0 6px rgba(34, 211, 166, 0); } }
+@keyframes es-late { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acento) 35%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--acento) 0%, transparent); } }
 @keyframes es-brillo { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
 /* ── 1 · NUBE: aireado, sombra suave, flota ─────────────────────────────── */
@@ -149,7 +149,7 @@
 /* Marco y menú */
 [data-estilo="vivo"] .mc-menu li button { transition: background .25s, color .25s, padding .25s; }
 [data-estilo="vivo"] .mc-menu li button:hover { padding-left: 19px; }
-[data-estilo="vivo"] .mc-menu li button.on { background-image: linear-gradient(110deg, color-mix(in srgb, var(--acento) 32%, transparent), rgba(124, 92, 255, .18), color-mix(in srgb, var(--acento) 32%, transparent)); background-size: 200% 100%; animation: vv-brillo calc(7s * var(--vel, 1)) linear infinite; }
+[data-estilo="vivo"] .mc-menu li button.on { background-image: linear-gradient(110deg, color-mix(in srgb, var(--acento) 32%, transparent), color-mix(in srgb, var(--morado) 18%, transparent), color-mix(in srgb, var(--acento) 32%, transparent)); background-size: 200% 100%; animation: vv-brillo calc(7s * var(--vel, 1)) linear infinite; }
 [data-estilo="vivo"] .mc-menu li button.on svg { color: var(--acento); }
 [data-estilo="vivo"] .mc-cab { animation: vv-entra calc(.45s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1) both; }
 [data-estilo="vivo"] .mc-cab h1 { background: linear-gradient(90deg, var(--tx) 60%, var(--acento)); -webkit-background-clip: text; background-clip: text; color: transparent; }

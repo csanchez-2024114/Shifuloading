@@ -34,11 +34,12 @@ function valor(campo, r) {
   const de = (lista) => lista[Math.floor(r() * lista.length)]
   switch (campo.tipo) {
     case 'estado': return de(campo.opciones)
-    case 'fecha': { const [a, b] = RANGO_FECHA[campo.id] || [-60, 30]; return masDias(ent(a, b)) }
+    case 'fecha': { const [a, b] = campo.rango || RANGO_FECHA[campo.id] || [-60, 30]; return masDias(ent(a, b)) }
     case 'hora': return `${String(ent(9, 18)).padStart(2, '0')}:${r() < 0.5 ? '00' : '30'}`
-    case 'numero': return ent(1, 60)
-    case 'dinero': return ent(15, 900) * 10
+    case 'numero': return campo.rango ? ent(...campo.rango) : ent(1, 60)
+    case 'dinero': return campo.rango ? Math.round(ent(...campo.rango) / 10) * 10 : ent(15, 900) * 10
     default:
+      if (campo.ejemplos?.length) return de(campo.ejemplos)
       if (COSAS[campo.id]) return de(COSAS[campo.id])
       if (campo.id === 'telefono') return `+502 ${ent(3000, 5999)} ${ent(1000, 9999)}`
       if (campo.id === 'empresa') return de(EMPRESAS)

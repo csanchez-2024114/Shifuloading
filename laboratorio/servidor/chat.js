@@ -19,7 +19,7 @@ function clave() {
   } catch { return null }
 }
 
-const INSTRUCCIONES = `Eres Shifu, el asistente del CRM. Aquí editas el DISEÑO de la pantalla de inicio del CRM de la persona: qué bloques hay,
+const INSTRUCCIONES = `Eres Shifu, el asistente del CRM. Aquí editas el DISEÑO del CRM de la persona: su marca (colores, fondos, tipografía, logo) y la pantalla de inicio: qué bloques hay,
 qué vista usa cada uno, su tamaño, su orden y los rangos de los vencimientos. Solo puedes cambiar la pantalla con tus herramientas.
 Reglas:
 - Usa SOLO las vistas, secciones y campos que aparecen en el estado. Si piden algo que no existe (por ejemplo un calendario, un mapa,
@@ -105,7 +105,7 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
     mensajes.push(ia)
     for (const ll of llamadas) {
       let args = {}; try { args = JSON.parse(ll.function.arguments || '{}') } catch { /* args inválidos: los rechaza ejecutar */ }
-      const r = edicion.ejecutar(plantilla, estado, ll.function.name, args, { pideQuitar: PIDE_QUITAR.test(texto) })
+      const r = edicion.ejecutar(plantilla, estado, ll.function.name, args, { pideQuitar: PIDE_QUITAR.test(texto), imagen, texto })
       if (r.ok) { estado = r.estado; cambios.push({ herramienta: ll.function.name, args, resultado: r.resultado }) } else fallos.push(r.resultado)
       mensajes.push({ role: 'tool', tool_call_id: ll.id, content: `${r.resultado}\nEstado actual: ${contexto()}` })
     }
