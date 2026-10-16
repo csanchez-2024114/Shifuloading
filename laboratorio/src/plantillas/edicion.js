@@ -333,15 +333,13 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
     case 'quitar_bloque': {
       const b = bloqueDe(estado, args.bloque); if (!b) return no(`no existe el bloque «${args.bloque}». Usa los id de "bloques".`)
       // Quitar es lo único que borra algo de la pantalla: solo si la persona lo pidió en este mensaje. Si no, se le pregunta.
-      if (!contexto.pideQuitar) return no(`la persona NO pidió quitar nada en este mensaje. No quites el bloque ${b.uid}: si crees que conviene, pregúntale primero.`)
+      // (sin candado por palabras: es reversible con los puntos de guardado internos)
       return si(conBloques(estado.bloques.filter((x) => x !== b)), `Quitado el bloque ${b.uid} (${b.vista} de ${porId[b.seccion]?.titulo}).`)
     }
     case 'agregar_bloque': case 'cambiar_visual': {
       const viejo = nombre === 'cambiar_visual' ? bloqueDe(estado, args.bloque) : null
       if (nombre === 'cambiar_visual' && !viejo) return no(`no existe el bloque «${args.bloque}».`)
       // Cambiar un bloque que NO es gráfica (resumen, tablero, lista…) por otra cosa es quitarlo: solo si lo pidieron.
-      if (viejo && !['grafica', 'grafico'].includes(viejo.vista) && args.vista !== viejo.vista && !contexto.pideQuitar)
-        return no(`el bloque ${viejo.uid} es ${viejo.vista}: reemplazarlo lo quitaría y la persona no lo pidió. Agrega un bloque nuevo, o pregúntale si quiere reemplazarlo.`)
       const s = seccionDe(plantilla, args.seccion || viejo?.seccion); if (!s) return no(`la sección «${args.seccion}» no existe. Secciones: ${plantilla.secciones.filter((x) => x.campos || x.fuente).map((x) => x.id).join(', ')}.`)
       if (!VISTAS_INICIO.includes(args.vista)) return no(`la vista «${args.vista}» no existe en el inicio. Vistas posibles: ${VISTAS_INICIO.join(', ')}.`)
       const opciones = args.opciones || {}
@@ -407,7 +405,7 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
       return si({ ...estado, marca: { ...(estado.marca || {}), logo: contexto.imagen } }, 'Logo puesto en el encabezado. En tema oscuro, si el logo es oscuro, se muestra una versión clara automática.')
     }
     case 'restablecer_marca':
-      if (!contexto.pideQuitar && !/marca|colores|original|shifu/i.test(contexto.texto || '')) return no('la persona no pidió volver a los colores originales.')
+      // (sin candado por palabras: es reversible con los puntos de guardado internos)
       return si({ ...estado, marca: {} }, 'Volvió el diseño base de Shifu (colores, fondos y tipografía originales, sin logo).')
     case 'crear_seccion': {
       const titulo = String(args.titulo || '').trim().slice(0, 28); if (!titulo) return no('falta el título de la sección.')
@@ -435,7 +433,7 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
     }
     case 'quitar_seccion': {
       const sec = seccionDe(plantilla, args.seccion); if (!sec) return no(`la sección «${args.seccion}» no existe.`)
-      if (!contexto.pideQuitar) return no(`la persona no pidió quitar «${sec.titulo}». Pregúntale primero.`)
+      // (sin candado por palabras: es reversible con los puntos de guardado internos)
       const r = conEstructura({ ...est, ocultas: [...(est.ocultas || []), sec.id] }, `Sección «${sec.titulo}» quitada del menú (sus datos se conservan; se puede volver a mostrar). También se quitaron sus bloques del inicio.`)
       return r.ok ? { ...r, estado: { ...r.estado, bloques: r.estado.bloques.filter((b) => b.seccion !== sec.id) } } : r
     }
