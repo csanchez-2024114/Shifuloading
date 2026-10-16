@@ -11,6 +11,7 @@
 .pl .mc-estado.pagado { background: color-mix(in srgb, var(--acento) 16%, transparent); }
 .pl .mc-feed li span { background: color-mix(in srgb, var(--morado) 18%, transparent); }
 .pl .mc-persona em { background: color-mix(in srgb, var(--acento) 14%, transparent); }
+.pl .mc-avisos-panel li button.nuevo { background: color-mix(in srgb, var(--acento) 10%, transparent); }
 .pl .mc-tarea:hover { border-color: color-mix(in srgb, var(--acento) 50%, transparent); }
 .pl .mc-autos li.on { border-color: color-mix(in srgb, var(--acento) 35%, transparent); }
 .pl .mc-pilar { background: color-mix(in srgb, var(--morado) 20%, transparent); }
