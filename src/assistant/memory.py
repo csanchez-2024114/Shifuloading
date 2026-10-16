@@ -214,6 +214,52 @@ Assumptions, inferences, guesses and things the assistant said are NOT supported
 Reply with JSON only: {{"supported": true or false, "quote": "<the user's exact words that state it, copied verbatim, or empty>"}}"""
 
 
+# Política de guardado en la memoria global (MEMORY_SAVE_POLICY). Va al final del prompt del sistema. Ningún recuerdo
+# se inyecta en el prompt: el modelo solo los consulta con search_memories, así cada conversación sigue independiente.
+MEMORY_POLICIES = {
+    "strict": """## Saving to long-term memory
+- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:
+  (a) the user explicitly asks you to remember something ("remember that…");
+  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. "only Python 3.12");
+  (c) the user wants a specific dated event remembered (a birthday, an appointment).
+- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.
+- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.
+- Save at most {max_per_turn} memories per message.""",
+    "broad": """## Saving to long-term memory
+- When the user shares stable personal facts (name, likes, preferences, lasting decisions, job and role), save them with save_memory, written in the user's language, and pass in evidence the user's exact words copied verbatim.
+- Also save the user's durable technical constraints when they state them explicitly: language or library versions (e.g. "only Python 3.12"), libraries they cannot use or install, their operating system or runtime environment. Pass their exact words as evidence.
+- Stable facts the user mentions while asking for something else (where they live, their diet, what they like, their job) are still facts about them: save them.
+- Do not save passing details of a single task: file names, row counts, data values, error messages, amounts, the dates or budget of a one-off plan, or what the user is working on today ("today I'm working on file X" is not a fact about the user).
+- Only save what the user explicitly said about themselves. Never save your own assumptions, inferences or things you said.""",
+}
+
+
+def memory_policy(name: str = "strict", max_per_turn: int = 3) -> str:
+    text = MEMORY_POLICIES.get(name, MEMORY_POLICIES["strict"])
+    if not max_per_turn:
+        text = text.replace("\n- Save at most {max_per_turn} memories per message.", "")
+    return text.replace("{max_per_turn}", str(max_per_turn))
+
+
+TURN_LIMIT_MSG = ("Not run: the limit of {limit} memories per message was reached, so this was not saved. Tell the "
+                  "user which fact was not saved; they can ask again in another message.")
+
+
+def turn_saves(messages, call_id: str | None = None) -> int:
+    """Guardados previos en el mensaje en curso. Con `call_id` (agente normal): posición de esta llamada entre las
+    save_memory del turno (incluye las paralelas del mismo paso). Sin él (bigtool): resultados ya guardados del turno."""
+    messages = list(messages or [])
+    start = max((i for i, m in enumerate(messages) if getattr(m, "type", None) == "human"
+                 and (getattr(m, "additional_kwargs", None) or {}).get("lc_source") != SUMMARY_SOURCE), default=-1)
+    turn = messages[start + 1:]
+    if call_id:
+        calls = [c.get("id") for m in turn for c in (getattr(m, "tool_calls", None) or [])
+                 if c.get("name") in ("save_memory", "guardar_recuerdo")]
+        return calls.index(call_id) if call_id in calls else len(calls)
+    return sum(1 for m in turn if getattr(m, "type", None) == "tool"
+               and getattr(m, "name", None) in ("save_memory", "guardar_recuerdo"))
+
+
 def user_texts(messages) -> list[str]:
     """Textos que escribió el usuario. Excluye el resumen de SummarizationMiddleware: es texto del modelo."""
     out = []
@@ -269,8 +315,11 @@ def _provenance(text: str, quote: str, texts: list[str], verifier) -> tuple[str,
 
 
 def remember(store, user_id: str, text: str, quote: str, texts: list[str], *,
-             thread_id: str | None = None, verifier=None) -> str:
-    """Lógica común de save_memory (agente normal y bigtool). Devuelve el mensaje para el agente."""
+             thread_id: str | None = None, verifier=None, saved_this_turn: int = 0, max_per_turn: int = 0) -> str:
+    """Lógica común de save_memory (agente normal y bigtool). Devuelve el mensaje para el agente.
+    `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope."""
+    if max_per_turn and saved_this_turn >= max_per_turn:
+        return TURN_LIMIT_MSG.format(limit=max_per_turn)
     prov = _provenance(text, quote, texts, verifier)
     if prov is None:
         return ("Not saved: the user never stated this in the conversation. Do not save assumptions; "

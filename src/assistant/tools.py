@@ -130,6 +130,20 @@ def fecha_hora(time_zone: str = "local") -> str:
 # --------------------------------------------------------------------------- memoria
 
 
+GUARDAR_RECUERDO_STRICT_DOC = """Saves a precise fact about the user to long-term memory, which is shared by all of the
+user's conversations. Use it ONLY when the user explicitly asks you to remember something, states a durable personal
+fact that is clearly useful in other conversations (where they live, their job, their pets or family, a stable
+preference or a lasting technical constraint), or wants a specific dated event remembered. Never save conversation
+content: explanations, tasks, calculations, tool or search results, topics discussed or details of the current
+request. Only save what the user explicitly said about themselves, never your own assumptions.
+
+Args:
+    text: The fact as a short, self-contained sentence in the user's language, in neutral form with no subject:
+        never start with "The user" or its equivalent in the user's language (e.g. "Lives in Madrid",
+        "Works as a data engineer", "Birthday is on March 3").
+    evidence: The user's exact words that state this fact, copied verbatim from their message.
+"""
+
 GUARDAR_RECUERDO_DOC = """Saves a lasting fact about the user to long-term memory: name, likes, preferences, job and
 role, and durable technical constraints (language or library versions they must use, libraries they cannot install,
 their operating system or environment). Only save what the user explicitly said about themselves, never your own
@@ -146,15 +160,24 @@ Args:
 """
 
 
-def make_guardar_recuerdo(verifier=None) -> BaseTool:
-    """`verifier` (MEMORY_VERIFY): (candidato, textos_usuario) -> (respaldado, cita); None = sin verificar."""
+def save_memory_doc(policy: str = "strict") -> str:
+    """Descripción de save_memory según MEMORY_SAVE_POLICY ("broad" = la política anterior)."""
+    return GUARDAR_RECUERDO_DOC if policy == "broad" else GUARDAR_RECUERDO_STRICT_DOC
 
-    @tool("save_memory", description=GUARDAR_RECUERDO_DOC)
+
+def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: int = 0) -> BaseTool:
+    """`verifier` (MEMORY_VERIFY): (candidato, textos_usuario) -> (respaldado, cita); None = sin verificar.
+    `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope."""
+
+    @tool("save_memory", description=save_memory_doc(policy))
     def guardar_recuerdo(text: str, runtime: ToolRuntime[Context], evidence: str = "") -> str:
-        texts = memory.user_texts(runtime.state.get("messages"))
+        messages = runtime.state.get("messages")
+        texts = memory.user_texts(messages)
         thread_id = (runtime.config.get("configurable") or {}).get("thread_id")
         return memory.remember(runtime.store, runtime.context.user_id, text, evidence, texts,
-                               thread_id=thread_id, verifier=verifier)
+                               thread_id=thread_id, verifier=verifier,
+                               saved_this_turn=memory.turn_saves(messages, runtime.tool_call_id),
+                               max_per_turn=max_per_turn)
 
     return guardar_recuerdo
 
@@ -610,7 +633,7 @@ def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, 
         calculadora,
         fecha_hora,
         check_python_syntax,
-        make_guardar_recuerdo(verifier),
+        make_guardar_recuerdo(verifier, settings.memory_save_policy, settings.memory_max_per_turn),
         make_buscar_recuerdos(settings.memory_min_score),
         make_actualizar_recuerdo(verifier),
         make_investigador(model, settings, search_fn),

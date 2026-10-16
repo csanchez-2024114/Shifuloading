@@ -34,6 +34,8 @@ class Settings:
     memory_summarize: bool = False      # resume la conversación vieja al pasar el umbral (solo agente normal)
     summary_trigger_tokens: int = 12000
     summary_keep_tokens: int = 5000     # tokens recientes que se conservan sin resumir (muy por debajo del umbral)
+    memory_save_policy: str = "strict"  # strict: solo datos puntuales del usuario; broad: política anterior
+    memory_max_per_turn: int = 3        # recuerdos guardados por mensaje; 0 = sin tope
     memory_verify: bool = False         # verifica con el LLM que un recuerdo lo dijo el usuario antes de guardarlo
     answer_verify: bool = False         # segundo paso que contrasta la respuesta con lo buscado en la web
     memory_min_score: float = 0.68      # búsqueda semántica (Atlas): puntuación mínima; calibrado, ver README
@@ -68,6 +70,8 @@ class Settings:
             memory_summarize=_bool("MEMORY_SUMMARIZE"),
             summary_trigger_tokens=int(os.getenv("SUMMARY_TRIGGER_TOKENS", "12000")),
             summary_keep_tokens=int(os.getenv("SUMMARY_KEEP_TOKENS", "5000")),
+            memory_save_policy=os.getenv("MEMORY_SAVE_POLICY", "strict").strip().lower(),
+            memory_max_per_turn=int(os.getenv("MEMORY_MAX_PER_TURN", "3")),
             memory_verify=_bool("MEMORY_VERIFY"),
             answer_verify=_bool("ANSWER_VERIFY"),
             memory_min_score=float(os.getenv("MEMORY_MIN_SCORE", "0.68")),

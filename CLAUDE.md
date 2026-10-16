@@ -45,7 +45,7 @@ Flujo de un mensaje: `static/index.html` → `POST /chat` (o `/resume` tras una 
   - Las herramientas del agente: `web_search` (OpenAI hospedado con respaldo DuckDuckGo, una búsqueda por respuesta del modelo, presupuesto compartido por mensaje), `calculator`, `current_datetime`, `check_python_syntax` (solo `ast.parse`), las de memoria y `deep_research`.
   - `deep_research` es un subagente investigador con sus propios topes que reutiliza investigaciones previas del hilo.
   - Los textos al modelo son constantes en inglés (`*_MSG`, `*_DOC`).
-- **`memory.py`**: recuerdos largos en `MongoDBStore`, namespace `("user", user_id, "memories")`, con procedencia (`evidence`, `confidence`, `thread_id`) y verificación opcional (`MEMORY_VERIFY`).
+- **`memory.py`**: política de guardado (`MEMORY_SAVE_POLICY`, `MEMORY_POLICIES`, va al final del prompt del sistema; ningún recuerdo se inyecta en el prompt) y recuerdos largos en `MongoDBStore`, namespace `("user", user_id, "memories")`, con procedencia (`evidence`, `confidence`, `thread_id`) y verificación opcional (`MEMORY_VERIFY`).
 - **`bigtool_agent.py`** (`USE_BIGTOOL=1`): agente alterno con langgraph-bigtool.
   - El modelo solo ve `retrieve_tools`, que busca en un índice semántico (`InMemoryStore` con embeddings) del registro: herramientas base + `extra_tools.py` + apps.
   - No soporta middleware, así que replica a mano lo esencial:

@@ -151,6 +151,8 @@ Detalles:
 | `MEMORY_SUMMARIZE` | `0` | `1` = cuando la conversación pasa `SUMMARY_TRIGGER_TOKENS`, los mensajes viejos se reemplazan por un resumen (`SummarizationMiddleware` de LangChain, con los ajustes de abajo) |
 | `SUMMARY_TRIGGER_TOKENS` | `12000` | umbral en tokens aproximados de la conversación (sin contar el system prompt) |
 | `SUMMARY_KEEP_TOKENS` | `5000` | tokens recientes que se conservan sin resumir (`keep=("tokens", N)`); se usa como máximo la mitad del umbral. Reemplaza a `SUMMARY_KEEP_MESSAGES`, que ya no se usa |
+| `MEMORY_SAVE_POLICY` | `strict` | qué va a la memoria global (ver abajo). `broad` = la política anterior |
+| `MEMORY_MAX_PER_TURN` | `3` | recuerdos que se pueden guardar por mensaje (el resto se marca "no realizado"); `0` = sin tope |
 | `MEMORY_VERIFY` | `0` | `1` = antes de guardar un recuerdo, una llamada barata comprueba que el usuario lo dijo; si no, no se guarda y el agente lo avisa |
 | `ANSWER_VERIFY` | `0` | `1` = si el turno usó `web_search` o `deep_research`, una llamada barata contrasta la respuesta con lo recuperado y la corrige si hace falta |
 
@@ -170,6 +172,15 @@ Siempre activo, sin costo extra de llamadas:
   Si la cita que propone el modelo no aparece literal en tus mensajes, `evidence` queda vacío. Los recuerdos guardados antes de este cambio siguen funcionando: se muestran como `unverified`, sin evidencia.
 - **Actualizar recuerdos:** `search_memories` muestra el id de cada recuerdo y `update_memory(id, texto, evidencia)` reemplaza uno existente cuando confirmas un cambio (p. ej. café de olla → té verde), en vez de dejar dos contradictorios. Pasa por la misma verificación que guardar (`MEMORY_VERIFY`), solo toca recuerdos de tu `user_id` (un id ajeno se rechaza con el mismo mensaje que uno inexistente) y guarda el valor anterior en `previous_text` y la fecha en `updated_at` para auditar o deshacer. El agente no puede borrar recuerdos: borrar es solo desde la interfaz.
 - **Gestión de recuerdos:** el botón 🧠 de la interfaz lista los recuerdos del ID de usuario actual, con fecha, confianza, evidencia y, si se actualizó, el valor anterior, y permite borrarlos. API: `GET /memories/{user_id}` y `DELETE /memories/{user_id}/{key}`.
+
+### Memoria global: solo información puntual (`MEMORY_SAVE_POLICY=strict`)
+
+Con `strict` (por defecto) el agente guarda en la memoria global **solo** cuando:
+1. le pides explícitamente que recuerde algo ("recuerda que…");
+2. dices un dato personal durable y útil entre conversaciones (dónde vives, tu trabajo, tu mascota, una preferencia estable, una restricción técnica duradera);
+3. quieres que recuerde un evento con fecha.
+
+No guarda contenido de la conversación: explicaciones, tareas, cálculos, resultados de herramientas ni temas tratados. Se mantienen la procedencia, la cita literal y `MEMORY_VERIFY`, y como mucho `MEMORY_MAX_PER_TURN` recuerdos por mensaje (impuesto en código). **Ningún recuerdo se inyecta en el prompt:** el modelo los consulta con `search_memories` solo cuando hace falta, así que una conversación nueva no ve nada de otra salvo lo que encuentre en la memoria global.
 
 Detalles:
 - **Qué toma el resumen:** pide conservar literal nombres, cifras, fechas, decisiones y preferencias, fusionar el resumen anterior y cerrar con una lista "Problems solved so far" (cada problema resuelto con su resultado, sin perder los del resumen anterior). Se desactivó el recorte previo de la librería (`trim_tokens_to_summarize`), que con su valor por defecto descartaba el resumen anterior en el segundo resumen. El texto del resumen no llega a la UI como tokens; se ve el aviso "🗜️ Conversación anterior resumida".

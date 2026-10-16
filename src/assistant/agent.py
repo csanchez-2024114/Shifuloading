@@ -31,7 +31,7 @@ from langgraph.runtime import Runtime
 
 from assistant import citations
 from assistant.config import Settings, read_system_prompt
-from assistant.memory import SUMMARY_SOURCE
+from assistant.memory import SUMMARY_SOURCE, memory_policy
 
 logger = logging.getLogger(__name__)
 
@@ -372,19 +372,24 @@ def _on_tool_error(exc: Exception, request) -> str:
     return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
 
-def system_prompt_text() -> str:
+def system_prompt_text(settings: Settings | None = None) -> str:
     # Fecha local en cada llamada: el modelo no la sabe y la búsqueda web va en UTC.
     now = datetime.now().astimezone()
+    policy = memory_policy(settings.memory_save_policy if settings else "strict",
+                           settings.memory_max_per_turn if settings else 3)
     return (
-        f"{read_system_prompt()}\n\n"
+        f"{read_system_prompt()}\n\n{policy}\n\n"
         f"User's current local date and time: {now:%A %Y-%m-%d %H:%M} (UTC{now:%z}). "
         "Treat it as 'today'; never infer the date from search results."
     )
 
 
-@dynamic_prompt
-def _system_prompt(request) -> str:
-    return system_prompt_text()
+def _make_system_prompt(settings: Settings):
+    @dynamic_prompt
+    def _system_prompt(request) -> str:
+        return system_prompt_text(settings)
+
+    return _system_prompt
 
 
 EVIDENCE_TOOLS = ("web_search", "deep_research")
@@ -479,7 +484,7 @@ class AnswerVerifier(AgentMiddleware):
 def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None):
     """`summarizer`/`checker`: modelos para MEMORY_SUMMARIZE/ANSWER_VERIFY (se inyectan en tests)."""
     middleware = [
-        _system_prompt,
+        _make_system_prompt(settings),
         _nombres_antiguos,
         _razonamiento,
         LimiteLlamadas(),
@@ -692,18 +697,18 @@ def mark_no_tools(msg):
     return msg
 
 
-def fixed_prompt_tokens(tools=(), extra_prompt: str = "") -> int:
+def fixed_prompt_tokens(tools=(), extra_prompt: str = "", settings: Settings | None = None) -> int:
     """Mínimo aproximado que pesa cualquier llamada al modelo: prompt del sistema + esquemas de herramientas."""
     from langchain_core.utils.function_calling import convert_to_openai_tool
 
     schemas = json.dumps([convert_to_openai_tool(t) for t in tools], ensure_ascii=False)
-    return count_tokens_approximately([SystemMessage(system_prompt_text() + extra_prompt)]) + len(schemas) // 4
+    return count_tokens_approximately([SystemMessage(system_prompt_text(settings) + extra_prompt)]) + len(schemas) // 4
 
 
 def check_turn_cap(settings: Settings, tools=(), extra_prompt: str = "") -> int:
     """Al arrancar: avisa en el log (sin bloquear) si TURN_TOKEN_CAP no alcanza ni para el prompt y las
     herramientas; con un tope así, todos los mensajes irían sin herramientas. Devuelve ese mínimo."""
-    minimum = fixed_prompt_tokens(tools, extra_prompt)
+    minimum = fixed_prompt_tokens(tools, extra_prompt, settings)
     if settings.turn_token_cap and settings.turn_token_cap < minimum:
         logger.warning("TURN_TOKEN_CAP=%d es menor que lo que pesan solos el prompt del sistema y las herramientas "
                        "(~%d tokens): todos los mensajes irán sin herramientas. Súbelo por encima de ese mínimo.",

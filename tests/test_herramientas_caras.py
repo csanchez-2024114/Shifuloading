@@ -184,12 +184,18 @@ def test_esfuerzo_alto_reserva_margen_de_salida(make_settings):
 def test_reglas_del_prompt_y_de_save_memory():
     from pathlib import Path
 
+    from assistant.agent import system_prompt_text
+    from assistant.memory import memory_policy
     from assistant.tools import GUARDAR_RECUERDO_DOC
 
     texto = (Path(__file__).resolve().parents[1] / "prompts" / "system.md").read_text(encoding="utf-8-sig")
     for regla in ("at most one web_search per step", "Use deep_research only when the user explicitly asks",
-                  "check it with check_python_syntax", "continue exactly where it stopped",
-                  "durable technical constraints", "Do not save passing details of a single task",
-                  "Stable facts the user mentions while asking for something else"):
+                  "check it with check_python_syntax", "continue exactly where it stopped"):
         assert regla in texto, regla
+    # MEMORY_SAVE_POLICY=broad conserva las reglas de guardado anteriores
+    amplia = memory_policy("broad")
+    for regla in ("durable technical constraints", "Do not save passing details of a single task",
+                  "Stable facts the user mentions while asking for something else"):
+        assert regla in amplia, regla
     assert "durable technical constraints" in GUARDAR_RECUERDO_DOC and "Never save details of the current task" in GUARDAR_RECUERDO_DOC
+    assert memory_policy("strict") in system_prompt_text()  # strict por defecto

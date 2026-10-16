@@ -42,7 +42,7 @@ from assistant.config import Settings
 from assistant.extra_tools import extra_tools
 from assistant.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.tools import (
-    ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, GUARDAR_RECUERDO_DOC, INVESTIGADOR_DOC, calculadora,
+    ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, INVESTIGADOR_DOC, calculadora, save_memory_doc,
     check_python_syntax,
     earlier_research, fecha_hora, investigar, investigator_model, make_buscar_web, memory_verifier_for, turn_key,
     web_search, DEEP_RESEARCH_CONFIRM, FOLLOW_UP_MSG, RESEARCH_DECLINED_MSG, research_needs_confirmation,
@@ -179,11 +179,12 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
     inv_model = investigator_model(model, settings)
     verifier = memory_verifier_for(settings, checker)
 
-    @tool("save_memory", description=GUARDAR_RECUERDO_DOC)
+    @tool("save_memory", description=save_memory_doc(settings.memory_save_policy))
     def guardar_recuerdo(text: str, evidence: str = "") -> str:
-        thread_id, texts = _thread_user_texts(checkpointer)
-        return memory.remember(memories_store, _ctx("user_id", "anon"), text, evidence, texts,
-                               thread_id=thread_id, verifier=verifier)
+        thread_id, messages = _thread_messages(checkpointer)
+        return memory.remember(memories_store, _ctx("user_id", "anon"), text, evidence, memory.user_texts(messages),
+                               thread_id=thread_id, verifier=verifier, saved_this_turn=memory.turn_saves(messages),
+                               max_per_turn=settings.memory_max_per_turn)
 
     @tool("search_memories", description=BUSCAR_RECUERDOS_DOC)
     def buscar_recuerdos(query: str) -> str:
@@ -262,9 +263,10 @@ class PromptedModel:
     """Adaptador mínimo: bigtool no acepta system prompt (issue #7) ni middleware. Antepone el prompt
     dinámico (system.md + fecha + instrucciones de retrieve_tools) y aplica el razonamiento del esfuerzo."""
 
-    def __init__(self, model, cap: int = 0):
+    def __init__(self, model, cap: int = 0, settings: Settings | None = None):
         self.model = model
         self.cap = cap  # TURN_TOKEN_CAP: al 80% (o con un historial más pesado que el tope), sin herramientas
+        self.settings = settings  # política de memoria del prompt (MEMORY_SAVE_POLICY)
 
     def bind_tools(self, tools, **kwargs):
         if effort := _ctx("razonamiento"):
@@ -281,9 +283,10 @@ class PromptedModel:
 
         def prompt(msgs):
             msgs = rename_old_tools(msgs)
-            counter = landing_due(self.cap, [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT), *msgs])
+            system = system_prompt_text(self.settings) + BIGTOOL_PROMPT
+            counter = landing_due(self.cap, [SystemMessage(system), *msgs])
             note = f"\n\n{landing_note(counter, self.cap)}" if counter else ""
-            return [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT + note), *msgs]
+            return [SystemMessage(system + note), *msgs]
 
         def route(sent):  # devolver un Runnable hace que RunnableLambda lo invoque con la misma entrada
             if counter := landing_due(self.cap, sent):
@@ -301,6 +304,6 @@ def build_bigtool_agent(model, settings: Settings, checkpointer=None, memories_s
                         embeddings=None, search_fn: Callable = web_search, checker=None):
     registry = build_registry(model, settings, memories_store, search_fn, checkpointer=checkpointer, checker=checker)
     index = build_tool_index(registry, settings, embeddings)
-    builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap), RegistroTolerante(registry), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
+    builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap, settings), RegistroTolerante(registry), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
                                    retrieve_tools_function=make_retrieve_tools(registry))
     return builder.compile(checkpointer=checkpointer, store=index)
