@@ -27,3 +27,10 @@
   .lab { grid-template-columns: 1fr; }
   .lab-panel { position: static; height: auto; border-right: 0; border-bottom: 1px solid #e3e6ea; }
 }
+
+.lab-brief { display: grid; gap: 6px; }
+.lab-brief select, .lab-brief input { padding: 7px 10px; border: 1px solid #e3e6ea; border-radius: 8px; font: 13px var(--fuente); }
+.lab-brief ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lab-brief ol button { width: 100%; display: grid; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid #e3e6ea; border-radius: 10px; background: #fff; font: inherit; font-size: 13px; cursor: pointer; }
+.lab-brief ol button.on { border-color: #7c5cff; background: #f2efff; }
+.lab-brief ol small { color: #6b7480; font-size: 11.5px; }

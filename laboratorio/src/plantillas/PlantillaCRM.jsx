@@ -10,6 +10,7 @@ import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe, datosEjemplo } from './datosEjemplo'
 import ChatLab from './ChatLab'
+import Recorrido, { pasosDe } from './Recorrido'
 import { fijarRegion } from './regional'
 import { tokensDeMarca, cargarFuentes } from './marca'
 import { Grafico, GRAFICOS } from './graficos'
@@ -56,7 +57,8 @@ function LogoMarca({ src, tema }) {
 }
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
-export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt' }) {
+export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos }) {
+  const [enRecorrido, setEnRecorrido] = useState(recorrido)
   // Formatos (moneda, miles, fechas, horas) según la configuración regional de la persona: se fija antes de dibujar.
   fijarRegion(pais)
   const [vista, setVista] = useState('inicio')
@@ -144,7 +146,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
               <div className="mc-cab"><div><h1>Inicio</h1><p>{plantilla.para}</p></div></div>
               <div className="pl-inicio">
                 {bloques.map((w, i) => (
-                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} style={{ '--i': w.nuevo ? 0 : i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
+                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} data-bloque={w.uid} style={{ '--i': w.nuevo ? 0 : i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
                     <h2>{nombreBloque(w, porId)}</h2>
                     {dibujar(porId[w.seccion], w.vista, w.opciones)}
                   </section>
@@ -163,6 +165,7 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
           )}
         </main>
       </div>
+      {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
       <ChatLab tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
     </div>
     </VelContext.Provider></AnimarContext.Provider>

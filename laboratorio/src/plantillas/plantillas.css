@@ -276,3 +276,17 @@
 .pl-sombra-msg { position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content; display: grid; gap: 4px; text-align: center; padding: 10px 16px; border-radius: 14px; background: color-mix(in srgb, var(--card) 85%, transparent); border: 1px solid var(--linea); }
 .pl-sombra-msg b { font-size: 14px; color: var(--tx2); }
 .pl-sombra-msg span { font-size: 12px; color: var(--tx3); }
+
+/* ── Recorrido de primera entrada (D24) ── foco sobre la parte que se explica, el resto oscurecido. */
+.rc { position: fixed; inset: 0; z-index: 80; }
+.rc-foco { position: fixed; border-radius: 18px; box-shadow: 0 0 0 9999px rgba(5, 8, 7, .62); transition: all calc(.6s * var(--vel, 1)) cubic-bezier(.2, .8, .2, 1); pointer-events: none; outline: 2px solid color-mix(in srgb, var(--acento, #22d3a6) 70%, transparent); }
+.rc-foco.sin { inset: 50% auto auto 50%; width: 0; height: 0; outline: 0; }
+.rc-burbuja { position: fixed; width: 360px; max-width: calc(100vw - 24px); padding: 14px 16px; border-radius: 18px; background: #fff; color: #14211d; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); font-family: var(--fuente, Inter, sans-serif); animation: rc-entra .45s cubic-bezier(.2, .8, .2, 1) both; }
+.rc-cab { display: flex; align-items: center; justify-content: space-between; }
+.rc-cab small { color: #5f6d68; font-size: 12px; }
+.rc-burbuja p { margin: 10px 0 12px; font-size: 14px; line-height: 1.45; }
+.rc-botones { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+.rc-botones button { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid #d6dfdb; background: #fff; color: #14211d; font: 600 13px var(--fuente, Inter, sans-serif); cursor: pointer; }
+.rc-botones .si { background: #14211d; color: #fff; border-color: #14211d; }
+@keyframes rc-entra { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+@media (prefers-reduced-motion: reduce) { .rc-foco, .rc-burbuja { transition: none; animation: none; } }

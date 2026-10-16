@@ -7,6 +7,7 @@ import { validarPlantilla } from '../plantillas/validar'
 import { ROTAS } from './rotas'
 import { ESTILOS } from '../plantillas/estilos'
 import { PAISES } from '../plantillas/regional'
+import { asignar } from '../plantillas/asignar'
 import './laboratorio.css'
 
 const ANCHOS = [360, 390, 768, 1024, 1280, 1440]
@@ -16,7 +17,8 @@ const DATOS = [['vacio', 'Vacío'], ['pocos', 'Pocos (8)'], ['muchos', 'Muchos (
 
 let VEL = '2.2'
 let PAIS = 'gt'
-const urlVista = (plantilla, datos, tema, estilo, extra = '') => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}&estilo=${estilo}&vel=${VEL}&pais=${PAIS}${extra}`
+let RECORRIDO = false
+const urlVista = (plantilla, datos, tema, estilo, extra = '') => `/vista?plantilla=${plantilla}&datos=${datos}&tema=${tema}&estilo=${estilo}&vel=${VEL}&pais=${PAIS}${extra}${RECORRIDO ? '&recorrido=1' : ''}`
 
 /** Un iframe con el ancho real del dispositivo, escalado para que quepa en el espacio disponible. */
 function Marco({ src, ancho, titulo, maxAncho }) {
@@ -40,6 +42,9 @@ export default function LaboratorioPage() {
   const estilo = q.get('estilo') || 'vivo-compacto'
   VEL = q.get('vel') || '2.2'
   PAIS = q.get('pais') || 'gt'
+  RECORRIDO = q.get('recorrido') === '1'
+  const [brief, setBrief] = useState({ rubro: 'salud', ciclo: 'recurrente', objetivos: ['seguimientos'], queVendes: 'consultas y vacunas para mascotas' })
+  const asig = asignar(brief)
   const modo = q.get('modo') || 'una'
   const ancho = Number(q.get('ancho')) || 1280
   const fijar = (k, v) => { const n = new URLSearchParams(q); n.set(k, v); setQ(n, { replace: true }) }
@@ -61,6 +66,17 @@ export default function LaboratorioPage() {
       <aside className="lab-panel">
         <h1>Laboratorio de plantillas</h1>
         <p className="lab-nota">Solo en desarrollo. Datos de ejemplo, nada se guarda.</p>
+
+        <h2>Simular cuestionario (asignación)</h2>
+        <div className="lab-brief">
+          <select value={brief.rubro} onChange={(e) => setBrief({ ...brief, rubro: e.target.value })} aria-label="Rubro">{['servicios', 'agencia', 'comercio', 'salud', 'educacion', 'tecnologia', 'inmobiliaria', 'otro'].map((r) => <option key={r}>{r}</option>)}</select>
+          <select value={brief.ciclo} onChange={(e) => setBrief({ ...brief, ciclo: e.target.value })} aria-label="Ciclo">{['cotizacion', 'rapida', 'recurrente', 'mezcla'].map((r) => <option key={r}>{r}</option>)}</select>
+          <input value={brief.queVendes} onChange={(e) => setBrief({ ...brief, queVendes: e.target.value })} placeholder="¿Qué vendes?" aria-label="Qué vendes" />
+          <div className="lab-botones">{['seguimientos', 'contactos', 'reportes', 'cotizaciones', 'equipo'].map((o) => <button key={o} type="button" className={brief.objetivos.includes(o) ? 'on' : ''} onClick={() => setBrief({ ...brief, objetivos: brief.objetivos.includes(o) ? brief.objetivos.filter((x) => x !== o) : [...brief.objetivos, o] })}>{o}</button>)}</div>
+          <ol>{asig.opciones.map((o, k) => <li key={o.id}><button type="button" className={plantilla === o.id ? 'on' : ''} onClick={() => fijar('plantilla', o.id)}><b>{k === 0 && !asig.ambiguo ? '★ ' : ''}{o.nombre}</b> · {o.puntos} pts<small>{o.porque.join(', ') || 'sin coincidencias'}</small></button></li>)}</ol>
+          {asig.ambiguo && <p className="lab-nota">Caso ambiguo: Shifu mostraría estas opciones en vez de elegir sola (D6).</p>}
+          <div className="lab-botones"><button type="button" className={RECORRIDO ? 'on' : ''} onClick={() => fijar('recorrido', RECORRIDO ? '0' : '1')}>{RECORRIDO ? '✓ Recorrido de primera entrada' : 'Ver como primera entrada (recorrido)'}</button></div>
+        </div>
 
         <h2>Plantilla</h2>
         <ul className="lab-lista">
