@@ -372,7 +372,7 @@ export function tramosComparables(hoy = new Date()) {
   const ultimoAnt = new Date(a, m, 0).getDate()
   const dAnt = Math.min(d, ultimoAnt)
   const ant = new Date(a, m - 1, 1)
-  const tramo = (ini, fin) => ({ desde: isoDia(ini), hasta: isoDia(fin), etiqueta: `${ini.getDate() === fin.getDate() ? '' : `${ini.getDate()}–`}${fin.getDate()} ${MESES[fin.getMonth()]}`, mes: MESES[fin.getMonth()], larga: `${MESES[fin.getMonth()]} ${fin.getFullYear()}` })
+  const tramo = (ini, fin) => ({ desde: isoDia(ini), hasta: isoDia(fin), etiqueta: `${ini.getDate() === fin.getDate() ? '' : `${ini.getDate()}\u2060–\u2060`}${fin.getDate()}\u00a0${MESES[fin.getMonth()]}`, mes: MESES[fin.getMonth()], larga: `${MESES[fin.getMonth()]} ${fin.getFullYear()}` })
   return { dias: d, actual: tramo(new Date(a, m, 1), new Date(a, m, d)), anterior: tramo(ant, new Date(a, m - 1, dAnt)) }
 }
 /** Registros cuya fecha (yyyy-mm-dd) cae entre `desde` y `hasta` (incluidos, en texto iso). */

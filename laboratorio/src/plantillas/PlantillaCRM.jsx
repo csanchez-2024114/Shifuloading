@@ -28,10 +28,16 @@ const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
 // Cada plantilla tiene su color de firma, tomado de la misma paleta de marca (no se agregan colores).
 const ACENTO = { embudo: '#22d3a6', agenda: '#7c5cff', pedidos: '#f5a623', membresias: '#3fb8ff', proyectos: '#b06cff', simple: '#22d3a6' }
 // Bloques que se le pueden "pedir a Shifu" en el inicio: los de la propia plantilla más los que su estructura permite.
-const nombreBloque = (w, porId) => `${w.vista === 'grafico' ? GRAFICOS[w.opciones?.tipo]?.nombre || 'Gráfico' : TITULO_VISTA[w.vista] || w.vista} · ${porId[w.seccion]?.titulo}`
+const nombreBloque = (w, porId) => `${w.vista === 'grafico' ? GRAFICOS[w.opciones?.tipo]?.nombre || 'Gráfico' : TITULO_VISTA[w.vista] || w.vista} · ${porId[w.seccion]?.titulo ?? ''}`
 /** Cambia el DOM con una transición animada (View Transitions) cuando el navegador la soporta; si no, cambia directo. */
-const conTransicion = (fn) => (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  ? document.startViewTransition(() => flushSync(fn)) : fn())
+// Si llega un cambio mientras otra transición sigue animando, la anterior se salta (el navegador la cancela y
+// rechaza sus promesas con "Transition was skipped"): es esperado, así que se atrapa y no ensucia la consola.
+const conTransicion = (fn) => {
+  if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return fn()
+  const t = document.startViewTransition(() => flushSync(fn))
+  for (const p of [t.ready, t.finished, t.updateCallbackDone]) p?.catch(() => {})
+  return t
+}
 const ANCHO_COMPLETO = ['kpis', 'tablero', 'agenda']
 /** Tamaño inicial: resumen, tablero y agenda a lo ancho; lo demás a media columna; si queda uno solo en su fila, a lo ancho. */
 function conTamano(bloques) {
@@ -125,6 +131,8 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
     return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, d)} opciones={opciones || {}} datos={d} /> : null
   }
   const dibujar = (s, nombreVista, opciones) => {
+    // Un bloque cuya sección se acaba de quitar sigue unos instantes en pantalla (animación de salida): se dibuja vacío.
+    if (!s) return null
     const sinDatos = (s.campos || s.fuente) && !registrosDe(s, datos).length
     if (!sinDatos) return dibujarCon(s, nombreVista, opciones, datos)
     return (

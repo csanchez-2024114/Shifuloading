@@ -115,8 +115,8 @@ function Tabla({ seccion, campos, registros: todos, opciones = {} }) {
       {filas.map((r, i) => (
         <div key={`${pag}-${r.id}`} className="pl-tabla-fila" role="row" style={{ '--n': campos.length, '--i': Math.min(i, 14) }}>
           {campos.map((c) => (
-            <span key={c.id} role="cell" data-etiqueta={c.nombre}>
-              {c.tipo === 'estado' ? <em className="pl-pildora" style={{ '--c': COLORES[c.opciones.indexOf(r.valores[c.id]) % COLORES.length] }}>{ver(c.tipo, r.valores[c.id])}</em> : ver(c.tipo, r.valores[c.id])}
+            <span key={c.id} role="cell" data-etiqueta={c.nombre} title={String(ver(c.tipo, r.valores[c.id]))}>
+              {c.tipo === 'estado' ? <em className="pl-pildora" title={r.valores[c.id]} style={{ '--c': COLORES[c.opciones.indexOf(r.valores[c.id]) % COLORES.length] }}>{ver(c.tipo, r.valores[c.id])}</em> : ver(c.tipo, r.valores[c.id])}
             </span>
           ))}
         </div>

@@ -9,6 +9,7 @@ import { fijarRegion } from '../plantillas/regional'
 import { plantillaPorId } from '../plantillas/semillas'
 import { datosEjemplo } from '../plantillas/datosEjemplo'
 import { ROTAS } from './rotas'
+import Estres from './Estres'
 
 export default function VistaPage() {
   const [q] = useSearchParams()
@@ -24,6 +25,7 @@ export default function VistaPage() {
   const datos = useMemo(() => (plantilla ? datosEjemplo(plantilla, nivel) : null), [plantilla, nivel])
   useEffect(() => { document.documentElement.style.colorScheme = tema === 'claro' ? 'light' : 'dark' }, [tema])
   if (!plantilla) return <p style={{ padding: 24 }}>No existe la plantilla «{id}».</p>
+  if (q.get('estres')) { fijarRegion(pais); return <Estres plantilla={plantilla} variante={q.get('variante') || 'pocos'} tema={tema} /> }
   if (q.get('galeria')) { fijarRegion(pais); return <VelContext.Provider value={vel}><GaleriaGraficos key={pais} plantilla={plantilla} datos={datos} tema={tema} vel={vel} /></VelContext.Provider> }
   return <PlantillaCRM key={`${id}-${nivelInicial}-${estilo}-${vel}-${pais}`} demo={q.get('demo') === 'toma' ? 'toma' : q.get('demo') === '1'} recorrido={recorrido} onBorrarEjemplos={() => setNivel('vacio')} plantilla={plantilla} datos={datos} nivel={nivel} tema={tema} estilo={estilo} vel={vel} pais={pais} negocio="Negocio de prueba" />
 }

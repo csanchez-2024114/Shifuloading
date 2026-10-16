@@ -28,18 +28,57 @@ function bloqueDe(estado, uid) { return estado.bloques.find((b) => b.uid === uid
 /** Dónde cae de verdad cada bloque en la rejilla (12 columnas, acomodo "dense" como el CSS): lo calcula el código,
  * para que Shifu no diga "a la derecha" si quedó abajo a la izquierda. Devuelve { uid: {fila, col, lado} }. */
 export function ubicar(bloques) {
-  const ocupado = [] // ocupado[fila][col]
-  const libre = (f, c, w, h) => { for (let y = f; y < f + h; y++) for (let x = c; x < c + w; x++) if (ocupado[y]?.[x]) return false; return c + w <= 12 }
   const out = {}
-  for (const b of bloques) {
-    const w = b.ancho || 6, h = b.vista === 'kpis' ? 1 : b.alto || 1
-    let f = 0, c = 0
-    for (;; f++) { c = [...Array(13 - w).keys()].find((x) => libre(f, x, w, h)); if (c !== undefined) break }
-    for (let y = f; y < f + h; y++) { ocupado[y] ||= []; for (let x = c; x < c + w; x++) ocupado[y][x] = true }
-    const centro = c + w / 2
-    out[b.uid] = { fila: f + 1, lado: w === 12 ? 'ancho completo' : centro <= 4.5 ? 'izquierda' : centro >= 7.5 ? 'derecha' : 'centro' }
+  for (const [uid, p] of Object.entries(colocar(bloques).pos)) {
+    const centro = p.c + p.w / 2
+    out[uid] = { fila: p.f + 1, lado: p.w === 12 ? 'ancho completo' : centro <= 4.5 ? 'izquierda' : centro >= 7.5 ? 'derecha' : 'centro' }
   }
   return out
+}
+
+/** Simula el acomodo "dense" del CSS: { pos: {uid: {f, c, w, h}}, celdas: celdas[fila][col] = uid | undefined }. */
+function colocar(bloques) {
+  const celdas = []
+  const libre = (f, c, w, h) => { for (let y = f; y < f + h; y++) for (let x = c; x < c + w; x++) if (celdas[y]?.[x]) return false; return c + w <= 12 }
+  const pos = {}
+  for (const b of bloques) {
+    const w = Math.max(1, Math.min(12, b.ancho || 6)), h = b.vista === 'kpis' ? 1 : b.alto || 1
+    let f = 0, c = 0
+    for (;; f++) { c = [...Array(13 - w).keys()].find((x) => libre(f, x, w, h)); if (c !== undefined) break }
+    for (let y = f; y < f + h; y++) { celdas[y] ||= []; for (let x = c; x < c + w; x++) celdas[y][x] = b.uid }
+    pos[b.uid] = { f, c, w, h }
+  }
+  return { pos, celdas }
+}
+
+/** Acomodo automático (D38): tapa los huecos que dejan los cambios. Lo calcula el código, nunca el modelo.
+ * Cada hueco lo llena el bloque vecino: el de la IZQUIERDA se ensancha (si todas sus filas tienen ese espacio libre) o,
+ * si no, el de ARRIBA crece una fila hacia abajo. Los bloques en `fijos` (los que la persona acaba de redimensionar)
+ * no se tocan, para no deshacer lo que pidió. No cambia el orden ni quita nada. */
+export function acomodar(bloques, fijos = new Set()) {
+  let bs = bloques.map((b) => ({ ...b }))
+  const imposibles = new Set()
+  for (let vuelta = 0; vuelta < 40; vuelta++) {
+    const { pos, celdas } = colocar(bs)
+    let hueco = null
+    for (let f = 0; f < celdas.length && !hueco; f++) for (let c = 0; c < 12; c++) if (!celdas[f]?.[c] && !imposibles.has(`${f},${c}`)) { hueco = { f, c }; break }
+    if (!hueco) break
+    const { f, c } = hueco
+    let largo = 0; while (c + largo < 12 && !celdas[f]?.[c + largo]) largo++
+    const izq = c > 0 && celdas[f]?.[c - 1], arriba = f > 0 && celdas[f - 1]?.[c]
+    const libreEn = (y, x0, n) => { for (let x = x0; x < x0 + n; x++) if (celdas[y]?.[x]) return false; return true }
+    let hecho = false
+    if (izq && !fijos.has(izq)) {
+      const p = pos[izq]
+      if ([...Array(p.h).keys()].every((dy) => libreEn(p.f + dy, c, largo))) { bs = bs.map((b) => (b.uid === izq ? { ...b, ancho: p.w + largo } : b)); hecho = true }
+    }
+    if (!hecho && arriba && !fijos.has(arriba)) {
+      const p = pos[arriba], b = bs.find((x) => x.uid === arriba)
+      if (b.vista !== 'kpis' && p.h < ALTO_MAX && p.f + p.h === f && libreEn(f, p.c, p.w)) { bs = bs.map((x) => (x.uid === arriba ? { ...x, alto: p.h + 1 } : x)); hecho = true }
+    }
+    if (!hecho) imposibles.add(`${f},${c}`)
+  }
+  return bs
 }
 const ubicacion = (u) => (u ? `fila ${u.fila}, ${u.lado}` : '')
 
@@ -302,8 +341,11 @@ export function describirPantalla(plantillaBase, estado) {
 
 /** Ejecuta UNA operación. Devuelve { estado, ok, resultado } — resultado es el texto que lee el modelo. */
 export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
-  const r = ejecutarSin(plantilla, estado, nombre, args, contexto)
-  if (!r.ok || !r.estado.bloques) return r
+  const r0 = ejecutarSin(plantilla, estado, nombre, args, contexto)
+  if (!r0.ok || !r0.estado.bloques) return r0
+  // Acomodo automático tras cada cambio de bloques; lo que la persona acaba de redimensionar queda como lo pidió.
+  const fijos = new Set(nombre === 'cambiar_tamano' || (nombre === 'agregar_bloque' && args.ancho) ? [args.bloque || r0.resultado.match(/Agregado el bloque (\S+):/)?.[1]].filter(Boolean) : [])
+  const r = r0.estado.bloques === estado.bloques ? r0 : { ...r0, estado: { ...r0.estado, bloques: acomodar(r0.estado.bloques, fijos) } }
   // Cada resultado dice dónde quedó TODO de verdad: el modelo describe eso, no lo que supone.
   const u = ubicar(r.estado.bloques)
   return { ...r, resultado: `${r.resultado} Así se ve ahora: ${r.estado.bloques.map((b) => `${b.uid} (${b.vista}) → ${ubicacion(u[b.uid])}`).join('; ')}.` }

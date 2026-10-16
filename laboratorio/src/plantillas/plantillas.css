@@ -167,7 +167,8 @@
   /* Inicio: la 1.ª fila (resumen) toma lo que necesita; las demás se reparten el alto restante. */
   /* Filas elásticas: si todo cabe, la rejilla mide EXACTO el alto disponible (sin scroll). Si se agregan más bloques
    * de los que caben con un mínimo legible (64px por fila; un bloque normal ocupa 2), recién ahí sigue hacia abajo. */
-  .pl-inicio { flex: 1; min-height: 0; grid-template-rows: max-content; grid-auto-rows: minmax(64px, 1fr); }
+  .pl-inicio { flex: 1; min-height: 0; grid-template-rows: max-content; grid-auto-rows: minmax(64px, 260px); align-content: start; }
+  /* Tope de 260px por fila: con pocos bloques ya no se estiran a toda la pantalla (gráficas y tarjetas deformes). */
   /* El resumen nunca se aplasta: mide lo que mide su contenido. */
   .pl-bloque-kpis { overflow: visible; min-height: max-content; }
   /* Tablero y agenda tienen más contenido: toman el doble de alto que una gráfica o una lista. */
@@ -182,15 +183,15 @@
   .pl-col { max-height: none; min-height: 0; }
   .pl-agenda { height: 100%; overflow-y: auto; align-content: start; }
   .pl-agenda { grid-auto-rows: minmax(0, 1fr); align-content: stretch; }
-  .pl-dia { max-height: 100%; min-height: 0; }
+  .pl-dia { max-height: 100%; min-height: 0; align-content: start; }
   .pl-venc-marco { height: 100%; grid-template-rows: auto minmax(0, 1fr); }
   .pl-venc-marco:not(:has(.pl-ia-barra)) { grid-template-rows: minmax(0, 1fr); }
   .pl-venc { height: 100%; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
   .pl-venc-grupo { display: flex; flex-direction: column; min-height: 0; }
-  .pl-venc-grupo ul { flex: 1; min-height: 0; max-height: none; }
+  .pl-venc-grupo ul { flex: 1; min-height: 0; max-height: none; align-content: start; }
   .pl-grafica { display: flex; flex-direction: column; justify-content: center; }
   .pl-grafica svg { max-height: 100%; min-height: 0; }
-  .pl-linea svg { flex: 1; }
+  .pl-linea svg { flex: 0 1 auto; }
   .pl-kpis { max-height: none; overflow: visible; }
 
   /* Sección: el contenido llena lo que queda debajo del título. */
@@ -313,3 +314,29 @@
 .mc-chat-btn { view-transition-name: lab-chat-btn; }
 ::view-transition-group(lab-chat-panel), ::view-transition-group(lab-chat-btn) { z-index: 1000; animation: none; }
 ::view-transition-old(lab-chat-panel), ::view-transition-new(lab-chat-panel), ::view-transition-old(lab-chat-btn), ::view-transition-new(lab-chat-btn) { animation: none; }
+
+/* ── Piezas a prueba de todo (D37): reaccionan al ancho de SU BLOQUE (container queries), no al de la pantalla.
+ * Lo mide servidor/estres.mjs: cada pieza × 4 tamaños × datos extremos (vacío, 1, 220, nombres larguísimos o de 1 letra). */
+.pl-bloque { container: bloque / inline-size; }
+/* Las píldoras de estado nunca invaden la columna vecina: se recortan con "…" (el texto completo queda en title). */
+.pl-pildora { max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.pl-tabla-fila > span { overflow-wrap: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+/* Rejillas internas: el mínimo de cada celda nunca supera el ancho disponible. */
+.pl-kpis { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
+.pl-agenda { grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); }
+.pl-venc { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
+/* Bloque angosto: la tabla pasa a tarjetas (etiqueta: valor) y los KPIs a una franja que se desliza. */
+@container bloque (max-width: 420px) {
+  .pl-tabla { border: 0; display: grid; gap: 8px; }
+  .pl-tabla-cab { display: none; }
+  .pl-tabla-fila { grid-template-columns: 1fr; gap: 3px; border: 1px solid var(--linea); border-radius: 12px; padding: 10px 12px; }
+  .pl-tabla-fila > span { display: flex; justify-content: space-between; gap: 10px; text-align: right; min-width: 0; }
+  .pl-tabla-fila > span::before { content: attr(data-etiqueta); flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tx3); font-size: 12px; text-align: left; }
+  .pl-tabla-fila > span:first-child { font-weight: 600; }
+  .mc .pl-bloque .pl-kpis { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(104px, 1fr); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+  .mc .pl-bloque .pl-kpis > div { scroll-snap-align: start; }
+  /* Sin datos en un bloque chico: el aviso se compacta (sin el texto largo) para no cortarse. */
+  .mc .pl-bloque .pl-vacio { padding: 14px 12px; gap: 4px; }
+  .mc .pl-bloque .pl-vacio b { font-size: 13.5px; }
+  .mc .pl-bloque .pl-vacio p { display: none; }
+}
