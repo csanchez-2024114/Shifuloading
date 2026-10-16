@@ -9,7 +9,7 @@ import { COMPONENTES, AnimarContext, VelContext } from './vistas'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe, datosEjemplo } from './datosEjemplo'
-import ChatLab, { GUION } from './ChatLab'
+import ChatLab, { GUION, GUION_TOMA } from './ChatLab'
 import Recorrido, { pasosDe } from './Recorrido'
 import { fijarRegion } from './regional'
 import { tokensDeMarca, cargarFuentes } from './marca'
@@ -89,10 +89,17 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const datos = useMemo(() => extenderDatos(datosBase, plantillaBase, estructura, nivel), [datosBase, plantillaBase, estructura, nivel])
   useEffect(() => { cargarFuentes(marca) }, [marca])
   const [chatAbierto, setChatAbierto] = useState(true)
-  const ir = (id) => conTransicion(() => setVista(id))
+  // Cascadas de entrada solo al cargar o al cambiar de sección; al aplicar cambios de Shifu se apaga para no re-animar lo que no cambió.
+  const [entrada, setEntrada] = useState(() => animado)
+  const ir = (id) => conTransicion(() => { if (animado) setEntrada(true); setVista(id) })
   /** Aplica el estado que devolvió Shifu: lo que se va sale primero (desenfoque), después el resto se reacomoda y lo nuevo nace. */
   const aplicarEstado = (nuevo) => {
-    ultimo.current = { vista: nuevo.vista || vista, marca: nuevo.marca || marca, estructura: nuevo.estructura || estructura, bloques: nuevo.bloques.map(({ nuevo: _n, ...b }) => b) }
+    const bloquesBase = nuevo.bloques ?? ultimo.current?.bloques ?? bloques.map(({ nuevo: _n, ...b }) => b)
+    ultimo.current = { vista: nuevo.vista || vista, marca: nuevo.marca ?? marca, estructura: nuevo.estructura ?? estructura, bloques: bloquesBase.map(({ nuevo: _n, ...b }) => b), toma: nuevo.toma }
+    if (!nuevo.bloques) return
+    if (animado) setEntrada(false)
+    if (nuevo.estructura) setEstructura(nuevo.estructura)
+    if (nuevo.marca) setMarca(nuevo.marca)
     const ids = new Set(nuevo.bloques.map((b) => b.uid))
     const viejos = new Set(bloques.map((b) => b.uid))
     const fuera = bloques.filter((b) => !ids.has(b.uid)).map((b) => b.uid)
@@ -100,14 +107,12 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
       setSaliendo([])
       setBloques(nuevo.bloques.map((b) => (viejos.has(b.uid) ? { ...b, nuevo: false } : { ...b, nuevo: true })))
       if (nuevo.vista && nuevo.vista !== vista) setVista(nuevo.vista)
-      if (nuevo.marca) setMarca(nuevo.marca)
-      if (nuevo.estructura) setEstructura(nuevo.estructura)
     })
     if (!fuera.length || !animado || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return final()
     setSaliendo(fuera); setTimeout(final, 700 * vel)
   }
   const ultimo = useRef(null) // el último estado aplicado (puede no haberse dibujado todavía por la transición)
-  const estadoParaIA = () => ultimo.current || ({ vista, marca, estructura, bloques: bloques.map(({ nuevo: _n, ...b }) => b) })
+  const estadoParaIA = () => ultimo.current || ({ vista, marca, estructura, bloques: bloques.map(({ nuevo: _n, ...b }) => b), toma: ultimo.current?.toma })
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
@@ -158,7 +163,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
             )
           })}
         </nav>
-        <main className="mc-main" key={vista}>
+        <main className="mc-main" key={vista} data-animar={entrada && animado ? '' : undefined}>
           {errores.length > 0 && (
             <div className="pl-errores" role="alert"><b>Esta plantilla no es válida ({errores.length})</b><ul>{errores.map((e) => <li key={e}>{e}</li>)}</ul></div>
           )}
@@ -167,7 +172,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
               <div className="mc-cab"><div><h1>Inicio</h1><p>{plantilla.para}</p></div></div>
               <div className="pl-inicio">
                 {bloques.map((w, i) => (
-                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} data-bloque={w.uid} style={{ '--i': w.nuevo ? 0 : i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
+                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} data-bloque={w.uid} data-animar={w.nuevo && animado ? '' : undefined} style={{ '--i': w.nuevo ? 0 : i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
                     <h2>{nombreBloque(w, porId)}</h2>
                     {dibujar(porId[w.seccion], w.vista, w.opciones)}
                   </section>
@@ -187,7 +192,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
         </main>
       </div>
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
-      <ChatLab guion={demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
+      <ChatLab guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
     </div>
     </VelContext.Provider></AnimarContext.Provider>
   )

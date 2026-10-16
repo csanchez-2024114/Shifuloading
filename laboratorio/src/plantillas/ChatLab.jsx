@@ -7,6 +7,7 @@ import { LuCamera, LuPaperclip, LuSend, LuX } from 'react-icons/lu'
 import ShifuAvatar from '@base/components/ShifuAvatar'
 import TextoChat from '@base/components/TextoChat'
 import { capturarRegion, imagenDeArchivo, SelectorCaptura } from '@base/components/CapturaPantalla'
+import { tarjetaToma } from './edicion.js'
 
 let n = 0
 /** Colores dominantes de una imagen, MEDIDOS (no adivinados): se agrupan los píxeles visibles y se devuelven los hex más presentes. */
@@ -49,6 +50,14 @@ export const GUION = [
   'Quita la sección de inventario',
 ]
 
+/** Guion de la toma de diseño (demo=toma): pedir diseño → decir qué ver → cambiar algo → confirmar. */
+export const GUION_TOMA = [
+  'Diséñame un inicio nuevo para controlar mis cobros',
+  'Quiero un resumen de pagos y una dona de los estados',
+  'No, mejor barras en vez de dona',
+  'Sí',
+]
+
 export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion }) {
   const [abierto, setAbierto] = useState(true)
   useEffect(() => { onAbierto?.(abierto) }, [abierto]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -85,7 +94,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
         body: JSON.stringify({ plantilla: plantilla.id, estado: estadoRef.current(), texto: t || (img?.pdf ? 'Te paso este PDF.' : 'Te paso esta imagen.'), historial, imagen: img?.url || undefined, archivo: img?.pdf, paleta, seccion: seccionActual }) })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || r.status)
-      if (d.cambios?.length) onEstado(d.estado)
+      if (d.estado) onEstado(d.estado)
       // Para revisar en el laboratorio: qué herramientas corrieron de verdad (lo que dice vs lo que hizo).
       console.info('[chat-lab]', { cambios: d.cambios, fallos: d.fallos })
       setMensajes((l) => [...l, mensaje('shifu', d.respuesta)])
@@ -121,6 +130,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     } catch { setErrorImg('No pude usar esa imagen.') }
   }
   const archivoRef = useRef(null)
+  const ficha = estadoActual()?.toma?.activa ? tarjetaToma(plantilla, estadoActual()) : null
 
   return createPortal(
     <div className="mc-chat" data-tema={tema}>
@@ -144,6 +154,14 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
               {imagen?.url && <img src={imagen.url} alt="Captura lista para enviar" />}{imagen?.pdf && <span>📄 {imagen.nombre}</span>}
               <span>{imagen ? 'Captura lista. Cuéntale a Shifu qué quieres cambiar ahí.' : errorImg}</span>
               <button type="button" onClick={() => { setImagen(null); setErrorImg('') }} aria-label="Quitar la captura"><LuX /></button>
+            </div>
+          )}
+          {ficha && (
+            <div className="mc-chat-ficha" role="status" aria-label="Ficha de diseño">
+              <strong>Ficha de diseño</strong>
+              <small>{ficha.fase === 'confirmando' ? 'Revisión' : ficha.fase === 'construida' ? 'Construyendo…' : 'En curso'}</small>
+              <ul>{ficha.filas.map((r) => <li key={r.etiqueta} className={r.pendiente ? 'pend' : 'ok'}><span>{r.etiqueta}</span>{r.texto}</li>)}</ul>
+              {ficha.notas.length && <p className="mc-chat-ficha-notas">Notas: {ficha.notas.slice(-2).join(' · ')}</p>}
             </div>
           )}
           <form onSubmit={(e) => { e.preventDefault(); enviar(txt, imagen) }}>

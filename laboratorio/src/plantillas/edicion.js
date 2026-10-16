@@ -3,7 +3,7 @@
  * Las usa el servidor del laboratorio (servidor/chat.js) al ejecutar las herramientas del modelo, y nada más las cambia.
  * Lo que el modelo pide fuera de esto (una vista que no existe, un campo equivocado) se rechaza aquí, no se dibuja mal. */
 import { VISTAS, revisarVista, camposDe, validarPlantilla, TIPOS_CAMPO } from './validar.js'
-import { compatibles, GRAFICOS } from './graficos.jsx'
+import { compatibles, GRAFICOS, opcionesPorDefecto } from './graficos.jsx'
 import { FUENTES, esHex, tokensDeMarca, revisarLogo } from './marca.js'
 
 export const ANCHOS_COL = [3, 4, 6, 8, 12]
@@ -57,10 +57,231 @@ export function plantillaEfectiva(plantilla, estado = {}) {
   return { ...plantilla, secciones: i < 0 ? [...base, ...nuevas] : [...base.slice(0, i), ...nuevas, ...base.slice(i)] }
 }
 
+/** Toma de requerimientos de diseño (estilo Alan): la ficha vive en el estado, no en el prompt. */
+export const HERRAMIENTAS_BLOQUEADAS_EN_TOMA = new Set([
+  'agregar_bloque', 'cambiar_visual', 'cambiar_tamano', 'mover_bloque', 'quitar_bloque', 'cambiar_rangos',
+  'cambiar_marca', 'usar_logo', 'restablecer_marca', 'crear_seccion', 'agregar_campo', 'renombrar_seccion', 'quitar_seccion',
+])
+const GRAF_ALIAS = { barras: 'barras', barra: 'barras', columnas: 'columnas', dona: 'dona', pastel: 'pastel', linea: 'linea', 'línea': 'linea' }
+const NOMBRE_VISTA = { kpis: 'resumen con cifras', tablero: 'tablero por etapas', agenda: 'agenda', vencimientos: 'por vencer', grafico: 'gráfica', tabla: 'lista' }
+const PREGUNTA_FALTA = {
+  objetivo: '¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)',
+  secciones: '¿Qué partes de tu negocio quieres ver ahí? (ventas, clientes, inventario, lo que uses a diario…)',
+  bloques: '¿Qué quieres ver en tu inicio y de qué parte? (por ejemplo: un resumen de pagos, una gráfica de los estados de tus miembros, la lista de lo que vence…)',
+}
+
+/** Construye el inicio DESDE LA FICHA confirmada, por código (sin el modelo): reemplaza los bloques, acomoda tamaños
+ * (resumen, tablero y agenda a lo ancho; lo demás a media fila; si queda uno solo en su fila, a lo ancho) y aplica la marca. */
+export function construirDesdeFicha(plantillaBase, estado) {
+  const f = estado.toma.ficha
+  const ANCHO = ['kpis', 'tablero', 'agenda']
+  const medios = f.bloques.filter((b) => !ANCHO.includes(b.vista))
+  const ultimoMedio = medios.length % 2 ? medios[medios.length - 1] : null
+  const base = Date.now().toString(36)
+  const bloques = f.bloques.map((b, i) => ({ uid: `f${base}${i}`, seccion: b.seccion, vista: b.vista, opciones: b.opciones || {},
+    ancho: b.tamano?.ancho || (ANCHO.includes(b.vista) || b === ultimoMedio ? 12 : 6), alto: b.vista === 'kpis' ? 1 : b.tamano?.alto || 2 }))
+  const m = f.marca || {}
+  const marca = { ...(estado.marca || {}), ...(esHex(m.primario) ? { primario: m.primario } : {}), ...(esHex(m.secundario) ? { secundario: m.secundario } : {}),
+    ...(m.tipografia && FUENTES[m.tipografia] ? { fuenteTitulos: m.tipografia, fuenteTexto: m.tipografia } : {}) }
+  const nuevo = { ...estado, bloques, marca, vista: 'inicio', toma: tomaVacia() }
+  const errores = validarPlantilla({ ...plantillaEfectiva(plantillaBase, nuevo), inicio: bloques })
+  return { estado: errores.length ? estado : nuevo, errores }
+}
+
+export function tomaVacia() {
+  return { activa: false, fase: 'juntando', ficha: { objetivo: '', secciones: [], bloques: [], marca: {}, restricciones: [] }, notas: [], preguntadas: [], rechazo: false }
+}
+
+export function asegurarToma(estado) {
+  if (!estado.toma) return { ...estado, toma: tomaVacia() }
+  return estado
+}
+
+/** Obligatorios de la ficha antes de confirmar. */
+export function faltantesToma(plantillaBase, estado) {
+  const f = estado.toma?.ficha
+  if (!estado.toma?.activa || !f) return []
+  const out = []
+  if (!String(f.objetivo || '').trim()) out.push({ campo: 'objetivo', pregunta: PREGUNTA_FALTA.objetivo })
+  if (!f.bloques?.length) out.push({ campo: 'bloques', pregunta: PREGUNTA_FALTA.bloques })
+  return out
+}
+
+/** Resumen en palabras (sin ids técnicos) para la confirmación. */
+export function resumenDeToma(plantillaBase, estado) {
+  const plantilla = plantillaEfectiva(plantillaBase, estado)
+  const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
+  const f = estado.toma?.ficha || {}
+  const lineas = []
+  if (f.objetivo) lineas.push(`Vas a tener un inicio para ${f.objetivo}.`)
+  const secs = (f.secciones || []).map((id) => porId[id]?.titulo || id).filter(Boolean)
+  if (secs.length) lineas.push(`Partes del menú que importan: ${secs.join(', ')}.`)
+  for (const [n, b] of (f.bloques || []).entries()) {
+    const tit = porId[b.seccion]?.titulo || 'una sección'
+    let det = NOMBRE_VISTA[b.vista] || b.vista
+    if (b.vista === 'grafico' && b.opciones?.tipo) det = `${GRAFICOS[b.opciones.tipo]?.nombre || 'gráfica'} en ${tit}`
+    else det = `${det} de ${tit}`
+    if (b.tamano?.ancho || b.tamano?.alto) det += ` (${b.tamano.ancho ? `ancho ${b.tamano.ancho}` : ''}${b.tamano.ancho && b.tamano.alto ? ', ' : ''}${b.tamano.alto ? `alto ${b.tamano.alto}` : ''})`.replace(/\(\s*,/,'(')
+    lineas.push(`${n + 1}. ${det}`)
+  }
+  const m = f.marca || {}
+  const marca = [m.primario && `color principal ${m.primario}`, m.secundario && `acento ${m.secundario}`, m.tipografia && `letra ${m.tipografia}`].filter(Boolean)
+  if (marca.length) lineas.push(`Marca: ${marca.join(', ')}.`)
+  if (f.restricciones?.length) lineas.push(`Restricciones: ${f.restricciones.join('; ')}.`)
+  if (estado.toma?.notas?.length) lineas.push(`Notas: ${estado.toma.notas.join('; ')}.`)
+  return lineas.join(' ') || 'Aún no hay nada en la ficha.'
+}
+
+/** Lo que ve el chat (tarjeta compacta): campos llenos o pendientes, sin ids. */
+export function tarjetaToma(plantillaBase, estado) {
+  const plantilla = plantillaEfectiva(plantillaBase, estado)
+  const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
+  const f = estado.toma?.ficha || {}
+  const falta = new Set(faltantesToma(plantillaBase, estado).map((x) => x.campo))
+  const filas = [
+    { etiqueta: 'Objetivo', texto: f.objetivo || '—', pendiente: falta.has('objetivo') },
+    { etiqueta: 'Secciones', texto: (f.secciones || []).map((id) => porId[id]?.titulo || id).join(', ') || '—', pendiente: falta.has('secciones') },
+    { etiqueta: 'Bloques en inicio', texto: (f.bloques || []).map((b) => `${NOMBRE_VISTA[b.vista] || b.vista} (${porId[b.seccion]?.titulo || '?'})`).join(' · ') || '—', pendiente: falta.has('bloques') },
+  ]
+  const m = f.marca || {}
+  const marcaTxt = [m.primario, m.secundario, m.tipografia].filter(Boolean).join(' · ')
+  if (marcaTxt || f.restricciones?.length) filas.push({ etiqueta: 'Marca / extras', texto: [marcaTxt, ...(f.restricciones || [])].filter(Boolean).join(' · ') || '—', pendiente: false })
+  return { fase: estado.toma?.fase, filas, notas: estado.toma?.notas || [] }
+}
+
+/** Sí/no y ajustes en confirmación; digresión detectada por código (sin otro modelo). */
+// Pedido de DISEÑAR o REHACER una pantalla completa (no un cambio puntual): lo detecta el código, no el modelo.
+const PIDE_DISENO = /(?<!\p{L})(dis[eé][ñn]a(me|r)?|redis[eé][ñn]a|rehaz|rehacer|arma(me)?\s+(un|mi|el)\s+(nuevo\s+)?(inicio|crm|tablero|pantalla)|(un|mi)\s+inicio\s+nuevo|nuevo\s+inicio|empecemos\s+de\s+cero)(?!\p{L})/iu
+const ABANDONA = /(?<!\p{L})(olv[ií]d(a|alo|ate)|d[eé]jalo(\s+as[ií]|\s+como\s+est[aá])?|ya\s+no\s+(quiero|lo\s+hagas)|mejor\s+no|cancela(lo)?|dejemos\s+eso)(?!\p{L})/iu
+
+export function prepararTurnoToma(estado, texto) {
+  let e = asegurarToma(estado)
+  if (!e.toma.activa && PIDE_DISENO.test(texto)) {
+    // Se abre por código: el modelo solo llena la ficha con lo que dijo la persona.
+    // Objetivo = lo que viene después de "para …" ("diséñame un inicio para controlar mis cobros" → "controlar mis cobros"), sin lo que ya son bloques.
+    const obj = (String(texto).match(/\bpara\s+([^:.;]+)/i)?.[1] || '').trim().slice(0, 120)
+    e = { ...e, toma: { ...tomaVacia(), activa: true, fase: 'juntando', ficha: { ...tomaVacia().ficha, objetivo: obj } } }
+    return { estado: e, aviso: 'El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_ficha SOLO lo que la persona dijo en este mensaje (bloques: qué ver y de qué sección; marca si la dijo) y luego haz la pregunta de FALTA.', digresion: false }
+  }
+  const t = e.toma
+  if (!t.activa) return { estado: e, aviso: null, digresion: false }
+  if (ABANDONA.test(texto)) {
+    return { estado: { ...e, toma: tomaVacia() }, aviso: 'La persona abandonó la ficha: el código ya la cerró. Dile en una línea que quedó todo como estaba (la pantalla NO cambió) y no toques nada.', digresion: true }
+  }
+  const digresion = /¿?\s*qué hora|qué hora es|cuántas? son|clima|tiempo hace|temperatura/i.test(texto)
+  let aviso = null
+  if (t.fase === 'confirmando') {
+    if (/^\s*(s[ií]|si|dale|ok|claro|confirmo|hazlo|perfecto|adelante)(?:\s|[.!,]|$)/iu.test(texto)) {
+      return { estado: e, aviso: null, digresion: false, construir: true }
+    } else if (/\b(no|mejor|cambia|cambiar|en vez|prefiero)\b/i.test(texto)) {
+      t.fase = 'juntando'
+      t.rechazo = true
+      t.notas.push(String(texto).slice(0, 240))
+      aviso = 'La persona pidió un ajuste. Si es reemplazar algo («mejor X en vez de Y»): quitar_de_ficha del bloque Y y anotar_bloque con X, las dos en este turno. Si es agregar: anotar_bloque. Usa solo lo que dijo en ESTE mensaje.'
+    }
+  }
+  return { estado: e, aviso, digresion }
+}
+
+function pistaToma(plantillaBase, estado, mutar = false) {
+  const t = estado.toma
+  if (!t?.activa || t.fase === 'construida') return null
+  const falt = faltantesToma(plantillaBase, estado)
+  if (t.fase === 'juntando') {
+    if (!falt.length) {
+      if (mutar && !t.rechazo) t.fase = 'confirmando'
+      if (t.rechazo) return `Ajuste pendiente: anota con anotar_ficha lo que pidieron y vuelve a resumir cuando esté claro.`
+      return `RESUMEN (muéstralo en palabras sencillas y pregunta «¿Lo armo así?»):\n${resumenDeToma(plantillaBase, estado)}`
+    }
+    const f = falt[0]
+    if (mutar && !t.preguntadas.includes(f.campo)) t.preguntadas.push(f.campo)
+    return `FALTA: ${f.campo} — pregunta sugerida: ${f.pregunta}`
+  }
+  if (t.fase === 'confirmando') {
+    return `RESUMEN (muéstralo y pregunta «¿Lo armo así?»):\n${resumenDeToma(plantillaBase, estado)}`
+  }
+  return null
+}
+
+/** Tras herramientas en un turno: una sola pista (FALTA o RESUMEN); puede avanzar la fase. */
+export function senalTomaTrasVuelta(plantillaBase, estado) {
+  return pistaToma(plantillaBase, estado, true)
+}
+
+function instruccionTomaEnContexto(plantillaBase, estado) {
+  const t = estado.toma
+  if (!t?.activa) return null
+  if (t.fase === 'construida') return 'La ficha ya está confirmada: aplica el diseño con las herramientas de pantalla según estado.toma.ficha.'
+  return pistaToma(plantillaBase, estado, false)
+}
+
+function validarValorFicha(plantilla, campo, valor) {
+  const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
+  const mal = (error) => ({ ok: false, error })
+  const bien = (value) => ({ ok: true, value })
+  switch (campo) {
+    case 'objetivo': {
+      const t = String(valor || '').trim()
+      if (!t) return mal('el objetivo no puede estar vacío.')
+      return bien(t.slice(0, 200))
+    }
+    case 'seccion': {
+      const s = seccionDe(plantilla, valor)
+      if (!s) return mal(`la sección «${valor}» no existe. Secciones: ${plantilla.secciones.filter((x) => x.campos || x.fuente).map((x) => x.titulo).join(', ')}.`)
+      return bien(s.id)
+    }
+    case 'bloque': {
+      const b = valor || {}
+      const s = seccionDe(plantilla, b.seccion)
+      if (!s) return mal(`la sección «${b.seccion}» no existe.`)
+      if (!VISTAS_INICIO.includes(b.vista)) return mal(`vista «${b.vista}» no válida; usa: ${VISTAS_INICIO.join(', ')}.`)
+      const op = b.opciones || {}
+      if (b.vista === 'grafico') {
+        const posibles = compatibles(camposDe(s, porId)).map((g) => g.id)
+        if (!op.tipo || !GRAFICOS[op.tipo]) return mal(`falta opciones.tipo de gráfico válido (posibles con ${s.titulo}: ${posibles.join(', ')}).`)
+        if (!posibles.includes(op.tipo)) return mal(`«${GRAFICOS[op.tipo].nombre}» no se puede con ${s.titulo}.`)
+      } else {
+        const errs = revisarVista(b.vista, op, camposDe(s, porId), `«${s.titulo}»`)
+        if (errs.length) return mal(errs.join(' '))
+      }
+      if (b.tamano) {
+        if (b.tamano.ancho != null && !ANCHOS_COL.includes(Number(b.tamano.ancho))) return mal(`ancho debe ser uno de ${ANCHOS_COL.join(', ')}.`)
+        if (b.tamano.alto != null && (b.tamano.alto < 1 || b.tamano.alto > ALTO_MAX)) return mal(`alto entre 1 y ${ALTO_MAX}.`)
+      }
+      return bien({ ...b, seccion: s.id })
+    }
+    case 'marca_primario': case 'marca_secundario': {
+      const h = String(valor || '').trim()
+      if (!esHex(h)) return mal('debe ser un color hex como #1E40AF.')
+      return bien(h.startsWith('#') ? h : `#${h}`)
+    }
+    case 'tipografia': {
+      const fnt = String(valor || '').trim()
+      if (!FUENTES[fnt]) return mal(`tipografía «${fnt}» no disponible (${Object.keys(FUENTES).join(', ')}).`)
+      return bien(fnt)
+    }
+    case 'restriccion': {
+      const t = String(valor || '').trim()
+      if (!t) return mal('la restricción no puede estar vacía.')
+      return bien(t.slice(0, 120))
+    }
+    default:
+      return mal(`campo «${campo}» no reconocido (objetivo, seccion, bloque, marca_primario, marca_secundario, tipografia, restriccion).`)
+  }
+}
+
 /** Lo que el modelo ve de la pantalla: bloques actuales y, por sección, sus campos y las vistas que admite. */
 export function describirPantalla(plantillaBase, estado) {
   const plantilla = plantillaEfectiva(plantillaBase, estado)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
+  const tomaCtx = estado.toma?.activa ? {
+    activa: true,
+    fase: estado.toma.fase,
+    ficha: estado.toma.ficha,
+    notas: estado.toma.notas,
+    faltantes: faltantesToma(plantillaBase, estado).map((x) => x.campo),
+    instruccion_turno: instruccionTomaEnContexto(plantillaBase, estado),
+  } : { activa: false }
   return {
     plantilla: plantilla.nombre,
     marca: { ...(estado.marca || {}), logo: estado.marca?.logo ? '(tiene logo)' : '(sin logo)', fuentes_permitidas: Object.keys(FUENTES), nota: 'Branding: cualquier color (hex) de fondo, superficie, texto, principal y secundario, y tipografía de títulos y de texto. El código ajusta lo que no se lea.' },
@@ -74,6 +295,7 @@ export function describirPantalla(plantillaBase, estado) {
       graficos_posibles: compatibles(camposDe(s, porId)).map((g) => `${g.id} (${g.nombre})`) })),
     vistas: Object.fromEntries(VISTAS_INICIO.map((v) => [v, { requiere: VISTAS[v].requiere, opcional: Object.keys(VISTAS[v].opcional || {}) }])),
     grafico: 'vista "grafico" con opciones {tipo: <id de graficos_posibles>} y opcionalmente {funcion: conteo|suma|promedio|mediana|minimo|maximo|moda|desviacion, valor: campo numérico, agrupar: campo o "mes", meta, top}. La vieja "grafica" (barras/dona/linea) sigue existiendo en bloques que ya la tienen.',
+    toma: tomaCtx,
   }
 }
 
@@ -87,16 +309,24 @@ export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
 }
 
 function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
+  estado = asegurarToma(estado)
   const plantilla = plantillaEfectiva(plantillaBase, estado)
   const est = estado.estructura || {}
+  const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
+  const no = (resultado) => ({ estado, ok: false, resultado: `ERROR: ${resultado}` })
+  const si = (nuevo, resultado) => ({ estado: nuevo, ok: true, resultado })
+  const tomaAbierta = estado.toma.activa && ['juntando', 'confirmando'].includes(estado.toma.fase)
+  if (tomaAbierta && HERRAMIENTAS_BLOQUEADAS_EN_TOMA.has(nombre) && !contexto.digresion) {
+    return no('primero termina y confirma la ficha de diseño (o ciérrala con cerrar_toma si ya no quieren diseñar).')
+  }
+  if (tomaAbierta && contexto.digresion && ['anotar_ficha', 'anotar_nota'].includes(nombre)) {
+    return no('es una digresión: responde la charla y no anotes nada de este mensaje en la ficha.')
+  }
   // Cambio de estructura: se valida la plantilla COMPLETA resultante; si algo queda inválido, no se aplica.
   const conEstructura = (nueva, resultado) => {
     const errores = validarPlantilla(plantillaEfectiva(plantillaBase, { ...estado, estructura: nueva }))
     return errores.length ? no(errores.join(' ')) : si({ ...estado, estructura: nueva }, resultado)
   }
-  const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
-  const no = (resultado) => ({ estado, ok: false, resultado: `ERROR: ${resultado}` })
-  const si = (nuevo, resultado) => ({ estado: nuevo, ok: true, resultado })
   const conBloques = (bloques) => ({ ...estado, bloques })
   switch (nombre) {
     case 'quitar_bloque': {
@@ -212,6 +442,76 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
       const s = seccionDe(plantilla, args.seccion); if (!s && args.seccion !== 'inicio') return no(`la sección «${args.seccion}» no existe.`)
       return si({ ...estado, vista: s ? s.id : 'inicio' }, `Abierta la sección ${s ? s.titulo : 'Inicio'}.`)
     }
+    case 'abrir_toma': {
+      if (estado.toma.activa && ['juntando', 'confirmando'].includes(estado.toma.fase)) {
+        return si(estado, 'La toma de diseño ya está abierta: sigue con anotar_ficha, no vuelvas a abrir.')
+      }
+      const t = { ...tomaVacia(), activa: true, fase: 'juntando' }
+      if (args.objetivo) t.ficha.objetivo = String(args.objetivo).slice(0, 200)
+      return si({ ...estado, toma: t }, 'Toma de diseño abierta. Anota solo lo que la persona dijo en este mensaje con anotar_ficha; ideas dudosas van en anotar_nota.')
+    }
+    case 'cerrar_toma':
+      // Abandonar la ficha lo decide la persona, no el modelo (si no, el modelo la cierra para construir directo).
+      if (!ABANDONA.test(contexto.texto || '')) return no('la persona no pidió dejar el diseño: sigue con la ficha (anota lo que pidió) y no la cierres.')
+      return si({ ...estado, toma: tomaVacia() }, 'Toma de diseño cerrada. La pantalla no cambió por la ficha.')
+    case 'anotar_nota': {
+      if (!estado.toma.activa) return no('no hay una toma de diseño abierta.')
+      const n = String(args.texto || '').trim().slice(0, 240)
+      if (!n) return no('falta el texto de la nota.')
+      const t = { ...estado.toma, notas: [...estado.toma.notas, n] }
+      return si({ ...estado, toma: t }, 'Nota guardada (no es un dato confirmado de la ficha).')
+    }
+    case 'anotar_bloque': {
+      // La IA dice en simple QUÉ ver y DE QUÉ parte; el código lo traduce al bloque técnico con valores razonables.
+      if (!estado.toma.activa) return no('no hay una ficha de diseño abierta.')
+      if (estado.toma.fase === 'construida') return no('la ficha ya está confirmada.')
+      const sec = seccionDe(plantilla, args.seccion); if (!sec || !(sec.campos || sec.fuente)) return no(`no encuentro «${args.seccion}». Partes: ${plantilla.secciones.filter((x) => x.campos || x.fuente).map((x) => x.titulo).join(', ')}.`)
+      const campos = camposDe(sec, Object.fromEntries(plantilla.secciones.map((x) => [x.id, x])))
+      const estadoC = campos.find((c) => c.tipo === 'estado'), fecha = campos.find((c) => c.tipo === 'fecha'), dinero = campos.find((c) => ['dinero', 'numero'].includes(c.tipo)), texto = campos.find((c) => c.tipo === 'texto')
+      const posibles = compatibles(campos).map((g) => g.id)
+      let bloque
+      switch (args.que) {
+        case 'resumen': bloque = { vista: 'kpis', seccion: sec.id, opciones: { ...(estadoC ? { por: estadoC.id } : {}), ...(dinero?.tipo === 'dinero' ? { suma: dinero.id } : {}) } }; break
+        case 'grafica': {
+          const pedido = args.grafico && posibles.includes(args.grafico) ? args.grafico : null
+          if (args.grafico && !pedido) return no(`«${args.grafico}» no se puede con ${sec.titulo}. Posibles: ${posibles.join(', ')}.`)
+          const tipo = pedido || (estadoC && posibles.includes('dona') ? 'dona' : posibles[0])
+          bloque = { vista: 'grafico', seccion: sec.id, opciones: { ...opcionesPorDefecto(tipo, campos), tipo } }; break
+        }
+        case 'lista': bloque = { vista: 'tabla', seccion: sec.id, opciones: {} }; break
+        case 'tablero': if (!estadoC) return no(`${sec.titulo} no tiene un campo de estado para armar un tablero.`); bloque = { vista: 'tablero', seccion: sec.id, opciones: { por: estadoC.id, ...(texto ? { titulo: texto.id } : {}) } }; break
+        case 'por_vencer': if (!fecha) return no(`${sec.titulo} no tiene fechas.`); bloque = { vista: 'vencimientos', seccion: sec.id, opciones: { fecha: fecha.id, ...(texto ? { titulo: texto.id } : {}), dias: 30 } }; break
+        case 'agenda': if (!fecha) return no(`${sec.titulo} no tiene fechas.`); bloque = { vista: 'agenda', seccion: sec.id, opciones: { fecha: fecha.id, ...(texto ? { titulo: texto.id } : {}), dias: 7 } }; break
+        default: return no('«que» debe ser: resumen, grafica, lista, tablero, por_vencer o agenda.')
+      }
+      const err = revisarVista(bloque.vista, bloque.opciones, campos, `«${sec.titulo}»`); if (err.length) return no(err.join(' '))
+      const ficha = { ...estado.toma.ficha, bloques: [...estado.toma.ficha.bloques, bloque], secciones: [...new Set([...estado.toma.ficha.secciones, sec.id])] }
+      const t = { ...estado.toma, ficha, fase: estado.toma.fase === 'confirmando' ? 'juntando' : estado.toma.fase, rechazo: false }
+      return si({ ...estado, toma: t }, `Anotado en la ficha: ${args.que}${bloque.opciones.tipo ? ` (${GRAFICOS[bloque.opciones.tipo]?.nombre})` : ''} de ${sec.titulo}.`)
+    }
+    case 'quitar_de_ficha': {
+      if (!estado.toma.activa) return no('no hay una ficha abierta.')
+      const i = Number(args.numero) - 1; const bs = [...estado.toma.ficha.bloques]
+      if (!(i >= 0 && i < bs.length)) return no(`la ficha tiene ${bs.length} bloques (numera desde 1).`)
+      bs.splice(i, 1)
+      return si({ ...estado, toma: { ...estado.toma, ficha: { ...estado.toma.ficha, bloques: bs }, fase: 'juntando', rechazo: false } }, `Quitado el bloque ${i + 1} de la ficha. Si la persona pidió algo EN SU LUGAR, anótalo AHORA con anotar_bloque.`)
+    }
+    case 'anotar_ficha': {
+      if (!estado.toma.activa) return no('no hay una toma de diseño abierta.')
+      if (estado.toma.fase === 'construida') return no('la ficha ya está confirmada: aplica el diseño con las herramientas de pantalla.')
+      const campo = String(args.campo || '').trim()
+      const val = validarValorFicha(plantilla, campo, args.valor)
+      if (!val.ok) return no(val.error)
+      const ficha = { ...estado.toma.ficha, marca: { ...estado.toma.ficha.marca }, restricciones: [...(estado.toma.ficha.restricciones || [])], secciones: [...(estado.toma.ficha.secciones || [])], bloques: [...(estado.toma.ficha.bloques || [])] }
+      if (campo === 'objetivo') ficha.objetivo = val.value
+      else if (campo === 'seccion' && !ficha.secciones.includes(val.value)) ficha.secciones.push(val.value)
+      else if (campo === 'bloque') { ficha.bloques.push(val.value); if (val.value.seccion && !ficha.secciones.includes(val.value.seccion)) ficha.secciones.push(val.value.seccion) } // la sección sale del bloque
+      else if (campo === 'marca_primario') ficha.marca.primario = val.value
+      else if (campo === 'marca_secundario') ficha.marca.secundario = val.value
+      else if (campo === 'tipografia') ficha.marca.tipografia = val.value
+      else if (campo === 'restriccion') ficha.restricciones.push(val.value)
+      return si({ ...estado, toma: { ...estado.toma, ficha, rechazo: false } }, `Ficha actualizada (${campo}).`)
+    }
     default: return no(`la herramienta «${nombre}» no existe.`)
   }
 }
@@ -240,4 +540,13 @@ export const HERRAMIENTAS = [
   ['renombrar_seccion', 'Cambia el nombre de una sección.', { seccion: { type: 'string' }, titulo: { type: 'string' } }, ['seccion', 'titulo']],
   ['quitar_seccion', 'Quita una sección del menú (y sus bloques del inicio). Solo si la persona lo pidió.', { seccion: { type: 'string' } }, ['seccion']],
   ['restablecer_marca', 'Vuelve al diseño base de Shifu (quita colores, tipografías y logo propios).', {}, []],
+  ['abrir_toma', 'Abre la toma de requerimientos cuando la persona pide DISEÑAR o REHACER la pantalla de inicio o un CRM completo. NO uses esto para cambios puntuales (mover, achicar, un solo bloque): esos van directo con las herramientas de pantalla.', {
+    objetivo: { type: 'string', description: 'solo si lo dijo en este mensaje' } }, []],
+  ['anotar_bloque', 'FICHA DE DISEÑO: anota UN bloque que la persona pidió en ESTE mensaje, dicho en simple. que = resumen | grafica | lista | tablero | por_vencer | agenda; seccion = la parte del menú (nombre). grafico = tipo opcional SOLO si lo nombró (dona, barras, columnas, linea…). Llama una vez por cada cosa que pidió. No preguntes detalles técnicos: el código elige lo razonable.', {
+    que: { type: 'string', enum: ['resumen', 'grafica', 'lista', 'tablero', 'por_vencer', 'agenda'] }, seccion: { type: 'string' }, grafico: { type: 'string' } }, ['que', 'seccion']],
+  ['quitar_de_ficha', 'Quita de la ficha el bloque número N (como aparece en el resumen) cuando la persona lo pide.', { numero: { type: 'integer', minimum: 1 } }, ['numero']],
+  ['anotar_ficha', 'Anota en la ficha de diseño UN dato que la persona dijo explícitamente en ESTE mensaje (nunca inventes ni completes). Si dudas, usa anotar_nota. Campos: objetivo, seccion, bloque {vista, seccion, opciones?, tamano?}, marca_primario, marca_secundario, tipografia, restriccion.', {
+    campo: { type: 'string' }, valor: { description: 'string u objeto según el campo' } }, ['campo', 'valor']],
+  ['anotar_nota', 'Guarda una idea o duda que la persona mencionó pero que no es un dato firme de la ficha.', { texto: { type: 'string' } }, ['texto']],
+  ['cerrar_toma', 'Cierra la toma si la persona abandona el diseño o ya no quiere seguir con la ficha.', {}, []],
 ].map(([name, description, properties, required]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } }))
