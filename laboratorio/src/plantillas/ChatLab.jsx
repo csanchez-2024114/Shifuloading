@@ -7,6 +7,7 @@ import { LuCamera, LuPaperclip, LuSend, LuX } from 'react-icons/lu'
 import ShifuAvatar from '@base/components/ShifuAvatar'
 import TextoChat from '@base/components/TextoChat'
 import { capturarRegion, imagenDeArchivo, SelectorCaptura } from '@base/components/CapturaPantalla'
+import { sugerenciasPara } from './sugerencias'
 import { tarjetaToma } from './edicion.js'
 
 let n = 0
@@ -63,24 +64,24 @@ export const GUION_TOMA = [
 ]
 
 /** Fila de ideas que se desplaza: flechas ‹ ›, rueda del mouse (vertical → horizontal) y desvanecido en los bordes. */
-function Sugerencias({ deshabilitado, onElegir }) {
+function Sugerencias({ deshabilitado, onElegir, ideas = SUGERENCIAS }) {
   const fila = useRef(null)
   const [bordes, setBordes] = useState({ ini: true, fin: false })
   const medir = () => { const f = fila.current; if (f) setBordes({ ini: f.scrollLeft < 4, fin: f.scrollLeft + f.clientWidth >= f.scrollWidth - 4 }) }
-  useEffect(() => { medir() }, [])
+  useEffect(() => { medir(); fila.current?.scrollTo({ left: 0 }) }, [ideas]) // eslint-disable-line react-hooks/exhaustive-deps
   const mover = (d) => { fila.current?.scrollBy({ left: d * 220 }); setTimeout(medir, 350) }
   return (
     <div className="lab-sug">
       <button type="button" onClick={() => mover(-1)} disabled={bordes.ini} aria-label="Ideas anteriores">‹</button>
       <div ref={fila} className="mc-chat-sug" aria-label="Ideas" onScroll={medir} onWheel={(e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.currentTarget.scrollLeft += e.deltaY } }}>
-        {SUGERENCIAS.map(([p, s]) => <button key={s} type="button" disabled={deshabilitado} onClick={() => onElegir(s)}><em>{p}</em>{s}</button>)}
+        {ideas.map(([p, s]) => <button key={s} type="button" disabled={deshabilitado} onClick={() => onElegir(s)}><em>{p}</em>{s}</button>)}
       </div>
       <button type="button" onClick={() => mover(1)} disabled={bordes.fin} aria-label="Más ideas">›</button>
     </div>
   )
 }
 
-export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion }) {
+export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion, contexto }) {
   const [abierto, setAbierto] = useState(true)
   useEffect(() => { onAbierto?.(abierto) }, [abierto]) // eslint-disable-line react-hooks/exhaustive-deps
   const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Esta es la pantalla de **${plantilla.nombre}**. Dime qué quieres ver distinto: quitar, agregar, agrandar, achicar o mover cualquier bloque.`)])
@@ -168,7 +169,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
             {escribiendo && <div className="cb shifu"><ShifuAvatar size={26} /><p className="puntos" aria-label="Shifu está escribiendo"><i /><i /><i /></p></div>}
             <div ref={fin} />
           </div>
-          <Sugerencias deshabilitado={escribiendo} onElegir={(t) => enviar(t)} />
+          <Sugerencias deshabilitado={escribiendo} onElegir={(t) => enviar(t)} ideas={contexto ? sugerenciasPara({ ...contexto, turno: mensajes.length }) : SUGERENCIAS} />
           {(imagen || errorImg) && (
             <div className="mc-adjunto" role="status">
               {imagen?.url && <img src={imagen.url} alt="Captura lista para enviar" />}{imagen?.pdf && <span>📄 {imagen.nombre}</span>}
