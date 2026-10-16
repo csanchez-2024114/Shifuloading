@@ -35,15 +35,6 @@ main { display: block; }
 .mega-etq { display: block; margin-bottom: 14px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--verde-vivo); }
 .mega a { color: #e8ecea; }
 .mega small { display: block; color: var(--atenuado); font-size: 12.5px; line-height: 1.4; margin-top: 3px; }
-.mega-prod .mega-cols { display: grid; grid-template-columns: 1fr 1.1fr 1.1fr .9fr 1.25fr; gap: 26px; }
-.mega-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
-.mega-col li a { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
-.mega-col li a:hover { color: #fff; text-decoration: underline; }
-.mega-pto { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid #9aa7a2; flex: none; }
-.mega-novedad-arte { display: block; height: 96px; border-radius: 12px; margin-bottom: 10px; background: linear-gradient(135deg, #4b2fb3, #12806a); }
-.mega-pie { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 26px; margin-top: 24px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); align-items: start; }
-.mega-pie .mega-etq { margin: 0; }
-.mega-pie a b { font-size: 13.5px; }
 .mega-porque { display: grid; grid-template-columns: 2.6fr 1fr; gap: 30px; }
 .mega-tarjetas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .mega-card { display: block; }
@@ -238,7 +229,7 @@ main { display: block; }
 /* Responsive */
 @media (max-width: 1000px) {
   .nav-barra { padding: 0 20px; height: 68px; } .nav-menu { display: none; } .nav-izq, .nav-der { gap: 18px; }
-  .mega { margin: 0 12px; } .mega-prod .mega-cols, .mega-pie, .mega-porque, .mega-tarjetas { grid-template-columns: 1fr 1fr; } .mega-lado { border: 0; padding: 0; }
+  .mega { margin: 0 12px; } .mega-porque, .mega-tarjetas { grid-template-columns: 1fr 1fr; } .mega-lado { border: 0; padding: 0; }
   .hero { padding: 38vh 20px 60px; } .hero-enlace { margin-left: 0; }
   .sec { padding: 70px 20px; } .tres, .tiendas, .panel-chat-ia, .intl-panel, .pasos-cuerpo { grid-template-columns: 1fr; }
   .intl-panel, .mejor-pago, .mejor-globo, .panel-chat-ia { padding: 26px; } .intl-mock { grid-template-columns: 1fr; } .intl-banderas { grid-auto-flow: column; justify-content: start; }

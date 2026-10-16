@@ -117,6 +117,10 @@ class LoginModel(BaseModel):
     password: str
 
 
+class EmailExistsModel(BaseModel):
+    email: EmailStr
+
+
 class GoogleLoginModel(BaseModel):
     credential: str  # Google ID token from frontend
 
@@ -468,6 +472,15 @@ async def login_user(request: Request, data: LoginModel):
     auth_methods = await _get_auth_methods(mongo, user_id)
     await _complete_pending_workspace_invites(mongo, user_id, email_clean)
     return _auth_response(user_doc, access_token, raw_refresh, auth_methods)
+
+
+@router.post("/email-exists")
+@limiter.limit("20/minute")
+async def email_exists(request: Request, data: EmailExistsModel):
+    """¿Ya hay una cuenta con este correo? El primer paso del inicio de sesión lo usa para mandar a registrarse a quien todavía no tiene
+    cuenta (en vez de decirle "credenciales incorrectas" sin salida). Va limitado por IP para que no sirva para recorrer correos."""
+    usuario = await request.app.state.db[Collections.USERS].find_one({"email": data.email.lower().strip()}, {"_id": 1})
+    return {"exists": usuario is not None}
 
 
 @router.post("/google/login")

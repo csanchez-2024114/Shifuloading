@@ -4,6 +4,7 @@ import { HAY_SERVIDOR, auth } from '../api'
 import { FaApple, FaFacebook, FaWhatsapp } from 'react-icons/fa6'
 import { FcGoogle } from 'react-icons/fc'
 import { ClaveDeAcceso } from '../components/Iconos'
+import { borrarBorrador } from '../brief/borrador'
 import Logo from '../components/Logo'
 
 const CORREO_OK = /^\S+@\S+\.\S+$/
@@ -43,11 +44,20 @@ export default function LoginPage() {
     }
 
     if (!CORREO_OK.test(correo.trim())) { setAviso('Escribe un correo válido, por ejemplo nombre@correo.com.'); return }
-    if (paso === 'correo') { setPaso('clave'); return }
+    if (paso === 'correo') {
+      // Sin cuenta con ese correo no hay contraseña que pedir: se manda a crearla, con el correo ya escrito.
+      setEnviando(true)
+      try {
+        if (await auth.correoExiste(correo.trim())) { setPaso('clave'); setEnviando(false) }
+        else { borrarBorrador(); nav('/registro', { state: { correo: correo.trim(), sinCuenta: true } }) } // lo que haya quedado aquí no es de esta persona
+      } catch (err) { setAviso(mensajeDeEntrada(err)); setEnviando(false) }
+      return
+    }
     if (!clave) { setAviso('Escribe tu contraseña.'); return }
     setEnviando(true)
     try {
       await auth.iniciarSesion({ correo: correo.trim(), clave })
+      borrarBorrador() // un cuestionario viejo de este navegador no debe tocar la cuenta de quien entra
       nav('/mi-crm')
     } catch (err) {
       setAviso(mensajeDeEntrada(err))

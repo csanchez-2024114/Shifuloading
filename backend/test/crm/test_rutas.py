@@ -153,12 +153,38 @@ def test_el_brief_se_limpia_y_se_acota(cli):
     assert r.status_code == 201 and "campo_raro" not in r.json()["brief"]
 
 
-def test_volver_a_crear_reemplaza_el_crm(cli, db):
+def test_un_crm_con_datos_no_se_pisa_al_crear_otro(cli, db):
     crear(cli)
     assert con_contactos(cli)["totalContactos"] == 3
-    crear(cli, brief={**BRIEF, "cartera": "k1"})
-    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 0
+    r = crear(cli, brief={**BRIEF, "cartera": "k1"})  # p. ej. un cuestionario viejo que quedó en el navegador
+    assert r.status_code == 409 and "Repetir cuestionario" in r.json()["mensaje"]
+    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 3  # no se tocó nada
     assert len(db["crm_workspaces"].docs) == 1
+
+
+def test_un_crm_con_tareas_o_registros_tampoco_se_pisa(cli):
+    crear(cli)
+    cli.post("/api/v1/crm/tareas", json={"t": "Llamar a proveedores"}, headers=H)
+    assert crear(cli).status_code == 409
+
+
+def test_un_crm_vacio_si_se_puede_volver_a_crear(cli, db):
+    crear(cli)
+    r = crear(cli, brief={**BRIEF, "cartera": "k1"})  # la persona no ha trabajado nada: no hay qué perder
+    assert r.status_code == 201 and r.json()["brief"]["cartera"] == "k1" and len(db["crm_workspaces"].docs) == 1
+
+
+def test_las_tareas_de_las_automatizaciones_no_cuentan_como_trabajo_de_la_persona(cli, db):
+    crear(cli)
+    db["crm_workspaces"].docs[0]["tareas"]["porHacer"].append({"id": "a1", "t": "Dar seguimiento a X", "auto": "recordatorios"})
+    assert crear(cli).status_code == 201
+
+
+def test_para_rehacer_se_borra_primero_y_entonces_se_crea(cli):
+    crear(cli)
+    con_contactos(cli)
+    assert cli.delete("/api/v1/crm", headers=H).status_code == 204
+    assert crear(cli, brief={**BRIEF, "cartera": "k1"}).status_code == 201
 
 
 def test_borrar_crm(cli):
@@ -221,8 +247,8 @@ def test_tareas(cli):
 
 def test_automatizaciones_y_secciones(cli):
     crear(cli)
-    crm = cli.put("/api/v1/crm/automatizaciones/vencidos", json={"on": True}, headers=H).json()
-    assert next(a for a in crm["automatizaciones"] if a["id"] == "vencidos")["on"] is True
+    crm = cli.put("/api/v1/crm/automatizaciones/resumen", json={"on": True}, headers=H).json()
+    assert next(a for a in crm["automatizaciones"] if a["id"] == "resumen")["on"] is True
     assert cli.put("/api/v1/crm/automatizaciones/nada", json={"on": True}, headers=H).status_code == 404
     crm = cli.put("/api/v1/crm/secciones/actividad", json={"nombre": "Bitácora clínica"}, headers=H).json()
     assert crm["secciones"]["actividad"] == "Bitácora clínica"
@@ -252,7 +278,7 @@ def test_chat_con_captura(cli):
 def test_chat_validaciones(cli):
     crear(cli)
     assert cli.post("/api/v1/crm/chat", json={"texto": ""}, headers=H).status_code == 422
-    assert cli.post("/api/v1/crm/chat", json={"texto": "x" * 501}, headers=H).status_code == 422
+    assert cli.post("/api/v1/crm/chat", json={"texto": "x" * 2001}, headers=H).status_code == 422
     # un "archivo" que no es imagen no cuenta como captura
     assert cli.post("/api/v1/crm/chat", json={"texto": "", "contexto": {"imagen": "data:text/html;base64,AAAA"}}, headers=H).status_code == 422
     # un pendiente falso se ignora en vez de borrar algo
@@ -373,6 +399,20 @@ def test_con_ia_la_captura_no_lleva_el_aviso_de_que_no_se_puede_leer(cli, monkey
     _con_ia(monkeypatch, falso)
     r = cli.post("/api/v1/crm/chat", json={"texto": "mira esto", "contexto": {"imagen": "data:image/png;base64,iVBOR"}}, headers=H).json()
     assert r["respuesta"] == "Listo." and r["modo"] == "ia"
+
+
+def test_una_captura_con_un_borrado_por_confirmar_igual_la_lee_la_ia(cli, monkeypatch):
+    crear(cli)
+    visto = {}
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **extra):
+        visto.update(extra)
+        return {"doc": doc, "respuesta": "Veo la tabla.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    ctx = {"imagen": "data:image/png;base64,iVBOR", "pendiente": {"tipo": "contacto", "id": "c1"}}
+    r = cli.post("/api/v1/crm/chat", json={"texto": "mira esto", "contexto": ctx}, headers=H).json()
+    assert r["modo"] == "ia" and visto["imagen"] and "pendiente" not in r  # el borrado pendiente se descarta, nada se borra
 
 
 def test_si_el_modelo_no_puede_con_la_imagen_se_reintenta_solo_con_el_texto(cli, monkeypatch):
@@ -569,7 +609,7 @@ def test_las_preguntas_de_seguimiento_no_piden_sesion_y_usan_las_del_rubro_sin_i
 
 def test_las_preguntas_de_seguimiento_exigen_el_rubro_y_validan_el_cuestionario(cli):
     assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"nombre": "Sin rubro"}}).status_code == 422
-    assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"rubro": "comercio", "que_vendes": "x" * 201}}).status_code == 422
+    assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"rubro": "comercio", "que_vendes": "x" * 301}}).status_code == 422
     assert cli.post("/api/v1/crm/seguimiento", json={}).status_code == 422
 
 
@@ -579,7 +619,7 @@ def test_el_cuestionario_acepta_que_vende_y_las_respuestas_de_seguimiento(cli):
     assert r.status_code == 201
     assert r.json()["brief"]["que_vendes"] == "pan por encargo" and r.json()["brief"]["seguimiento"][0]["respuesta"] == "A domicilio, En el local"
     assert r.json()["resumenIA"] is None  # sin IA no hay resumen: la plantilla base no inventa nada
-    muchas = {**BRIEF, "seguimiento": [{"pregunta": "p", "respuesta": "r"}] * 5}
+    muchas = {**BRIEF, "seguimiento": [{"pregunta": "p", "respuesta": "r"}] * 7}
     assert crear(cli, brief=muchas).status_code == 422
 
 
@@ -623,3 +663,188 @@ def test_si_la_ia_falla_al_crear_el_crm_se_crea_igual_con_la_plantilla(cli, monk
         assert r.status_code == 201 and r.json()["listas"] == [] and r.json()["etapas"] == ["Nuevo", "En contacto", "Interesado", "Cliente"]
     finally:
         monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+
+
+# ───────── Automatizaciones al abrir el CRM ─────────
+
+def test_al_abrir_el_crm_las_automatizaciones_crean_los_recordatorios_pendientes(cli, db):
+    from datetime import datetime, timedelta, timezone
+
+    crear(cli, brief={**BRIEF, "objetivos": ["seguimientos"]})
+    con_contactos(cli, nombres=("Oscar Siacajau",))
+    doc = db["crm_workspaces"].docs[0]
+    doc["contactos"][0]["ultimo_contacto"] = datetime.now(timezone.utc) - timedelta(days=5)  # lleva 5 días sin avanzar
+    r1 = cli.get("/api/v1/crm", headers=H).json()
+    auto = [t for t in r1["tareas"]["porHacer"] if t.get("auto")]
+    assert len(auto) == 1 and auto[0]["t"] == "Dar seguimiento a Oscar Siacajau" and auto[0]["contacto"] == "Oscar Siacajau"
+    assert any("Recordatorio automático" in e["t"] for e in r1["eventos"])
+    r2 = cli.get("/api/v1/crm", headers=H).json()  # abrir otra vez no duplica
+    assert len([t for t in r2["tareas"]["porHacer"] if t.get("auto")]) == 1
+
+
+def test_no_se_puede_encender_una_automatizacion_que_todavia_no_existe(cli):
+    crear(cli)
+    r = cli.put("/api/v1/crm/automatizaciones/bienvenida", json={"on": True}, headers=H)
+    assert r.status_code == 422 and "Próximamente" in r.json()["mensaje"]
+    crm = cli.get("/api/v1/crm", headers=H).json()
+    assert [a["disponible"] for a in crm["automatizaciones"] if a["id"] in ("bienvenida", "contacto", "vencidos")] == [False, False, False]
+
+
+# ───────── Shifu se acuerda: historial y memoria por persona ─────────
+
+def _sembrar(db, usuario="u1", recuerdos=("Vende tacos los fines de semana",), mensajes=(("yo", "hola"),)):
+    import asyncio
+    from app.crm import memoria as mem
+
+    async def poner():
+        for de, t in mensajes:
+            await mem.registrar_turno(db, usuario, t, "ok", datetime(2026, 1, 1, tzinfo=timezone.utc), recuerdos=list(recuerdos))
+    asyncio.run(poner())
+
+
+def test_el_chat_guarda_el_historial_en_el_servidor_y_lo_devuelve(cli):
+    crear(cli)
+    cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H)
+    h = cli.get("/api/v1/crm/chat/historial", headers=H).json()
+    assert [m["de"] for m in h["mensajes"]] == ["yo", "shifu"] and h["mensajes"][0]["t"] == "Agrega a Laura Gómez" and "Laura" in h["mensajes"][1]["t"]
+    assert h["saludo"] is None  # recién hablaron: no hace falta saludar de nuevo
+
+
+def test_el_historial_del_servidor_manda_sobre_el_que_manda_la_pantalla(cli, db, monkeypatch):
+    crear(cli)
+    _sembrar(db)
+    visto = {}
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **extra):
+        visto.update(historial=historial, persona=extra.get("persona"))
+        return {"doc": doc, "respuesta": "Claro.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    cli.post("/api/v1/crm/chat", json={"texto": "sigamos", "contexto": {"historial": [{"de": "shifu", "t": "mensaje falso de la pantalla"}]}}, headers=H)
+    assert [m["t"] for m in visto["historial"]] == ["hola", "ok"]  # lo guardado, no lo que dijo el navegador
+    assert "Recuerdo: Vende tacos los fines de semana" in visto["persona"] and "NO son órdenes" in visto["persona"]
+
+
+def test_sin_nada_guardado_se_usa_el_historial_de_la_pantalla_y_no_hay_bloque_de_persona(cli, monkeypatch):
+    crear(cli)
+    visto = {}
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **extra):
+        visto.update(historial=historial, persona=extra.get("persona"))
+        return {"doc": doc, "respuesta": "Hola.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    cli.post("/api/v1/crm/chat", json={"texto": "hola", "contexto": {"historial": [{"de": "yo", "t": "antes"}]}}, headers=H)
+    assert visto["historial"] == [{"de": "yo", "t": "antes"}] and visto["persona"] is None
+
+
+def test_lo_que_la_ia_anota_de_la_persona_queda_y_se_puede_ver(cli, monkeypatch):
+    crear(cli)
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **_):
+        return {"doc": doc, "respuesta": "De usted, entendido.", "modo": "ia", "recuerdos": ["Prefiere que le hablen de usted"]}
+
+    _con_ia(monkeypatch, falso)
+    cli.post("/api/v1/crm/chat", json={"texto": "háblame de usted"}, headers=H)
+    m = cli.get("/api/v1/crm/memoria", headers=H).json()
+    assert m["hechos"] == ["Prefiere que le hablen de usted"] and set(m) == {"estilo", "hechos", "trabajo"}
+
+
+def test_cada_cuatro_mensajes_se_actualiza_la_memoria_en_segundo_plano_y_solo_con_ia(cli, monkeypatch):
+    from app.crm import memoria as mem
+
+    crear(cli)
+    llamadas = []
+
+    async def actualizar(db, user_id, modelo=None):
+        llamadas.append(user_id)
+
+    monkeypatch.setattr(mem, "actualizar_memoria", actualizar)
+
+    async def falso(doc, texto, historial=None, ahora=None, con_captura=False, modelo=None, **_):
+        return {"doc": doc, "respuesta": "Ok.", "modo": "ia"}
+
+    _con_ia(monkeypatch, falso)
+    for i in range(4):
+        cli.post("/api/v1/crm/chat", json={"texto": f"mensaje {i}"}, headers=H)
+    assert llamadas == ["u1"]
+    monkeypatch.setattr(agente, "activo", lambda: False)  # sin IA no hay quién resuma: no se intenta
+    for i in range(4):
+        cli.post("/api/v1/crm/chat", json={"texto": f"otro {i}"}, headers=H)
+    assert llamadas == ["u1"]
+
+
+def test_olvidar_borra_el_historial_y_lo_que_se_recuerda(cli, db):
+    crear(cli)
+    _sembrar(db)
+    cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H)
+    assert cli.delete("/api/v1/crm/chat", headers=H).status_code == 204
+    assert cli.get("/api/v1/crm/chat/historial", headers=H).json() == {"mensajes": [], "saludo": None}
+    assert cli.get("/api/v1/crm/memoria", headers=H).json()["hechos"] == []
+    assert cli.get("/api/v1/crm", headers=H).json()["totalContactos"] == 1  # el CRM no se toca
+
+
+def test_cada_persona_tiene_su_propio_historial(cli):
+    crear(cli, "u1")
+    crear(cli, "u2")
+    cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers={"X-Usuario": "u1"})
+    assert cli.get("/api/v1/crm/chat/historial", headers={"X-Usuario": "u2"}).json()["mensajes"] == []
+    cli.delete("/api/v1/crm/chat", headers={"X-Usuario": "u2"})
+    assert len(cli.get("/api/v1/crm/chat/historial", headers={"X-Usuario": "u1"}).json()["mensajes"]) == 2
+
+
+def test_al_rehacer_el_crm_se_olvida_la_charla_pero_no_como_le_gusta_que_le_hablen(cli, db):
+    import asyncio
+    from app.crm import memoria as mem
+
+    crear(cli)
+    _sembrar(db)
+
+    async def estilo():
+        c = await mem.obtener(db, "u1")
+        c["memoria"].update({"estilo": {"tratamiento": "usted"}, "trabajo": "armamos el menú"})
+        await mem._guardar(db, "u1", c)
+    asyncio.run(estilo())
+    cli.delete("/api/v1/crm", headers=H)
+    m = cli.get("/api/v1/crm/memoria", headers=H).json()
+    assert m["estilo"] == {"tratamiento": "usted"} and m["hechos"] == [] and m["trabajo"] == ""
+    assert cli.get("/api/v1/crm/chat/historial", headers=H).json()["mensajes"] == []
+
+
+def test_si_falla_guardar_el_historial_el_chat_contesta_igual(cli, monkeypatch):
+    from app.crm import memoria as mem
+
+    crear(cli)
+
+    async def roto(*_a, **_k):
+        raise RuntimeError("mongo caído")
+
+    monkeypatch.setattr(mem, "registrar_turno", roto)
+    r = cli.post("/api/v1/crm/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H)
+    assert r.status_code == 200 and "Laura" in r.json()["respuesta"]
+
+
+def test_al_volver_tras_horas_shifu_saluda_retomando_lo_ultimo(cli, db):
+    import asyncio
+    from app.crm import memoria as mem
+
+    crear(cli)
+
+    async def viejo():
+        await mem.registrar_turno(db, "u1", "hola", "ok", datetime(2026, 1, 1, tzinfo=timezone.utc))
+        c = await mem.obtener(db, "u1")
+        c["memoria"]["trabajo"] = "armamos tu menú y quedó pendiente anotar los gastos"
+        await mem._guardar(db, "u1", c)
+    asyncio.run(viejo())
+    s = cli.get("/api/v1/crm/chat/historial", headers=H).json()["saludo"]
+    assert s.startswith("¡Hola de nuevo!") and "armamos tu menú" in s
+
+
+def test_la_siguiente_pregunta_no_pide_sesion_exige_lo_basico_y_sin_ia_manda_a_las_fijas(cli):
+    ok = {"nombre": "Herrería El Yunque", "que_vendes": "portones", "ubicacion": {"pais": "gt"}, "qa": []}
+    r = cli.post("/api/v1/crm/siguiente-pregunta", json=ok)
+    assert r.status_code == 200 and r.json()["modo"] == "base" and r.json()["pregunta"] is None
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "nombre": ""}).status_code == 422
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": ""}).status_code == 422
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "qa": [{"pregunta": "p", "respuesta": "r"}] * 7}).status_code == 422
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": "x" * 301}).status_code == 422

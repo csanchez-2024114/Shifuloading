@@ -89,7 +89,7 @@ export function ReuneClientes() {
         <div className="pci-texto">
           <div className="pci-logos" aria-hidden="true"><span>💬</span><span>✉️</span><span>📸</span></div>
           <h3>Tu CRM entiende tus chats</h3>
-          <p>Conecta WhatsApp y tu correo: Shifu detecta quién te escribe, crea el contacto, anota lo que pidió y te propone el siguiente paso. <a href="#ia">Conoce a Shifu IA</a>.</p>
+          <p>Conecta WhatsApp y tu correo: Shifu detecta quién te escribe, crea el contacto, anota lo que pidió y te propone el siguiente paso.</p>
         </div>
         <div className="pci-mock" aria-hidden="true">
           <div className="pci-pregunta">Hola, quisiera una cotización para un evento en agosto 🙌</div>
@@ -157,7 +157,7 @@ export function CrmAMedida() {
         </div>
         <div className="intl-texto">
           <b>Describe tu negocio y Shifu arma tu CRM</b>
-          <p>Cuéntale cómo vendes y te propone etapas, campos y recordatorios. Lo ajustas con un clic, o partes de una <a href="#plantillas">plantilla de tu rubro</a>. Sin código ni semanas de configuración.</p>
+          <p>Cuéntale cómo vendes y te propone etapas, campos y recordatorios. Lo ajustas con un clic. Sin código ni semanas de configuración.</p>
         </div>
       </Aparece>
     </section>

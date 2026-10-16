@@ -8,7 +8,8 @@ Errores: `{"mensaje": "..."}` con el código HTTP que corresponda.
 Endpoints (relativos al prefijo):
   GET    ""                       — El CRM (404 si todavía no tiene uno)
   POST   ""                       — Crea el CRM a partir del cuestionario; la IA diseña etapas, campos y secciones (reemplaza el anterior)
-  POST   /seguimiento             — Preguntas de seguimiento que la IA hace según el negocio (sin sesión, con límite)
+  POST   /seguimiento             — (antiguo) Preguntas de seguimiento que la IA hace según el negocio (sin sesión, con límite)
+  POST   /siguiente-pregunta      — La siguiente pregunta del cuestionario, escrita por la IA según lo contestado (sin sesión, con límite)
   DELETE ""                       — Lo borra (para repetir el cuestionario)
   POST   /contactos               — Alta de uno o varios contactos
   PATCH  /contactos/{id}          — Cambia nombre, etapa, canal, responsable o detalle
@@ -27,7 +28,7 @@ import logging
 import re
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -35,6 +36,7 @@ from app.core.limiter import limiter
 from app.crm import agente
 from app.crm import diseno
 from app.crm import estructura as est
+from app.crm import memoria as mem
 from app.crm import operaciones as op
 from app.crm import repositorio as repo
 from app.crm.chat import responder, sanear_pendiente
@@ -81,8 +83,8 @@ class BriefEntrada(_Texto):
     herramientas: list[str] = Field(default_factory=list, max_length=20)
     objetivos: list[str] = Field(default_factory=list, max_length=20)
     dolor: Optional[str] = Field(None, max_length=300)
-    que_vendes: Optional[str] = Field(None, max_length=200)
-    seguimiento: list[Seguimiento] = Field(default_factory=list, max_length=4)  # preguntas que la IA hizo según el negocio, con sus respuestas
+    que_vendes: Optional[str] = Field(None, max_length=300)
+    seguimiento: list[Seguimiento] = Field(default_factory=list, max_length=6)  # preguntas que la IA hizo según el negocio, con sus respuestas
     armado: Optional[str] = Field(None, max_length=30)
     autonomia: Optional[str] = Field(None, max_length=30)
     presupuesto: Optional[str] = Field(None, max_length=30)
@@ -101,6 +103,15 @@ class CrearCrm(BaseModel):
 
 class PedirSeguimiento(BaseModel):
     brief: BriefEntrada
+
+
+class SiguienteEntrada(_Texto):
+    """Lo contestado hasta ahora en el cuestionario: las 3 preguntas fijas y las que la IA ya hizo."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
+    nombre: str = Field("", max_length=60)
+    ubicacion: Optional[Ubicacion] = None
+    que_vendes: Optional[str] = Field(None, max_length=300)
+    qa: list[Seguimiento] = Field(default_factory=list, max_length=6)
 
 
 class FilaContacto(_Texto):
@@ -157,7 +168,7 @@ class ContextoChat(_Texto):
 
 
 class ChatEntrada(_Texto):
-    texto: str = Field("", max_length=300)
+    texto: str = Field("", max_length=2000)
     contexto: Optional[ContextoChat] = None
 
 
@@ -186,8 +197,18 @@ async def obtener_crm(request: Request, user: dict = Depends(get_current_user)):
     return vista_crm(doc)
 
 
+def _tiene_datos(doc: dict) -> bool:
+    """¿La persona ya trabajó en este CRM? Contactos, registros o tareas suyas (las que crean las automatizaciones no cuentan)."""
+    return bool(doc.get("total_contactos") or any(l["registros"] for l in doc.get("listas", []))
+                or any(not t.get("auto") for col in doc.get("tareas", {}).values() for t in col))
+
+
 @router.post("", status_code=201)
 async def crear_crm(request: Request, datos: CrearCrm, user: dict = Depends(get_current_user)):
+    existente = await repo.obtener(request.app.state.db, user["id"])
+    if existente and _tiene_datos(existente):
+        # Crear reemplaza el CRM: con datos de la persona adentro no se permite (un cuestionario viejo no debe borrarle su trabajo).
+        return JSONResponse({"mensaje": "Ya tienes un CRM con información. Para rehacerlo usa «Repetir cuestionario» (eso borra el actual)."}, status_code=409)
     brief = datos.brief.model_dump(exclude_none=True)
     doc = await diseno.disenar(generar(user["id"], brief), brief)  # la IA arma la estructura a la medida; sin IA queda la plantilla base
     await repo.reemplazar(request.app.state.db, user["id"], doc)
@@ -206,9 +227,20 @@ async def preguntas_de_seguimiento(request: Request, datos: PedirSeguimiento):
     return {"preguntas": preguntas, "modo": modo}
 
 
+@router.post("/siguiente-pregunta")
+@limiter.limit("60/hour")
+async def siguiente_pregunta(request: Request, datos: SiguienteEntrada):
+    """La siguiente pregunta del cuestionario, escrita por la IA según lo ya contestado (sin sesión: el cuestionario va antes de crear la cuenta;
+    limitada por IP y por tope diario). `modo: "base"` significa que la IA no está disponible y la pantalla sigue con las preguntas fijas."""
+    if len(datos.nombre) < 2 or not (datos.que_vendes or "").strip():
+        return JSONResponse({"mensaje": "Faltan el nombre del negocio y qué vendes."}, status_code=422)
+    return await diseno.siguiente_pregunta(datos.model_dump(exclude_none=True))
+
+
 @router.delete("", status_code=204)
 async def borrar_crm(request: Request, user: dict = Depends(get_current_user)):
     await repo.borrar(request.app.state.db, user["id"])
+    await mem.reiniciar_trabajo(request.app.state.db, user["id"])  # el CRM nuevo no arrastra la conversación del anterior; sí cómo le gusta que le hablen
     return Response(status_code=204)
 
 
@@ -283,7 +315,7 @@ async def renombrar_seccion(seccion_id: str, request: Request, datos: SeccionNom
 # ───────── Chat ─────────
 
 async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool,
-                         imagen: str | None = None, seccion: str | None = None):
+                         imagen: str | None = None, seccion: str | None = None, persona: str | None = None):
     """Resuelve un mensaje del chat. Con IA si se puede (y no hay un borrado por confirmar); si no, con las reglas.
     El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite)."""
     for _ in range(3):
@@ -293,7 +325,7 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
         r = None
         if (texto or imagen) and not pendiente and agente.activo():
             # Con imagen se intenta verla; si el modelo no puede con ella (formato raro, demasiado grande) se reintenta solo con el texto.
-            intentos = [{"imagen": imagen, "seccion": seccion}, {}] if imagen else [{}]
+            intentos = [{"imagen": imagen, "seccion": seccion, "persona": persona}, {"persona": persona}] if imagen else [{"persona": persona}]
             for extra in intentos:
                 try:
                     r = await agente.responder(doc, texto or TEXTO_SOLO_CAPTURA, historial, con_captura=con_captura, **extra)
@@ -316,16 +348,26 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
 
 @router.post("/chat")
 @limiter.limit("60/minute")
-async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(get_current_user)):
+async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: BackgroundTasks, user: dict = Depends(get_current_user)):
     ctx = datos.contexto or ContextoChat()
+    db = request.app.state.db
     imagen = ctx.imagen if ctx.imagen and _IMAGEN_LEIBLE.match(ctx.imagen) else None
     if not datos.texto and not imagen:
         return JSONResponse({"mensaje": "Escribe algo o adjunta una captura."}, status_code=422)
 
     pendiente = sanear_pendiente(ctx.pendiente)
-    historial = [m.model_dump() for m in ctx.historial]
+    if imagen:
+        pendiente = None  # una captura es un tema nuevo: no se queda atada a un borrado por confirmar (nada se borra sin su “sí”)
+    # El historial y lo que Shifu recuerda de la persona viven en el servidor; lo que mande la pantalla solo sirve si todavía no hay nada guardado.
     try:
-        doc, resultado = await _turno_de_chat(request.app.state.db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion)
+        conv = await mem.obtener(db, user["id"])
+    except Exception as e:  # la memoria nunca debe impedir que el chat conteste
+        logger.warning("No se pudo leer la memoria de Shifu: %s", type(e).__name__)
+        conv = None
+    historial = mem.historial_para_modelo(conv) or [m.model_dump() for m in ctx.historial]
+    persona = mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None) if conv else None
+    try:
+        doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona)
     except op.ErrorCrm as e:
         return _error(e)
 
@@ -335,8 +377,39 @@ async def chat_crm(request: Request, datos: ChatEntrada, user: dict = Depends(ge
         donde = f" de “{ctx.seccion}”" if ctx.seccion else ""
         respuesta = (f"📸 Recibí tu captura{donde}, pero ahora mismo no puedo leer imágenes: me guío por lo que escribiste. {respuesta}" if datos.texto
                      else f"📸 Recibí tu captura{donde}, pero ahora mismo no puedo leer imágenes. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.")
+    try:
+        _, toca = await mem.registrar_turno(db, user["id"], datos.texto or "(adjuntó una imagen)", respuesta, recuerdos=mem.sin_clientes(resultado.get("recuerdos"), [c["n"] for c in doc["contactos"]]))
+        if toca and agente.activo():
+            segundo_plano.add_task(mem.actualizar_memoria, db, user["id"])  # se pone al día lo que Shifu recuerda sin hacer esperar a la persona
+    except Exception as e:
+        logger.warning("No se pudo guardar el historial con Shifu: %s", type(e).__name__)
     salida = {"respuesta": respuesta, "crm": vista_crm(doc), "modo": resultado.get("modo", "reglas")}
     for clave in ("vista", "pendiente"):
         if resultado.get(clave):
             salida[clave] = resultado[clave]
     return salida
+
+
+# ───────── Historial y memoria ─────────
+
+@router.get("/chat/historial")
+async def historial_chat(request: Request, user: dict = Depends(get_current_user)):
+    """La conversación guardada (para que el chat siga donde se quedó) y, si hace rato que no hablan, un saludo que retoma lo último."""
+    conv = await mem.obtener(request.app.state.db, user["id"])
+    return {"mensajes": [{"de": m["de"], "t": m["t"]} for m in conv.get("mensajes", [])[-60:]], "saludo": mem.saludo_de_regreso(conv, user.get("name"))}
+
+
+@router.get("/memoria")
+async def memoria_de_shifu(request: Request, user: dict = Depends(get_current_user)):
+    """Lo que Shifu recuerda de la persona, a la vista (nada escondido)."""
+    conv = await mem.obtener(request.app.state.db, user["id"])
+    memoria = conv.get("memoria") or {}
+    persona = [m["t"] for m in conv.get("mensajes", []) if m.get("de") == "yo"]
+    return {"estilo": mem.estilo_final(memoria, persona), "hechos": memoria.get("hechos") or [], "trabajo": memoria.get("trabajo") or ""}
+
+
+@router.delete("/chat", status_code=204)
+async def olvidar_chat(request: Request, user: dict = Depends(get_current_user)):
+    """Borra el historial y todo lo que Shifu recuerda de la persona."""
+    await mem.borrar(request.app.state.db, user["id"])
+    return Response(status_code=204)

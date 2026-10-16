@@ -62,6 +62,9 @@ def contactos_crear(doc: dict, filas: list[dict], canal: str, texto: str | None 
         "etapa": f.get("etapa") or out["etapas"][0], "dueno": out["vendedores"][0], "ultimo_contacto": ahora,
         "extra": {k: v for k, v in estructura.valores_validos(out["campos_contacto"], f.get("extra") or {}).items() if v is not None},
     } for f in filas]
+    from app.crm import automatizaciones  # import tardío: automatizaciones usa este módulo
+
+    automatizaciones.repartir(out, nuevos)  # si "repartir" está encendida, cada contacto nuevo se asigna por turnos al equipo
     out["contactos"] = [*nuevos, *out["contactos"]]
     out["total_contactos"] += len(nuevos)
     _registrar(out, "➕", texto or (f"Agregaste a {nuevos[0]['n']}" if len(nuevos) == 1 else f"Agregaste {len(nuevos)} contactos"), ahora)
@@ -276,6 +279,10 @@ def automatizacion_fijar(doc: dict, auto_id: str, on: bool, ahora: datetime | No
     a = next((x for x in out["automatizaciones"] if x["id"] == auto_id), None)
     if a is None:
         raise ErrorCrm(404, "Esa automatización no existe.")
+    from app.crm import automatizaciones  # import tardío: automatizaciones usa este módulo
+
+    if on and not automatizaciones.CATALOGO[auto_id][3]:
+        raise ErrorCrm(422, f"“{a['t']}” todavía no funciona. {automatizaciones.CATALOGO[auto_id][4]}")
     if a["on"] != on:
         a["on"] = on
         _registrar(out, "⚡" if on else "⏸️", f"{'Activaste' if on else 'Apagaste'}: {a['t']}", ahora)

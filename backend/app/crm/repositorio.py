@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Callable
 
 from app.core.constants import Collections
+from app.crm import automatizaciones
 from app.crm.estructura import normalizar
 from app.crm.operaciones import ErrorCrm, ahora_utc
 
@@ -18,9 +19,17 @@ def _col(db):
     return db[Collections.CRM]
 
 
-async def obtener(db, user_id: str) -> dict | None:
+async def obtener(db, user_id: str, ahora=None) -> dict | None:
+    """El CRM de la persona, al día: se normaliza y se corre lo que las automatizaciones tengan pendiente (se guarda solo si hubo algo)."""
     doc = await _col(db).find_one({"user_id": user_id}, {"_id": 0})
-    return normalizar(doc) if doc else None
+    if not doc:
+        return None
+    doc = automatizaciones.normalizar(normalizar(doc))
+    nuevo, cambio = automatizaciones.ejecutar_pendientes(doc, ahora)
+    if not cambio:
+        return doc
+    guardado = await guardar_version(db, user_id, nuevo, doc["version"])
+    return guardado or doc  # si alguien lo cambió en medio, se devuelve lo que había: la próxima lectura lo reintenta
 
 
 async def reemplazar(db, user_id: str, doc: dict) -> dict:

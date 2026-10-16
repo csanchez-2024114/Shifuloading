@@ -6,15 +6,19 @@ import { PREGUNTAS } from '../brief/preguntas'
 import { guardarBorrador, leerBorrador } from '../brief/borrador'
 import '../brief.css'
 
-/* Cuestionario de bienvenida: una pregunta por pantalla, con emojis, tarjetas para tocar y transiciones suaves.
- * Guarda lo respondido en el navegador (más adelante se conecta al servidor). Atajos: Enter continúa, 1-9 elige, ← vuelve. */
+/* Cuestionario de bienvenida: una pregunta por pantalla, con tarjetas para tocar y transiciones suaves. Todas son obligatorias.
+ * Empieza con 3 preguntas fijas (cómo se llama el negocio, desde dónde trabaja y qué vende) y de ahí en adelante la IA escribe
+ * cada pregunta según todo lo que la persona ya contó, hasta que sabe lo suficiente (unas 4 más). Si la IA no está disponible,
+ * se siguen unas pocas preguntas fijas de respaldo. Atajos: Enter continúa, 1-9 elige, ← vuelve. */
 
-/* Las preguntas fijas, con las que la IA agrega después de «dolor», cuando ya sabe de qué trata el negocio. */
-const I_DOLOR = PREGUNTAS.findIndex((p) => p.id === 'dolor')
-const construir = (extra) => [...PREGUNTAS.slice(0, I_DOLOR + 1), ...extra, ...PREGUNTAS.slice(I_DOLOR + 1)]
-/* Si cambia algo de esto, las preguntas de la IA ya no corresponden y se piden de nuevo. */
-const claveDe = (r) => JSON.stringify([r.rubro, r.que_vendes, r.dolor, r.problemas, r.objetivos, r.canales, r.ciclo, r.equipo, r.herramientas])
-const adaptar = (p) => ({ id: p.id, capitulo: 'Para conocer tu negocio', emoji: p.emoji || '🧩', tipo: p.tipo, titulo: p.titulo, sub: p.sub, opciones: p.opciones || [], requerido: false })
+const porId = (ids) => ids.map((id) => PREGUNTAS.find((p) => p.id === id)).map((p) => ({ ...p, requerido: true }))
+const FIJAS = porId(['nombre', 'ubicacion', 'que_vendes'])
+const RESPALDO = porId(['rubro', 'ciclo', 'equipo', 'problemas', 'objetivos'])
+const ESTIMADO = 7 // cuántas preguntas se anuncian mientras la IA todavía no termina (3 fijas + unas 4 de la IA)
+const VERSION = 2
+
+const claveFijas = (r) => JSON.stringify([r.nombre, r.ubicacion, r.que_vendes])
+const adaptar = (p) => ({ id: p.id, capitulo: 'Para conocer tu negocio', emoji: p.emoji || '🧩', tipo: p.tipo, titulo: p.titulo, sub: p.sub, opciones: p.opciones || [], requerido: true })
 const respuestaDe = (p, v) => {
   if (p.tipo === 'parrafo') return String(v || '').trim().slice(0, 300)
   const lista = Array.isArray(v) ? v : v ? [v] : []
@@ -23,11 +27,12 @@ const respuestaDe = (p, v) => {
 
 const vacio = (v) => v === undefined || v === null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && v.length === 0)
 
+/** Todas las preguntas son obligatorias. */
 function valido(q, r) {
-  if (!q.requerido) return true
   const v = r[q.id]
   if (q.tipo === 'texto') return typeof v === 'string' && v.trim().length >= 2
-  if (q.tipo === 'ubicacion') return !vacio(v?.pais)
+  if (q.tipo === 'parrafo') return typeof v === 'string' && v.trim().length >= 3
+  if (q.tipo === 'ubicacion') return !vacio(v?.pais) && typeof v?.ciudad === 'string' && v.ciudad.trim().length >= 2
   return !vacio(v)
 }
 
@@ -45,24 +50,27 @@ function Opcion({ op, n, activa, bloqueada, multiple, onClick }) {
 }
 
 export default function BriefPage() {
-  const guardado = useMemo(leerBorrador, [])
-  const [extra, setExtra] = useState(() => guardado?.extra || [])
-  const [extraDe, setExtraDe] = useState(() => guardado?.extraDe || '')
+  // Un borrador de una versión anterior del cuestionario (con otras preguntas) ya no sirve: se empieza de nuevo.
+  const guardado = useMemo(() => { const b = leerBorrador(); return b && (b.fin || b.v === VERSION) ? b : null }, [])
+  const [dyn, setDyn] = useState(() => guardado?.dyn || [])           // las preguntas que escribió la IA
+  const [dynDe, setDynDe] = useState(() => guardado?.dynDe || '')      // con qué respuestas fijas las escribió
+  const [modo, setModo] = useState(() => guardado?.modo || 'ia')      // 'ia' (sigue preguntando) | 'listo' (la IA ya sabe lo suficiente) | 'base' (sin IA: preguntas de respaldo)
   const [pensando, setPensando] = useState(false)
-  const lista = useMemo(() => construir(extra), [extra])
-  const TOTAL = lista.length
-  const [idx, setIdx] = useState(guardado && !guardado.fin ? Math.min(guardado.idx || 0, TOTAL - 1) : 0)
+  const lista = useMemo(() => [...FIJAS, ...dyn, ...(modo === 'base' ? RESPALDO : [])], [dyn, modo])
+  const [idx, setIdx] = useState(guardado && !guardado.fin ? Math.min(guardado.idx || 0, lista.length - 1) : 0)
   const [resp, setResp] = useState(guardado?.resp || {})
   const [fin, setFin] = useState(false)
   const nav = useNavigate()
   const [dir, setDir] = useState('der')
   const temporizador = useRef(null)
   const pantalla = useRef(null)
+  const siguienteRef = useRef(() => {})
 
   const q = lista[idx]
-  const pct = fin ? 100 : (idx / TOTAL) * 100
+  const total = modo === 'ia' ? Math.max(lista.length, ESTIMADO) : lista.length
+  const pct = fin ? 100 : (idx / total) * 100
 
-  useEffect(() => { guardarBorrador({ idx, resp, fin, extra, extraDe }) }, [idx, resp, fin, extra, extraDe])
+  useEffect(() => { guardarBorrador({ v: VERSION, idx, resp, fin, dyn, dynDe, modo }) }, [idx, resp, fin, dyn, dynDe, modo])
   // Al terminar, Shifu arma el CRM: se pasa a la pantalla de carga y de ahí al CRM. Con servidor y sin cuenta, antes se crea la cuenta.
   useEffect(() => { if (fin) nav(auth.haySesion() ? '/mi-crm' : '/registro', { state: { cargar: true } }) }, [fin, nav])
   useEffect(() => () => clearTimeout(temporizador.current), [])
@@ -73,34 +81,53 @@ export default function BriefPage() {
   const cambiar = (id, fn) => setResp((r) => ({ ...r, [id]: fn(r[id]) }))
   const ir = (n, d) => { clearTimeout(temporizador.current); setDir(d); setIdx(n) }
   // Al terminar se guardan, con palabras, las respuestas a las preguntas que hizo la IA: con ellas se arma el CRM.
-  const terminar = () => {
-    setResp((r) => ({ ...r, seguimiento: extra.map((p) => ({ pregunta: p.titulo, respuesta: respuestaDe(p, r[p.id]) })).filter((s) => s.respuesta) }))
+  const terminar = (preguntas = dyn) => {
+    setResp((r) => ({ ...r, seguimiento: preguntas.map((p) => ({ pregunta: p.titulo, respuesta: respuestaDe(p, r[p.id]) })).filter((s) => s.respuesta) }))
     setDir('der'); setFin(true)
   }
-  // Con lo que ya contó (sobre todo qué vende), la IA escribe las preguntas propias de ese negocio. Si tarda o falla, se sigue con las fijas.
-  const pedirSeguimiento = async () => {
+  // Con todo lo que ya contó, la IA escribe la siguiente pregunta (o dice que ya sabe lo suficiente). Si tarda o falla, siguen las de respaldo.
+  const pedirSiguiente = async (preguntas) => {
     setPensando(true)
-    const clave = claveDe(resp)
-    let preguntas = []
+    const qa = preguntas.map((p) => ({ pregunta: p.titulo, respuesta: respuestaDe(p, resp[p.id]) })).filter((s) => s.respuesta)
+    let r = { modo: 'base' }
     try {
-      const r = await Promise.race([apiCrm.seguimiento(resp), new Promise((_, no) => setTimeout(() => no(new Error('tarde')), 20000))])
-      preguntas = (r?.preguntas || []).map(adaptar)
-    } catch { /* sin preguntas extra */ }
-    setExtra(preguntas); setExtraDe(clave); setPensando(false); ir(idx + 1, 'der')
+      r = await Promise.race([
+        apiCrm.siguientePregunta({ nombre: resp.nombre, ubicacion: resp.ubicacion, que_vendes: resp.que_vendes, qa }),
+        new Promise((_, no) => setTimeout(() => no(new Error('tarde')), 25000)),
+      ])
+    } catch { /* se sigue con las preguntas de respaldo */ }
+    setPensando(false)
+    if (r?.rubro) setResp((x) => ({ ...x, rubro: r.rubro }))
+    if (r?.pregunta) {
+      setDyn([...preguntas, adaptar(r.pregunta)]); setDynDe(claveFijas(resp)); setModo('ia')
+      ir(preguntas.length + FIJAS.length, 'der')
+    } else if (r?.modo === 'ia') {
+      setDyn(preguntas); setModo('listo'); terminar(preguntas)
+    } else {
+      setDyn(preguntas); setModo('base')
+      ir(preguntas.length + FIJAS.length, 'der')
+    }
   }
   const siguiente = () => {
-    if (pensando) return
-    if (q.id === 'dolor' && claveDe(resp) !== extraDe) { pedirSeguimiento(); return }
-    if (idx >= TOTAL - 1) terminar(); else ir(idx + 1, 'der')
+    if (pensando || !q || !valido(q, resp)) return
+    // Si cambió algo de lo que la IA ya había leído, sus preguntas ya no corresponden: se vuelven a pedir.
+    const cambio = dyn.length > 0 && idx < FIJAS.length && claveFijas(resp) !== dynDe
+    const preguntas = cambio ? [] : dyn
+    if (cambio) { setDyn([]); setModo('ia'); setDynDe('') }
+    const ultima = cambio ? FIJAS.length - 1 : lista.length - 1
+    if (idx < ultima) ir(idx + 1, 'der')
+    else if (cambio || modo === 'ia') pedirSiguiente(preguntas)
+    else terminar()
   }
-  const atras = () => { if (idx > 0) ir(idx - 1, 'izq') }
+  siguienteRef.current = siguiente
+  const atras = () => { if (idx > 0 && !pensando) ir(idx - 1, 'izq') }
   const puede = valido(q, resp)
 
   const elegirUna = (v) => {
     poner(q.id, v)
     if (q.tipo === 'una') {
       clearTimeout(temporizador.current)
-      temporizador.current = setTimeout(() => { if (idx >= TOTAL - 1) terminar(); else ir(idx + 1, 'der') }, 360)
+      temporizador.current = setTimeout(() => siguienteRef.current(), 360)
     }
   }
   const alternar = (v) => cambiar(q.id, (prev) => {
@@ -134,8 +161,8 @@ export default function BriefPage() {
   const titulo = typeof q.titulo === 'function' ? q.titulo(resp) : q.titulo
   const seleccion = resp[q.id]
   const hayMax = q.tipo === 'varias' && q.max && (seleccion || []).length >= q.max
-  const vaVacia = vacio(q.tipo === 'ubicacion' ? seleccion?.pais : seleccion)
   const autoAvanza = q.tipo === 'una'
+  const esUltima = modo !== 'ia' && idx === lista.length - 1
 
   // Quien ya terminó el cuestionario va directo a su CRM; para rehacerlo está "Repetir cuestionario" dentro del CRM.
   if (guardado?.fin && !fin) return <Navigate to="/mi-crm" replace />
@@ -147,8 +174,7 @@ export default function BriefPage() {
 
       <header className="brief-cab">
         <Link to="/" aria-label="Shifu"><Logo height={26} color="#14211d" /></Link>
-        {!fin && <span className="brief-paso" aria-live="polite">{idx + 1} de {TOTAL}</span>}
-        {!fin && <Link to="/" className="brief-omitir">Omitir por ahora</Link>}
+        {!fin && <span className="brief-paso" aria-live="polite">{idx + 1} de {modo === 'ia' ? '~' : ''}{total}</span>}
       </header>
 
       <main className="brief-main">
@@ -193,7 +219,7 @@ export default function BriefPage() {
             )}
 
             {q.tipo === 'ubicacion' && (
-              <input className="campo campo-chico" type="text" maxLength={50} placeholder="Ciudad (opcional)" value={seleccion?.ciudad || ''} aria-label="Ciudad"
+              <input className="campo campo-chico" type="text" maxLength={50} placeholder="Tu ciudad" value={seleccion?.ciudad || ''} aria-label="Ciudad"
                 onChange={(e) => ponerCiudad(e.target.value)} />
             )}
 
@@ -201,13 +227,11 @@ export default function BriefPage() {
 
             <div className="acciones">
               {idx > 0 && <button type="button" className="brief-atras" onClick={atras}>← Atrás</button>}
-              {autoAvanza ? (
-                /* En las de una sola respuesta, tocar una tarjeta ya avanza: no hace falta botón, solo la salida de "omitir". */
-                !q.requerido && <button type="button" className="brief-omitir-q" onClick={siguiente}>{idx === TOTAL - 1 ? 'Omitir y crear mi CRM' : 'Omitir pregunta'}</button>
-              ) : (
+              {/* En las de una sola respuesta, tocar una tarjeta ya avanza: no hace falta botón. */}
+              {!autoAvanza && (
                 <>
                   <button type="button" className="btn-pildora btn-grande brief-seguir" disabled={!puede} onClick={siguiente}>
-                    {idx === TOTAL - 1 ? 'Crear mi CRM' : !q.requerido && vaVacia ? 'Omitir' : 'Continuar'}
+                    {esUltima ? 'Crear mi CRM' : 'Continuar'}
                   </button>
                   <span className="atajo">o presiona <kbd>Enter ↵</kbd></span>
                 </>

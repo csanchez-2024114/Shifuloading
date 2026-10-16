@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from app.crm import automatizaciones
 from app.crm.operaciones import ahora_utc
 
 
@@ -36,6 +37,8 @@ def _tarea(x: dict, nombres: dict[str, str]) -> dict:
             salida["hora"] = x["hora"]
     if x.get("contacto_id") in nombres:
         salida["contacto"] = nombres[x["contacto_id"]]
+    if x.get("auto"):
+        salida["auto"] = True  # la creó una automatización, no la persona
     return salida
 
 
@@ -52,12 +55,12 @@ def vista_crm(doc: dict, ahora: datetime | None = None) -> dict:
         "etapas": doc["etapas"],
         "camposContacto": doc["campos_contacto"],
         "ocultas": doc["ocultas"],
-        "listas": [{"id": l["id"], "nombre": l["nombre"], "campos": l["campos"],
+        "listas": [{"id": l["id"], "nombre": l["nombre"], "tipo": l.get("tipo"), "campos": l["campos"],
                     "registros": [{"id": r["id"], "valores": r["valores"]} for r in l["registros"]]} for l in doc["listas"]],
         "vendedores": doc["vendedores"],
         "tareas": {col: [_tarea(x, nombres) for x in lista] for col, lista in doc["tareas"].items()},
         "eventos": [{"id": e["id"], "e": e["e"], "t": e["t"], "h": hace(e["ts"], ahora)} for e in doc["eventos"]],
-        "automatizaciones": doc["automatizaciones"],
+        "automatizaciones": [{**a, **automatizaciones.detalle(a["id"])} for a in doc["automatizaciones"]],
         "secciones": doc["secciones"],
         "resumenIA": doc.get("resumen_ia"),
     }

@@ -7,6 +7,8 @@ import LoginPage from './pages/LoginPage'
 import RegistroPage from './pages/RegistroPage'
 import CrmPage from './pages/CrmPage'
 import PanelPage from './pages/PanelPage'
+import InfoIntegraciones from './pages/InfoIntegraciones'
+import InfoDesarrolladores from './pages/InfoDesarrolladores'
 
 export default function App() {
   const nav = useNavigate()
@@ -24,6 +26,8 @@ export default function App() {
       <Route path="/bienvenida" element={<BriefPage />} />
       <Route path="/mi-crm" element={<CrmPage />} />
       <Route path="/panel" element={<PanelPage />} />
+      <Route path="/integraciones" element={<InfoIntegraciones />} />
+      <Route path="/desarrolladores" element={<InfoDesarrolladores />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

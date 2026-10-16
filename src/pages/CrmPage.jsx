@@ -5,11 +5,11 @@ import Logo from '../components/Logo'
 import ShifuAvatar from '../components/ShifuAvatar'
 import TextoChat from '../components/TextoChat'
 import { SelectorCaptura, capturarRegion, imagenDeArchivo } from '../components/CapturaPantalla'
-import { HAY_SERVIDOR, auth, chat as apiChat, crm as apiCrm } from '../api'
+import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX } from 'react-icons/lu'
+import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb, LuTrash2 } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
 import '../crm-captura.css'
@@ -29,14 +29,18 @@ const COLORES = ['#7c5cff', '#22d3a6', '#f0587a', '#f5a623']
 
 const BASE = [
   { id: 'contactos', I: LuUsers, grupo: 0 }, { id: 'desarrollo', I: LuCode, grupo: 0 },
-  { id: 'cobros', I: LuWallet, grupo: 1 }, { id: 'actividad', I: LuActivity, grupo: 1 }, { id: 'rrhh', I: LuIdCard, grupo: 1 },
+  { id: 'cobros', I: LuWallet, grupo: 2 }, { id: 'actividad', I: LuActivity, grupo: 2 }, { id: 'rrhh', I: LuIdCard, grupo: 2 },
 ]
-const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
+/* Lo principal arriba, lo que armó la IA para ese negocio en su propio grupo, y las herramientas al final. Un grupo sin nada no se muestra. */
+const GRUPOS = ['Mi negocio', 'Mis secciones', 'Medición y equipo', 'Herramientas']
 const menuDe = (rubro, secciones, ocultas = [], listas = []) => [
   ...BASE.map((m) => ({ ...m, t: tituloSeccion(rubro, m.id, secciones) })),
-  { id: 'importar', t: tituloSeccion(rubro, 'importar'), I: LuUpload, grupo: 0 },
-  { id: 'automatizaciones', t: tituloSeccion(rubro, 'automatizaciones'), I: LuZap, grupo: 2 },
-].filter((m) => !ocultas.includes(m.id)).concat(listas.map((l) => ({ id: l.id, t: l.nombre, I: LuTable, grupo: 0, propia: true })))
+  { id: 'importar', t: tituloSeccion(rubro, 'importar'), I: LuUpload, grupo: 3 },
+  { id: 'automatizaciones', t: tituloSeccion(rubro, 'automatizaciones'), I: LuZap, grupo: 3 },
+].filter((m) => !ocultas.includes(m.id)).concat(listas.map((l) => (
+  // Las recomendaciones de Shifu son ideas, no una tabla del negocio: van con las herramientas y no llenan "Mis secciones".
+  l.tipo === 'recomendaciones' ? { id: l.id, t: l.nombre, I: LuLightbulb, grupo: 3, propia: true } : { id: l.id, t: l.nombre, I: LuTable, grupo: 1, propia: true }
+)))
 
 /** Cómo se ve el valor de un campo según su tipo. */
 const verValor = (tipo, v) => (v === undefined || v === null || v === '' ? '—' : tipo === 'fecha' ? String(v).split('-').reverse().join('/') : tipo === 'numero' ? Number(v).toLocaleString('es') : String(v))
@@ -147,8 +151,17 @@ function Lista({ lista, onAgregar, onBorrar }) {
         <form className="mc-form-registro" onSubmit={enviar} noValidate>
           {lista.campos.map((c) => (
             <label key={c.id}>{c.nombre}
-              <input type={c.tipo === 'numero' ? 'text' : c.tipo === 'fecha' ? 'date' : 'text'} inputMode={c.tipo === 'numero' ? 'decimal' : undefined} maxLength={200}
-                value={vals[c.id] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [c.id]: e.target.value }))} />
+              {c.tipo === 'lista'
+                ? (
+                  <select value={vals[c.id] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [c.id]: e.target.value }))}>
+                    <option value="">Elegir…</option>
+                    {(c.opciones || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                )
+                : (
+                  <input type={c.tipo === 'numero' ? 'text' : c.tipo === 'fecha' ? 'date' : 'text'} inputMode={c.tipo === 'numero' ? 'decimal' : undefined} maxLength={200}
+                    value={vals[c.id] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [c.id]: e.target.value }))} />
+                )}
             </label>
           ))}
           {error && <p className="mc-form-error" role="alert">{error}</p>}
@@ -211,7 +224,7 @@ function Desarrollo({ t, tareas, onMover }) {
             {tareas[k].map((x) => (
               <button key={x.id} type="button" className="mc-tarea" onClick={() => onMover(x, COLUMNAS[(c + 1) % COLUMNAS.length][0])} title={c < 2 ? 'Pasar a la siguiente columna' : 'Volver a “Por hacer”'}>
                 {x.t}
-                {(x.vence || x.contacto) && <small className="mc-tarea-meta">{x.vence && `📅 ${fechaCorta(x.vence)}${x.hora ? ` · ${x.hora}` : ''}`}{x.vence && x.contacto && ' · '}{x.contacto && `👤 ${x.contacto}`}</small>}
+                {(x.vence || x.contacto || x.auto) && <small className="mc-tarea-meta">{x.auto && '🤖 Automática · '}{x.vence && `📅 ${fechaCorta(x.vence)}${x.hora ? ` · ${x.hora}` : ''}`}{x.vence && x.contacto && ' · '}{x.contacto && `👤 ${x.contacto}`}</small>}
               </button>
             ))}
             {!tareas[k].length && <p className="mc-vacio chico">Sin tareas</p>}
@@ -253,9 +266,9 @@ function Automatizaciones({ autos, onAlternar }) {
       <div className="mc-cab"><div><h1>Automatizaciones</h1><p>Lo que Shifu hace solo por ti. Actívalas o apágalas cuando quieras, o pídeselo en el chat.</p></div></div>
       <ul className="mc-autos">
         {autos.map((a) => (
-          <li key={a.id} className={a.on ? 'on' : ''}>
-            <div><span className="mc-pilar">{a.pilar}</span><b>{a.t}</b><small>{a.d}</small></div>
-            <button type="button" role="switch" aria-checked={a.on} aria-label={a.t} className="mc-switch" onClick={() => onAlternar(a)}><i /></button>
+          <li key={a.id} className={`${a.on ? 'on' : ''} ${a.disponible === false ? 'pronto' : ''}`}>
+            <div><span className="mc-pilar">{a.pilar}</span>{a.disponible === false && <span className="mc-pronto">Próximamente</span>}<b>{a.t}</b><small>{a.disponible === false && a.nota ? a.nota : a.d}</small></div>
+            <button type="button" role="switch" aria-checked={a.on} aria-label={a.t} className="mc-switch" disabled={a.disponible === false} onClick={() => onAlternar(a)}><i /></button>
           </li>
         ))}
       </ul>
@@ -344,6 +357,75 @@ function Importar({ existentes, onImportar, onVer }) {
   )
 }
 
+/* ───────── Campana de avisos ───────── */
+
+const haceTiempo = (iso) => {
+  const seg = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  if (Number.isNaN(seg)) return ''
+  if (seg < 60) return 'ahora'
+  if (seg < 3600) return `hace ${Math.floor(seg / 60)} min`
+  if (seg < 86400) return `hace ${Math.floor(seg / 3600)} h`
+  const d = Math.floor(seg / 86400)
+  return `hace ${d} ${d === 1 ? 'día' : 'días'}`
+}
+// A dónde lleva cada tipo de aviso al tocarlo.
+const DESTINO_DE_AVISO = { crm_recordatorio: 'desarrollo', crm_resumen: 'actividad' }
+
+function Avisos({ onIr }) {
+  const [lista, setLista] = useState([])
+  const [sinLeer, setSinLeer] = useState(0)
+  const [abierta, setAbierta] = useState(false)
+  const caja = useRef(null)
+
+  const cargar = () => apiAvisos.listar().then((r) => { setLista(r?.notifications || []); setSinLeer(r?.unread_count || 0) }).catch(() => { /* sin avisos por ahora */ })
+  useEffect(() => {
+    if (!HAY_SERVIDOR) return undefined
+    cargar()
+    const t = setInterval(() => { if (!document.hidden) cargar() }, 60000) // se revisa cada minuto mientras la pestaña está a la vista
+    return () => clearInterval(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!abierta) return undefined
+    const fuera = (e) => { if (caja.current && !caja.current.contains(e.target)) setAbierta(false) }
+    const esc = (e) => { if (e.key === 'Escape') setAbierta(false) }
+    document.addEventListener('mousedown', fuera); document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', esc) }
+  }, [abierta])
+
+  const tocar = async (a) => {
+    setAbierta(false)
+    if (DESTINO_DE_AVISO[a.type]) onIr(DESTINO_DE_AVISO[a.type])
+    if (!a.read) {
+      setLista((l) => l.map((x) => (x.id === a.id ? { ...x, read: true } : x))); setSinLeer((n) => Math.max(0, n - 1))
+      try { await apiAvisos.leer(a.id) } catch { /* se verá como sin leer en la próxima revisión */ }
+    }
+  }
+  const leerTodos = async () => {
+    setLista((l) => l.map((x) => ({ ...x, read: true }))); setSinLeer(0)
+    try { await apiAvisos.leerTodos() } catch { cargar() }
+  }
+
+  return (
+    <div className="mc-avisos" ref={caja}>
+      <button type="button" className="mc-camp" aria-label={sinLeer ? `Avisos: ${sinLeer} sin leer` : 'Avisos'} aria-expanded={abierta} onClick={() => { setAbierta(!abierta); if (!abierta) cargar() }}>
+        <LuBell />{sinLeer > 0 && <i aria-hidden="true">{sinLeer > 9 ? '9+' : sinLeer}</i>}
+      </button>
+      {abierta && (
+        <section className="mc-avisos-panel" aria-label="Tus avisos">
+          <header><b>Avisos</b>{sinLeer > 0 && <button type="button" onClick={leerTodos}>Marcar todo como leído</button>}</header>
+          {lista.length === 0
+            ? <p className="mc-avisos-vacio">Sin avisos por ahora. Cuando Shifu note algo que merece tu atención, te lo dirá aquí.</p>
+            : <ul>{lista.map((a) => (
+              <li key={a.id}><button type="button" className={a.read ? '' : 'nuevo'} onClick={() => tocar(a)}>
+                <b>{a.title}</b><span>{a.message}</span><small>{haceTiempo(a.created_at)}</small>
+              </button></li>
+            ))}</ul>}
+        </section>
+      )}
+    </div>
+  )
+}
+
 /* ───────── Chat con Shifu ───────── */
 
 /** Ideas para el chat. Las que nombran a un contacto usan uno que de verdad existe; si no hay ninguno, solo salen las generales. */
@@ -358,7 +440,7 @@ function sugerenciasDe(contactos) {
   return primero ? [...base, ['Medición', `Mueve a ${primero} a Cliente`], ['Estructura', `Elimina a ${primero}`]] : base
 }
 
-function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo }) {
+function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar }) {
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null) // captura o imagen pegada, lista para mandar con el mensaje
   const [eligiendo, setEligiendo] = useState(false)
@@ -404,6 +486,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
       {abierto && (
         <section className="mc-chat-panel" aria-label="Chat con Shifu" hidden={eligiendo || capturando}>
           <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>{modo === 'reglas' ? 'Modo básico · la IA no está disponible' : 'Tu asistente del CRM'}</small></div>
+            {onOlvidar && <button type="button" onClick={onOlvidar} aria-label="Olvidar mi historial" title="Borrar el historial y lo que Shifu recuerda de mí"><LuTrash2 /></button>}
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
@@ -431,7 +514,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
           )}
           <form onSubmit={enviar}>
             <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); setEligiendo(true) }} disabled={escribiendo} aria-label="Capturar una parte de la pantalla" title="Capturar una parte de la pantalla"><LuCamera /></button>
-            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres hacer con esta captura…' : 'Escribe, captura o pega una imagen…'} aria-label="Mensaje para Shifu" maxLength={300} />
+            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres hacer con esta captura…' : 'Escribe, captura o pega una imagen…'} aria-label="Mensaje para Shifu" maxLength={2000} />
             <button type="submit" disabled={(!txt.trim() && !imagen) || escribiendo} aria-label="Enviar"><LuSend /></button>
           </form>
         </section>
@@ -478,9 +561,12 @@ export default function CrmPage() {
   // Al entrar: si venimos del cuestionario se crea el CRM; si no, se pide el que ya existe. Se pide una sola vez (también con StrictMode).
   const cargar = () => {
     setFallo(false)
-    pedido.current = (recienTerminado && borrador?.resp ? apiCrm.crearDesdeBrief(borrador.resp) : apiCrm.obtener())
+    // Con el cuestionario recién terminado se crea el CRM; si el servidor dice que ya hay uno con datos (409), se abre ese y no se toca.
+    pedido.current = (recienTerminado && borrador?.fin && borrador?.resp
+      ? apiCrm.crearDesdeBrief(borrador.resp).catch((e) => (e?.estado === 409 ? apiCrm.obtener() : Promise.reject(e)))
+      : apiCrm.obtener())
     pedido.current.then((s) => {
-      if (s) { setCrm(s); return }
+      if (s) { if (recienTerminado) borrarBorrador(); setCrm(s); return } // el CRM ya guarda sus respuestas: el borrador sobra
       // Sin CRM no hay nada que mostrar: se vuelve al cuestionario (con las respuestas guardadas, pero sin marcarlo como terminado).
       if (borrador) guardarBorrador({ ...borrador, fin: false })
       nav('/bienvenida', { replace: true })
@@ -545,6 +631,26 @@ export default function CrmPage() {
     } finally { setEscribiendo(false) }
   }
 
+  // Shifu se acuerda: al abrir el CRM se recupera la conversación guardada y, si hace rato que no hablan, él retoma lo último.
+  const restaurado = useRef(false)
+  useEffect(() => {
+    if (!crm || restaurado.current || recienTerminado) return
+    restaurado.current = true
+    apiChat.historial().then((h) => {
+      if (!h?.mensajes?.length) return
+      setMensajes([...h.mensajes.map((m) => mensaje(m.de, m.t)), ...(h.saludo ? [mensaje('shifu', h.saludo)] : [])])
+      if (h.saludo) setChatAbierto(true)
+    }).catch(() => { /* sin historial: se queda el saludo de siempre */ })
+  }, [crm, recienTerminado])
+  const olvidar = async () => {
+    if (!window.confirm('¿Borrar tu historial con Shifu y todo lo que recuerda de ti? Tu CRM no se toca.')) return
+    try {
+      await apiChat.olvidar()
+      setMensajes([mensaje('shifu', 'Listo, empezamos de cero: ya no recuerdo nuestras conversaciones. 🙂 ¿En qué te ayudo?')])
+      avisar('Shifu olvidó tu historial.')
+    } catch { avisar('No se pudo borrar el historial. Inténtalo de nuevo.') }
+  }
+
   // Recién creado con IA: el chat se abre solo y cuenta cómo armó el CRM, para que la persona lo ajuste hablando.
   const saludado = useRef(false)
   useEffect(() => {
@@ -563,7 +669,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
   if (animando && d) return <Cargando pasos={pasos} listo={!!crm} onListo={() => { setAnimando(false); nav('/mi-crm', { replace: true, state: null }) }} />
   if (!crm || !d) return <div className="carga" role="status"><p className="carga-sub">Abriendo tu CRM…</p></div>
 
-  const salir = async () => { await auth.cerrarSesion(); nav('/login', { replace: true }) }
+  const salir = async () => { borrarBorrador(); await auth.cerrarSesion(); nav('/login', { replace: true }) }
   const yo = auth.usuario()
   const inicial = (yo?.nombre || d.nombre)[0].toUpperCase()
   const rehacer = async () => {
@@ -584,22 +690,22 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
           onClick={() => setTema(tema === 'claro' ? 'oscuro' : 'claro')}>
           <span className={tema === 'claro' ? 'on' : ''}><LuSun aria-hidden="true" /></span><span className={tema === 'oscuro' ? 'on' : ''}><LuMoon aria-hidden="true" /></span>
         </button>
-        <button type="button" className="mc-camp" aria-label="Avisos"><LuBell /></button>
+        <Avisos onIr={ir} />
         <span className="mc-yo" title={yo?.correo || d.nombre} aria-hidden="true">{inicial}</span>
       </header>
 
       <div className="mc-cuerpo">
-        <nav className="mc-menu" aria-label="Secciones">
-          {GRUPOS.map((g, gi) => (
+        <nav className={`mc-menu ${menu.length > 9 ? 'mc-menu-denso' : ''}`} aria-label="Secciones">
+          {GRUPOS.map((g, gi) => (menu.some((m) => m.grupo === gi) && (
             <div key={g} className="mc-grupo">
               <h2>{g}</h2>
               <ul>
                 {menu.filter((m) => m.grupo === gi).map(({ id, t, I }) => (
-                  <li key={id}><button type="button" className={vista === id ? 'on' : ''} aria-current={vista === id ? 'page' : undefined} onClick={() => ir(id)}><I aria-hidden="true" />{t}</button></li>
+                  <li key={id}><button type="button" title={t} className={vista === id ? 'on' : ''} aria-current={vista === id ? 'page' : undefined} onClick={() => ir(id)}><I aria-hidden="true" /><span>{t}</span></button></li>
                 ))}
               </ul>
             </div>
-          ))}
+          )))}
           <button type="button" className="mc-rehacer" onClick={rehacer}><LuRotateCcw aria-hidden="true" /> Repetir cuestionario</button>
           {HAY_SERVIDOR && <button type="button" className="mc-rehacer mc-salir" onClick={salir}><LuLogOut aria-hidden="true" /> Cerrar sesión{yo?.correo ? <small>{yo.correo}</small> : null}</button>}
         </nav>
@@ -608,7 +714,9 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
           {bienvenida && (
             <aside className="mc-shifu" role="status">
               <ShifuAvatar size={40} />
-              <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, listo para tus canales ({d.canales.join(', ')}). Empieza por tus contactos: pídemelo en el chat de abajo a la derecha o impórtalos desde tu Excel o tus notas. También puedo crear secciones nuevas, quitar las que no uses o cambiar tus etapas.</p>
+              {crm.resumenIA
+                ? <p><b>Listo, {d.nombre}.</b> {crm.resumenIA} Si algo no te cuadra, pídemelo en el chat de abajo a la derecha: puedo agregar, quitar o cambiar secciones, campos y etapas.</p>
+                : <p><b>Listo, {d.nombre}.</b> Armé tu CRM con {menu.length} secciones, listo para tus canales ({d.canales.join(', ')}). Empieza por tus contactos: pídemelo en el chat de abajo a la derecha o impórtalos desde tu Excel o tus notas. También puedo crear secciones nuevas, quitar las que no uses o cambiar tus etapas.</p>}
               <button type="button" onClick={() => setBienvenida(false)} aria-label="Cerrar">✕</button>
             </aside>
           )}
@@ -630,7 +738,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
       </div>
 
       {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
-      <ChatShifu modo={modo} sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} />
+      <ChatShifu modo={modo} sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} />
     </div>
   )
 }

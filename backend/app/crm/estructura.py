@@ -14,7 +14,8 @@ from typing import Any
 from app.crm.operaciones import ErrorCrm, _copia, _registrar, ahora_utc, nuevo_id
 from app.crm.secciones import ETAPAS, IDS_SECCION, titulo_seccion
 
-TIPOS_DE_CAMPO = ("texto", "numero", "fecha")
+TIPOS_DE_CAMPO = ("texto", "numero", "fecha", "lista")  # "lista" = el valor es una de las `opciones` fijas del campo
+MIN_OPCIONES, MAX_OPCIONES, LARGO_OPCION = 2, 8, 24
 MAX_LISTAS = 12
 MAX_CAMPOS = 15
 MAX_REGISTROS = 2000
@@ -49,12 +50,29 @@ def _igual(a: str, b: str) -> bool:
 
 # ───────── Valores de los campos ─────────
 
-def valor_de_tipo(tipo: str, valor: Any, campo: str = "") -> Any:
+def opciones_validas(opciones: Any) -> list[str]:
+    """Las opciones de un campo tipo lista: de 2 a 8, sin repetir (da igual mayúsculas), cortas. Lanza ErrorCrm si no sirven."""
+    limpias: list[str] = []
+    for o in opciones if isinstance(opciones, list) else []:
+        n = " ".join(str(o or "").split())[:LARGO_OPCION]
+        if n and not any(_igual(n, x) for x in limpias):
+            limpias.append(n)
+    if not MIN_OPCIONES <= len(limpias) <= MAX_OPCIONES:
+        raise ErrorCrm(422, f"Una lista necesita entre {MIN_OPCIONES} y {MAX_OPCIONES} opciones distintas.")
+    return limpias
+
+
+def valor_de_tipo(tipo: str, valor: Any, campo: str = "", opciones: list[str] | None = None) -> Any:
     """Convierte lo que escribió la persona al formato guardado, o lanza ErrorCrm si no sirve. Vacío = sin valor (None)."""
     if valor is None or (isinstance(valor, str) and not valor.strip()):
         return None
     if tipo == "texto":
         return str(valor).strip()[:200]
+    if tipo == "lista":
+        elegida = next((o for o in opciones or [] if _igual(o, str(valor))), None)
+        if elegida is None:
+            raise ErrorCrm(422, f"“{campo}” solo admite: {', '.join(opciones or [])}. Recibí “{valor}”.")
+        return elegida
     if tipo == "numero":
         if isinstance(valor, bool):
             raise ErrorCrm(422, f"“{campo}” debe ser un número.")
@@ -91,11 +109,11 @@ def valores_validos(campos: list[dict], valores: dict[str, Any]) -> dict[str, An
         campo = por_id.get(cid)
         if campo is None:
             raise ErrorCrm(422, "Ese campo no existe.")
-        salida[cid] = valor_de_tipo(campo["tipo"], v, campo["nombre"])
+        salida[cid] = valor_de_tipo(campo["tipo"], v, campo["nombre"], campo.get("opciones"))
     return salida
 
 
-def _campo_nuevo(nombre: Any, tipo: Any, existentes: list[dict]) -> dict:
+def _campo_nuevo(nombre: Any, tipo: Any, existentes: list[dict], opciones: Any = None) -> dict:
     n = _nombre(nombre, LARGO_NOMBRE, "el nombre del campo")
     t = str(tipo or "texto").strip().lower()
     if t not in TIPOS_DE_CAMPO:
@@ -104,7 +122,10 @@ def _campo_nuevo(nombre: Any, tipo: Any, existentes: list[dict]) -> dict:
         raise ErrorCrm(422, f"Ya existe un campo llamado “{n}”.")
     if len(existentes) >= MAX_CAMPOS:
         raise ErrorCrm(422, f"Una sección admite hasta {MAX_CAMPOS} campos.")
-    return {"id": "f_" + nuevo_id()[:8], "nombre": n, "tipo": t}
+    campo = {"id": "f_" + nuevo_id()[:8], "nombre": n, "tipo": t}
+    if t == "lista":
+        campo["opciones"] = opciones_validas(opciones)
+    return campo
 
 
 # ───────── Etapas del proceso de venta ─────────
@@ -187,7 +208,7 @@ def lista_crear(doc: dict, nombre: Any, campos: list[dict] | None = None, ahora:
         raise ErrorCrm(422, f"Ya hay una sección llamada “{n}”.")
     lista_campos: list[dict] = []
     for c in (campos or [{"nombre": "Nombre", "tipo": "texto"}]):
-        lista_campos.append(_campo_nuevo((c or {}).get("nombre"), (c or {}).get("tipo"), lista_campos))
+        lista_campos.append(_campo_nuevo((c or {}).get("nombre"), (c or {}).get("tipo"), lista_campos, (c or {}).get("opciones")))
     out = _copia(doc)
     out["listas"].append({"id": "l_" + nuevo_id()[:8], "nombre": n, "campos": lista_campos, "registros": []})
     _registrar(out, "🧩", f"Creaste la sección “{n}” con los campos: {', '.join(c['nombre'] for c in lista_campos)}", ahora)
@@ -225,13 +246,35 @@ def _ambito(doc: dict, ambito: str) -> tuple[list[dict], str]:
     return l["campos"], f"“{l['nombre']}”"
 
 
-def campo_agregar(doc: dict, ambito: str, nombre: Any, tipo: Any = "texto", ahora: datetime | None = None) -> dict:
+def campo_agregar(doc: dict, ambito: str, nombre: Any, tipo: Any = "texto", ahora: datetime | None = None, opciones: Any = None) -> dict:
     ahora = ahora or ahora_utc()
     out = _copia(doc)
     campos, donde = _ambito(out, ambito)
-    nuevo = _campo_nuevo(nombre, tipo, campos)
+    nuevo = _campo_nuevo(nombre, tipo, campos, opciones)
     campos.append(nuevo)
     _registrar(out, "🧱", f"Agregaste el campo “{nuevo['nombre']}” ({nuevo['tipo']}) a {donde}", ahora)
+    return out
+
+
+def campo_hacer_lista(doc: dict, ambito: str, campo_id: str, opciones: Any, ahora: datetime | None = None) -> dict:
+    """Convierte un campo que ya existe en una lista de opciones fijas (o cambia las opciones de una lista). Los valores que
+    ya coinciden con una opción se conservan con su forma correcta; los demás se quedan como estaban (no se pierde nada)."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    campos, donde = _ambito(out, ambito)
+    campo = next((c for c in campos if c["id"] == campo_id), None)
+    if campo is None:
+        raise ErrorCrm(404, "Ese campo no existe.")
+    opts = opciones_validas(opciones)
+    campo["tipo"], campo["opciones"] = "lista", opts
+    if ambito == "contactos":
+        filas = [c.setdefault("extra", {}) for c in out["contactos"]]
+    else:
+        filas = [r["valores"] for r in _lista(out, ambito)["registros"]]
+    for valores in filas:
+        if isinstance(valores.get(campo_id), str):
+            valores[campo_id] = next((o for o in opts if _igual(o, valores[campo_id])), valores[campo_id])
+    _registrar(out, "🧱", f"El campo “{campo['nombre']}” de {donde} ahora es una lista: {', '.join(opts)}", ahora)
     return out
 
 

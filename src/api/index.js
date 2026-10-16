@@ -33,6 +33,11 @@ export const auth = {
     if (!HAY_SERVIDOR) return simulado.auth.iniciarSesion()
     return abrirSesion(await pedir('POST', '/auth/register', { name: nombre, last_name: apellido, email: correo, password: clave }, { publico: true }))
   },
+  /** ¿Ya hay una cuenta con este correo? (primer paso del inicio de sesión; sin servidor no hay cuentas y se considera que no). */
+  async correoExiste(correo) {
+    if (!HAY_SERVIDOR) return false
+    return !!(await pedir('POST', '/auth/email-exists', { email: correo }, { publico: true })).exists
+  },
   /** Primer paso del inicio de sesión en el servidor simulado (que no tiene contraseñas). */
   continuarConCorreo: (correo) => simulado.auth.continuarConCorreo(correo),
   /** Cierra la sesión aquí y en el servidor (si el servidor falla, igual se cierra aquí). */
@@ -55,6 +60,8 @@ export const crm = {
   reiniciar: () => (HAY_SERVIDOR ? pedir('DELETE', '/crm') : simulado.crm.reiniciar()),
   /** Preguntas que la IA hace según lo que la persona ya contó de su negocio (sin servidor no hay: se sigue con las fijas). */
   seguimiento: (brief) => (HAY_SERVIDOR ? pedir('POST', '/crm/seguimiento', { brief }) : Promise.resolve({ preguntas: [], modo: 'base' })),
+  /** La siguiente pregunta del cuestionario, escrita por la IA según lo contestado: { modo, pregunta, rubro }. Sin servidor o sin IA, modo 'base' (siguen las preguntas fijas). */
+  siguientePregunta: (datos) => (HAY_SERVIDOR ? pedir('POST', '/crm/siguiente-pregunta', datos) : Promise.resolve({ modo: 'base', pregunta: null, rubro: null })),
 
   contactosCrear: (filas, canal, texto) => (HAY_SERVIDOR ? pedir('POST', '/crm/contactos', { filas, canal, texto }) : simulado.crm.contactosCrear(filas, canal, texto)),
   contactosActualizar: (id, cambios) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/contactos/${id}`, cambios) : simulado.crm.contactosActualizar(id, cambios)),
@@ -69,7 +76,18 @@ export const crm = {
   seccionRenombrar: (id, nombre, anterior) => (HAY_SERVIDOR ? pedir('PUT', `/crm/secciones/${id}`, { nombre }) : simulado.crm.seccionRenombrar(id, nombre, anterior)),
 }
 
+/** Los avisos de la persona (campana): los que dejan las automatizaciones y el resto de la plataforma. */
+export const avisos = {
+  listar: () => (HAY_SERVIDOR ? pedir('GET', '/me/notifications?limit=15') : Promise.resolve({ notifications: [], unread_count: 0 })),
+  leer: (id) => (HAY_SERVIDOR ? pedir('PATCH', `/me/notifications/${id}/read`) : Promise.resolve()),
+  leerTodos: () => (HAY_SERVIDOR ? pedir('PATCH', '/me/notifications/mark-all-read') : Promise.resolve()),
+}
+
 export const chat = {
+  /** La conversación guardada en el servidor y, si hace rato que no hablan, un saludo que retoma lo último. */
+  historial: () => (HAY_SERVIDOR ? pedir('GET', '/crm/chat/historial') : Promise.resolve({ mensajes: [], saludo: null })),
+  /** Borra el historial y todo lo que Shifu recuerda de la persona. */
+  olvidar: () => (HAY_SERVIDOR ? pedir('DELETE', '/crm/chat') : Promise.resolve()),
   /** Mensaje para Shifu. Devuelve { respuesta, crm, vista?, pendiente? }; `pendiente` se reenvía en el siguiente mensaje para confirmar un borrado. */
   enviar: (texto, contexto) => (HAY_SERVIDOR ? pedir('POST', '/crm/chat', { texto, contexto }) : simulado.chat.enviar(texto, contexto)),
 }

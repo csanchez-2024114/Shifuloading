@@ -24,16 +24,20 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `POST /auth/refresh` | `{ refresh_token }` | `{ access_token, refresh_token }` (el anterior queda invalidado) |
 | `POST /auth/logout` | `{ refresh_token }` + token de acceso | `{ success }` |
 | `GET /crm` | — | CRM · `404` si no tiene |
-| `POST /crm` | `{ brief }` (respuestas del cuestionario, ver abajo) | CRM nuevo, armado por Shifu a partir del brief |
+| `POST /crm` | `{ brief }` (respuestas del cuestionario, ver abajo) | CRM nuevo, armado por Shifu a partir del brief. **409** si la persona ya tiene un CRM con datos (contactos, registros o tareas suyas): no se pisa; para rehacerlo, primero `DELETE /crm` |
 | `DELETE /crm` | — | `204` (para repetir el cuestionario) |
 | `POST /crm/contactos` | `{ filas: [{ n, det?, extra? }], canal, texto? }` | CRM (alta de uno o varios; `texto` es la frase que queda en Actividad) |
 | `PATCH /crm/contactos/:id` | campos a cambiar (`etapa`, `n`, `dueno`…) | CRM |
 | `DELETE /crm/contactos/:id` | — | CRM |
-| `POST /crm/seguimiento` | `{ brief }` (sin sesión; limitado por IP) | `{ preguntas: [{ id, tipo: "una"\|"varias"\|"parrafo", titulo, emoji, sub, opciones: [{ v, e, t }] }], modo: "ia"\|"base" }`: preguntas propias del negocio que la IA hace tras las generales |
+| `POST /crm/siguiente-pregunta` | `{ nombre, ubicacion?, que_vendes, qa: [{ pregunta, respuesta }] }` (las 3 preguntas fijas y las que la IA ya hizo; sin sesión, limitado por IP y por tope diario) | `{ modo: "ia"\|"base", pregunta: { id, tipo: "una"\|"varias"\|"parrafo", titulo, emoji, sub, opciones } \| null, rubro: string\|null }`. Es el cuestionario que escribe la IA, una pregunta a la vez: `pregunta` trae la siguiente; `pregunta: null` con `modo: "ia"` significa que ya sabe lo suficiente (mínimo 4, máximo 5 preguntas de la IA); `modo: "base"` significa que la IA no está disponible y la pantalla sigue con sus preguntas fijas de respaldo. `422` si faltan el nombre o qué vende |
+| `POST /crm/seguimiento` (antiguo, ya no lo usa la pantalla) | `{ brief }` (sin sesión; limitado por IP) | `{ preguntas: [{ id, tipo: "una"\|"varias"\|"parrafo", titulo, emoji, sub, opciones: [{ v, e, t }] }], modo: "ia"\|"base" }`: preguntas propias del negocio que la IA hace tras las generales |
+| `GET /crm/chat/historial` | — | `{ mensajes: [{ de: "yo"\|"shifu", t }], saludo: string\|null }`: la conversación guardada en el servidor y, si hace más de 6 horas que no hablan y hay algo pendiente, un saludo que retoma lo último |
+| `GET /crm/memoria` | — | `{ estilo, hechos[], trabajo }`: lo que Shifu recuerda de la persona (nada escondido) |
+| `DELETE /crm/chat` | — | 204. Borra el historial y todo lo que Shifu recuerda de la persona (el CRM no se toca) |
 | `POST /crm/tareas` | `{ t }` | CRM (entra en la columna `porHacer`) |
 | `PATCH /crm/tareas/:id` | `{ columna: "porHacer" \| "enCurso" \| "hecho" }` | CRM |
 | `DELETE /crm/tareas/:id` | — | CRM |
-| `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM |
+| `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM (422 si se intenta encender una que todavía no existe) |
 | `PUT /crm/secciones/:id` | `{ nombre }` (renombra una sección) | CRM |
 | `POST /crm/listas/:id/registros` | `{ valores: { <idCampo>: valor } }` | `201` CRM (agrega un registro a una sección propia) |
 | `PATCH /crm/listas/:id/registros/:rid` | `{ valores: { <idCampo>: valor } }` | CRM |
@@ -66,9 +70,9 @@ La lógica de ejemplo está en `src/api/mock/chat.js`.
   "listas": [{ "id": "l_ab12cd34", "nombre": "Proveedores", "campos": [{ "id": "f_…", "nombre": "Nombre", "tipo": "texto" }],
                "registros": [{ "id": "", "valores": { "<idCampo>": "valor" } }] }],
   "vendedores": ["Tú", "Mariana Solís"],
-  "tareas": { "porHacer": [{ "id": "", "t": "", "vence": "2026-11-02", "hora": "16:00", "contacto": "Nombre" }], "enCurso": [], "hecho": [] },  // vence, hora y contacto son opcionales (las pone el chat al agendar)
+  "tareas": { "porHacer": [{ "id": "", "t": "", "vence": "2026-11-02", "hora": "16:00", "contacto": "Nombre", "auto": true }], "enCurso": [], "hecho": [] },  // vence, hora y contacto son opcionales (las pone el chat al agendar)
   "eventos": [{ "id": "", "e": "➕", "t": "Agregaste a Ana Morales", "h": "ahora" }],
-  "automatizaciones": [{ "id": "recordatorios", "pilar": "Estructura", "t": "", "d": "", "on": true }],
+  "automatizaciones": [{ "id": "recordatorios", "pilar": "Estructura", "t": "", "d": "", "on": true, "disponible": true, "nota": null }],  // disponible:false = todavía no existe (no se puede encender; `nota` dice por qué)
   "secciones": { "contactos": "Pacientes" }
 }
 ```
@@ -105,3 +109,18 @@ El módulo de CRM ya existe en `backend/app/crm` y `backend/app/routes/crm` (col
 - Pantalla `/panel` (asistente de inicio): su chat sigue respondiendo con texto fijo; falta conectarlo a `POST /chat`.
 - Lectura de archivos `.xlsx` (hoy se pega o se sube CSV/TXT y se interpreta en el navegador).
 - Entrar con Google, Apple, Facebook, WhatsApp o clave de acceso (los botones del login todavía no hacen nada) y recuperar contraseña (el backend ya tiene `/auth/forgot-password` y `/auth/reset-password`, falta la pantalla).
+
+
+## Automatizaciones
+
+Funcionan de verdad tres, sin conectar nada de afuera: **recordatorios** (crea una tarea con `auto: true` cuando un contacto lleva 3 días sin cambiar de etapa), **reparto** (asigna los contactos nuevos por turnos entre el equipo) y **resumen** (una vez por semana deja un resumen en `eventos`). **bienvenida**, **contacto** y **vencidos** todavía no existen (`disponible: false`). Lo pendiente se calcula cuando alguien abre o toca el CRM y, con `SHIFU_SCHEDULER=1`, también cada `CRM_RELOJ_SEGUNDOS` (300) en el programador (`app/crm/reloj.py`), aunque nadie lo tenga abierto. El reloj deja avisos en `user_notifications` (`GET /me/notifications`, la campana del CRM) de tipo `crm_recordatorio` y `crm_resumen`, que además salen por correo si `SHIFU_NOTICE_EMAILS=1` y hay SMTP. Repetirlo no duplica nada: se guarda solo si nadie cambió el CRM en medio (versión) y los avisos se crean después de guardar.
+
+
+## Memoria de Shifu
+
+El historial del chat y lo que Shifu recuerda viven en el servidor (colección `crm_conversaciones`, un documento por persona), no en la pantalla: sobreviven a recargar y a cambiar de dispositivo, y lo que mande el navegador en `contexto.historial` solo se usa si todavía no hay nada guardado.
+
+- **Historial:** los últimos 200 mensajes.
+- **Memoria:** el estilo (`tratamiento` tú/usted, `tono`, `largo`, `emojis`), hasta 12 hechos duraderos del negocio o de cómo quiere su CRM, y una frase de en qué trabajaron la última vez. Se pone al día en segundo plano cada 4 mensajes de la persona y con la herramienta `recordar`. Lo que la persona pide explícitamente manda sobre lo que se observa.
+- **Privacidad:** nunca se guardan contraseñas, claves, tarjetas, identificaciones, teléfonos, correos ni datos de salud, religión o política. Los hechos duraderos tampoco llevan nombres de clientes. La persona lo borra todo con `DELETE /crm/chat`; rehacer el CRM olvida la conversación pero conserva cómo le gusta que le hablen.
+- Lo recordado entra al prompt como contexto, nunca como órdenes.
