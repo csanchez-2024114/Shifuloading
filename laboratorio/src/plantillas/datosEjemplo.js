@@ -60,7 +60,8 @@ export function datosEjemplo(plantilla, nivel = 'pocos') {
       if (valores.inicio && valores.fin && valores.fin < valores.inicio) {
         const d = new Date(`${valores.inicio}T00:00:00`); d.setDate(d.getDate() + 3 + Math.floor(r() * 28)); valores.fin = isoDia(d)
       }
-      return { id: `${s.id}-${i}`, valores }
+      // Marcado como ejemplo: «Borrar ejemplos» quita SOLO estos y nunca un registro real (riesgo visto en Airtable).
+      return { id: `${s.id}-${i}`, ejemplo: true, valores }
     })
   }
   const eventos = n === 0 ? [{ id: 'e0', e: '🤖', t: 'Shifu creó tu CRM', h: 'ahora' }]
@@ -76,3 +77,6 @@ export function datosEjemplo(plantilla, nivel = 'pocos') {
 
 /** Registros que ve una sección (las secciones con `fuente` muestran los de otra). */
 export const registrosDe = (s, datos) => datos.registros[s.fuente || s.id] || []
+
+/** Quita SOLO los registros marcados como ejemplo; los reales quedan intactos. */
+export const sinEjemplos = (datos) => (datos ? { ...datos, registros: Object.fromEntries(Object.entries(datos.registros).map(([k, rs]) => [k, rs.filter((r) => !r.ejemplo)])) } : datos)

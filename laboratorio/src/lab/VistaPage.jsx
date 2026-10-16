@@ -7,7 +7,7 @@ import { GaleriaGraficos } from '../plantillas/graficos'
 import { VelContext } from '../plantillas/vistas'
 import { fijarRegion } from '../plantillas/regional'
 import { plantillaPorId } from '../plantillas/semillas'
-import { datosEjemplo } from '../plantillas/datosEjemplo'
+import { datosEjemplo, sinEjemplos } from '../plantillas/datosEjemplo'
 import { ROTAS } from './rotas'
 import Estres from './Estres'
 
@@ -15,17 +15,18 @@ export default function VistaPage() {
   const [q] = useSearchParams()
   const id = q.get('plantilla') || 'embudo'
   const recorrido = q.get('recorrido') === '1'
-  const [nivel, setNivel] = useState(q.get('datos') || (recorrido ? 'muchos' : 'pocos'))
+  const [nivel] = useState(q.get('datos') || (recorrido ? 'muchos' : 'pocos'))
   const nivelInicial = q.get('datos') || 'pocos'
   const tema = q.get('tema') === 'claro' ? 'claro' : 'oscuro'
   const estilo = q.get('estilo') || 'vivo-compacto'
   const vel = Number(q.get('vel')) || 2.2
   const pais = q.get('pais') || 'gt'
   const plantilla = plantillaPorId(id) || ROTAS.find((p) => p.id === id)
-  const datos = useMemo(() => (plantilla ? datosEjemplo(plantilla, nivel) : null), [plantilla, nivel])
+  const [ejemplosBorrados, setEjemplosBorrados] = useState(false)
+  const datos = useMemo(() => { const d = plantilla ? datosEjemplo(plantilla, nivel) : null; return ejemplosBorrados ? sinEjemplos(d) : d }, [plantilla, nivel, ejemplosBorrados])
   useEffect(() => { document.documentElement.style.colorScheme = tema === 'claro' ? 'light' : 'dark' }, [tema])
   if (!plantilla) return <p style={{ padding: 24 }}>No existe la plantilla «{id}».</p>
   if (q.get('estres')) { fijarRegion(pais); return <Estres plantilla={plantilla} variante={q.get('variante') || 'pocos'} tema={tema} /> }
   if (q.get('galeria')) { fijarRegion(pais); return <VelContext.Provider value={vel}><GaleriaGraficos key={pais} plantilla={plantilla} datos={datos} tema={tema} vel={vel} /></VelContext.Provider> }
-  return <PlantillaCRM key={`${id}-${nivelInicial}-${estilo}-${vel}-${pais}`} demo={q.get('demo') === 'toma' ? 'toma' : q.get('demo') === '1'} recorrido={recorrido} onBorrarEjemplos={() => setNivel('vacio')} plantilla={plantilla} datos={datos} nivel={nivel} tema={tema} estilo={estilo} vel={vel} pais={pais} negocio="Negocio de prueba" />
+  return <PlantillaCRM key={`${id}-${nivelInicial}-${estilo}-${vel}-${pais}`} demo={q.get('demo') === 'toma' ? 'toma' : q.get('demo') === '1'} recorrido={recorrido} onBorrarEjemplos={() => setEjemplosBorrados(true)} plantilla={plantilla} datos={datos} nivel={nivel} tema={tema} estilo={estilo} vel={vel} pais={pais} negocio="Negocio de prueba" />
 }

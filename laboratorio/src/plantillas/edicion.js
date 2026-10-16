@@ -345,7 +345,8 @@ export function describirPantalla(plantillaBase, estado) {
   } : { activa: false }
   return {
     plantilla: plantilla.nombre,
-    puntos_guardados: (estado.puntos || []).map((p) => ({ punto: p.n, antes_de: p.antes_de, hora: p.hora })),
+    // Lo que se puede deshacer: cada pedido que cambió algo, con lo que dijo la persona y qué cambió (medido por el código).
+    pedidos_anteriores: (estado.puntos || []).map((p) => ({ pedido: p.n, dijo: p.antes_de, cambio: p.cambio || ['bloques', 'marca', 'estructura'], hora: p.hora })),
     marca: { ...(estado.marca || {}), logo: estado.marca?.logo ? '(tiene logo)' : '(sin logo)', fuentes_permitidas: Object.keys(FUENTES), nota: 'Branding: cualquier color (hex) de fondo, superficie, texto, principal y secundario, y tipografía de títulos y de texto. El código ajusta lo que no se lea.' },
     rejilla: 'Inicio en 12 columnas. ancho ∈ [3,4,6,8,12] (3 = cuatro por fila, 12 = ancho completo). alto ∈ 1..4 filas. Todo debe caber en una pantalla: más bloques = bloques más bajos.',
     bloques: estado.bloques.map((b, i) => ({ id: b.uid, posicion: i + 1, donde_se_ve: ubicacion(ubicar(estado.bloques)[b.uid]), vista: b.vista, seccion: b.seccion, titulo_seccion: porId[b.seccion]?.titulo, opciones: b.opciones, ancho: b.ancho, alto: b.alto,
@@ -369,8 +370,15 @@ export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
   const r0 = ejecutarSin(plantilla, estado, nombre, args, contexto)
   if (!r0.ok || !r0.estado.bloques) return r0
   // Acomodo automático tras cada cambio de bloques; lo que la persona acaba de redimensionar queda como lo pidió.
-  const fijos = new Set(nombre === 'cambiar_tamano' || (nombre === 'agregar_bloque' && args.ancho) ? [args.bloque || r0.resultado.match(/Agregado el bloque (\S+):/)?.[1]].filter(Boolean) : [])
-  const r = r0.estado.bloques === estado.bloques ? r0 : { ...r0, estado: { ...r0.estado, bloques: acomodar(r0.estado.bloques, fijos) } }
+  // Solo lo redimensionado a pedido queda fijo; al agregar, el modelo siempre manda un ancho y eso dejaba huecos.
+  const fijos = new Set(nombre === 'cambiar_tamano' ? [args.bloque] : [])
+  let r = r0
+  if (r0.estado.bloques !== estado.bloques) {
+    const acomodados = acomodar(r0.estado.bloques, fijos)
+    const tocados = acomodados.filter((b, i) => b.ancho !== r0.estado.bloques[i].ancho || b.alto !== r0.estado.bloques[i].alto).map((b) => b.uid)
+    // Hecho calculado, no instrucción: el modelo sabe que el acomodo ya ocurrió (antes «compensaba» achicando otro bloque).
+    r = { ...r0, estado: { ...r0.estado, bloques: acomodados }, resultado: tocados.length ? `${r0.resultado} El código ya acomodó solo ${tocados.join(', ')} para que no quede hueco.` : r0.resultado }
+  }
   // Cada resultado dice dónde quedó TODO de verdad: el modelo describe eso, no lo que supone.
   const u = ubicar(r.estado.bloques)
   return { ...r, resultado: `${r.resultado} Así se ve ahora: ${r.estado.bloques.map((b) => `${b.uid} (${b.vista}) → ${ubicacion(u[b.uid])}`).join('; ')}.` }
@@ -674,7 +682,7 @@ export const HERRAMIENTAS = [
     seccion: { type: 'string' }, campo: { type: 'string' }, opciones: { type: 'array', items: { type: 'string' } }, renombrar: { type: 'object', additionalProperties: { type: 'string' } }, pasar_a: { type: 'string' } }, ['seccion', 'campo', 'opciones']],
   ['renombrar_seccion', 'Cambia el nombre de una sección.', { seccion: { type: 'string' }, titulo: { type: 'string' } }, ['seccion', 'titulo']],
   ['quitar_seccion', 'Quita una sección del menú (y sus bloques del inicio). Solo si la persona lo pidió.', { seccion: { type: 'string' } }, ['seccion']],
-  ['volver_a_punto', 'Restaura TODA la pantalla (bloques, marca, secciones, ficha) a como estaba en un punto guardado (ver puntos_guardados: cada uno es la foto de ANTES de un pedido). Úsalo cuando la persona quiere deshacer, volver atrás, "como estaba antes", o cuando un cambio salió mal. Nunca lo uses sin que la persona lo pida o acepte.', { punto: { type: 'integer', minimum: 1 } }, ['punto']],
+  ['deshacer', 'Anula UN pedido anterior de la persona (ver pedidos_anteriores: qué dijo y qué cambió). El código revierte solo lo que ese pedido cambió y conserva lo demás. Úsalo para "eso no", "como estaba antes", "deshaz lo del color", "deshaz también X". Nunca lo uses sin que la persona lo pida.', { pedido: { type: 'integer', minimum: 1, description: 'número de pedidos_anteriores' } }, ['pedido']],
   ['restablecer_marca', 'Vuelve al diseño base de Shifu (quita colores, tipografías y logo propios).', {}, []],
   ['abrir_toma', 'Abre la toma de requerimientos cuando la persona pide DISEÑAR o REHACER la pantalla de inicio o un CRM completo. NO uses esto para cambios puntuales (mover, achicar, un solo bloque): esos van directo con las herramientas de pantalla.', {
     objetivo: { type: 'string', description: 'solo si lo dijo en este mensaje' } }, []],
