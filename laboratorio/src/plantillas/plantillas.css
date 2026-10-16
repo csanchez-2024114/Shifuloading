@@ -401,3 +401,17 @@
   .pl.con-chat { padding-right: min(400px, 44vw); box-sizing: border-box; }
   .mc-chat:has(.mc-chat-panel:not([hidden])) .mc-chat-btn { display: none; }
 }
+
+/* ── Ficha que nace de la pieza tocada (D45): transformación de contenedor ──
+ * El grupo «pl-ficha» viaja de la caja de la tarjeta a la del panel (y de vuelta al cerrar). El contenido del panel se
+ * recorta desde arriba mientras crece (se «despliega»), la tarjeta se desvanece rápido y el fondo oscurece suave. */
+::view-transition-group(pl-ficha) { animation-duration: calc(.46s * var(--vel-ficha, 1)); animation-timing-function: cubic-bezier(.2, .85, .25, 1); border-radius: 16px; overflow: hidden; }
+::view-transition-image-pair(pl-ficha) { isolation: isolate; }
+::view-transition-old(pl-ficha), ::view-transition-new(pl-ficha) { height: 100%; width: 100%; object-fit: none; object-position: top left; animation-duration: calc(.46s * var(--vel-ficha, 1)); }
+::view-transition-old(pl-ficha) { animation-name: pl-vt-sale; animation-duration: .18s; }
+::view-transition-new(pl-ficha) { animation-name: pl-vt-entra; }
+@keyframes pl-vt-sale { to { opacity: 0; } }
+@keyframes pl-vt-entra { from { opacity: 0; } 40% { opacity: 1; } }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .32s; }
+/* Si la transición la hace el navegador, el panel no repite su entrada deslizada. */
+.pl-ficha-fondo.desde-origen, .pl-ficha-fondo.desde-origen .pl-ficha { animation: none; }

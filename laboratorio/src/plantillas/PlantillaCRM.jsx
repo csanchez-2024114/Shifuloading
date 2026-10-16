@@ -107,8 +107,29 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const [chatAbierto, setChatAbierto] = useState(true)
   // Ficha abierta (D28): { seccion, registro } o null.
   const [abierta, setAbierta] = useState(null)
-  const abrirFicha = useCallback((seccion, registro) => setAbierta({ seccion, registro }), [])
-  const cerrarFicha = useCallback(() => setAbierta(null), [])
+  // La ficha nace de la pieza tocada y vuelve a ella al cerrarse (D45): transformación de contenedor con View Transitions.
+  // El elemento de origen y el panel comparten el nombre «pl-ficha» en momentos distintos, y el navegador anima el paso.
+  const abiertaRef = useRef(null); abiertaRef.current = abierta
+  const transformar = (cambio, antes, despues) => {
+    if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { cambio(); return }
+    antes?.()
+    const t = document.startViewTransition(() => { flushSync(cambio); despues?.() })
+    for (const p of [t.ready, t.finished, t.updateCallbackDone]) p?.catch(() => {})
+    return t
+  }
+  const abrirFicha = useCallback((seccion, registro, origen) => {
+    const ya = abiertaRef.current
+    const o = origen?.isConnected ? origen : null
+    transformar(() => setAbierta({ seccion, registro, origen: o, transicion: !!o && !!document.startViewTransition }),
+      () => { if (o && !ya) o.style.viewTransitionName = 'pl-ficha' },
+      () => { if (o) o.style.viewTransitionName = '' })
+  }, [])
+  const cerrarFicha = useCallback(() => {
+    const o = abiertaRef.current?.origen
+    const vuelve = o?.isConnected && o.getBoundingClientRect().height > 0 ? o : null
+    const t = transformar(() => setAbierta(null), null, () => { if (vuelve) vuelve.style.viewTransitionName = 'pl-ficha' })
+    t?.finished.finally(() => { if (vuelve) vuelve.style.viewTransitionName = '' })
+  }, [])
   // Elegir piezas con doble clic (PC) o manteniendo presionado (táctil) para editarlas con Shifu (D39).
   const raiz = useRef(null)
   const { modo: eligiendoPiezas, barra: barraSeleccion } = useSeleccion(raiz)
@@ -217,7 +238,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
         </main>
       </div>
       {barraSeleccion}
-      {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} />}
+      {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} desdeOrigen={abierta.transicion} />}
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
       <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
     </div>

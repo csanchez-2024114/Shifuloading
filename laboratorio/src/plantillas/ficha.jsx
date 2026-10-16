@@ -38,7 +38,7 @@ export function relacionadosDe(plantilla, datos, seccion, r) {
   return out
 }
 
-export default function Ficha({ plantilla, datos, seccionId, registroId, onCerrar, onAbrir }) {
+export default function Ficha({ plantilla, datos, seccionId, registroId, onCerrar, onAbrir, desdeOrigen = false }) {
   const panel = useRef(null)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const sec = porId[seccionId]
@@ -60,8 +60,8 @@ export default function Ficha({ plantilla, datos, seccionId, registroId, onCerra
     ...rel.flatMap(({ seccion: s, campos: cs, items, tituloRel }) => items.flatMap((x) => cs.filter((c) => c.tipo === 'fecha' && x.valores[c.id]).map((c) => ({ iso: x.valores[c.id], texto: `${tituloRel(x)} · ${c.nombre.toLowerCase()}`, de: s.titulo, ir: () => onAbrir(s.id, x.id) })))),
   ].sort((a, b) => b.iso.localeCompare(a.iso)).slice(0, 14)
   return (
-    <div className="pl-ficha-fondo" onClick={onCerrar}>
-      <aside ref={panel} className="pl-ficha" role="dialog" aria-modal="true" aria-label={`Ficha de ${tituloRegistro(sec, campos, r)}`} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+    <div className={`pl-ficha-fondo${desdeOrigen ? ' desde-origen' : ''}`} onClick={onCerrar}>
+      <aside ref={panel} className="pl-ficha" style={{ viewTransitionName: 'pl-ficha' }} role="dialog" aria-modal="true" aria-label={`Ficha de ${tituloRegistro(sec, campos, r)}`} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
         <header className="pl-ficha-cab">
           <div>
             <small>{sec.titulo}</small>
@@ -86,7 +86,7 @@ export default function Ficha({ plantilla, datos, seccionId, registroId, onCerra
                   {items.slice(0, 5).map((x) => {
                     const est = cs.find((c) => c.tipo === 'estado'), fe = cs.find((c) => c.tipo === 'fecha')
                     return (
-                      <li key={x.id}><button type="button" onClick={() => onAbrir(s.id, x.id)}>
+                      <li key={x.id}><button type="button" onClick={(e) => onAbrir(s.id, x.id, e.currentTarget)}>
                         <b>{tituloRel(x)}</b>
                         <span>{[est && x.valores[est.id], fe && x.valores[fe.id] && relativo(diasDesdeHoy(x.valores[fe.id]))].filter(Boolean).join(' · ')}</span>
                       </button></li>

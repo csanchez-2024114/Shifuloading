@@ -14,8 +14,9 @@ export const FichaContext = createContext(null)
 /** Props para que un registro abra su ficha con clic o con Enter/Espacio (accesible con teclado). */
 function abrible(abrir, seccion, r) {
   if (!abrir) return {}
-  const ir = () => abrir(seccion.id, r.id)
-  return { role: 'button', tabIndex: 0, 'data-abre': '', onClick: ir, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir() } } }
+  // Se pasa el elemento tocado: la ficha nace de él y vuelve a él al cerrarse (D45).
+  const ir = (e) => abrir(seccion.id, r.id, e.currentTarget)
+  return { role: 'button', tabIndex: 0, 'data-abre': '', onClick: ir, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(e) } } }
 }
 const SALIDA_MS = 700
 
