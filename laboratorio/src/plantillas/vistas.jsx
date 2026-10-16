@@ -9,6 +9,14 @@ import { region } from './regional'
 export const AnimarContext = createContext(false)
 /** Multiplicador de duración de las animaciones (1 = normal, 2 = el doble de lento). Debe coincidir con --vel del CSS. */
 export const VelContext = createContext(1)
+/** abrir(seccionId, registroId): abre la ficha de un registro (D28). null = no se abre nada (galerías, banco de estrés). */
+export const FichaContext = createContext(null)
+/** Props para que un registro abra su ficha con clic o con Enter/Espacio (accesible con teclado). */
+function abrible(abrir, seccion, r) {
+  if (!abrir) return {}
+  const ir = () => abrir(seccion.id, r.id)
+  return { role: 'button', tabIndex: 0, 'data-abre': '', onClick: ir, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir() } } }
+}
 const SALIDA_MS = 700
 
 /** Lista que anima sus salidas: al quitar un elemento primero se marca "saliendo" (corre su animación) y después se borra. */
@@ -79,6 +87,7 @@ function filtrar(registros, opciones = {}) {
 function Tabla({ seccion, campos, registros: todos, opciones = {} }) {
   const registros = filtrar(todos, opciones)
   const animar = useContext(AnimarContext)
+  const abrir = useContext(FichaContext)
   const [orden, setOrden] = useState(null) // { id, dir: 1 | -1 }
   const [busca, setBusca] = useState('')
   const [pagina, setPagina] = useState(0)
@@ -113,7 +122,7 @@ function Tabla({ seccion, campos, registros: todos, opciones = {} }) {
         ))}
       </div>
       {filas.map((r, i) => (
-        <div key={`${pag}-${r.id}`} className="pl-tabla-fila" role="row" style={{ '--n': campos.length, '--i': Math.min(i, 14) }}>
+        <div key={`${pag}-${r.id}`} className="pl-tabla-fila" style={{ '--n': campos.length, '--i': Math.min(i, 14) }} {...abrible(abrir, seccion, r)} role="row">
           {campos.map((c) => (
             <span key={c.id} role="cell" data-etiqueta={c.nombre} title={String(ver(c.tipo, r.valores[c.id]))}>
               {c.tipo === 'estado' ? <em className="pl-pildora" title={r.valores[c.id]} style={{ '--c': COLORES[c.opciones.indexOf(r.valores[c.id]) % COLORES.length] }}>{ver(c.tipo, r.valores[c.id])}</em> : ver(c.tipo, r.valores[c.id])}
@@ -160,14 +169,17 @@ function Kpis({ campos, registros, opciones = {} }) {
 
 function Tablero({ seccion, campos, registros, opciones }) {
   const animar = useContext(AnimarContext)
+  const abrir = useContext(FichaContext)
   // Movimientos locales del laboratorio (arrastrar una tarjeta a otra columna). En el CRM real esto sería una operación validada.
   const [movidos, setMovidos] = useState({})
   const [sobre, setSobre] = useState(null)
   const arrastrado = useRef(null)
   const estadoDe = (r) => movidos[r.id] ?? r.valores[opciones.por]
   const c = campo(campos, opciones.por)
-  const tituloDe = (r) => ver('texto', r.valores[opciones.titulo] ?? Object.values(r.valores)[0])
-  const det = opciones.detalle && campo(campos, opciones.detalle)
+  // La tarjeta: la que definió la persona (seccion.tarjeta: 1.º campo = título) o la del bloque (titulo + detalle).
+  const ct = seccion.tarjeta?.campos?.map((id) => campo(campos, id)).filter(Boolean)
+  const tituloDe = (r) => ver('texto', r.valores[ct?.[0]?.id ?? opciones.titulo] ?? Object.values(r.valores)[0])
+  const dets = ct ? ct.slice(1) : [opciones.detalle && campo(campos, opciones.detalle)].filter(Boolean)
   return (
     <div className="pl-tablero" role="list" aria-label={`${seccion.titulo} por ${c.nombre.toLowerCase()}`}>
       {c.opciones.map((op, i) => {
@@ -183,8 +195,8 @@ function Tablero({ seccion, campos, registros, opciones }) {
             {de.slice(0, MAX_TARJETAS).map((r, k) => (
               <article key={r.id} className={`pl-tarjeta${movidos[r.id] ? ' movida' : ''}`} style={{ '--i': k }} draggable={animar}
                 onDragStart={animar ? (e) => { arrastrado.current = r.id; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('arrastrando') } : undefined}
-                onDragEnd={animar ? (e) => e.currentTarget.classList.remove('arrastrando') : undefined}>
-                <b>{tituloDe(r)}</b>{det && <small>{ver(det.tipo, r.valores[det.id])}</small>}
+                onDragEnd={animar ? (e) => e.currentTarget.classList.remove('arrastrando') : undefined} {...abrible(abrir, seccion, r)}>
+                <b>{tituloDe(r)}</b>{dets.map((d) => <small key={d.id}>{ver(d.tipo, r.valores[d.id])}</small>)}
               </article>
             ))}
             {de.length > MAX_TARJETAS && <p className="pl-mas">+{de.length - MAX_TARJETAS} más</p>}
@@ -201,6 +213,7 @@ function Agenda({ seccion, campos, registros, opciones }) {
   const base = new Date(); base.setHours(0, 0, 0, 0)
   const dias = Array.from({ length: n }, (_, i) => { const d = new Date(base); d.setDate(d.getDate() + i); return d })
   const det = opciones.detalle && campo(campos, opciones.detalle)
+  const abrir = useContext(FichaContext)
   return (
     <div className="pl-agenda" style={{ '--n': n }} aria-label={`${seccion.titulo}: próximos ${n} días`}>
       {dias.map((d, i) => {
@@ -210,7 +223,7 @@ function Agenda({ seccion, campos, registros, opciones }) {
           <section key={iso} className={`pl-dia${i === 0 ? ' hoy' : ''}`} style={{ '--i': i }}>
             <h3><span>{i === 0 ? 'Hoy' : DIAS[d.getDay()]}</span> <b>{d.getDate()} {MESES[d.getMonth()]}</b><i>{citas.length || ''}</i></h3>
             {citas.slice(0, 30).map((r, k) => (
-              <article key={r.id} className="pl-cita" style={{ '--i': k }}>
+              <article key={r.id} className="pl-cita" style={{ '--i': k }} {...abrible(abrir, seccion, r)}>
                 {opciones.hora && <time>{r.valores[opciones.hora] ? region().hora(r.valores[opciones.hora]) : '—'}</time>}
                 <span><b>{ver('texto', r.valores[opciones.titulo])}</b>{det && <small>{ver(det.tipo, r.valores[det.id])}</small>}</span>
               </article>
@@ -228,6 +241,7 @@ const COLOR_RANGO = (desde, hasta) => (hasta < 0 ? '#f0587a' : desde <= 7 ? '#f5
 const nombreRango = (desde, hasta) => (hasta < 0 ? 'Vencidos' : desde === 0 && hasta === 7 ? 'Próximos 7 días' : desde === 0 ? `Próximos ${hasta} días` : `De ${desde} a ${hasta} días`)
 
 function Vencimientos({ seccion, campos, registros, opciones }) {
+  const abrir = useContext(FichaContext)
   const lim = opciones.dias || 30
   // Los grupos son rangos de días. Solo los cambia la IA (opciones.rangos); al cambiar, los que se van salen animados
   // y los nuevos "nacen". Sin opciones.rangos: Vencidos · 0-7 · 8-límite (este último solo si el límite pasa de 7).
@@ -262,7 +276,7 @@ function Vencimientos({ seccion, campos, registros, opciones }) {
               </h3>
               <ul>
                 {items.slice(0, 40).map(({ r, d }, k) => (
-                  <li key={r.id} style={{ '--i': Math.min(k, 10) }}>
+                  <li key={r.id} style={{ '--i': Math.min(k, 10) }} {...abrible(abrir, seccion, r)}>
                     <span><b>{ver('texto', r.valores[opciones.titulo])}</b>{det && <small>{ver(det.tipo, r.valores[det.id])}</small>}</span>
                     <em>{d < 0 ? `hace ${-d} d` : d === 0 ? 'hoy' : `en ${d} d`}</em>
                   </li>

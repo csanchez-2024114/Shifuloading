@@ -340,3 +340,38 @@
   .mc .pl-bloque .pl-vacio b { font-size: 13.5px; }
   .mc .pl-bloque .pl-vacio p { display: none; }
 }
+
+/* ── Ficha de un registro (D28): panel a la derecha; en móvil, pantalla completa ── */
+[data-abre] { cursor: pointer; }
+[data-abre]:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.pl-ficha-fondo { position: fixed; inset: 0; z-index: 900; background: rgba(0, 0, 0, .28); display: flex; justify-content: flex-end; animation: pl-ficha-fondo .2s ease-out; }
+.pl-ficha { width: min(440px, 100%); height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; padding: 20px 20px 40px; background: var(--bg); border-left: 1px solid var(--linea); box-shadow: -20px 0 50px rgba(0, 0, 0, .25); color: var(--tx); display: grid; align-content: start; gap: 18px; animation: pl-ficha-entra .28s cubic-bezier(.2, .8, .2, 1); outline: none; }
+.pl-ficha-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pl-ficha-cab > div { min-width: 0; display: grid; gap: 6px; justify-items: start; }
+.pl-ficha-cab small { color: var(--tx3); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.pl-ficha-cab h2 { margin: 0; font: 700 22px/1.2 var(--fuente); overflow-wrap: break-word; max-width: 100%; }
+.pl-ficha-cerrar { flex: none; width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--linea); background: var(--card); color: var(--tx); display: grid; place-items: center; cursor: pointer; font-size: 18px; }
+.pl-ficha-grupo { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--linea); min-width: 0; }
+.pl-ficha-grupo h3 { margin: 0; display: flex; align-items: center; gap: 6px; color: var(--tx3); font: 700 11px var(--fuente); letter-spacing: .08em; text-transform: uppercase; }
+.pl-ficha-grupo dl { margin: 0; display: grid; gap: 8px; }
+.pl-ficha-grupo dl > div { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px; font-size: 13.5px; }
+.pl-ficha-grupo dt { color: var(--tx3); overflow-wrap: break-word; }
+.pl-ficha-grupo dd { margin: 0; overflow-wrap: break-word; text-align: right; }
+.pl-ficha-rel h4 { margin: 4px 0 6px; display: flex; justify-content: space-between; font-size: 13px; }
+.pl-ficha-rel h4 i { font-style: normal; color: var(--tx3); }
+.pl-ficha-rel ul, .pl-ficha-tiempo { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pl-ficha-rel button { width: 100%; display: grid; gap: 2px; text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--linea); background: transparent; color: var(--tx); font: inherit; font-size: 13px; cursor: pointer; }
+.pl-ficha-rel button:hover { background: color-mix(in srgb, var(--acento) 8%, transparent); }
+.pl-ficha-rel button span { color: var(--tx3); font-size: 12px; }
+.pl-ficha-tiempo li { display: grid; grid-template-columns: 86px minmax(0, 1fr); column-gap: 10px; padding-left: 10px; border-left: 2px solid var(--linea); font-size: 13px; }
+.pl-ficha-tiempo li.futuro { border-left-color: var(--acento); }
+.pl-ficha-tiempo time { color: var(--tx3); font-size: 12px; }
+.pl-ficha-tiempo small { grid-column: 2; color: var(--tx3); font-size: 11.5px; }
+.pl-ficha-tiempo button { padding: 0; border: 0; background: none; color: var(--tx); font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: var(--linea); }
+@keyframes pl-ficha-entra { from { transform: translateX(40px); opacity: 0; } }
+@keyframes pl-ficha-fondo { from { opacity: 0; } }
+@media (max-width: 700px) { .pl-ficha { width: 100%; border-left: 0; padding: 16px 16px 40px; } }
+@media (prefers-reduced-motion: reduce) { .pl-ficha, .pl-ficha-fondo { animation: none; } }
+/* Con el chat abierto, la ficha se pone a su izquierda (se edita por chat mirándola); en pantallas angostas va encima. */
+@media (min-width: 1100px) { .pl.con-chat .pl-ficha { margin-right: 420px; border-right: 1px solid var(--linea); } }
+@media (max-width: 1099px) { .pl-ficha-fondo { z-index: 1200; } body:has(.pl-ficha-fondo) .mc-chat-panel { display: none; } }

@@ -1,11 +1,12 @@
 /* Dibuja un CRM completo a partir de una plantilla (estructura + vistas) y unos datos. Usa el mismo marco visual que
  * CrmPage (.mc, .mc-top, .mc-menu, .mc-main y los temas de crm-extra.css) para que lo que se prueba sea lo que se integra.
  * Si la plantilla no pasa `validarPlantilla`, muestra los errores en vez de dibujarla mal. */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
-import { COMPONENTES, AnimarContext, VelContext } from './vistas'
+import { COMPONENTES, AnimarContext, VelContext, FichaContext } from './vistas'
+import Ficha from './ficha'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe, datosEjemplo } from './datosEjemplo'
@@ -50,12 +51,20 @@ function conTamano(bloques) {
 /** Datos de ejemplo para lo que Shifu agregó: cada sección nueva y cada campo nuevo tiene su propia semilla, así los
  * datos que ya estaban no cambian al agregar algo (no "saltan" los números). Sin ejemplos (nivel vacío) no se inventa nada. */
 function extenderDatos(datos, base, est, nivel) {
-  if (!datos || (!est.secciones?.length && !Object.keys(est.campos || {}).length)) return datos
+  if (!datos || (!est.secciones?.length && !Object.keys(est.campos || {}).length && !Object.keys(est.mapeoEstado || {}).length)) return datos
   const registros = { ...datos.registros }
   for (const sec of est.secciones || []) registros[sec.id] = datosEjemplo({ id: `${base.id}:${sec.id}`, secciones: [sec] }, nivel).registros[sec.id] || []
   for (const [sid, extras] of Object.entries(est.campos || {})) {
     const extra = datosEjemplo({ id: `${base.id}:${sid}:campos`, secciones: [{ id: sid, campos: extras }] }, nivel).registros[sid] || []
     registros[sid] = (registros[sid] || []).map((r, i) => ({ ...r, valores: { ...r.valores, ...(extra[i]?.valores || {}) } }))
+  }
+  // Opciones de estado renombradas o quitadas: cada registro pasa a su nueva opción (nunca queda sin estado).
+  for (const [sid, porCampo] of Object.entries(est.mapeoEstado || {})) {
+    registros[sid] = (registros[sid] || []).map((r) => {
+      let valores = r.valores
+      for (const [cid, mapa] of Object.entries(porCampo)) { let v = valores[cid], n = 0; while (mapa[v] && n++ < 10) v = mapa[v]; if (v !== valores[cid]) valores = { ...valores, [cid]: v } }
+      return valores === r.valores ? r : { ...r, valores }
+    })
   }
   return { ...datos, registros }
 }
@@ -95,6 +104,10 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const datos = useMemo(() => extenderDatos(datosBase, plantillaBase, estructura, nivel), [datosBase, plantillaBase, estructura, nivel])
   useEffect(() => { cargarFuentes(marca) }, [marca])
   const [chatAbierto, setChatAbierto] = useState(true)
+  // Ficha abierta (D28): { seccion, registro } o null.
+  const [abierta, setAbierta] = useState(null)
+  const abrirFicha = useCallback((seccion, registro) => setAbierta({ seccion, registro }), [])
+  const cerrarFicha = useCallback(() => setAbierta(null), [])
   // Cascadas de entrada solo al cargar o al cambiar de sección; al aplicar cambios de Shifu se apaga para no re-animar lo que no cambió.
   const [entrada, setEntrada] = useState(() => animado)
   const ir = (id) => conTransicion(() => { if (animado) setEntrada(true); setVista(id) })
@@ -143,7 +156,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
     )
   }
   return (
-    <AnimarContext.Provider value={animado}><VelContext.Provider value={vel}>
+    <AnimarContext.Provider value={animado}><VelContext.Provider value={vel}><FichaContext.Provider value={abrirFicha}>
     <div className={`mc pl${chatAbierto ? ' con-chat' : ''}`} data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel, ...tokensDeMarca(marca, tema).vars }}>
       <header className="mc-top">
         {marca.logo ? <LogoMarca src={marca.logo} tema={tema} /> : <Logo height={24} color="var(--tx)" />}
@@ -199,9 +212,10 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
           )}
         </main>
       </div>
+      {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} />}
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
       <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
     </div>
-    </VelContext.Provider></AnimarContext.Provider>
+    </FichaContext.Provider></VelContext.Provider></AnimarContext.Provider>
   )
 }

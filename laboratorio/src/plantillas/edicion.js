@@ -84,14 +84,32 @@ const ubicacion = (u) => (u ? `fila ${u.fila}, ${u.lado}` : '')
 
 const slug = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x'
 
+/** Lo que Shifu cambió DENTRO de una sección (D28): campos quitados o renombrados, opciones de un estado, y cómo se ven
+ * su ficha y su tarjeta del tablero. Los datos nunca se borran: un campo quitado solo deja de mostrarse. */
+function ajustarSeccion(x, e) {
+  if (!x.campos) return x
+  const quitados = e.camposQuitados?.[x.id] || [], nombres = e.nombresCampo?.[x.id] || {}, opciones = e.opcionesEstado?.[x.id] || {}
+  return { ...x,
+    campos: x.campos.filter((c) => !quitados.includes(c.id)).map((c) => ({ ...c, ...(nombres[c.id] ? { nombre: nombres[c.id] } : {}), ...(opciones[c.id] ? { opciones: opciones[c.id] } : {}) })),
+    ...(e.ficha?.[x.id] ? { ficha: e.ficha[x.id] } : {}), ...(e.tarjeta?.[x.id] ? { tarjeta: e.tarjeta[x.id] } : {}) }
+}
+
+/** Cómo se ve la ficha de un registro: la que definió la persona o, por defecto, todos sus campos en un grupo. */
+export function fichaDe(seccion, campos) {
+  const ids = new Set(campos.map((c) => c.id))
+  const f = seccion.ficha
+  const grupos = (f?.grupos || [{ titulo: 'Datos', campos: campos.map((c) => c.id) }]).map((g) => ({ ...g, campos: g.campos.filter((id) => ids.has(id)) })).filter((g) => g.campos.length)
+  return { grupos, relacionados: f?.relacionados ?? true, linea_tiempo: f?.linea_tiempo ?? true }
+}
+
 /** La plantilla tal como la ve la persona: la base + lo que Shifu le cambió a la estructura (secciones nuevas, campos
  * agregados, secciones ocultas o renombradas). La usan la pantalla, el validador y el modelo: una sola verdad. */
 export function plantillaEfectiva(plantilla, estado = {}) {
   const e = estado.estructura || {}
-  const base = plantilla.secciones.filter((x) => !(e.ocultas || []).includes(x.id)).map((x) => ({ ...x,
+  const base = plantilla.secciones.filter((x) => !(e.ocultas || []).includes(x.id)).map((x) => ajustarSeccion({ ...x,
     ...(e.titulos?.[x.id] ? { titulo: e.titulos[x.id] } : {}),
-    ...(x.campos && e.campos?.[x.id] ? { campos: [...x.campos, ...e.campos[x.id]] } : {}) }))
-  const nuevas = (e.secciones || []).filter((x) => !(e.ocultas || []).includes(x.id)).map((x) => ({ ...x, campos: [...x.campos, ...(e.campos?.[x.id] || [])], ...(e.titulos?.[x.id] ? { titulo: e.titulos[x.id] } : {}) }))
+    ...(x.campos && e.campos?.[x.id] ? { campos: [...x.campos, ...e.campos[x.id]] } : {}) }, e))
+  const nuevas = (e.secciones || []).filter((x) => !(e.ocultas || []).includes(x.id)).map((x) => ajustarSeccion({ ...x, campos: [...x.campos, ...(e.campos?.[x.id] || [])], ...(e.titulos?.[x.id] ? { titulo: e.titulos[x.id] } : {}) }, e))
   const i = base.findIndex((x) => x.grupo > 0)
   return { ...plantilla, secciones: i < 0 ? [...base, ...nuevas] : [...base.slice(0, i), ...nuevas, ...base.slice(i)] }
 }
@@ -100,6 +118,7 @@ export function plantillaEfectiva(plantilla, estado = {}) {
 export const HERRAMIENTAS_BLOQUEADAS_EN_TOMA = new Set([
   'agregar_bloque', 'cambiar_visual', 'cambiar_tamano', 'mover_bloque', 'quitar_bloque', 'cambiar_rangos',
   'cambiar_marca', 'usar_logo', 'restablecer_marca', 'crear_seccion', 'agregar_campo', 'renombrar_seccion', 'quitar_seccion',
+  'cambiar_ficha', 'cambiar_tarjeta', 'quitar_campo', 'renombrar_campo', 'cambiar_opciones_estado',
 ])
 const GRAF_ALIAS = { barras: 'barras', barra: 'barras', columnas: 'columnas', dona: 'dona', pastel: 'pastel', linea: 'linea', 'línea': 'linea' }
 const NOMBRE_VISTA = { kpis: 'resumen con cifras', tablero: 'tablero por etapas', agenda: 'agenda', vencimientos: 'por vencer', grafico: 'gráfica', tabla: 'lista' }
@@ -331,6 +350,7 @@ export function describirPantalla(plantillaBase, estado) {
       ...(b.vista === 'vencimientos' ? { grupos_actuales: rangosDe(b.opciones).map((r) => (r.desde === null ? 'Vencidos {vencidos:true}' : `De ${r.desde} a ${r.hasta} días {desde:${r.desde},hasta:${r.hasta}}`)) } : {}) })),
     secciones: plantilla.secciones.filter((s) => s.campos || s.fuente).map((s) => ({ id: s.id, titulo: s.titulo,
       campos: camposDe(s, porId).map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones } : {}) })),
+      ficha: fichaDe(s, camposDe(s, porId)), ...(s.tarjeta ? { tarjeta: s.tarjeta.campos } : {}),
       // Qué gráficos se pueden dibujar con ESTA sección (lo decide el código, no el modelo).
       graficos_posibles: compatibles(camposDe(s, porId)).map((g) => `${g.id} (${g.nombre})`) })),
     vistas: Object.fromEntries(VISTAS_INICIO.map((v) => [v, { requiere: VISTAS[v].requiere, opcional: Object.keys(VISTAS[v].opcional || {}) }])),
@@ -479,6 +499,57 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
       const r = conEstructura({ ...est, ocultas: [...(est.ocultas || []), sec.id] }, `Sección «${sec.titulo}» quitada del menú (sus datos se conservan; se puede volver a mostrar). También se quitaron sus bloques del inicio.`)
       return r.ok ? { ...r, estado: { ...r.estado, bloques: r.estado.bloques.filter((b) => b.seccion !== sec.id) } } : r
     }
+    // ── Ficha, tarjeta y campos (D28): todo editable por chat; el código cuida que nada quede huérfano ──
+    case 'cambiar_ficha': {
+      const sec = seccionDe(plantilla, args.seccion); if (!sec?.campos && !sec?.fuente) return no(`la sección «${args.seccion}» no existe o no tiene registros.`)
+      const campos = camposDe(sec, porId), ids = new Set(campos.map((c) => c.id))
+      const grupos = (args.grupos || []).map((g) => ({ titulo: String(g.titulo || 'Datos').slice(0, 28), campos: (g.campos || []).map(String) }))
+      if (!grupos.length) return no('la ficha necesita al menos un grupo con campos.')
+      const malos = grupos.flatMap((g) => g.campos).filter((id) => !ids.has(id))
+      if (malos.length) return no(`estos campos no existen en ${sec.titulo}: ${malos.join(', ')}. Campos: ${campos.map((c) => `${c.id} (${c.nombre})`).join(', ')}.`)
+      const usados = grupos.flatMap((g) => g.campos); const repetido = usados.find((id, i) => usados.indexOf(id) !== i)
+      if (repetido) return no(`el campo «${repetido}» aparece en dos grupos: cada campo va en un solo grupo.`)
+      const ficha = { grupos, relacionados: args.relacionados ?? true, linea_tiempo: args.linea_tiempo ?? true }
+      const fuera = campos.filter((c) => !usados.includes(c.id)).map((c) => c.nombre)
+      return conEstructura({ ...est, ficha: { ...(est.ficha || {}), [sec.id]: ficha } }, `Ficha de ${sec.titulo}: ${grupos.map((g) => `«${g.titulo}» (${g.campos.map((id) => campos.find((c) => c.id === id).nombre).join(', ')})`).join(' · ')}${fuera.length ? `. No se muestran: ${fuera.join(', ')}` : ''}. Relacionados: ${ficha.relacionados ? 'sí' : 'no'}. Línea de tiempo: ${ficha.linea_tiempo ? 'sí' : 'no'}.`)
+    }
+    case 'cambiar_tarjeta': {
+      const sec = seccionDe(plantilla, args.seccion); if (!sec?.campos && !sec?.fuente) return no(`la sección «${args.seccion}» no existe o no tiene registros.`)
+      const campos = camposDe(sec, porId), ids = (args.campos || []).map(String)
+      if (!ids.length || ids.length > 4) return no('la tarjeta lleva de 1 a 4 campos (el primero es el título).')
+      const malos = ids.filter((id) => !campos.some((c) => c.id === id)); if (malos.length) return no(`estos campos no existen en ${sec.titulo}: ${malos.join(', ')}.`)
+      return conEstructura({ ...est, tarjeta: { ...(est.tarjeta || {}), [sec.id]: { campos: ids } } }, `Las tarjetas de ${sec.titulo} ahora muestran: ${ids.map((id) => campos.find((c) => c.id === id).nombre).join(', ')} (el primero como título).`)
+    }
+    case 'quitar_campo': {
+      const sec = seccionDe(plantilla, args.seccion); if (!sec?.campos) return no(`la sección «${args.seccion}» no existe o no tiene campos propios.`)
+      const c = sec.campos.find((x) => x.id === args.campo); if (!c) return no(`«${sec.titulo}» no tiene el campo «${args.campo}». Campos: ${sec.campos.map((x) => x.id).join(', ')}.`)
+      if (sec.campos.length <= 1) return no(`«${sec.titulo}» se quedaría sin campos.`)
+      const enBloques = (estado.bloques || []).filter((b) => b.seccion === sec.id && JSON.stringify(b.opciones || {}).includes(`"${c.id}"`))
+      if (enBloques.length) return no(`el campo «${c.nombre}» lo usan estos bloques del inicio: ${enBloques.map((b) => `${b.uid} (${b.vista})`).join(', ')}. Cámbialos o quítalos primero (con permiso de la persona).`)
+      const limpiar = (obj) => obj?.[sec.id] ? { ...obj, [sec.id]: { ...obj[sec.id], ...(obj[sec.id].campos ? { campos: obj[sec.id].campos.filter((x) => x !== c.id) } : {}), ...(obj[sec.id].grupos ? { grupos: obj[sec.id].grupos.map((g) => ({ ...g, campos: g.campos.filter((x) => x !== c.id) })) } : {}) } } : obj
+      return conEstructura({ ...est, camposQuitados: { ...(est.camposQuitados || {}), [sec.id]: [...(est.camposQuitados?.[sec.id] || []), c.id] }, ficha: limpiar(est.ficha), tarjeta: limpiar(est.tarjeta) },
+        `Campo «${c.nombre}» quitado de «${sec.titulo}» (sus datos se conservan; se puede volver a mostrar).`)
+    }
+    case 'renombrar_campo': {
+      const sec = seccionDe(plantilla, args.seccion); if (!sec?.campos) return no(`la sección «${args.seccion}» no existe o no tiene campos propios.`)
+      const c = sec.campos.find((x) => x.id === args.campo); if (!c) return no(`«${sec.titulo}» no tiene el campo «${args.campo}». Campos: ${sec.campos.map((x) => x.id).join(', ')}.`)
+      const nombre = String(args.nombre || '').trim().slice(0, 24); if (!nombre) return no('falta el nuevo nombre.')
+      if (sec.campos.some((x) => x !== c && x.nombre.toLowerCase() === nombre.toLowerCase())) return no(`«${sec.titulo}» ya tiene un campo «${nombre}».`)
+      return conEstructura({ ...est, nombresCampo: { ...(est.nombresCampo || {}), [sec.id]: { ...(est.nombresCampo?.[sec.id] || {}), [c.id]: nombre } } }, `El campo «${c.nombre}» de «${sec.titulo}» ahora se llama «${nombre}».`)
+    }
+    case 'cambiar_opciones_estado': {
+      const sec = seccionDe(plantilla, args.seccion); if (!sec?.campos) return no(`la sección «${args.seccion}» no existe o no tiene campos propios.`)
+      const c = sec.campos.find((x) => x.id === args.campo); if (!c || c.tipo !== 'estado') return no(`«${args.campo}» no es un campo de estado de «${sec.titulo}». Estados: ${sec.campos.filter((x) => x.tipo === 'estado').map((x) => x.id).join(', ') || 'ninguno'}.`)
+      const opciones = [...new Set((args.opciones || []).map((o) => String(o).trim().slice(0, 24)).filter(Boolean))]
+      if (opciones.length < 2 || opciones.length > 8) return no('un estado lleva de 2 a 8 opciones.')
+      const renombrar = Object.fromEntries(Object.entries(args.renombrar || {}).filter(([v, n]) => c.opciones.includes(v) && opciones.includes(n)))
+      // Ninguna opción desaparece sin destino: los registros que la tenían pasan a la renombrada o a `pasar_a`.
+      const sinDestino = c.opciones.filter((o) => !opciones.includes(o) && !renombrar[o])
+      if (sinDestino.length && !opciones.includes(args.pasar_a)) return no(`las opciones ${sinDestino.map((o) => `«${o}»`).join(', ')} desaparecerían y sus registros quedarían sin estado. Di a cuál pasan con pasar_a (una de: ${opciones.join(', ')}) o usa renombrar {vieja: nueva}.`)
+      const mapa = { ...(est.mapeoEstado?.[sec.id]?.[c.id] || {}), ...renombrar, ...Object.fromEntries(sinDestino.map((o) => [o, args.pasar_a])) }
+      return conEstructura({ ...est, opcionesEstado: { ...(est.opcionesEstado || {}), [sec.id]: { ...(est.opcionesEstado?.[sec.id] || {}), [c.id]: opciones } }, mapeoEstado: { ...(est.mapeoEstado || {}), [sec.id]: { ...(est.mapeoEstado?.[sec.id] || {}), [c.id]: mapa } } },
+        `«${c.nombre}» de «${sec.titulo}» ahora tiene: ${opciones.join(', ')}.${Object.keys(mapa).length ? ` Los registros pasan así: ${Object.entries(mapa).map(([v, n]) => `${v} → ${n}`).join(', ')}.` : ''}`)
+    }
     case 'abrir_seccion': {
       const s = seccionDe(plantilla, args.seccion); if (!s && args.seccion !== 'inicio') return no(`la sección «${args.seccion}» no existe.`)
       return si({ ...estado, vista: s ? s.id : 'inicio' }, `Abierta la sección ${s ? s.titulo : 'Inicio'}.`)
@@ -578,6 +649,14 @@ export const HERRAMIENTAS = [
     titulo: { type: 'string' }, vista: { type: 'string', enum: ['tabla', 'tablero', 'agenda', 'vencimientos'] }, opciones: { type: 'object', additionalProperties: true }, grupo: { type: 'integer', enum: [0, 1] },
     campos: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string' }, tipo: { type: 'string', enum: ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estado'] }, opciones: { type: 'array', items: { type: 'string' } }, ejemplos: { type: 'array', items: { type: 'string' } } }, required: ['nombre', 'tipo'] } } }, ['titulo', 'campos']],
   ['agregar_campo', 'Agrega un campo a una sección existente.', { seccion: { type: 'string' }, nombre: { type: 'string' }, tipo: { type: 'string', enum: ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estado'] }, opciones: { type: 'array', items: { type: 'string' } }, ejemplos: { type: 'array', items: { type: 'string' } } }, ['seccion', 'nombre', 'tipo']],
+  ['cambiar_ficha', 'Define cómo se ve la FICHA de un registro (lo que se abre al tocar un cliente, una cita, un pedido…): grupos con título y los campos de cada uno, en orden. Campos que no pongas no se muestran. relacionados = mostrar lo de otras secciones ligado a este registro; linea_tiempo = sus fechas en orden.', {
+    seccion: { type: 'string' }, grupos: { type: 'array', items: { type: 'object', properties: { titulo: { type: 'string' }, campos: { type: 'array', items: { type: 'string' }, description: 'ids de campos' } }, required: ['titulo', 'campos'] } },
+    relacionados: { type: 'boolean' }, linea_tiempo: { type: 'boolean' } }, ['seccion', 'grupos']],
+  ['cambiar_tarjeta', 'Elige qué campos muestran las TARJETAS del tablero de una sección (1 a 4; el primero es el título).', { seccion: { type: 'string' }, campos: { type: 'array', items: { type: 'string' } } }, ['seccion', 'campos']],
+  ['quitar_campo', 'Deja de mostrar un campo de una sección (sus datos se conservan). Solo si la persona lo pidió.', { seccion: { type: 'string' }, campo: { type: 'string', description: 'id del campo' } }, ['seccion', 'campo']],
+  ['renombrar_campo', 'Cambia el nombre visible de un campo.', { seccion: { type: 'string' }, campo: { type: 'string' }, nombre: { type: 'string' } }, ['seccion', 'campo', 'nombre']],
+  ['cambiar_opciones_estado', 'Cambia las opciones de un campo de estado (agregar, quitar, renombrar o reordenar etapas). Pasa la lista COMPLETA nueva. Si una opción desaparece, di a dónde pasan sus registros: renombrar {vieja: nueva} o pasar_a.', {
+    seccion: { type: 'string' }, campo: { type: 'string' }, opciones: { type: 'array', items: { type: 'string' } }, renombrar: { type: 'object', additionalProperties: { type: 'string' } }, pasar_a: { type: 'string' } }, ['seccion', 'campo', 'opciones']],
   ['renombrar_seccion', 'Cambia el nombre de una sección.', { seccion: { type: 'string' }, titulo: { type: 'string' } }, ['seccion', 'titulo']],
   ['quitar_seccion', 'Quita una sección del menú (y sus bloques del inicio). Solo si la persona lo pidió.', { seccion: { type: 'string' } }, ['seccion']],
   ['volver_a_punto', 'Restaura TODA la pantalla (bloques, marca, secciones, ficha) a como estaba en un punto guardado (ver puntos_guardados: cada uno es la foto de ANTES de un pedido). Úsalo cuando la persona quiere deshacer, volver atrás, "como estaba antes", o cuando un cambio salió mal. Nunca lo uses sin que la persona lo pida o acepte.', { punto: { type: 'integer', minimum: 1 } }, ['punto']],
