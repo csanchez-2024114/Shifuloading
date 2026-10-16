@@ -17,7 +17,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 
-from assistant import memory
+from assistant import citations, memory
 from assistant.agent import OLD_TOOL_NAMES, Context
 from assistant.config import Settings
 
@@ -368,6 +368,8 @@ _INVESTIGADOR_PROMPT = (
     "(vary the queries; never more than {max_searches}), cross-check the sources and return a clear, concise summary "
     "with the sources (URLs) at the end. If something could not be confirmed, say so. If web_search answers that the "
     "limit was reached, stop searching and write the summary with what you already found, saying it is partial. "
+    "Only cite URLs that appear in your web_search results; never write a URL from memory. If no search returned "
+    "results, do not include a sources section and say that the web could not be consulted. "
     "Reply in the task's language."
 )
 
@@ -411,6 +413,11 @@ class _TokenCounter(BaseCallbackHandler):
 def _was_cut(msg) -> bool:
     meta = getattr(msg, "response_metadata", None) or {}
     return bool(meta.get("incomplete_details")) or meta.get("status") == "incomplete"
+
+
+NO_WEB_NOTE = ("[No web search could be run for this research: the summary below comes from the researcher's own "
+               "knowledge, not from the web, and has no sources. Tell the user the web could not be consulted; do not "
+               "present any link as a consulted source.]")
 
 
 def make_subinvestigador(model: BaseChatModel, buscar_web_tool: BaseTool, max_searches: int = 4):
@@ -491,6 +498,11 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
         raw = "\n\n---\n\n".join(found)[:_RAW_FINDINGS_CHARS]
         final = "\n\n".join(p for p in (final.strip(), f"Raw findings so far:\n{raw}" if raw else "") if p)
         final = final or "No search results were obtained."
+    # solo valen las URLs de las búsquedas que se ejecutaron; sin búsquedas, no hay sección de fuentes
+    final, _ = citations.keep_supported(final, "\n".join(found))
+    if not found:
+        final = citations.drop_sources_section(final)
+        notes.append(NO_WEB_NOTE)
     return "\n".join(notes + [final])
 
 

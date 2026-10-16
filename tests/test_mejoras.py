@@ -470,3 +470,34 @@ def test_latex_se_muestra_legible_sin_texto_crudo():
     assert out[2] == '<span class="math block">Σ<sub>i=1</sub><sup>n</sup> i = (n(n+1))/2</span>'
     assert out[3] == "Precio: $5 y $10, sin fórmulas"
     assert not any("\\" in o for o in out)
+
+
+def test_investigador_sin_busquedas_no_da_fuentes_ni_urls():
+    """Prueba real: sin ninguna búsqueda, el investigador escribió 5 URLs de memoria bajo "Fuentes"."""
+    from assistant.tools import NO_WEB_NOTE, investigar
+
+    inventadas = [f"https://ejemplo{i}.gob/ley-{i}" for i in range(5)]
+    texto = ("## Comparación\nLa UE tiene un reglamento ([texto](" + inventadas[0] + ")).\n\n"
+             "### Fuentes oficiales o fiables\n" + "\n".join(f"- Fuente {i}: {u}" for i, u in enumerate(inventadas[1:])))
+    search = SearchConUso()
+    out = investigar(fake_llm(texto), _inv_settings(), search, "task", lambda e: None)
+    assert search.calls == []
+    assert not [u for u in inventadas if u in out] and "http" not in out
+    assert "Fuentes oficiales" not in out and "Fuente 1" not in out  # sin sección de fuentes
+    assert NO_WEB_NOTE in out and "La UE tiene un reglamento (texto)" in out
+
+
+def test_investigador_quita_las_urls_que_no_salieron_de_sus_busquedas():
+    from assistant.tools import NO_WEB_NOTE, investigar
+
+    real, falsa = "https://www.sat.gob.gt/ley-iva", "https://inventada.example/iva"
+
+    def search(query, settings):
+        return f"Resultado para {query}: ver {real}?utm_source=openai", "openai_web_search"
+
+    model = fake_llm(tool_call("web_search", {"query": "iva"}, "s0"), tool_call("web_search", {"query": "credito"}, "s1"),
+                     f"Resumen.\n\nFuentes:\n- [SAT]({real})\n- [Otra]({falsa})\n- {falsa}/pdf")
+    out = investigar(model, _inv_settings(), search, "task", lambda e: None)
+    assert f"[SAT]({real})" in out  # la real se conserva (coincide sin los parámetros)
+    assert "inventada.example" not in out and "- Otra" in out
+    assert NO_WEB_NOTE not in out

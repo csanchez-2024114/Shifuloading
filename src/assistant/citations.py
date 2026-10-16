@@ -35,6 +35,32 @@ def _links(text: str) -> list[tuple[str, str, str]]:
     return out
 
 
+# encabezado de una sección de fuentes ("## Fuentes", "**Sources:**", "Referencias:"...), sin acentos ni mayúsculas
+_SOURCES_HEADING = re.compile(r"^\s*(#{1,6}\s*)?(\*\*|__)?\s*(fuentes|sources|referencias|references|bibliograf\w*)"
+                              r"\b[^\n]*$", re.I | re.M)
+_HEADING = re.compile(r"^\s*#{1,6}\s", re.M)
+
+
+def keep_supported(text: str, evidence: str) -> tuple[str, list[str]]:
+    """Quita de `text` las URLs que no aparecen en `evidence` (de un enlace markdown queda el título; una URL suelta
+    desaparece). Devuelve (texto, URLs quitadas)."""
+    supported = {normalize_url(u) for u in urls(evidence)}
+    removed = []
+    for whole, title, url in _links(text):
+        if normalize_url(url) not in supported:
+            text = text.replace(whole, title, 1)
+            removed.append(url)
+    return text, removed
+
+
+def drop_sources_section(text: str) -> str:
+    """Quita las secciones de fuentes: desde su encabezado hasta el siguiente encabezado markdown o el final."""
+    while m := _SOURCES_HEADING.search(text):
+        nxt = _HEADING.search(text, m.end())
+        text = text[:m.start()] + (text[nxt.start():] if nxt else "")
+    return text.rstrip()
+
+
 def _numbers(text: str) -> set[str]:
     return {n.replace(",", ".") for n in _NUMBER.findall(text)}
 
