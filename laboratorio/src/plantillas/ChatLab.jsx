@@ -110,7 +110,8 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     const t = (texto || '').trim()
     if ((!t && !img) || escribiendo) return
     if (img && !img.url && !img.pdf && !img.piezas?.length) return
-    setMensajes((l) => [...l, mensaje('yo', t || (img?.pdf ? `📄 ${img.nombre}` : ''), img?.url)]); setTxt(''); setImagen(null); setErrorImg('')
+    setMensajes((l) => [...l, mensaje('yo', (img?.piezas?.length && !img.url ? `[${img.piezas.map((x) => x.nombre || x.tipo).join(', ')}] ` : '') + (t || (img?.pdf ? `📄 ${img.nombre}` : '')), img?.url)]); setTxt(''); setImagen(null); setErrorImg('')
+    if (img?.piezas?.length) soltarPiezas()
     setEscribiendo(true)
     try {
       const historial = mensajes.slice(-12).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 500) }))
@@ -157,6 +158,12 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     } catch { setErrorImg('No pude usar esa imagen.') }
   }
   const archivoRef = useRef(null)
+  // Piezas elegidas con doble clic o manteniendo presionado (seleccion.jsx): llegan como si fueran de una captura, sin imagen.
+  useEffect(() => {
+    const llegan = (e) => { setImagen({ url: null, piezas: e.detail }); setErrorImg(''); setAbierto(true); setTimeout(() => campo.current?.focus(), 50) }
+    window.addEventListener('lab-piezas', llegan); return () => window.removeEventListener('lab-piezas', llegan)
+  }, [])
+  const soltarPiezas = () => window.dispatchEvent(new Event('lab-piezas-usadas'))
   const ficha = estadoActual()?.toma?.activa ? tarjetaToma(plantilla, estadoActual()) : null
 
   return createPortal(
@@ -178,7 +185,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
             <div className="mc-adjunto" role="status">
               {imagen?.url && <img src={imagen.url} alt="Captura lista para enviar" />}{imagen?.pdf && <span>📄 {imagen.nombre}</span>}{imagen?.piezas?.length > 0 && <span className="lab-piezas">Elegiste: {imagen.piezas.map((x) => <i key={`${x.tipo}${x.id}${x.nombre}`}>{x.nombre || x.tipo}</i>)}</span>}
               <span>{imagen?.piezas?.length ? 'Dile a Shifu qué hacer con lo que elegiste.' : imagen ? 'Captura lista. Cuéntale a Shifu qué quieres cambiar ahí.' : errorImg}</span>
-              <button type="button" onClick={() => { setImagen(null); setErrorImg('') }} aria-label="Quitar la captura"><LuX /></button>
+              <button type="button" onClick={() => { if (imagen?.piezas?.length) soltarPiezas(); setImagen(null); setErrorImg('') }} aria-label="Quitar la captura"><LuX /></button>
             </div>
           )}
           {ficha && (

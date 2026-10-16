@@ -375,3 +375,29 @@
 /* Con el chat abierto, la ficha se pone a su izquierda (se edita por chat mirándola); en pantallas angostas va encima. */
 @media (min-width: 1100px) { .pl.con-chat .pl-ficha { margin-right: 420px; border-right: 1px solid var(--linea); } }
 @media (max-width: 1099px) { .pl-ficha-fondo { z-index: 1200; } body:has(.pl-ficha-fondo) .mc-chat-panel { display: none; } }
+
+/* ── Elegir piezas para el chat (D39) ── */
+[data-elegido] { outline: 3px solid var(--acento); outline-offset: 2px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--acento) 18%, transparent); }
+.pl-inicio > [data-bloque] { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pl.eligiendo .pl-inicio > [data-bloque] { cursor: pointer; animation: pl-tiembla 1.6s ease-in-out infinite; }
+.pl.eligiendo .pl-inicio > [data-bloque] * { pointer-events: none; }
+.pl.eligiendo .pl-inicio > [data-elegido] { animation: none; }
+@keyframes pl-tiembla { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-.25deg); } 75% { transform: rotate(.25deg); } }
+.pl-sel-barra { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 1300; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--card); border: 1px solid var(--linea); box-shadow: 0 12px 40px rgba(0, 0, 0, .3); color: var(--tx); font-size: 14px; white-space: nowrap; max-width: calc(100vw - 24px); }
+.pl-sel-barra button { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--linea); background: transparent; color: var(--tx); font: 600 13px var(--fuente); cursor: pointer; }
+.pl-sel-barra button.si { background: var(--acento); border-color: var(--acento); color: #fff; }
+.pl-sel-barra button:disabled { opacity: .45; }
+@media (prefers-reduced-motion: reduce) { .pl.eligiendo .pl-inicio > [data-bloque] { animation: none; } }
+
+/* ── Chat por tamaño de pantalla (D39) ──
+ * Celular: el chat es su propia pantalla completa (la vista del CRM y la del chat van por separado).
+ * Tablet: híbrido, el chat fijo a la derecha y el CRM encogido a la izquierda. PC: flotante (como antes). */
+@media (max-width: 700px) {
+  .mc-chat-panel { position: fixed; inset: 0; width: 100%; height: 100dvh; max-height: none; border-radius: 0; border: 0; z-index: 1250; }
+  .mc-chat:has(.mc-chat-panel:not([hidden])) .mc-chat-btn { display: none; }
+}
+@media (min-width: 701px) and (max-width: 1099px) {
+  .mc-chat-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 44vw); height: 100dvh; max-height: none; border-radius: 0; border-width: 0 0 0 1px; z-index: 60; }
+  .pl.con-chat { padding-right: min(400px, 44vw); box-sizing: border-box; }
+  .mc-chat:has(.mc-chat-panel:not([hidden])) .mc-chat-btn { display: none; }
+}

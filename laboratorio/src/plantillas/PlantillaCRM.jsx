@@ -7,6 +7,7 @@ import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
 import { COMPONENTES, AnimarContext, VelContext, FichaContext } from './vistas'
 import Ficha from './ficha'
+import { useSeleccion } from './seleccion'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe, datosEjemplo } from './datosEjemplo'
@@ -108,6 +109,9 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const [abierta, setAbierta] = useState(null)
   const abrirFicha = useCallback((seccion, registro) => setAbierta({ seccion, registro }), [])
   const cerrarFicha = useCallback(() => setAbierta(null), [])
+  // Elegir piezas con doble clic (PC) o manteniendo presionado (táctil) para editarlas con Shifu (D39).
+  const raiz = useRef(null)
+  const { modo: eligiendoPiezas, barra: barraSeleccion } = useSeleccion(raiz)
   // Cascadas de entrada solo al cargar o al cambiar de sección; al aplicar cambios de Shifu se apaga para no re-animar lo que no cambió.
   const [entrada, setEntrada] = useState(() => animado)
   const ir = (id) => conTransicion(() => { if (animado) setEntrada(true); setVista(id) })
@@ -157,7 +161,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   }
   return (
     <AnimarContext.Provider value={animado}><VelContext.Provider value={vel}><FichaContext.Provider value={abrirFicha}>
-    <div className={`mc pl${chatAbierto ? ' con-chat' : ''}`} data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel, ...tokensDeMarca(marca, tema).vars }}>
+    <div ref={raiz} className={`mc pl${chatAbierto ? ' con-chat' : ''}${eligiendoPiezas ? ' eligiendo' : ''}`} data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel, ...tokensDeMarca(marca, tema).vars }}>
       <header className="mc-top">
         {marca.logo ? <LogoMarca src={marca.logo} tema={tema} /> : <Logo height={24} color="var(--tx)" />}
         <span className="mc-negocio">{marca.nombre || negocio}</span>
@@ -212,6 +216,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
           )}
         </main>
       </div>
+      {barraSeleccion}
       {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} />}
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
       <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />

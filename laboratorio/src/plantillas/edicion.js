@@ -6,6 +6,9 @@ import { VISTAS, revisarVista, camposDe, validarPlantilla, TIPOS_CAMPO } from '.
 import { compatibles, GRAFICOS, opcionesPorDefecto } from './graficos.jsx'
 import { FUENTES, esHex, tokensDeMarca, revisarLogo } from './marca.js'
 
+/** Biblioteca de pestañas (D30, nivel 2): secciones listas (cobros, inventario…) que pasan servidor/calidad-pestanas.mjs. */
+export const PESTANAS = Object.fromEntries(Object.values(import.meta.glob('./biblioteca-pestanas/*.js', { eager: true })).map((m) => m.default).filter(Boolean).map((p) => [p.id, p]))
+
 export const ANCHOS_COL = [3, 4, 6, 8, 12]
 export const ALTO_MAX = 4
 const VISTAS_INICIO = ['kpis', 'tablero', 'agenda', 'vencimientos', 'grafico', 'tabla']
@@ -356,6 +359,8 @@ export function describirPantalla(plantillaBase, estado) {
     vistas: Object.fromEntries(VISTAS_INICIO.map((v) => [v, { requiere: VISTAS[v].requiere, opcional: Object.keys(VISTAS[v].opcional || {}) }])),
     grafico: 'vista "grafico" con opciones {tipo: <id de graficos_posibles>} y opcionalmente {funcion: conteo|suma|promedio|mediana|minimo|maximo|moda|desviacion, valor: campo numérico, agrupar: campo o "mes", meta, top}. La vieja "grafica" (barras/dona/linea) sigue existiendo en bloques que ya la tienen.',
     toma: tomaCtx,
+    // Pestañas listas de la biblioteca (para crear_seccion con «desde»): id y cómo la suele pedir la gente.
+    pestanas_base: Object.values(PESTANAS).map((p) => `${p.id} (${p.palabras.slice(0, 2).join(', ')})`),
   }
 }
 
@@ -470,15 +475,24 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
       // (sin candado por palabras: es reversible con los puntos de guardado internos)
       return si({ ...estado, marca: {} }, 'Volvió el diseño base de Shifu (colores, fondos y tipografía originales, sin logo).')
     case 'crear_seccion': {
+      // Desde la biblioteca: campos, vista y piezas ya probados (la IA no inventa campos cuando existe la pestaña).
+      const base = args.desde ? PESTANAS[args.desde] : null
+      if (args.desde && !base) return no(`no hay una pestaña base «${args.desde}». Las que hay: ${Object.keys(PESTANAS).join(', ')}. O créala con sus campos sin «desde».`)
+      if (base) { args = { ...args, titulo: args.titulo || base.seccion.titulo, vista: base.seccion.vista, opciones: base.seccion.opciones, campos: base.seccion.campos } }
       const titulo = String(args.titulo || '').trim().slice(0, 28); if (!titulo) return no('falta el título de la sección.')
       if (plantilla.secciones.some((x) => x.titulo.toLowerCase() === titulo.toLowerCase())) return no(`ya existe una sección «${titulo}»: úsala o agrégale campos en vez de duplicarla.`)
-      const campos = (args.campos || []).slice(0, 8).map((c) => ({ id: slug(c.nombre), nombre: String(c.nombre).slice(0, 24), tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones.slice(0, 7).map(String) } : {}), ...(c.ejemplos ? { ejemplos: c.ejemplos.slice(0, 12).map(String) } : {}) }))
+      const campos = (args.campos || []).slice(0, 8).map((c) => ({ id: base ? c.id : slug(c.nombre), nombre: String(c.nombre).slice(0, 24), tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones.slice(0, 7).map(String) } : {}), ...(c.ejemplos ? { ejemplos: c.ejemplos.slice(0, 12).map(String) } : {}), ...(c.rango ? { rango: c.rango } : {}) }))
       if (!campos.length) return no('una sección necesita al menos un campo.')
       const bad = campos.find((c) => !TIPOS_CAMPO.includes(c.tipo)); if (bad) return no(`el campo «${bad.nombre}» tiene tipo «${bad.tipo}»; tipos posibles: ${TIPOS_CAMPO.join(', ')}.`)
       let id = slug(titulo); while (plantilla.secciones.some((x) => x.id === id)) id += '_2'
       const vista = ['tabla', 'tablero', 'agenda', 'vencimientos'].includes(args.vista) ? args.vista : 'tabla'
-      const secc = { id, titulo, grupo: args.grupo === 1 ? 1 : 0, icono: { tablero: 'tablero', agenda: 'calendario', vencimientos: 'reloj' }[vista] || 'tabla', vista, ...(args.opciones ? { opciones: args.opciones } : {}), campos }
-      return conEstructura({ ...est, secciones: [...(est.secciones || []), secc] }, `Sección «${titulo}» creada (id ${id}) con ${campos.length} campos: ${campos.map((c) => `${c.nombre} (${c.tipo})`).join(', ')}. Vista: ${vista}. Puedes ponerla en el inicio con agregar_bloque.`)
+      const secc = { id, titulo, grupo: args.grupo === 1 ? 1 : 0, icono: base?.seccion.icono || { tablero: 'tablero', agenda: 'calendario', vencimientos: 'reloj' }[vista] || 'tabla', vista, ...(args.opciones ? { opciones: args.opciones } : {}), campos }
+      const r = conEstructura({ ...est, secciones: [...(est.secciones || []), secc] }, `Sección «${titulo}» creada (id ${id})${base ? ` desde la pestaña base «${base.id}»` : ''} con ${campos.length} campos: ${campos.map((c) => `${c.nombre} (${c.tipo})`).join(', ')}. Vista: ${vista}.`)
+      if (!r.ok) return r
+      if (!base || !args.con_piezas) return { ...r, resultado: `${r.resultado} Puedes ponerla en el inicio con agregar_bloque${base ? ' o creándola con con_piezas' : ''}.` }
+      // Sus piezas sugeridas van al inicio (el acomodo automático tapa los huecos).
+      const nuevas = base.piezas.map((w) => ({ ...w, uid: nuevoUid(), seccion: id, ancho: w.ancho || (['kpis', 'tablero', 'agenda'].includes(w.vista) ? 12 : 6), alto: w.vista === 'kpis' ? 1 : w.alto || 2 }))
+      return { ...r, estado: { ...r.estado, bloques: [...r.estado.bloques, ...nuevas] }, resultado: `${r.resultado} En el inicio se agregaron ${nuevas.length} bloques: ${nuevas.map((b) => `${b.uid} (${b.vista === 'grafico' ? `gráfico ${b.opciones.tipo}` : b.vista})`).join(', ')}.` }
     }
     case 'agregar_campo': {
       const sec = seccionDe(plantilla, args.seccion); if (!sec?.campos) return no(`la sección «${args.seccion}» no existe o no tiene campos.`)
@@ -636,7 +650,7 @@ export const HERRAMIENTAS = [
     ancho: { type: 'integer', enum: ANCHOS_COL }, alto: { type: 'integer', minimum: 1, maximum: ALTO_MAX }, posicion: { type: 'integer', minimum: 1 } }, ['seccion', 'vista']],
   ['cambiar_visual', 'Cambia la vista o sus opciones de un bloque existente (mantiene su lugar y tamaño).', {
     bloque: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', additionalProperties: true }, seccion: { type: 'string' } }, ['bloque', 'vista']],
-  ['cambiar_tamano', 'Cambia el ancho (columnas de 12) y/o el alto (filas) de un bloque.', { bloque: { type: 'string' }, ancho: { type: 'integer', enum: ANCHOS_COL }, alto: { type: 'integer', minimum: 1, maximum: ALTO_MAX } }, ['bloque']],
+  ['cambiar_tamano', 'Cambia el ancho (columnas de 12) y/o el alto (filas) de un bloque, SOLO cuando la persona pidió cambiar ese tamaño. No la uses para acomodar después de quitar o agregar: el código tapa los huecos solo (acomodo automático).', { bloque: { type: 'string' }, ancho: { type: 'integer', enum: ANCHOS_COL }, alto: { type: 'integer', minimum: 1, maximum: ALTO_MAX } }, ['bloque']],
   ['mover_bloque', 'Cambia el orden: pone el bloque en esa posición (1 = primero). Para que algo quede a la derecha de otro, va justo después y la suma de anchos de la fila debe ser ≤ 12.', { bloque: { type: 'string' }, posicion: { type: 'integer', minimum: 1 } }, ['bloque', 'posicion']],
   ['cambiar_rangos', 'Define los grupos de un bloque de vencimientos. Reemplaza TODOS los rangos: incluye los que se quedan.', {
     bloque: { type: 'string' }, rangos: { type: 'array', items: { type: 'object', properties: { vencidos: { type: 'boolean' }, desde: { type: 'integer' }, hasta: { type: 'integer' } } } } }, ['bloque', 'rangos']],
@@ -645,9 +659,10 @@ export const HERRAMIENTAS = [
     primario: { type: 'string' }, secundario: { type: 'string' }, fondo: { type: 'string' }, superficie: { type: 'string' }, texto: { type: 'string' },
     fuenteTitulos: { type: 'string', enum: Object.keys(FUENTES) }, fuenteTexto: { type: 'string', enum: Object.keys(FUENTES) }, nombre: { type: 'string' } }, []],
   ['usar_logo', 'Pone como logo del negocio la imagen que la persona adjuntó EN ESTE mensaje (SVG/PNG/WebP con fondo transparente).', {}, []],
-  ['crear_seccion', 'Crea una sección NUEVA en el menú, con sus campos (máx. 8). Úsala cuando la persona quiere llevar algo que hoy no existe (inventario, cobros, proveedores, lo que sea). Para tablero/vencimientos/agenda pasa opciones (por: id campo estado / fecha: id campo fecha…); los id de campo son el nombre en minúsculas sin acentos con _ .', {
+  ['crear_seccion', 'Crea una sección NUEVA en el menú. Si lo que pide está en "pestanas_base", usa desde = ese id (trae campos, vista y piezas probados; no pases campos) y con_piezas = true si quiere verla también en el inicio. Si no está, pásale sus campos (máx. 8). Úsala cuando la persona quiere llevar algo que hoy no existe (inventario, cobros, proveedores, lo que sea). Para tablero/vencimientos/agenda pasa opciones (por: id campo estado / fecha: id campo fecha…); los id de campo son el nombre en minúsculas sin acentos con _ .', {
+    desde: { type: 'string', description: 'id de pestanas_base' }, con_piezas: { type: 'boolean' },
     titulo: { type: 'string' }, vista: { type: 'string', enum: ['tabla', 'tablero', 'agenda', 'vencimientos'] }, opciones: { type: 'object', additionalProperties: true }, grupo: { type: 'integer', enum: [0, 1] },
-    campos: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string' }, tipo: { type: 'string', enum: ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estado'] }, opciones: { type: 'array', items: { type: 'string' } }, ejemplos: { type: 'array', items: { type: 'string' } } }, required: ['nombre', 'tipo'] } } }, ['titulo', 'campos']],
+    campos: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string' }, tipo: { type: 'string', enum: ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estado'] }, opciones: { type: 'array', items: { type: 'string' } }, ejemplos: { type: 'array', items: { type: 'string' } } }, required: ['nombre', 'tipo'] } } }, []],
   ['agregar_campo', 'Agrega un campo a una sección existente.', { seccion: { type: 'string' }, nombre: { type: 'string' }, tipo: { type: 'string', enum: ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estado'] }, opciones: { type: 'array', items: { type: 'string' } }, ejemplos: { type: 'array', items: { type: 'string' } } }, ['seccion', 'nombre', 'tipo']],
   ['cambiar_ficha', 'Define cómo se ve la FICHA de un registro (lo que se abre al tocar un cliente, una cita, un pedido…): grupos con título y los campos de cada uno, en orden. Campos que no pongas no se muestran. relacionados = mostrar lo de otras secciones ligado a este registro; linea_tiempo = sus fechas en orden.', {
     seccion: { type: 'string' }, grupos: { type: 'array', items: { type: 'object', properties: { titulo: { type: 'string' }, campos: { type: 'array', items: { type: 'string' }, description: 'ids de campos' } }, required: ['titulo', 'campos'] } },
