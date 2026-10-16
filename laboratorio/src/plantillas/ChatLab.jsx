@@ -82,8 +82,7 @@ function Sugerencias({ deshabilitado, onElegir, ideas = SUGERENCIAS }) {
   )
 }
 
-export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion, contexto, puntos = [], onGuardarPunto, onVolver }) {
-  const [verPuntos, setVerPuntos] = useState(false)
+export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion, contexto }) {
   const [abierto, setAbierto] = useState(true)
   useEffect(() => { onAbierto?.(abierto) }, [abierto]) // eslint-disable-line react-hooks/exhaustive-deps
   const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Esta es la pantalla de **${plantilla.nombre}**. Dime qué quieres ver distinto: quitar, agregar, agrandar, achicar o mover cualquier bloque.`)])
@@ -111,12 +110,6 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     const t = (texto || '').trim()
     if ((!t && !img) || escribiendo) return
     if (img && !img.url && !img.pdf && !img.piezas?.length) return
-    // "deshaz", "vuelve como estaba": lo resuelve el código con los puntos de guardado (sin IA, no puede fallar a medias).
-    if (!img && /^\s*(deshaz|deshacer|undo|regr[eé]salo|vuelve(lo)?\s+(como\s+estaba|atr[aá]s|al\s+punto(\s+anterior)?)|vuelve\s+al\s+[uú]ltimo\s+punto)\b/i.test(t)) {
-      const p = onVolver?.()
-      setMensajes((l) => [...l, mensaje('yo', t), mensaje('shifu', p ? `Listo, volví a como estaba (${p.etiqueta.toLowerCase()}, ${p.hora}).` : 'No hay ningún cambio anterior al que volver.')])
-      setTxt(''); return
-    }
     setMensajes((l) => [...l, mensaje('yo', t || (img?.pdf ? `📄 ${img.nombre}` : ''), img?.url)]); setTxt(''); setImagen(null); setErrorImg('')
     setEscribiendo(true)
     try {
@@ -170,17 +163,8 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     <div className="mc-chat" data-tema={tema}>
       {abierto && (
         <section className="mc-chat-panel" aria-label="Chat con Shifu" hidden={eligiendo || capturando}>
-          <header><ShifuAvatar size={34} /><div className="lab-puntos-barra" style={{ order: 3, display: 'flex', gap: 4 }}>
-              <button type="button" title="Deshacer el último cambio" aria-label="Deshacer el último cambio" disabled={!puntos.length || escribiendo} onClick={() => { const p = onVolver?.(); if (p) setMensajes((l) => [...l, mensaje('shifu', `Volví a como estaba (${p.hora}).`)]) }}>↶</button>
-              <button type="button" title="Guardar este punto (para volver aquí si algo sale mal)" aria-label="Guardar punto" onClick={() => { onGuardarPunto?.(); setMensajes((l) => [...l, mensaje('shifu', '📌 Guardé este punto. Si algo sale mal, ábrelo desde ⏱ o dime «vuelve al punto».')]) }}>📌</button>
-              <button type="button" title="Puntos guardados" aria-label="Ver puntos guardados" aria-expanded={verPuntos} disabled={!puntos.length} onClick={() => setVerPuntos(!verPuntos)}>⏱ {puntos.length || ''}</button>
-            </div><div><b>Shifu</b><small>{guion ? `Demo: pedido ${Math.min(paso, guion.length)} de ${guion.length}` : 'Edita el diseño de tu inicio'}</small></div>
+          <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>{guion ? `Demo: pedido ${Math.min(paso, guion.length)} de ${guion.length}` : 'Edita el diseño de tu inicio'}</small></div>
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
-          {verPuntos && (
-            <ul className="lab-puntos" aria-label="Puntos guardados">{[...puntos].reverse().map((p) => (
-              <li key={p.id}><span>{p.manual ? '📌' : '•'} {p.hora} · {p.etiqueta}</span><button type="button" onClick={() => { onVolver?.(p.id); setVerPuntos(false); setMensajes((l) => [...l, mensaje('shifu', `Volví al punto de las ${p.hora}.`)]) }}>Volver aquí</button></li>
-            ))}</ul>
-          )}
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
               <div key={m.id} className={`cb ${m.de}`}>{m.de === 'shifu' && <ShifuAvatar size={26} />}

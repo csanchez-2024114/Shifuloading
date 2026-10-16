@@ -284,6 +284,7 @@ export function describirPantalla(plantillaBase, estado) {
   } : { activa: false }
   return {
     plantilla: plantilla.nombre,
+    puntos_guardados: (estado.puntos || []).map((p) => ({ punto: p.n, antes_de: p.antes_de, hora: p.hora })),
     marca: { ...(estado.marca || {}), logo: estado.marca?.logo ? '(tiene logo)' : '(sin logo)', fuentes_permitidas: Object.keys(FUENTES), nota: 'Branding: cualquier color (hex) de fondo, superficie, texto, principal y secundario, y tipografía de títulos y de texto. El código ajusta lo que no se lea.' },
     rejilla: 'Inicio en 12 columnas. ancho ∈ [3,4,6,8,12] (3 = cuatro por fila, 12 = ancho completo). alto ∈ 1..4 filas. Todo debe caber en una pantalla: más bloques = bloques más bajos.',
     bloques: estado.bloques.map((b, i) => ({ id: b.uid, posicion: i + 1, donde_se_ve: ubicacion(ubicar(estado.bloques)[b.uid]), vista: b.vista, seccion: b.seccion, titulo_seccion: porId[b.seccion]?.titulo, opciones: b.opciones, ancho: b.ancho, alto: b.alto,
@@ -539,6 +540,7 @@ export const HERRAMIENTAS = [
   ['agregar_campo', 'Agrega un campo a una sección existente.', { seccion: { type: 'string' }, nombre: { type: 'string' }, tipo: { type: 'string', enum: ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estado'] }, opciones: { type: 'array', items: { type: 'string' } }, ejemplos: { type: 'array', items: { type: 'string' } } }, ['seccion', 'nombre', 'tipo']],
   ['renombrar_seccion', 'Cambia el nombre de una sección.', { seccion: { type: 'string' }, titulo: { type: 'string' } }, ['seccion', 'titulo']],
   ['quitar_seccion', 'Quita una sección del menú (y sus bloques del inicio). Solo si la persona lo pidió.', { seccion: { type: 'string' } }, ['seccion']],
+  ['volver_a_punto', 'Restaura TODA la pantalla (bloques, marca, secciones, ficha) a como estaba en un punto guardado (ver puntos_guardados: cada uno es la foto de ANTES de un pedido). Úsalo cuando la persona quiere deshacer, volver atrás, "como estaba antes", o cuando un cambio salió mal. Nunca lo uses sin que la persona lo pida o acepte.', { punto: { type: 'integer', minimum: 1 } }, ['punto']],
   ['restablecer_marca', 'Vuelve al diseño base de Shifu (quita colores, tipografías y logo propios).', {}, []],
   ['abrir_toma', 'Abre la toma de requerimientos cuando la persona pide DISEÑAR o REHACER la pantalla de inicio o un CRM completo. NO uses esto para cambios puntuales (mover, achicar, un solo bloque): esos van directo con las herramientas de pantalla.', {
     objetivo: { type: 'string', description: 'solo si lo dijo en este mensaje' } }, []],
