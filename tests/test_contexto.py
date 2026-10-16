@@ -91,14 +91,15 @@ def _client(agent, settings, store=None):
 
 
 def test_hilo_nuevo_empieza_en_el_contexto_base_estimado(make_settings):
-    from assistant.agent import fixed_prompt_tokens
+    from assistant.agent import system_prompt_text
+    from assistant.context import prompt_tokens
 
     s = make_settings(context_window_tokens=128000)
     agent = _agent(s, usage_chat("x"))
     data = _client(agent, s).get(f"/threads/{uid()}/context").json()
     assert data["estimated"] and data["tokens"] == agent.base_context_tokens > 1000
-    assert agent.base_context_tokens == fixed_prompt_tokens(agent.nodes["tools"].bound.tools_by_name.values(),
-                                                            settings=s)
+    tools = agent.nodes["tools"].bound.tools_by_name.values()
+    assert agent.base_context_tokens == prompt_tokens(system_prompt_text(s), tools)
     assert data["window"] == 128000 and data["percent"] == round(100 * data["tokens"] / 128000, 1)
     assert data["total_consumed"] == 0 and data["compactions"] == 0 and data["can_compact"]
 
@@ -245,6 +246,17 @@ def _hilo_con_resultados_grandes():
     msgs += [HumanMessage("pregunta de memoria"), tool_call("search_memories", {"query": "x"}, "m1"),
              ToolMessage("recuerdo " + grande, tool_call_id="m1", name="search_memories"), AIMessage("según tu memoria")]
     return msgs
+
+
+def test_conteo_usa_el_texto_no_el_contenido_crudo_de_la_responses_api():
+    from assistant.context import message_tokens
+
+    texto = "La historia de la imprenta no empieza con Gutenberg. " * 20
+    crudo = AIMessage(content=[{"type": "reasoning", "id": "rs_" + "x" * 60, "summary": []},
+                               {"type": "text", "text": texto, "id": "msg_" + "y" * 60,
+                                "annotations": [{"type": "url_citation", "url": "https://ejemplo.com/" + "z" * 80}]}])
+    assert message_tokens([crudo]) == message_tokens([AIMessage(content=texto)])
+    assert message_tokens([crudo]) < count_tokens_approximately([crudo])  # sin ids, anotaciones ni razonamiento
 
 
 def test_poda_viejos_conserva_recientes_llamadas_respuestas_y_memoria():

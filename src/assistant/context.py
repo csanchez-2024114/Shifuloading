@@ -1,7 +1,9 @@
 """Contexto de cada conversación: medidor (tokens que enviaría la siguiente llamada), poda de resultados viejos de
 herramientas (COMPACT_PRUNE_TOOLS) y registro de compactaciones. Todo es por hilo: vive en su checkpoint."""
+import json
 import logging
 import operator
+from functools import lru_cache
 from typing import Annotated
 
 from langchain.agents.middleware import AgentMiddleware, AgentState
@@ -18,6 +20,57 @@ class ContextState(AgentState):
     """Campos extra del estado del hilo (MedidorContexto y la compactación)."""
     context_stats: NotRequired[dict]                              # totales consumidos, último turno, overhead medido
     compaction_log: NotRequired[Annotated[list, operator.add]]   # un registro por compactación
+
+
+# --------------------------------------------------------------------------- conteo
+
+
+MESSAGE_OVERHEAD = 4  # tokens de formato por mensaje (rol y separadores)
+
+
+@lru_cache(maxsize=1)
+def _encoding():
+    try:
+        import tiktoken
+
+        return tiktoken.get_encoding("o200k_base")  # la de los modelos actuales de OpenAI
+    except Exception:  # noqa: BLE001 - sin tiktoken: estimación por caracteres
+        return None
+
+
+def message_tokens(messages) -> int:
+    """Tokens de lo que se reenvía de cada mensaje: su texto y sus llamadas a herramientas (nombre y argumentos).
+    No usa el contenido crudo: con la Responses API trae bloques con ids y anotaciones que no son texto (prueba real:
+    count_tokens_approximately daba 2,499 a una respuesta de 1,209 tokens reales)."""
+    enc = _encoding()
+    if enc is None:
+        return count_tokens_approximately(messages)
+    total = 0
+    for m in messages:
+        total += MESSAGE_OVERHEAD + len(enc.encode(_text(m)))
+        for call in getattr(m, "tool_calls", None) or []:
+            total += MESSAGE_OVERHEAD + len(enc.encode(call.get("name", "") + json.dumps(call.get("args", {}),
+                                                                                         ensure_ascii=False)))
+    return total
+
+
+TOOL_OVERHEAD = 2  # tokens de formato por herramienta
+
+
+def prompt_tokens(system_text: str, tools=()) -> int:
+    """Contexto base de una conversación: prompt del sistema + herramientas. De cada herramienta cuenta nombre,
+    descripción y propiedades de los parámetros: el JSON completo del esquema sobrestimaba (prueba real: 2,740
+    estimados frente a ~2,435 reales; así, 2,431)."""
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+
+    functions = [convert_to_openai_tool(t)["function"] for t in tools]
+    enc = _encoding()
+    if enc is None:
+        return count_tokens_approximately([system_text]) + len(json.dumps(functions, ensure_ascii=False)) // 4
+    return len(enc.encode(system_text)) + sum(
+        TOOL_OVERHEAD + len(enc.encode(f["name"] + f.get("description", "")
+                                       + json.dumps((f.get("parameters") or {}).get("properties", {}), ensure_ascii=False)))
+        for f in functions)
 
 
 # --------------------------------------------------------------------------- capa 1: poda
@@ -57,7 +110,7 @@ def prune_tool_results(messages, age: int) -> list:
     for i, m in enumerate(messages):
         if (isinstance(m, ToolMessage) and i < start and last - i > age and m.name not in PRUNE_KEEP_TOOLS
                 and not _text(m).startswith(_PRUNED_PREFIX)):
-            tokens = count_tokens_approximately([m])
+            tokens = message_tokens([m])
             if tokens >= PRUNE_MIN_TOKENS:
                 m = m.model_copy(update={"content": PRUNED_MSG.format(name=m.name or "tool", tokens=tokens)})
         out.append(m)
@@ -102,9 +155,9 @@ def context_in_use(messages, base: int, prune_age: int = 0, overhead: int | None
         m = view[i]
         usage = getattr(m, "usage_metadata", None) if isinstance(m, AIMessage) else None
         if usage and usage.get("input_tokens") and m.id not in stale:
-            after = count_tokens_approximately(view[i + 1:]) if i + 1 < len(view) else 0
+            after = message_tokens(view[i + 1:]) if i + 1 < len(view) else 0
             return usage["input_tokens"] + visible_output(usage) + after, False
-    return (overhead or base) + (count_tokens_approximately(view) if view else 0), True
+    return (overhead or base) + (message_tokens(view) if view else 0), True
 
 
 def measured_overhead(messages, prune_age: int = 0) -> int | None:
@@ -116,7 +169,7 @@ def measured_overhead(messages, prune_age: int = 0) -> int | None:
     if not usage.get("input_tokens"):
         return None
     view = prune_tool_results(messages[:-1], prune_age) if prune_age else messages[:-1]
-    return max(0, usage["input_tokens"] - count_tokens_approximately(view))
+    return max(0, usage["input_tokens"] - message_tokens(view))
 
 
 class MedidorContexto(AgentMiddleware):

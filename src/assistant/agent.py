@@ -34,7 +34,8 @@ from langgraph.runtime import Runtime
 
 from assistant import citations
 from assistant.config import Settings, read_system_prompt
-from assistant.context import MedidorContexto, PodaHerramientas, context_in_use, prune_tool_results
+from assistant.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
+                               prune_tool_results)
 from assistant.memory import SUMMARY_SOURCE, memory_policy
 
 logger = logging.getLogger(__name__)
@@ -457,7 +458,7 @@ class ResumenPorTurno(SummarizationMiddleware):
         msg = HumanMessage(content=SUMMARY_HEADER + summary,
                            additional_kwargs={"lc_source": SUMMARY_SOURCE, "summary_turn": turn_id})
         overhead = (stats or {}).get("overhead") or self.base
-        after = overhead + count_tokens_approximately(
+        after = overhead + message_tokens(
             prune_tool_results([msg, *kept], self.prune_age) if self.prune_age else [msg, *kept])
         layers = ["structured" if self.settings.compact_structured else "summary"]
         if self.prune_age:
@@ -636,7 +637,7 @@ class AnswerVerifier(AgentMiddleware):
 
 def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None):
     """`summarizer`/`checker`: modelos para la compactación/ANSWER_VERIFY (se inyectan en tests)."""
-    base = fixed_prompt_tokens(tools, settings=settings)  # contexto de un hilo nuevo: prompt del sistema + herramientas
+    base = prompt_tokens(system_prompt_text(settings), tools)  # contexto de un hilo nuevo: prompt + herramientas
     prune_age = settings.compact_prune_age if settings.compact_prune_tools else 0
     middleware = [
         MedidorContexto(base, prune_age),  # primero: sus after_model/after_agent corren al final

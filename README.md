@@ -1,4 +1,4 @@
-﻿# Agente 0
+# Agente 0
 
 Asistente conversacional autónomo con LangGraph 1.2, el modelo `gpt-6-luna` de OpenAI, memoria en MongoDB (local o Atlas, según `MONGODB_URI`) y una interfaz web de un solo HTML con streaming.
 
@@ -178,10 +178,10 @@ Siempre activo, sin costo extra de llamadas:
 Cada conversación (`thread_id`) tiene su propio contexto, su propio contador y sus propios resúmenes; nada pasa de una a otra salvo la memoria global. La compactación **nunca** escribe en la memoria global.
 
 **Medidor** (cabecera de la interfaz): barra y texto "Contexto: 18.4k / 1.05M (2%)".
-- *Contexto en uso* = lo que enviaría la siguiente llamada: prompt del sistema + herramientas + historial que ve el modelo (ya podado y resumido). Sale del `usage_metadata` real de la última respuesta (entrada + salida visible, sin el razonamiento, que no se reenvía) más lo añadido después. Si no hay uso real (conversación nueva, recién compactada, o bigtool sin respuestas) se estima con `count_tokens_approximately` y se marca "~ … · estimado". Tras la primera respuesta, la estimación usa el peso de prompt + herramientas medido en ese hilo.
+- *Contexto en uso* = lo que enviaría la siguiente llamada: prompt del sistema + herramientas + historial que ve el modelo (ya podado y resumido). Sale del `usage_metadata` real de la última respuesta (entrada + salida visible, sin el razonamiento, que no se reenvía) más lo añadido después. Si no hay uso real (conversación nueva, recién compactada, o bigtool sin respuestas) se estima con `tiktoken` (o200k) contando solo el texto y las llamadas a herramientas de cada mensaje (no el contenido crudo de la Responses API, con ids y anotaciones), y se marca "~ … · estimado". Tras la primera respuesta, la estimación usa el peso de prompt + herramientas medido en ese hilo. Validado con el modelo real: con uso real, 0–2.6% de la entrada de la llamada siguiente; estimado tras compactar, +2%; hilo nuevo, −0.2%.
 - Al pasar el cursor: total consumido en la conversación (entrada y salida de todas las llamadas: agente, resumen, verificadores, investigador, búsquedas) y el gasto del último turno.
 - Se actualiza en vivo (evento `context` tras cada llamada al modelo) y se reconstruye del checkpoint al recargar, sin gastar tokens: `GET /threads/{id}/context`.
-- Colores: normal, ámbar desde `COMPACT_WARN_PCT`, rojo desde `COMPACT_TRIGGER_PCT`. Una conversación nueva empieza en el contexto base (~2.9k estimados), no en cero.
+- Colores: normal, ámbar desde `COMPACT_WARN_PCT`, rojo desde `COMPACT_TRIGGER_PCT`. Una conversación nueva empieza en el contexto base (~2.4k), no en cero.
 - Botón **"Compactar ahora"** (con confirmación): `POST /threads/{id}/compact`. En el hilo queda la marca "🗜️ Conversación compactada: 96k → 21k tokens" (también al recargar).
 
 | Variable | Default | Uso |

@@ -14,7 +14,7 @@ sync_api = pytest.importorskip("playwright.sync_api")
 
 from test_ui_navegador import Controlable, _click_new, _idle, _send, _tid  # noqa: E402
 
-LARGO = "palabra " * 200  # ~400 tokens por mensaje
+LARGO = "palabra " * 400  # ~400 tokens por mensaje
 
 
 @pytest.fixture(scope="module")

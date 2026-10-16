@@ -46,9 +46,10 @@ def _build_real_agent(settings: Settings):
 
         log.info("Agente: langgraph-bigtool (demo tools: %s)", settings.bigtool_demo_tools)
         # antes de buscar solo ve retrieve_tools
-        base = agent_mod.check_turn_cap(settings, extra_prompt=BIGTOOL_PROMPT)
+        agent_mod.check_turn_cap(settings, extra_prompt=BIGTOOL_PROMPT)
         agent = build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store)
-        agent.base_context_tokens = base  # bigtool no tiene medidor en vivo: el endpoint usa el uso real guardado
+        # bigtool no tiene medidor en vivo: el endpoint usa el uso real guardado
+        agent.base_context_tokens = context_mod.prompt_tokens(agent_mod.system_prompt_text(settings) + BIGTOOL_PROMPT)
         return agent, store
     tools = build_tools(model, settings)
     agent_mod.check_turn_cap(settings, tools)
@@ -144,7 +145,8 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     def history(thread_id: str):
         return {"thread_id": thread_id, "messages": agent_mod.get_history(agent, thread_id, settings)}
 
-    base_tokens = getattr(agent, "base_context_tokens", None) or agent_mod.fixed_prompt_tokens(settings=settings)
+    base_tokens = (getattr(agent, "base_context_tokens", None)
+                   or context_mod.prompt_tokens(agent_mod.system_prompt_text(settings)))
     can_compact = getattr(agent, "compactor", None) is not None
 
     @app.get("/threads/{thread_id}/context")
