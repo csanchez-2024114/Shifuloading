@@ -31,6 +31,9 @@
   --chip-text: #3730a3;
   --link: #3b3fd8;
   --shadow: 0 1px 2px rgba(0,0,0,.06);
+  --ctx-ok: #4f46e5;
+  --ctx-warn: #c77700;
+  --ctx-crit: #c62828;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -57,6 +60,9 @@
     --chip-text: #c3c8ff;
     --link: #9aa0ff;
     --shadow: none;
+    --ctx-ok: #7c83ff;
+    --ctx-warn: #f2a93b;
+    --ctx-crit: #ff6b6b;
   }
 }
 * { box-sizing: border-box; }
@@ -90,6 +96,20 @@ select#thread {
   font-size: .92rem; text-overflow: ellipsis;
 }
 .tid { font-size: .7rem; color: var(--muted); margin-top: 2px; padding-left: 2px; font-variant-numeric: tabular-nums; }
+/* medidor de contexto de la conversación */
+.ctx {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 5px 12px; border-bottom: 1px solid var(--border); background: var(--surface);
+  font-size: .78rem; color: var(--muted);
+}
+.ctx-bar { flex: 0 1 180px; min-width: 50px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.ctx-bar i { display: block; height: 100%; width: 0; background: var(--ctx-ok); transition: width .3s; }
+.ctx.warn .ctx-bar i { background: var(--ctx-warn); }
+.ctx.crit .ctx-bar i { background: var(--ctx-crit); }
+.ctx.warn #ctxtext { color: var(--ctx-warn); }
+.ctx.crit #ctxtext { color: var(--ctx-crit); font-weight: 600; }
+#ctxtext { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; cursor: help; }
+.btn.small { min-height: 28px; padding: 3px 9px; font-size: .78rem; }
 #newbtn.queued { border-style: dashed; border-color: var(--accent); color: var(--accent); }
 .btn {
   border: 1px solid var(--border); background: var(--surface-2);
@@ -256,6 +276,11 @@ textarea#input:disabled { opacity: .6; }
     <button id="membtn" class="btn" type="button" aria-expanded="false" aria-controls="memories" aria-label="Recuerdos" title="Recuerdos guardados">🧠</button>
     <button id="setbtn" class="btn" type="button" aria-expanded="false" aria-controls="settings" aria-label="Ajustes" title="Ajustes">&#9881;&#xFE0E;</button>
   </header>
+  <div id="ctxmeter" class="ctx ok" data-level="ok">
+    <span class="ctx-bar" aria-hidden="true"><i id="ctxfill"></i></span>
+    <span id="ctxtext" role="status" aria-live="off">Contexto: …</span>
+    <button id="compactbtn" class="btn small" type="button" hidden title="Resume la parte más antigua de esta conversación">Compactar ahora</button>
+  </div>
   <section id="settings" aria-label="Ajustes">
     <label for="userid">ID de usuario</label>
     <input id="userid" type="text" autocomplete="off" spellcheck="false" maxlength="64">
@@ -464,9 +489,11 @@ textarea#input:disabled { opacity: .6; }
       threadSel = $("thread"), newBtn = $("newbtn"), setBtn = $("setbtn"),
       settingsEl = $("settings"), userEl = $("userid"),
       memBtn = $("membtn"), memEl = $("memories"), memListEl = $("memlist"), timesEl = $("showtimes"),
-      effortEl = $("effortsel");
+      effortEl = $("effortsel"),
+      ctxEl = $("ctxmeter"), ctxFill = $("ctxfill"), ctxText = $("ctxtext"), compactBtn = $("compactbtn");
 
-  var state = { threadId: null, threads: [], userId: "usuario", streaming: false, pending: 0, loadSeq: 0, newQueued: false };
+  var state = { threadId: null, threads: [], userId: "usuario", streaming: false, pending: 0, loadSeq: 0, newQueued: false,
+                ctx: null, compacting: false };
   var NEW_LABEL = "Nueva conversación", NEW_QUEUED_LABEL = "Nueva al terminar…";
   // lo lee el modelo (resultado de la herramienta rechazada): en inglés, como todo lo que lee el modelo
   var REJECT_MSG = "The user declined this action. Do not run it again; answer without it.";
@@ -529,6 +556,7 @@ textarea#input:disabled { opacity: .6; }
     inputEl.disabled = locked;
     sendBtn.disabled = locked;
     threadSel.disabled = locked;
+    compactBtn.disabled = locked || state.compacting;
     // "Nueva conversación" nunca se deshabilita: con un turno en curso, el clic queda en cola (visible) y se
     // ejecuta al terminar; un botón deshabilitado se tragaba el clic sin avisar
     newBtn.classList.toggle("queued", state.newQueued);
@@ -840,9 +868,9 @@ textarea#input:disabled { opacity: .6; }
     this.paint(g);
   };
   // la conversación anterior se resumió (MEMORY_SUMMARIZE)
-  AssistantBubble.prototype.summarized = function () {
+  AssistantBubble.prototype.summarized = function (ev) {
     var chip = el("div", "chip done");
-    chip.appendChild(el("span", "lbl", "🗜️ Conversación anterior resumida"));
+    chip.appendChild(el("span", "lbl", compactionLabel(ev) || "🗜️ Conversación anterior resumida"));
     chip.title = "Los mensajes viejos se reemplazaron por un resumen; los datos clave se guardan aparte como recuerdos.";
     this.bubble.insertBefore(chip, this.bubble.firstChild);
   };
@@ -1035,7 +1063,8 @@ textarea#input:disabled { opacity: .6; }
         case "tool_start": bubble.toolStart(ev); break;
         case "tool_end": bubble.toolEnd(ev); break;
         case "progress": bubble.progress(ev); break;
-        case "summarized": bubble.summarized(); break;
+        case "summarized": bubble.summarized(ev); break;
+        case "context": if (body.thread_id === state.threadId) liveContext(ev); break;
         case "no_tools": bubble.noTools = true; break;  // el aviso va al final de la respuesta
         case "verify": bubble.verify(ev); break;
         case "interrupt":
@@ -1051,6 +1080,7 @@ textarea#input:disabled { opacity: .6; }
       }
     });
     state.streaming = false;
+    if (body.thread_id === state.threadId) loadContext(body.thread_id);  // totales y gasto del turno
     if (memEl.classList.contains("open")) loadMemories();  // por si guardó un recuerdo en este turno
     if (!state.pending) bubble.finish(); else bubble.live = false;
     if (state.newQueued) { bubble.finish(); openNewThread(); return; }  // clic en "Nueva conversación" durante el turno
@@ -1093,7 +1123,7 @@ textarea#input:disabled { opacity: .6; }
       if (m.role === "user") { if (!firstUser) firstUser = String(m.content || ""); addUserBubble(String(m.content || "")); }
       else if (m.role === "assistant") addAssistantStatic(String(m.content || ""), m.original, m.verify, m.no_tools);
       else if (m.role === "tool") addToolLine(canonicalTool(String(m.name || "herramienta")), m.status);
-      else if (m.role === "summary") messagesEl.appendChild(el("div", "sys", "🗜️ La conversación anterior se resumió; aquí se ven los mensajes conservados."));
+      else if (m.role === "summary") messagesEl.appendChild(el("div", "sys compacted", (compactionLabel(m.compaction) || "🗜️ La conversación anterior se resumió") + "; aquí se ven los mensajes conservados."));
     });
     setTitleIfMissing(id, firstUser);
     scrollDown(true);
@@ -1148,6 +1178,74 @@ textarea#input:disabled { opacity: .6; }
     memListEl.appendChild(ul);
   }
 
+  /* ---------- medidor de contexto ---------- */
+  var ctxSeq = 0;
+  function trimNum(x, d) { return x.toFixed(d).replace(/\.?0+$/, ""); }
+  function fmtTok(n) {
+    n = Math.max(0, +n || 0);
+    if (n >= 1e6) return trimNum(n / 1e6, 2) + "M";
+    if (n >= 1000) return trimNum(n / 1000, 1) + "k";
+    return String(Math.round(n));
+  }
+  function numEs(n) { return Number(n || 0).toLocaleString("es"); }
+  function compactionLabel(c) {
+    if (!c || c.before == null || c.after == null) return "";
+    return "🗜️ Conversación compactada: " + fmtTok(c.before) + " → " + fmtTok(c.after) + " tokens";
+  }
+  function paintContext(c) {
+    state.ctx = c;
+    if (!c || !c.window) {
+      ctxEl.className = "ctx ok"; ctxEl.dataset.level = "ok"; ctxFill.style.width = "0";
+      ctxText.textContent = "Contexto: —"; ctxEl.title = ""; compactBtn.hidden = true;
+      return;
+    }
+    var pct = 100 * c.tokens / c.window;
+    var level = pct >= c.trigger_pct ? "crit" : pct >= c.warn_pct ? "warn" : "ok";
+    ctxEl.className = "ctx " + level; ctxEl.dataset.level = level; ctxEl.dataset.tokens = String(c.tokens);
+    ctxFill.style.width = Math.min(100, pct).toFixed(1) + "%";
+    var pctTxt = pct > 0 && pct < 1 ? "<1%" : Math.round(pct) + "%";
+    ctxText.textContent = "Contexto: " + (c.estimated ? "~" : "") + fmtTok(c.tokens) + " / " + fmtTok(c.window) +
+                          " (" + pctTxt + ")" + (c.estimated ? " · estimado" : "");
+    var tip = ["Contexto en uso: " + numEs(c.tokens) + " de " + numEs(c.window) + " tokens" + (c.estimated ? " (estimado)" : " (uso real de la última respuesta)")];
+    if (c.total_consumed != null) tip.push("Total consumido en esta conversación: " + numEs(c.total_consumed) + " tokens (entrada " + numEs(c.total_input) + " · salida " + numEs(c.total_output) + ")");
+    if (c.last_turn != null) tip.push("Último turno: " + numEs(c.last_turn) + " tokens");
+    tip.push("Ámbar desde el " + c.warn_pct + "% · rojo desde el " + c.trigger_pct + "%" + (c.auto_compact ? " (se compacta sola)" : ""));
+    tip.push("Compactaciones: " + (c.compactions || 0) + (c.last_compaction ? " · última: " + fmtTok(c.last_compaction.before) + " → " + fmtTok(c.last_compaction.after) : ""));
+    ctxEl.title = tip.join("\n");
+    compactBtn.hidden = !c.can_compact;
+  }
+  function liveContext(ev) {
+    if (!state.ctx || typeof ev.tokens !== "number") return;
+    var c = {}; for (var k in state.ctx) c[k] = state.ctx[k];
+    c.tokens = ev.tokens; c.estimated = !!ev.estimated;
+    paintContext(c);
+  }
+  async function loadContext(id) {
+    var seq = ++ctxSeq, data = null;
+    try {
+      var r = await fetch("/threads/" + encodeURIComponent(id) + "/context");
+      if (r.ok) data = await r.json();
+    } catch (e) { /* ignore */ }
+    if (seq !== ctxSeq || id !== state.threadId) return;
+    paintContext(data);
+  }
+  async function compactNow() {
+    if (state.streaming || state.pending || state.compacting) return;
+    if (!confirm("¿Compactar esta conversación ahora?\n\nLa parte más antigua se reemplaza por un resumen; los mensajes recientes se conservan.")) return;
+    var id = state.threadId, data = null, status = 0;
+    state.compacting = true; compactBtn.textContent = "Compactando…"; updateControls();
+    try {
+      var r = await fetch("/threads/" + encodeURIComponent(id) + "/compact", { method: "POST" });
+      status = r.status; data = await r.json();
+    } catch (e) { /* ignore */ }
+    state.compacting = false; compactBtn.textContent = "Compactar ahora"; updateControls();
+    if (id !== state.threadId) return;
+    if (data && data.compacted) await loadHistory(id);
+    else messagesEl.appendChild(el("div", "sys", status === 200 ? "Todavía no hay nada que compactar." :
+                                   "No pude compactar la conversación" + (data && data.detail ? ": " + data.detail : ".")));
+    loadContext(id);
+  }
+
   function openNewThread() {
     // una aprobación pendiente se abandona (el hilo anterior queda en pausa); el turno en curso ya terminó
     state.newQueued = false; state.pending = 0;
@@ -1167,6 +1265,7 @@ textarea#input:disabled { opacity: .6; }
     setUrlThread(id);
     if (isNew) touchThread(id, ""); else renderThreadSelect();
     if (isNew) { state.loadSeq++; showEmpty(); } else loadHistory(id);
+    loadContext(id);  // cada conversación tiene su propio contexto: una nueva empieza en el base
     inputEl.focus({ preventScroll: true });
   }
 
@@ -1177,6 +1276,7 @@ textarea#input:disabled { opacity: .6; }
   });
   inputEl.addEventListener("input", autosize);
   newBtn.addEventListener("click", requestNewThread);
+  compactBtn.addEventListener("click", compactNow);
   threadSel.addEventListener("change", function () { if (threadSel.value) switchThread(threadSel.value, false); });
   setBtn.addEventListener("click", function () {
     var open = settingsEl.classList.toggle("open");
@@ -1220,6 +1320,7 @@ textarea#input:disabled { opacity: .6; }
   renderThreadSelect();
   updateControls();
   if (fresh) showEmpty(); else loadHistory(startId);
+  loadContext(startId);
   autosize();
 })();
 </script>

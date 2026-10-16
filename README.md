@@ -148,9 +148,9 @@ Detalles:
 
 | Variable | Default | Uso |
 |---|---|---|
-| `MEMORY_SUMMARIZE` | `0` | `1` = cuando la conversación pasa `SUMMARY_TRIGGER_TOKENS`, los mensajes viejos se reemplazan por un resumen (`SummarizationMiddleware` de LangChain, con los ajustes de abajo) |
-| `SUMMARY_TRIGGER_TOKENS` | `12000` | umbral en tokens aproximados de la conversación (sin contar el system prompt) |
-| `SUMMARY_KEEP_TOKENS` | `5000` | tokens recientes que se conservan sin resumir (`keep=("tokens", N)`); se usa como máximo la mitad del umbral. Reemplaza a `SUMMARY_KEEP_MESSAGES`, que ya no se usa |
+| `MEMORY_SUMMARIZE` | `0` | `1` = compactación automática: cuando el contexto pasa el umbral (ver "Contexto y compactación"), los mensajes viejos se reemplazan por un resumen (`SummarizationMiddleware` de LangChain, con los ajustes de abajo) |
+| `SUMMARY_TRIGGER_TOKENS` | sin definir | **modo anterior**: si está definida, el umbral son estos tokens aproximados de los mensajes (sin system prompt ni herramientas) y se ignora `COMPACT_TRIGGER_PCT` |
+| `SUMMARY_KEEP_TOKENS` | sin definir | tokens recientes que se conservan sin resumir; si está definida manda sobre `COMPACT_KEEP_TOKENS`/`COMPACT_KEEP_PCT`. Se usa como máximo la mitad del umbral |
 | `MEMORY_SAVE_POLICY` | `strict` | qué va a la memoria global (ver abajo). `broad` = la política anterior |
 | `MEMORY_MAX_PER_TURN` | `3` | recuerdos que se pueden guardar por mensaje (el resto se marca "no realizado"); `0` = sin tope |
 | `MEMORY_VERIFY` | `0` | `1` = antes de guardar un recuerdo, una llamada barata comprueba que el usuario lo dijo; si no, no se guarda y el agente lo avisa |
@@ -173,6 +173,30 @@ Siempre activo, sin costo extra de llamadas:
 - **Actualizar recuerdos:** `search_memories` muestra el id de cada recuerdo y `update_memory(id, texto, evidencia)` reemplaza uno existente cuando confirmas un cambio (p. ej. café de olla → té verde), en vez de dejar dos contradictorios. Pasa por la misma verificación que guardar (`MEMORY_VERIFY`), solo toca recuerdos de tu `user_id` (un id ajeno se rechaza con el mismo mensaje que uno inexistente) y guarda el valor anterior en `previous_text` y la fecha en `updated_at` para auditar o deshacer. El agente no puede borrar recuerdos: borrar es solo desde la interfaz.
 - **Gestión de recuerdos:** el botón 🧠 de la interfaz lista los recuerdos del ID de usuario actual, con fecha, confianza, evidencia y, si se actualizó, el valor anterior, y permite borrarlos. API: `GET /memories/{user_id}` y `DELETE /memories/{user_id}/{key}`.
 
+### Contexto y compactación (medidor siempre visible)
+
+Cada conversación (`thread_id`) tiene su propio contexto, su propio contador y sus propios resúmenes; nada pasa de una a otra salvo la memoria global. La compactación **nunca** escribe en la memoria global.
+
+**Medidor** (cabecera de la interfaz): barra y texto "Contexto: 18.4k / 1.05M (2%)".
+- *Contexto en uso* = lo que enviaría la siguiente llamada: prompt del sistema + herramientas + historial que ve el modelo (ya resumido). Sale del `usage_metadata` real de la última respuesta (entrada + salida visible, sin el razonamiento, que no se reenvía) más lo añadido después. Si no hay uso real (conversación nueva, recién compactada, o bigtool sin respuestas) se estima con `count_tokens_approximately` y se marca "~ … · estimado". Tras la primera respuesta, la estimación usa el peso de prompt + herramientas medido en ese hilo.
+- Al pasar el cursor: total consumido en la conversación (entrada y salida de todas las llamadas: agente, resumen, verificadores, investigador, búsquedas) y el gasto del último turno.
+- Se actualiza en vivo (evento `context` tras cada llamada al modelo) y se reconstruye del checkpoint al recargar, sin gastar tokens: `GET /threads/{id}/context`.
+- Colores: normal, ámbar desde `COMPACT_WARN_PCT`, rojo desde `COMPACT_TRIGGER_PCT`. Una conversación nueva empieza en el contexto base (~2.9k estimados), no en cero.
+- Botón **"Compactar ahora"** (con confirmación): `POST /threads/{id}/compact`. En el hilo queda la marca "🗜️ Conversación compactada: 96k → 21k tokens" (también al recargar).
+
+| Variable | Default | Uso |
+|---|---|---|
+| `CONTEXT_WINDOW_TOKENS` | perfil del modelo | ventana del modelo. Sin definir se toma `max_input_tokens` del perfil de langchain (gpt-6-luna: 1,050,000); si el modelo no tiene perfil, 128,000 |
+| `COMPACT_WARN_PCT` | `70` | medidor en ámbar |
+| `COMPACT_TRIGGER_PCT` | `85` | medidor en rojo y, con `MEMORY_SUMMARIZE=1`, compactación automática (salvo que `SUMMARY_TRIGGER_TOKENS` esté definida) |
+| `COMPACT_KEEP_TOKENS` | `0` | tokens recientes que se conservan al compactar; `0` = `COMPACT_KEEP_PCT` de la ventana |
+| `COMPACT_KEEP_PCT` | `20` | % de la ventana que se conserva si no hay `COMPACT_KEEP_TOKENS` (máximo la mitad del umbral) |
+
+
+- **Disparo:** el mismo valor del medidor frente a `COMPACT_TRIGGER_PCT` × ventana. Como máximo una compactación por turno, y ninguna si el turno ya aterrizó (o aterriza en esa llamada) por `TURN_TOKEN_CAP`. Cada compactación registra tokens antes y después, ratio, tokens gastados en compactar, segundos y capas (`compaction_log` en el estado del hilo y en el log del servidor).
+- El resumen empieza con el encabezado "Summary of the OLDEST part of this conversation…" y el prompt del sistema dice que las preguntas sobre el inicio de la conversación se refieren a ese resumen.
+- Con bigtool (`USE_BIGTOOL=1`) el medidor y el endpoint funcionan con el uso real guardado, sin evento en vivo; la compactación no aplica (sin middleware).
+
 ### Memoria global: solo información puntual (`MEMORY_SAVE_POLICY=strict`)
 
 Con `strict` (por defecto) el agente guarda en la memoria global **solo** cuando:
@@ -188,7 +212,7 @@ Detalles:
   - lo conservado (20 mensajes) seguía cerca del umbral;
   - el middleware nativo también dispara con el uso de tokens que reporta el último mensaje del modelo, que incluye el system prompt, las herramientas y la salida. Tras resumir, seguía por encima.
 
-  Ahora se conserva por tokens, el disparo mira solo los tokens de los mensajes (igual que `keep`) y el resumen guarda el id del mensaje del usuario del turno: si ya se resumió en este turno, no se vuelve a resumir. En la repetición real de H6, H7, G1 y H8 hubo 1 resumen (13.4 s), frente a 8 resúmenes en H6–H8 en la prueba larga.
+  Ahora se conserva por tokens, el disparo nunca usa el uso reportado tras compactar (en el modo anterior mira solo los tokens de los mensajes, igual que `keep`) y el resumen guarda el id del mensaje del usuario del turno: si ya se resumió en este turno, no se vuelve a resumir. En la repetición real de H6, H7, G1 y H8 hubo 1 resumen (13.4 s), frente a 8 resúmenes en H6–H8 en la prueba larga.
 - **Qué cuenta como evidencia:** la verificación de recuerdos solo usa mensajes que escribió el usuario. **Nunca usa el resumen**, que es texto generado por el modelo.
 - **Citas revisadas en código** ([citations.py](src/assistant/citations.py)), no solo con el prompt del verificador. Dos URLs son la misma si coinciden dominio y ruta: no cuentan `?utm_source=openai` y otros parámetros, `www.`, el fragmento ni la barra final. Reglas:
   - una cita respaldada nunca se pierde: si la corrección la quita, se vuelve a poner en una línea "Fuentes:" al final;
@@ -215,7 +239,7 @@ Detalles:
 
 **Con `USE_BIGTOOL=1`:**
 - Sí aplican los recuerdos con procedencia, `update_memory`, `MEMORY_VERIFY` y el prompt.
-- **`MEMORY_SUMMARIZE` y `ANSWER_VERIFY` no aplican**, porque langgraph-bigtool no soporta middleware.
+- **`MEMORY_SUMMARIZE` y `ANSWER_VERIFY` no aplican**, porque langgraph-bigtool no soporta middleware. El medidor sí.
 - Propuesta para implementarlo a mano (no hecha):
   1. Construir el grafo de bigtool sin compilar (`create_bigtool_agent(...)` devuelve un `StateGraph`).
   2. Agregar un nodo `summarize` antes de `agent`. Ese nodo cuenta tokens con `count_tokens_approximately` y, si se pasa del umbral, llama al modelo con el mismo `SUMMARY_PROMPT` y devuelve `RemoveMessage(REMOVE_ALL_MESSAGES)` + el resumen + los últimos N mensajes, sin separar una llamada a herramienta de su respuesta.

@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import threading
+import time
 import unicodedata
 import uuid
 from dataclasses import dataclass
@@ -20,9 +21,10 @@ from langchain.agents.middleware import (
     wrap_model_call,
 )
 from langchain.agents.middleware.types import hook_config
-from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.callbacks import BaseCallbackHandler, get_usage_metadata_callback
+from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, SystemMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
+from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langchain_openai import ChatOpenAI
 from langgraph._internal._constants import CONFIG_KEY_RUNTIME
 from langgraph.config import get_config
@@ -31,6 +33,7 @@ from langgraph.runtime import Runtime
 
 from assistant import citations
 from assistant.config import Settings, read_system_prompt
+from assistant.context import MedidorContexto, context_in_use
 from assistant.memory import SUMMARY_SOURCE, memory_policy
 
 logger = logging.getLogger(__name__)
@@ -332,15 +335,41 @@ Rules:
 </messages>"""
 
 
+# Encabezado del mensaje de resumen (lo lee el modelo): deja claro que cubre el INICIO de la conversación. Prueba
+# larga: a "¿qué te pedí al inicio?" respondió con el primer mensaje conservado en vez de con el resumen.
+SUMMARY_HEADER = ("Summary of the OLDEST part of this conversation. It replaces the earliest messages; the messages "
+                  "after it are more recent. Questions about how the conversation started refer to this summary.\n\n")
+
+
 class ResumenPorTurno(SummarizationMiddleware):
-    """SummarizationMiddleware con dos cambios (MEMORY_SUMMARIZE):
-    - como máximo un resumen por turno: el mensaje de resumen guarda el id del mensaje del usuario que abría el turno;
-    - el disparo mira solo los tokens de los mensajes, igual que `keep`. El nativo también dispara con el uso
-      reportado por el último AIMessage, que suma system prompt, herramientas y salida: tras resumir seguía por
-      encima del umbral y volvía a resumir en cada llamada (hasta 3 resúmenes en un turno en la prueba larga)."""
+    """Compactación (MEMORY_SUMMARIZE) sobre SummarizationMiddleware:
+    - como máximo una por turno: el mensaje de resumen guarda el id del mensaje del usuario que abría el turno; y
+      ninguna si el turno ya aterrizó por TURN_TOKEN_CAP;
+    - disparo: con SUMMARY_TRIGGER_TOKENS (modo anterior) mira solo los tokens de los mensajes, igual que `keep`. Si no,
+      el contexto en uso (el mismo valor del medidor) frente a COMPACT_TRIGGER_PCT de la ventana. Nunca el uso
+      reportado por el último AIMessage tras compactar: seguía por encima del umbral y volvía a resumir en cada
+      llamada (hasta 3 resúmenes en un turno en la prueba larga);
+    - registro por compactación (antes/después, ratio, tokens gastados, segundos, capas) en el estado del hilo y en
+      el propio mensaje de resumen (la interfaz lo muestra en su sitio)."""
+
+    def __init__(self, model, settings: Settings, base: int):
+        super().__init__(
+            model,
+            trigger=("tokens", settings.compact_trigger()),
+            keep=("tokens", settings.compact_keep()),
+            summary_prompt=SUMMARY_PROMPT,
+            # ponytail: el default (4000, estrategia "last") recorta lo más viejo antes de resumir, y eso incluye el
+            # resumen anterior: los datos del inicio se perderían en el segundo resumen. El umbral ya acota la entrada.
+            trim_tokens_to_summarize=None,
+        )
+        self.settings = settings
+        self.base = base
 
     def _should_summarize_based_on_reported_tokens(self, messages, threshold):
         return False
+
+    def context_tokens(self, messages, stats: dict | None = None) -> int:
+        return context_in_use(messages, self.base, (stats or {}).get("overhead"))[0]
 
     def before_model(self, state, runtime):
         messages = state["messages"]
@@ -351,11 +380,68 @@ class ResumenPorTurno(SummarizationMiddleware):
         if human is None or any(m.additional_kwargs.get("summary_turn") == human.id for m in messages
                                 if m.type == "human"):
             return None
-        update = super().before_model(state, runtime)
-        for m in (update or {}).get("messages", []):
-            if isinstance(m, HumanMessage) and m.additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
-                m.additional_kwargs["summary_turn"] = human.id
-        return update
+        counter, cap = _turn_counter(), self.settings.turn_token_cap
+        # el turno ya aterrizó (o va a aterrizar en esta llamada) por TURN_TOKEN_CAP: no se gasta más en compactar
+        if counter is not None and (counter.landing or (cap and counter.total >= cap * SOFT_CAP_RATIO)):
+            return None
+        stats = state.get("context_stats") or {}
+        measure = (count_tokens_approximately(messages) if self.settings.compact_legacy()
+                   else self.context_tokens(messages, stats))
+        if measure < self.settings.compact_trigger():
+            return None
+        return self.compact(messages, stats, human.id)
+
+    def compact(self, messages, stats: dict | None = None, turn_id: str | None = None, manual: bool = False):
+        """Resume la parte más antigua y devuelve la actualización del estado (None si no hay nada que resumir)."""
+        self._ensure_message_ids(messages)
+        started = time.monotonic()
+        cutoff = self._determine_cutoff_index(messages)
+        if cutoff <= 0:
+            return None
+        to_summarize, kept = self._partition_messages(messages, cutoff)
+        before = self.context_tokens(messages, stats)
+        with get_usage_metadata_callback() as usage:
+            summary = self._create_summary(to_summarize)
+        spent = sum(u.get("total_tokens", 0) or 0 for u in usage.usage_metadata.values())
+        msg = HumanMessage(content=SUMMARY_HEADER + summary,
+                           additional_kwargs={"lc_source": SUMMARY_SOURCE, "summary_turn": turn_id})
+        overhead = (stats or {}).get("overhead") or self.base
+        after = overhead + count_tokens_approximately([msg, *kept])
+        layers = ["summary"]
+        record = {"before": before, "after": after, "ratio": round(after / before, 3) if before else None,
+                  "spent": spent, "secs": round(time.monotonic() - started, 1), "layers": layers,
+                  "manual": manual, "at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                  "summarized_messages": len(to_summarize), "kept_messages": len(kept)}
+        msg.additional_kwargs["compaction"] = {**record, "kept_ids": [m.id for m in kept]}
+        logger.info("Compactación%s: %d -> %d tokens (ratio %s), %d tokens gastados, %.1f s, capas %s",
+                    " manual" if manual else "", before, after, record["ratio"], spent, record["secs"], layers)
+        return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), msg, *kept], "compaction_log": [record]}
+
+
+
+def compact_thread(agent, thread_id: str, settings: Settings) -> dict | None:
+    """Compactación manual ("Compactar ahora"). Devuelve el registro, o None si no había nada que resumir.
+    ValueError: el agente no compacta (bigtool). RuntimeError: el hilo tiene un turno en pausa (aprobación)."""
+    compactor = getattr(agent, "compactor", None)
+    if compactor is None:
+        raise ValueError("Este agente no admite compactación")
+    config = run_config(thread_id, settings)
+    state = agent.get_state(config)
+    if state.interrupts:
+        raise RuntimeError("La conversación espera una aprobación")
+    values = state.values or {}
+    messages = values.get("messages") or []
+    human = next((m for m in reversed(messages) if m.type == "human"
+                  and m.additional_kwargs.get("lc_source") != SUMMARY_SOURCE), None)
+    update = compactor.compact(messages, values.get("context_stats"), human.id if human else None, manual=True)
+    if update is None:
+        return None
+    record = update["compaction_log"][0]
+    stats = values.get("context_stats") or {}
+    update["context_stats"] = {**stats, "total": stats.get("total", 0) + record["spent"]}
+    # como _close_aborted_turn: un id de tarea propio, para no chocar con las escrituras del último paso
+    agent.update_state(config, update, as_node="model", task_id=str(uuid.uuid4()))
+    return record
 
 
 def _confirm_text() -> str:
@@ -482,8 +568,10 @@ class AnswerVerifier(AgentMiddleware):
 
 
 def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None):
-    """`summarizer`/`checker`: modelos para MEMORY_SUMMARIZE/ANSWER_VERIFY (se inyectan en tests)."""
+    """`summarizer`/`checker`: modelos para la compactación/ANSWER_VERIFY (se inyectan en tests)."""
+    base = fixed_prompt_tokens(tools, settings=settings)  # contexto de un hilo nuevo: prompt del sistema + herramientas
     middleware = [
+        MedidorContexto(base),  # primero: sus after_model/after_agent corren al final
         _make_system_prompt(settings),
         _nombres_antiguos,
         _razonamiento,
@@ -499,20 +587,13 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         }),
         AvisoCorte(),
     ]
+    # el compactador existe siempre (botón "Compactar ahora"); en automático solo con MEMORY_SUMMARIZE
+    compactor = ResumenPorTurno(summarizer or make_summary_model(settings), settings, base)
     if settings.memory_summarize:
-        middleware.insert(0, ResumenPorTurno(
-            summarizer or make_summary_model(settings),
-            trigger=("tokens", settings.summary_trigger_tokens),
-            # lo conservado queda muy por debajo del umbral: si no, el siguiente mensaje vuelve a dispararlo
-            keep=("tokens", min(settings.summary_keep_tokens, settings.summary_trigger_tokens // 2)),
-            summary_prompt=SUMMARY_PROMPT,
-            # ponytail: el default (4000, estrategia "last") recorta lo más viejo antes de resumir, y eso incluye el
-            # resumen anterior: los datos del inicio se perderían en el segundo resumen. El umbral ya acota la entrada.
-            trim_tokens_to_summarize=None,
-        ))
+        middleware.insert(1, compactor)
     if settings.answer_verify:
         middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap))
-    return create_agent(
+    agent = create_agent(
         model,
         tools,
         context_schema=Context,
@@ -520,6 +601,9 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         store=store,
         middleware=middleware,
     )
+    agent.compactor = compactor
+    agent.base_context_tokens = base
+    return agent
 
 
 def run_config(thread_id: str, settings: Settings) -> dict:
@@ -570,7 +654,13 @@ def _update_events(update: dict) -> Iterator[dict]:
         if not isinstance(node_update, dict):
             continue
         if node.startswith(("ResumenPorTurno", "SummarizationMiddleware")) and node_update.get("messages"):
-            yield {"type": "summarized"}
+            record = next((m.additional_kwargs.get("compaction") for m in node_update["messages"]
+                           if isinstance(m, HumanMessage) and m.additional_kwargs.get("compaction")), None)
+            if record:
+                yield {"type": "summarized", **{k: v for k, v in record.items() if k != "kept_ids"}}
+                yield {"type": "context", "tokens": record["after"], "estimated": True}
+            else:
+                yield {"type": "summarized"}
             continue
         if node.startswith("AnswerVerifier"):
             continue  # la corrección ya llegó como evento "verify"
@@ -637,8 +727,13 @@ class TurnTokens(BaseCallbackHandler):
     """TURN_TOKEN_CAP: suma entrada+salida de todas las llamadas al modelo de un mensaje (agente, resumen,
     verificadores, investigador y búsquedas hospedadas, que heredan los callbacks de la config)."""
 
-    def __init__(self):
+    def __init__(self, carry: tuple[int, int, int] = (0, 0, 0)):
         self.total = 0
+        self.input = 0
+        self.output = 0
+        # gastado por este mismo turno antes de pausarse en una aprobación: cuenta para el total de la conversación,
+        # no para TURN_TOKEN_CAP (que es por llamada a /chat o /resume, como hasta ahora)
+        self.carry, self.carry_input, self.carry_output = carry
         self.landing = False  # ya se hizo la última llamada sin herramientas (aterrizaje suave)
         self.history_over_cap = False  # el historial del hilo ya pesa más que el tope: el turno va sin herramientas
         self._lock = threading.Lock()
@@ -649,9 +744,12 @@ class TurnTokens(BaseCallbackHandler):
                 usage = getattr(getattr(g, "message", None), "usage_metadata", None) or {}
                 with self._lock:
                     self.total += usage.get("total_tokens", 0) or 0
+                    self.input += usage.get("input_tokens", 0) or 0
+                    self.output += usage.get("output_tokens", 0) or 0
 
 
 _ACTIVE_TURNS: dict[str, TurnTokens] = {}  # hilo -> contador del mensaje en curso
+_PAUSED_SPEND: dict[str, tuple[int, int, int]] = {}  # hilo -> gasto del turno pausado en una aprobación
 
 
 def _turn_counter() -> TurnTokens | None:
@@ -791,7 +889,7 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
     config = run_config(thread_id, settings)
     # cada llamada al modelo gasta ~6 pasos del grafo (middlewares + tools): el límite de pasos acompaña al tope
     config["recursion_limit"] = max(config["recursion_limit"], ctx.max_llamadas * 8)
-    counter = TurnTokens()
+    counter = TurnTokens(_PAUSED_SPEND.pop(thread_id, (0, 0, 0)))
     config["callbacks"] = [counter]  # cuenta todas las llamadas del mensaje (agente, investigador, búsquedas...)
     _ACTIVE_TURNS[thread_id] = counter
     cap = settings.turn_token_cap
@@ -830,12 +928,18 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
                 if text:
                     yield {"type": "token", "text": text}
             elif kind == "updates":
-                yield from _update_events(data)
+                for event in _update_events(data):
+                    if event["type"] == "interrupt":  # el turno sigue en /resume: su gasto se suma allí
+                        _PAUSED_SPEND[thread_id] = (counter.total + counter.carry, counter.input + counter.carry_input,
+                                                    counter.output + counter.carry_output)
+                    yield event
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "progreso":
                 # avance del investigador profundo (búsquedas internas mientras trabaja)
                 yield {"type": "progress", "name": data.get("herramienta"), "args": data.get("args", {})}
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "fase":
                 yield {"type": "phase", "phase": data.get("fase")}
+            elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "contexto":
+                yield {"type": "context", "tokens": data.get("tokens"), "estimated": data.get("estimated", False)}
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "sin_herramientas":
                 yield {"type": "no_tools"}  # el historial ya pesa más que TURN_TOKEN_CAP: turno sin herramientas
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "corte":
@@ -871,7 +975,9 @@ def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
     results = {m.tool_call_id: m for m in messages if isinstance(m, ToolMessage)}
     for msg in messages:
         if isinstance(msg, HumanMessage) and msg.additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
-            out.append({"role": "summary"})  # la conversación anterior se resumió (MEMORY_SUMMARIZE)
+            out.append({"role": "summary"})  # la conversación anterior se compactó (resumen)
+            if record := msg.additional_kwargs.get("compaction"):
+                out[-1]["compaction"] = {"before": record.get("before"), "after": record.get("after")}
         elif isinstance(msg, HumanMessage):
             out.append({"role": "user", "content": _content_text(msg)})
         elif isinstance(msg, AIMessage):

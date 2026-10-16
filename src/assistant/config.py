@@ -1,6 +1,7 @@
 ﻿"""Configuración leída del entorno (.env). Sin efectos secundarios de red."""
 import os
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -31,9 +32,16 @@ class Settings:
     use_bigtool: bool = False          # agente alterno con langgraph-bigtool (busca herramientas en un registro)
     bigtool_demo_tools: bool = False   # +50 herramientas inofensivas de demostración en el registro
     embedding_model: str = "text-embedding-3-small"  # índice semántico de herramientas (bigtool)
-    memory_summarize: bool = False      # resume la conversación vieja al pasar el umbral (solo agente normal)
-    summary_trigger_tokens: int = 12000
-    summary_keep_tokens: int = 5000     # tokens recientes que se conservan sin resumir (muy por debajo del umbral)
+    memory_summarize: bool = False      # compacta (resume) la conversación vieja al pasar el umbral (solo agente normal)
+    # modo anterior: si SUMMARY_TRIGGER_TOKENS está definida, el disparo es por tokens de los mensajes (sin prompt ni
+    # herramientas) y se ignora el porcentaje de la ventana. 0 = no definida.
+    summary_trigger_tokens: int = 0
+    summary_keep_tokens: int = 0
+    context_window_tokens: int = 0      # ventana del modelo; 0 = la del perfil del modelo (o DEFAULT_CONTEXT_WINDOW)
+    compact_warn_pct: int = 70          # medidor en ámbar
+    compact_trigger_pct: int = 85       # medidor en rojo y compactación automática
+    compact_keep_tokens: int = 0        # tokens recientes que se conservan al compactar; 0 = COMPACT_KEEP_PCT
+    compact_keep_pct: int = 20          # % de la ventana que se conserva si no hay COMPACT_KEEP_TOKENS
     memory_save_policy: str = "strict"  # strict: solo datos puntuales del usuario; broad: política anterior
     memory_max_per_turn: int = 3        # recuerdos guardados por mensaje; 0 = sin tope
     memory_verify: bool = False         # verifica con el LLM que un recuerdo lo dijo el usuario antes de guardarlo
@@ -68,8 +76,13 @@ class Settings:
             bigtool_demo_tools=_bool("BIGTOOL_DEMO_TOOLS"),
             embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small").strip(),
             memory_summarize=_bool("MEMORY_SUMMARIZE"),
-            summary_trigger_tokens=int(os.getenv("SUMMARY_TRIGGER_TOKENS", "12000")),
-            summary_keep_tokens=int(os.getenv("SUMMARY_KEEP_TOKENS", "5000")),
+            summary_trigger_tokens=int(os.getenv("SUMMARY_TRIGGER_TOKENS", "0")),
+            summary_keep_tokens=int(os.getenv("SUMMARY_KEEP_TOKENS", "0")),
+            context_window_tokens=int(os.getenv("CONTEXT_WINDOW_TOKENS", "0")),
+            compact_warn_pct=int(os.getenv("COMPACT_WARN_PCT", "70")),
+            compact_trigger_pct=int(os.getenv("COMPACT_TRIGGER_PCT", "85")),
+            compact_keep_tokens=int(os.getenv("COMPACT_KEEP_TOKENS", "0")),
+            compact_keep_pct=int(os.getenv("COMPACT_KEEP_PCT", "20")),
             memory_save_policy=os.getenv("MEMORY_SAVE_POLICY", "strict").strip().lower(),
             memory_max_per_turn=int(os.getenv("MEMORY_MAX_PER_TURN", "3")),
             memory_verify=_bool("MEMORY_VERIFY"),
@@ -89,12 +102,47 @@ class Settings:
             turn_token_cap=int(os.getenv("TURN_TOKEN_CAP", "150000")),
         )
 
+    def context_window(self) -> int:
+        """CONTEXT_WINDOW_TOKENS o, si no está, la ventana de entrada del perfil del modelo en langchain."""
+        if self.context_window_tokens > 0:
+            return self.context_window_tokens
+        return _profile_window(self.llm_model)
+
+    def compact_legacy(self) -> bool:
+        """SUMMARY_TRIGGER_TOKENS definida: disparo anterior (tokens de los mensajes, sin prompt ni herramientas)."""
+        return self.summary_trigger_tokens > 0
+
+    def compact_trigger(self) -> int:
+        if self.compact_legacy():
+            return self.summary_trigger_tokens
+        return max(1, self.context_window() * self.compact_trigger_pct // 100)
+
+    def compact_keep(self) -> int:
+        keep = (self.summary_keep_tokens or self.compact_keep_tokens
+                or self.context_window() * self.compact_keep_pct // 100)
+        # lo conservado queda muy por debajo del umbral: si no, el siguiente mensaje vuelve a dispararlo
+        return max(1, min(keep, self.compact_trigger() // 2))
+
     def require_api_key(self) -> None:
         if not self.openai_api_key:
             raise ConfigError(
                 "Falta OPENAI_API_KEY. Crea un archivo .env en la raíz del proyecto "
                 "(copia .env.example) y pon tu clave."
             )
+
+
+DEFAULT_CONTEXT_WINDOW = 128000  # modelos sin perfil conocido en langchain
+
+
+@lru_cache(maxsize=8)
+def _profile_window(model: str) -> int:
+    try:
+        from langchain_openai import ChatOpenAI
+
+        profile = ChatOpenAI(model=model, api_key="sk-profile-only").profile or {}
+        return int(profile.get("max_input_tokens") or DEFAULT_CONTEXT_WINDOW)
+    except Exception:  # noqa: BLE001
+        return DEFAULT_CONTEXT_WINDOW
 
 
 def read_system_prompt() -> str:

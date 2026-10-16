@@ -12,6 +12,7 @@ from langgraph.types import Command
 from pydantic import BaseModel
 
 from assistant import agent as agent_mod
+from assistant import context as context_mod
 from assistant import memory
 from assistant.config import ROOT, ConfigError, Settings
 
@@ -44,8 +45,11 @@ def _build_real_agent(settings: Settings):
         from assistant.bigtool_agent import BIGTOOL_PROMPT, build_bigtool_agent
 
         log.info("Agente: langgraph-bigtool (demo tools: %s)", settings.bigtool_demo_tools)
-        agent_mod.check_turn_cap(settings, extra_prompt=BIGTOOL_PROMPT)  # antes de buscar solo ve retrieve_tools
-        return build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store), store
+        # antes de buscar solo ve retrieve_tools
+        base = agent_mod.check_turn_cap(settings, extra_prompt=BIGTOOL_PROMPT)
+        agent = build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store)
+        agent.base_context_tokens = base  # bigtool no tiene medidor en vivo: el endpoint usa el uso real guardado
+        return agent, store
     tools = build_tools(model, settings)
     agent_mod.check_turn_cap(settings, tools)
     return agent_mod.build_agent(model, tools, settings, checkpointer=checkpointer, store=store), store
@@ -139,6 +143,26 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     @app.get("/history/{thread_id}")
     def history(thread_id: str):
         return {"thread_id": thread_id, "messages": agent_mod.get_history(agent, thread_id, settings)}
+
+    base_tokens = getattr(agent, "base_context_tokens", None) or agent_mod.fixed_prompt_tokens(settings=settings)
+    can_compact = getattr(agent, "compactor", None) is not None
+
+    @app.get("/threads/{thread_id}/context")
+    def thread_context(thread_id: str):
+        """Medidor de contexto del hilo, desde su checkpoint (sin llamar al modelo)."""
+        values = agent.get_state(agent_mod.run_config(thread_id, settings)).values or {}
+        return {"thread_id": thread_id, **context_mod.context_report(values, settings, base_tokens, can_compact)}
+
+    @app.post("/threads/{thread_id}/compact")
+    def compact(thread_id: str):
+        """Compactación manual ("Compactar ahora"): resume la parte más antigua del hilo."""
+        try:
+            record = agent_mod.compact_thread(agent, thread_id, settings)
+        except ValueError as exc:
+            raise HTTPException(501, str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return {"thread_id": thread_id, "compacted": record is not None, "record": record}
 
     def _store():
         if store is None:

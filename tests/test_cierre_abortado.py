@@ -238,7 +238,7 @@ def test_reemplazo_del_historial_al_resumir_en_mongo(make_settings, mongo_checkp
     msgs = _guardados(thread)
     assert msgs[0].additional_kwargs.get("lc_source") == "summarization" and "Zorba" in msgs[0].content
     assert len(msgs) < 14 and msgs[-1].content == "respuesta 6"  # lo viejo se quitó del checkpoint guardado
-    assert get_history(agent, thread, s)[0] == {"role": "summary"}
+    assert get_history(agent, thread, s)[0]["role"] == "summary"
 
 
 def test_hitl_interrupcion_y_reanudacion_en_mongo(hitl_settings, mongo_checkpointer):

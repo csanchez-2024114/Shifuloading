@@ -31,16 +31,17 @@ uv pip install --python .venv -e ".[dev]"
 
 ## Arquitectura
 
-Flujo de un mensaje: `static/index.html` → `POST /chat` (o `/resume` tras una tarjeta de aprobación) en `server.py` → `elegir_esfuerzo` (regla o clasificador LLM) → `stream_events` en `agent.py` → eventos SSE (`token`, `tool_start`, `tool_end`, `interrupt`, `verify`, `summarized`, `effort`, `progress`, `error`, `done`). **CONTRATO.md es el contrato de esos eventos y endpoints**: actualízalo si cambia su formato.
+Flujo de un mensaje: `static/index.html` → `POST /chat` (o `/resume` tras una tarjeta de aprobación) en `server.py` → `elegir_esfuerzo` (regla o clasificador LLM) → `stream_events` en `agent.py` → eventos SSE (`token`, `tool_start`, `tool_end`, `interrupt`, `verify`, `summarized`, `context`, `effort`, `progress`, `no_tools`, `error`, `done`). **CONTRATO.md es el contrato de esos eventos y endpoints**: actualízalo si cambia su formato.
 
 - **`agent.py`**: `build_agent` arma `create_agent` con una pila de middleware. Los más relevantes:
   - `LimiteLlamadas`, `LimiteRepeticiones` y `AterrizajeSuave`: el turno tiene un tope de tokens (`TURN_TOKEN_CAP`), contado por el callback `TurnTokens`. Al 80% se fuerza `tool_choice="none"`. El aborto real solo ocurre en una frontera de paso (`_step_kind`) y `_close_aborted_turn` deja el hilo consistente.
   - `HumanInTheLoopMiddleware`: confirmación de `deep_research` (predicado `research_needs_confirmation`) y del email simulado. Su rechazo genera un `ToolMessage` desde el nodo del middleware, no desde `tools`.
   - `AvisoCorte` y `_continue_cut`: respuestas cortadas por `max_tokens`.
-  - `ResumenPorTurno`: `SummarizationMiddleware`, con `MEMORY_SUMMARIZE`.
+  - `ResumenPorTurno`: compactación sobre `SummarizationMiddleware` (`MEMORY_SUMMARIZE`; disparo por % de `CONTEXT_WINDOW_TOKENS` o, si está definida, `SUMMARY_TRIGGER_TOKENS`). Una por turno, registro en `compaction_log`. `compact_thread` es la compactación manual.
   - `AnswerVerifier`: `ANSWER_VERIFY`. Solo usa como evidencia las herramientas que de verdad corrieron (`is_evidence`).
 
   `_update_events` traduce los updates del grafo a eventos SSE. `get_history` reconstruye el historial para la UI. Las herramientas que no se ejecutaron (prefijos `NOT_RUN_PREFIXES`) se reportan con `status: "skipped"` y la UI nunca les pone "✓".
+- **`context.py`**: medidor de contexto por hilo (`MedidorContexto`, estado `context_stats`/`compaction_log`, `context_in_use`: uso real de la última respuesta o estimación). Endpoint `GET /threads/{id}/context`.
 - **`tools.py`**:
   - Las herramientas del agente: `web_search` (OpenAI hospedado con respaldo DuckDuckGo, una búsqueda por respuesta del modelo, presupuesto compartido por mensaje), `calculator`, `current_datetime`, `check_python_syntax` (solo `ast.parse`), las de memoria y `deep_research`.
   - `deep_research` es un subagente investigador con sus propios topes que reutiliza investigaciones previas del hilo.

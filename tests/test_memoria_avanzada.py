@@ -81,7 +81,7 @@ def test_resumen_se_dispara_en_el_umbral_y_conserva_el_dato(make_settings):
     assert "Zorba" in main.seen[-1]  # el modelo principal sigue recibiendo el dato inicial
 
     from assistant.agent import get_history
-    assert get_history(agent, thread, s)[0] == {"role": "summary"}
+    assert get_history(agent, thread, s)[0]["role"] == "summary"
 
 
 def test_sin_interruptor_no_hay_resumen(settings):

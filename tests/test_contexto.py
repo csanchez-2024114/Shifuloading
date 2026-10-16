@@ -1,5 +1,4 @@
-"""Política de memoria global (MEMORY_SAVE_POLICY, MEMORY_MAX_PER_TURN) e independencia entre conversaciones.
- Sin tokens: modelos falsos; los que tocan estado de hilos, con MongoDBSaver en
+"""Medidor de contexto, compactación por porcentaje de la ventana y política de memoria global. Sin tokens: modelos falsos; los que tocan estado de hilos, con MongoDBSaver en
 assistant_test."""
 import re
 
@@ -87,24 +86,149 @@ def _client(agent, settings, store=None):
     return TestClient(create_app(agent=agent, settings=settings, store=store or InMemoryStore()))
 
 
+# --------------------------------------------------------------------------- bloque 1: medidor
 
 
+def test_hilo_nuevo_empieza_en_el_contexto_base_estimado(make_settings):
+    from assistant.agent import fixed_prompt_tokens
+
+    s = make_settings(context_window_tokens=128000)
+    agent = _agent(s, usage_chat("x"))
+    data = _client(agent, s).get(f"/threads/{uid()}/context").json()
+    assert data["estimated"] and data["tokens"] == agent.base_context_tokens > 1000
+    assert agent.base_context_tokens == fixed_prompt_tokens(agent.nodes["tools"].bound.tools_by_name.values(),
+                                                            settings=s)
+    assert data["window"] == 128000 and data["percent"] == round(100 * data["tokens"] / 128000, 1)
+    assert data["total_consumed"] == 0 and data["compactions"] == 0 and data["can_compact"]
 
 
+def test_ventana_por_defecto_sale_del_perfil_del_modelo(make_settings):
+    from assistant.config import DEFAULT_CONTEXT_WINDOW
+
+    assert make_settings().context_window() == 1050000  # perfil de gpt-6-luna en langchain
+    assert make_settings(llm_model="modelo-sin-perfil").context_window() == DEFAULT_CONTEXT_WINDOW
+    assert make_settings(context_window_tokens=32000).context_window() == 32000
 
 
+def test_medidor_usa_el_uso_real_sube_en_cada_turno_y_se_reconstruye_del_checkpoint(make_settings, mongo_checkpointer):
+    s = make_settings(context_window_tokens=128000)
+    llm = usage_chat("respuesta uno", "respuesta dos", reasoning=40)
+    agent = _agent(s, llm, checkpointer=mongo_checkpointer)
+    thread = uid()
+
+    ev1 = run_turn(agent, s, "Primera pregunta. " + FILLER, thread)
+    ctx1 = [e for e in ev1 if e["type"] == "context"]
+    assert ctx1 and not ctx1[-1]["estimated"]  # en vivo, al terminar el paso del modelo
+    last = _values(agent, thread)["messages"][-1]
+    usage = last.usage_metadata
+    # entrada + salida, sin el razonamiento (no se reenvía)
+    assert ctx1[-1]["tokens"] == usage["input_tokens"] + usage["output_tokens"] - 40
+
+    ev2 = run_turn(agent, s, "Segunda pregunta. " + FILLER, thread)
+    ctx2 = [e for e in ev2 if e["type"] == "context"][-1]["tokens"]
+    assert ctx2 > ctx1[-1]["tokens"]
+
+    # otro agente con el mismo checkpointer (= recargar la página o reiniciar el servidor): mismo valor, 0 tokens
+    otro = _agent(s, usage_chat(), checkpointer=mongo_checkpointer)
+    data = _client(otro, s).get(f"/threads/{thread}/context").json()
+    assert data["tokens"] == ctx2 and not data["estimated"]
+    totales = [m.usage_metadata["total_tokens"] for m in _values(agent, thread)["messages"] if m.type == "ai"]
+    assert data["total_consumed"] == sum(totales) and data["last_turn"] == totales[-1]
+    assert data["total_input"] + data["total_output"] == data["total_consumed"]
+
+    # una conversación nueva no hereda nada de esta
+    nuevo = _client(otro, s).get(f"/threads/{uid()}/context").json()
+    assert nuevo["tokens"] == otro.base_context_tokens and nuevo["total_consumed"] == 0
 
 
+def test_compactar_ahora_reduce_el_contexto_y_deja_marca(make_settings, mongo_checkpointer):
+    from assistant.agent import get_history
+
+    s = make_settings(context_window_tokens=8000, compact_keep_pct=10)
+    llm = usage_chat(*[f"respuesta {i}" for i in range(6)])
+    summ = summarizer("- El usuario se llama Zorba.")
+    agent = _agent(s, llm, checkpointer=mongo_checkpointer, summ=summ)
+    thread = uid()
+    for i in range(5):
+        run_turn(agent, s, f"Mensaje {i}. Me llamo Zorba. " + FILLER, thread)
+    client = _client(agent, s)
+    antes = client.get(f"/threads/{thread}/context").json()
+
+    r = client.post(f"/threads/{thread}/compact").json()
+    assert r["compacted"] and r["record"]["manual"] and r["record"]["spent"] == 550
+    despues = client.get(f"/threads/{thread}/context").json()
+    assert despues["tokens"] < antes["tokens"] and despues["estimated"]  # tras compactar: estimado hasta la próxima
+    assert despues["compactions"] == 1 and despues["last_compaction"]["after"] == despues["tokens"]
+    assert despues["total_consumed"] == antes["total_consumed"] + 550
+    hist = get_history(agent, thread, s)
+    assert hist[0]["role"] == "summary" and hist[0]["compaction"]["after"] < hist[0]["compaction"]["before"]
+    assert "Zorba" in summ.prompts[0]
+
+    # el hilo sigue funcionando y el siguiente turno vuelve a dar el uso real
+    ev = run_turn(agent, s, "¿Cómo me llamo?", thread)
+    assert ev[-1]["type"] == "done"
+    assert not client.get(f"/threads/{thread}/context").json()["estimated"]
 
 
+def test_compactar_sin_compactador_responde_501(make_settings):
+    from assistant.server import create_app
+
+    class SinCompactador:
+        def get_state(self, config):
+            return type("S", (), {"values": {}, "interrupts": ()})()
+
+    client = TestClient(create_app(agent=SinCompactador(), settings=make_settings(), store=InMemoryStore()))
+    assert client.post("/threads/x/compact").status_code == 501
+    assert client.get("/threads/x/context").json()["can_compact"] is False
 
 
+# --------------------------------------------------------------------------- bloque 2: disparo por porcentaje
 
 
+def test_compacta_por_porcentaje_de_la_ventana_una_vez_por_turno_con_registro(make_settings, mongo_checkpointer):
+    s = make_settings(memory_summarize=True, context_window_tokens=4000, compact_trigger_pct=85, compact_keep_pct=10)
+    assert not s.compact_legacy() and s.compact_trigger() == 3400 and s.compact_keep() == 400
+    llm = usage_chat(*[f"respuesta {i}" for i in range(12)], extra=2200)
+    summ = summarizer(*["- resumen"] * 12)
+    agent = _agent(s, llm, checkpointer=mongo_checkpointer, summ=summ)
+    thread = uid()
+    eventos = []
+    for i in range(12):
+        ev = run_turn(agent, s, f"Mensaje {i}. " + FILLER, thread)
+        assert [e["type"] for e in ev].count("summarized") <= 1  # como máximo una compactación por turno
+        eventos.append(ev)
+    log = _values(agent, thread)["compaction_log"]
+    assert log, "se pasó el 85% de la ventana y no compactó"
+    rec = log[0]
+    assert set(rec) >= {"before", "after", "ratio", "spent", "secs", "layers", "manual"}
+    assert rec["before"] >= 3400 > rec["after"] and rec["ratio"] < 1 and rec["layers"] == ["summary"]
+    assert rec["spent"] == 550 and not rec["manual"]
+    sumd = next(e for ev in eventos for e in ev if e["type"] == "summarized")
+    assert sumd["before"] == rec["before"] and sumd["after"] == rec["after"]
+    # el encabezado deja claro que el resumen es de la parte más antigua
+    first = _values(agent, thread)["messages"][0]
+    assert first.content.startswith("Summary of the OLDEST part of this conversation")
 
 
+def test_variables_anteriores_mantienen_el_disparo_por_tokens_de_mensajes(make_settings):
+    s = make_settings(summary_trigger_tokens=600, summary_keep_tokens=250, context_window_tokens=4000)
+    assert s.compact_legacy() and s.compact_trigger() == 600 and s.compact_keep() == 250
 
 
+def test_no_compacta_si_el_turno_ya_aterrizo(make_settings, monkeypatch):
+    from assistant import agent as agent_mod
+
+    s = make_settings(memory_summarize=True, context_window_tokens=2000, turn_token_cap=50000)
+    agent = _agent(s, usage_chat(), summ=summarizer("- resumen"))
+    msgs = [HumanMessage(f"m{i} " + FILLER, id=f"h{i}") if i % 2 == 0 else AIMessage(f"r{i}", id=f"a{i}")
+            for i in range(12)]
+    counter = agent_mod.TurnTokens()
+    monkeypatch.setattr(agent_mod, "_turn_counter", lambda: counter)
+    runtime = type("R", (), {"stream_writer": staticmethod(lambda e: None)})()
+    counter.total = 41000  # 82% del tope: esta llamada aterriza
+    assert agent.compactor.before_model({"messages": list(msgs)}, runtime) is None
+    counter.total = 0
+    assert agent.compactor.before_model({"messages": list(msgs)}, runtime) is not None
 
 
 
