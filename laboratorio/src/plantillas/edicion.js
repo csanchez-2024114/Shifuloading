@@ -87,6 +87,19 @@ const ubicacion = (u) => (u ? `fila ${u.fila}, ${u.lado}` : '')
 
 const slug = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x'
 
+/** Nombre visible con las palabras LITERALES de la persona (técnica de Alan: el código pasa lo literal, no el modelo).
+ * Si el modelo manda «cumpleanos» y la persona escribió «cumpleaños», se usa lo de la persona (con mayúscula inicial). */
+function nombreLiteral(nombre, texto) {
+  const n = String(nombre || '').trim(); if (!n || !texto) return n
+  const palabras = String(texto).split(/\s+/).map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+  const objetivo = slug(n); const k = n.split(/\s+/).length
+  for (let i = 0; i + k <= palabras.length; i++) {
+    const frase = palabras.slice(i, i + k).join(' ')
+    if (slug(frase) === objetivo) return frase.charAt(0).toUpperCase() + frase.slice(1)
+  }
+  return n.charAt(0).toUpperCase() + n.slice(1)
+}
+
 /** Lo que Shifu cambió DENTRO de una sección (D28): campos quitados o renombrados, opciones de un estado, y cómo se ven
  * su ficha y su tarjeta del tablero. Los datos nunca se borran: un campo quitado solo deja de mostrarse. */
 function ajustarSeccion(x, e) {
@@ -489,7 +502,7 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
       if (base) { args = { ...args, titulo: args.titulo || base.seccion.titulo, vista: base.seccion.vista, opciones: base.seccion.opciones, campos: base.seccion.campos } }
       const titulo = String(args.titulo || '').trim().slice(0, 28); if (!titulo) return no('falta el título de la sección.')
       if (plantilla.secciones.some((x) => x.titulo.toLowerCase() === titulo.toLowerCase())) return no(`ya existe una sección «${titulo}»: úsala o agrégale campos en vez de duplicarla.`)
-      const campos = (args.campos || []).slice(0, 8).map((c) => ({ id: base ? c.id : slug(c.nombre), nombre: String(c.nombre).slice(0, 24), tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones.slice(0, 7).map(String) } : {}), ...(c.ejemplos ? { ejemplos: c.ejemplos.slice(0, 12).map(String) } : {}), ...(c.rango ? { rango: c.rango } : {}) }))
+      const campos = (args.campos || []).slice(0, 8).map((c) => ({ id: base ? c.id : slug(c.nombre), nombre: (base ? String(c.nombre) : nombreLiteral(c.nombre, contexto.texto)).slice(0, 24), tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones.slice(0, 7).map(String) } : {}), ...(c.ejemplos ? { ejemplos: c.ejemplos.slice(0, 12).map(String) } : {}), ...(c.rango ? { rango: c.rango } : {}) }))
       if (!campos.length) return no('una sección necesita al menos un campo.')
       const bad = campos.find((c) => !TIPOS_CAMPO.includes(c.tipo)); if (bad) return no(`el campo «${bad.nombre}» tiene tipo «${bad.tipo}»; tipos posibles: ${TIPOS_CAMPO.join(', ')}.`)
       let id = slug(titulo); while (plantilla.secciones.some((x) => x.id === id)) id += '_2'
@@ -505,7 +518,7 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
     case 'agregar_campo': {
       const sec = seccionDe(plantilla, args.seccion); if (!sec?.campos) return no(`la sección «${args.seccion}» no existe o no tiene campos.`)
       if (!TIPOS_CAMPO.includes(args.tipo)) return no(`tipo «${args.tipo}» no existe (${TIPOS_CAMPO.join(', ')}).`)
-      const c = { id: slug(args.nombre), nombre: String(args.nombre).slice(0, 24), tipo: args.tipo, ...(args.opciones ? { opciones: args.opciones.slice(0, 7).map(String) } : {}), ...(args.ejemplos ? { ejemplos: args.ejemplos.slice(0, 12).map(String) } : {}) }
+      const c = { id: slug(args.nombre), nombre: nombreLiteral(args.nombre, contexto.texto).slice(0, 24), tipo: args.tipo, ...(args.opciones ? { opciones: args.opciones.slice(0, 7).map(String) } : {}), ...(args.ejemplos ? { ejemplos: args.ejemplos.slice(0, 12).map(String) } : {}) }
       if (sec.campos.some((x) => x.id === c.id || x.nombre.toLowerCase() === c.nombre.toLowerCase())) return no(`«${sec.titulo}» ya tiene el campo «${c.nombre}».`)
       if (sec.campos.length >= 8) return no(`«${sec.titulo}» ya tiene 8 campos (el máximo).`)
       return conEstructura({ ...est, campos: { ...(est.campos || {}), [sec.id]: [...(est.campos?.[sec.id] || []), c] } }, `Campo «${c.nombre}» (${c.tipo}) agregado a «${sec.titulo}».`)
