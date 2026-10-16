@@ -41,12 +41,14 @@ def _build_real_agent(settings: Settings):
     checkpointer = memory.build_checkpointer(client, settings.mongodb_db)
     store = memory.build_store(client, settings.mongodb_db, settings.memory_semantic, settings.openai_api_key)
     if settings.use_bigtool:
-        from assistant.bigtool_agent import build_bigtool_agent
+        from assistant.bigtool_agent import BIGTOOL_PROMPT, build_bigtool_agent
 
         log.info("Agente: langgraph-bigtool (demo tools: %s)", settings.bigtool_demo_tools)
+        agent_mod.check_turn_cap(settings, extra_prompt=BIGTOOL_PROMPT)  # antes de buscar solo ve retrieve_tools
         return build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store), store
-    return agent_mod.build_agent(model, build_tools(model, settings), settings, checkpointer=checkpointer,
-                                 store=store), store
+    tools = build_tools(model, settings)
+    agent_mod.check_turn_cap(settings, tools)
+    return agent_mod.build_agent(model, tools, settings, checkpointer=checkpointer, store=store), store
 
 
 PING = ": ping\n\n"  # comentario SSE: el cliente lo ignora, pero mantiene viva la conexión en proxies

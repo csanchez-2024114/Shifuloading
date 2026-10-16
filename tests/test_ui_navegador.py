@@ -300,3 +300,31 @@ def test_respuesta_no_verificada_por_el_tope_se_ve_en_vivo_y_al_recargar(page, b
         assert page.locator("#messages details").count() == 0  # sin "ver original": no hubo corrección
     finally:
         page.unroute("**/history/*")
+
+
+def test_aviso_sin_herramientas_se_ve_en_vivo_y_al_recargar(page, base_url):
+    """Historial más pesado que TURN_TOKEN_CAP: el turno va sin herramientas y la UI lo dice (respuestas simuladas)."""
+    import json
+
+    aviso = "⚠️ Sin herramientas: esta conversación ya supera el tope por mensaje; abre una nueva para buscar"
+    eventos = [{"type": "no_tools"}, {"type": "token", "text": "No puedo consultar el precio ahora."}, {"type": "done"}]
+    sse = "".join(f"data: {json.dumps(e)}\n\n" for e in eventos)
+    _fresh(page, base_url, True)
+    page.route("**/chat", lambda r: r.fulfill(status=200, headers={"Content-Type": "text/event-stream"}, body=sse))
+    try:
+        _send(page, "precio del bitcoin")
+        _idle(page)
+        texto = page.locator("#messages .row.assistant").last.inner_text()
+        assert aviso in texto and texto.count(aviso) == 1
+    finally:
+        page.unroute("**/chat")
+    historial = {"thread_id": "x", "messages": [
+        {"role": "user", "content": "precio del bitcoin"},
+        {"role": "assistant", "content": "No puedo consultar el precio ahora.", "no_tools": True}]}
+    page.route("**/history/*", lambda r: r.fulfill(status=200, json=historial))
+    try:
+        page.goto(f"{base_url}?thread=sin-herramientas")
+        page.wait_for_selector("#messages .row.assistant .vnote", timeout=10000)
+        assert page.locator("#messages .row.assistant .vnote").inner_text() == aviso
+    finally:
+        page.unroute("**/history/*")

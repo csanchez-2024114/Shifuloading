@@ -1,4 +1,5 @@
 """Construcción del agente y traducción de su stream a eventos SSE (dicts). Todo síncrono."""
+import json
 import logging
 import re
 import threading
@@ -672,8 +673,42 @@ def landing_due(cap: int, messages=None) -> TurnTokens | None:
     return None
 
 
+def history_landing(counter: TurnTokens, cap: int) -> bool:
+    """El turno va sin herramientas solo porque el historial ya pesa más que el tope (no por lo gastado)."""
+    return counter.history_over_cap and counter.total < cap * SOFT_CAP_RATIO
+
+
 def landing_note(counter: TurnTokens, cap: int) -> str:
-    return HISTORY_CAP_NOTE if counter.history_over_cap and counter.total < cap * SOFT_CAP_RATIO else SOFT_CAP_NOTE
+    return HISTORY_CAP_NOTE if history_landing(counter, cap) else SOFT_CAP_NOTE
+
+
+NO_TOOLS_KEY = "no_tools"  # additional_kwargs de la respuesta: se respondió sin herramientas (historial > tope)
+
+
+def mark_no_tools(msg):
+    """Marca la respuesta para que el aviso "sin herramientas" se vea también al recargar el historial."""
+    if isinstance(msg, AIMessage):
+        msg.additional_kwargs[NO_TOOLS_KEY] = "history_over_cap"
+    return msg
+
+
+def fixed_prompt_tokens(tools=(), extra_prompt: str = "") -> int:
+    """Mínimo aproximado que pesa cualquier llamada al modelo: prompt del sistema + esquemas de herramientas."""
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+
+    schemas = json.dumps([convert_to_openai_tool(t) for t in tools], ensure_ascii=False)
+    return count_tokens_approximately([SystemMessage(system_prompt_text() + extra_prompt)]) + len(schemas) // 4
+
+
+def check_turn_cap(settings: Settings, tools=(), extra_prompt: str = "") -> int:
+    """Al arrancar: avisa en el log (sin bloquear) si TURN_TOKEN_CAP no alcanza ni para el prompt y las
+    herramientas; con un tope así, todos los mensajes irían sin herramientas. Devuelve ese mínimo."""
+    minimum = fixed_prompt_tokens(tools, extra_prompt)
+    if settings.turn_token_cap and settings.turn_token_cap < minimum:
+        logger.warning("TURN_TOKEN_CAP=%d es menor que lo que pesan solos el prompt del sistema y las herramientas "
+                       "(~%d tokens): todos los mensajes irán sin herramientas. Súbelo por encima de ese mínimo.",
+                       settings.turn_token_cap, minimum)
+    return minimum
 
 
 class AterrizajeSuave(AgentMiddleware):
@@ -688,13 +723,20 @@ class AterrizajeSuave(AgentMiddleware):
 
     def wrap_model_call(self, request, handler):
         sent = [request.system_message, *request.messages] if request.system_message else request.messages
-        if request.tools and (counter := landing_due(self.cap, sent)):
-            counter.landing = True
-            system = request.system_message.text if request.system_message else ""
-            note = landing_note(counter, self.cap)
-            request = request.override(tool_choice="none",
-                                       system_message=SystemMessage(content=f"{system}\n\n{note}".strip()))
-        return handler(request)
+        if not (request.tools and (counter := landing_due(self.cap, sent))):
+            return handler(request)
+        counter.landing = True
+        system = request.system_message.text if request.system_message else ""
+        note = landing_note(counter, self.cap)
+        request = request.override(tool_choice="none",
+                                   system_message=SystemMessage(content=f"{system}\n\n{note}".strip()))
+        if not history_landing(counter, self.cap):
+            return handler(request)
+        request.runtime.stream_writer({"tipo": "sin_herramientas"})  # la UI avisa: el modelo no siempre lo dice
+        response = handler(request)
+        for msg in getattr(response, "result", None) or []:
+            mark_no_tools(msg)
+        return response
 
 
 def turn_tokens(thread_id: str | None) -> int:
@@ -789,6 +831,8 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
                 yield {"type": "progress", "name": data.get("herramienta"), "args": data.get("args", {})}
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "fase":
                 yield {"type": "phase", "phase": data.get("fase")}
+            elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "sin_herramientas":
+                yield {"type": "no_tools"}  # el historial ya pesa más que TURN_TOKEN_CAP: turno sin herramientas
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "corte":
                 yield {"type": "token", "text": CUT_NOTE}  # la respuesta se cortó por MAX_TOKENS
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "verificacion":
@@ -829,6 +873,8 @@ def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
             text = _content_text(msg)
             if text:
                 out.append({"role": "assistant", "content": text})
+                if msg.additional_kwargs.get(NO_TOOLS_KEY):
+                    out[-1]["no_tools"] = True
                 if corrected := msg.additional_kwargs.get("answer_verify"):
                     if corrected.get("status") != "unverified":  # "no verificada" no tiene original
                         out[-1]["original"] = corrected.get("original", "")

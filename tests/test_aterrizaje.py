@@ -196,3 +196,59 @@ def test_historial_mas_pesado_que_el_tope_en_bigtool(make_settings, mongo_checkp
     ev = run_turn(agent, s, "resume esto: " + "palabra " * 4000, uid())
     assert [v["choice"] for v in llm.vistos] == ["none"] and HISTORY_CAP_NOTE in llm.vistos[0]["system"]
     assert "Respuesta corta." in _texto(ev) and ev[-1]["type"] == "done"
+
+
+def test_sin_herramientas_por_historial_avisa_en_vivo_y_al_recargar(make_settings, mongo_checkpointer):
+    """Prueba real (tope 1.500): respondió sin herramientas, pero nada le decía al usuario por qué."""
+    from assistant.agent import get_history
+
+    s = make_settings(turn_token_cap=4000, model_call_limit=15)
+    llm = ConCoste(messages=iter(["Respuesta corta.", "No puedo buscar ahora."]), costes=[50, 50], vistos=[])
+    agent = _agente(s, llm, mongo_checkpointer)
+    thread = uid()
+    assert "no_tools" not in [e["type"] for e in run_turn(agent, s, "hola", thread)]  # historial corto: sin aviso
+    ev = run_turn(agent, s, "precio del bitcoin. " + "palabra " * 4000, thread)
+    assert [e["type"] for e in ev].count("no_tools") == 1
+    respuestas = [m for m in get_history(agent, thread, s) if m["role"] == "assistant"]
+    assert "no_tools" not in respuestas[0] and respuestas[1]["no_tools"] is True
+    _sin_huerfanos(_guardados(thread))
+
+
+def test_aterrizaje_por_gasto_no_es_aviso_de_sin_herramientas(make_settings, mongo_checkpointer):
+    s = make_settings(turn_token_cap=100000, model_call_limit=15)
+    llm = ConCoste(messages=iter([tool_call("calculator", {"expression": "1+1"}, "c1"), "Con lo que tengo: 2."]),
+                   costes=[85000, 10], vistos=[])
+    ev = run_turn(_agente(s, llm, mongo_checkpointer), s, "calcula", uid())
+    assert llm.vistos[-1]["choice"] == "none" and "no_tools" not in [e["type"] for e in ev]
+
+
+def test_sin_herramientas_por_historial_en_bigtool(make_settings, mongo_checkpointer):
+    from assistant.agent import get_history
+    from assistant.bigtool_agent import build_bigtool_agent
+
+    s = make_settings(use_bigtool=True, turn_token_cap=4000, model_call_limit=15)
+    llm = BigConCoste(messages=iter(["Respuesta corta."]), costes=[50], vistos=[])
+    agent = build_bigtool_agent(llm, s, checkpointer=mongo_checkpointer, memories_store=InMemoryStore(),
+                                embeddings=DeterministicFakeEmbedding(size=64), search_fn=SearchConUso())
+    thread = uid()
+    ev = run_turn(agent, s, "resume esto: " + "palabra " * 4000, thread)
+    assert "no_tools" in [e["type"] for e in ev] and "Respuesta corta." in _texto(ev)
+    assert [m for m in get_history(agent, thread, s) if m["role"] == "assistant"][-1]["no_tools"] is True
+
+
+def test_aviso_al_arrancar_si_el_tope_no_alcanza_para_prompt_y_herramientas(make_settings, caplog):
+    import logging
+
+    from assistant.agent import check_turn_cap
+    from assistant.tools import build_tools
+    from conftest import fake_llm
+
+    tools = build_tools(fake_llm("x"), make_settings())
+    with caplog.at_level(logging.WARNING, logger="assistant"):
+        minimo = check_turn_cap(make_settings(turn_token_cap=1500), tools)
+    assert minimo > 1500 and "TURN_TOKEN_CAP=1500" in caplog.text
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="assistant"):
+        assert check_turn_cap(make_settings(turn_token_cap=minimo + 1), tools) == minimo
+        check_turn_cap(make_settings(turn_token_cap=0), tools)  # 0 = sin tope: nada que avisar
+    assert "TURN_TOKEN_CAP" not in caplog.text

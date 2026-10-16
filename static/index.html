@@ -571,10 +571,13 @@ textarea#input:disabled { opacity: .6; }
     var row = el("div", "row user"), b = el("div", "bubble", text);
     row.appendChild(b); messagesEl.appendChild(row); scrollDown(true);
   }
-  function addAssistantStatic(text, original, verify) {
+  // el turno fue sin herramientas porque la conversación ya pesa más que TURN_TOKEN_CAP
+  var NO_TOOLS_NOTE = "⚠️ Sin herramientas: esta conversación ya supera el tope por mensaje; abre una nueva para buscar";
+  function addAssistantStatic(text, original, verify, noTools) {
     var row = el("div", "row assistant"), b = el("div", "bubble"), seg = el("div", "seg");
     seg.innerHTML = renderMarkdown(text);
     b.appendChild(seg);
+    if (noTools) b.appendChild(el("div", "vnote corrected", NO_TOOLS_NOTE));
     if (original) b.appendChild(correctionNote(original, verify));
     else if (verify && verify.status === "unverified")  // ANSWER_VERIFY no corrió: el mensaje llegó a su tope
       b.appendChild(el("div", "vnote corrected", "⚠️ " + (verify.notes || []).join(" · ")));
@@ -906,6 +909,10 @@ textarea#input:disabled { opacity: .6; }
     this.stopTiming();
     this.live = false; this.hideDots();
     if (this.seg) { this.closeSeg(); }
+    if (this.noTools && !this.noToolsShown) {
+      this.noToolsShown = true;
+      this.bubble.appendChild(el("div", "vnote corrected", NO_TOOLS_NOTE));
+    }
     // marca como abortados los chips que sigan "en curso"
     var spinning = this.bubble.querySelectorAll(".chip.running");
     Array.prototype.forEach.call(spinning, function (c) { c.classList.remove("running"); var s = c.querySelector(".spin"); if (s) s.remove(); });
@@ -1029,6 +1036,7 @@ textarea#input:disabled { opacity: .6; }
         case "tool_end": bubble.toolEnd(ev); break;
         case "progress": bubble.progress(ev); break;
         case "summarized": bubble.summarized(); break;
+        case "no_tools": bubble.noTools = true; break;  // el aviso va al final de la respuesta
         case "verify": bubble.verify(ev); break;
         case "interrupt":
           interrupted = true;
@@ -1083,7 +1091,7 @@ textarea#input:disabled { opacity: .6; }
     var firstUser = "";
     msgs.forEach(function (m) {
       if (m.role === "user") { if (!firstUser) firstUser = String(m.content || ""); addUserBubble(String(m.content || "")); }
-      else if (m.role === "assistant") addAssistantStatic(String(m.content || ""), m.original, m.verify);
+      else if (m.role === "assistant") addAssistantStatic(String(m.content || ""), m.original, m.verify, m.no_tools);
       else if (m.role === "tool") addToolLine(canonicalTool(String(m.name || "herramienta")), m.status);
       else if (m.role === "summary") messagesEl.appendChild(el("div", "sys", "🗜️ La conversación anterior se resumió; aquí se ven los mensajes conservados."));
     });

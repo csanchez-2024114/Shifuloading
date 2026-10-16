@@ -139,6 +139,7 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 {"type": "summarized"}                                                                    // MEMORY_SUMMARIZE: se resumió la conversación vieja
 {"type": "verify", "status": "ok", "notes": [], "tokens": 812}                           // ANSWER_VERIFY, solo si el turno usó web_search/investigador
 {"type": "verify", "status": "corrected"|"kept_original", "text": "texto final", "original": "respuesta original", "notes": ["..."], "tokens": 950}
+{"type": "no_tools"}                                                                    // el historial ya pesa más que TURN_TOKEN_CAP: el turno va sin herramientas (la UI muestra "⚠️ Sin herramientas…")
 {"type": "verify", "status": "unverified", "notes": ["No verificada: este mensaje llegó a su tope de tokens (TURN_TOKEN_CAP)"], "tokens": 0}  // el turno ya aterrizó o pasó el tope: no se verifica
 // "text"/"original" solo si el texto cambió. kept_original = se descartó la corrección del verificador (p. ej. traía cifras
 // que no están en la evidencia); puede venir con citas inventadas quitadas. Reglas de citas en citations.py (en código).
@@ -179,7 +180,7 @@ empiezan con `:`.
 | GET | `/` | sirve `static/index.html` |
 | POST | `/chat` | body `{"message": str, "thread_id": str, "user_id": str, "effort"?: "bajo"\|"medio"\|"alto"\|null}` → `text/event-stream` con los eventos de arriba. `effort` (selector de la UI) manda sobre el clasificador; null o ausente = automático |
 | POST | `/resume` | body `{"thread_id": str, "user_id": str, "decisions": [{"type": "approve"} \| {"type": "reject", "message": str}]}` → mismo stream SSE. Internamente `Command(resume={"decisions": decisions})` |
-| GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str,"original"?:str,"verify"?:{"status":str,"notes":[str]}} \| {"role":"tool","name":str,"status"?:"skipped"\|"error"} \| {"role":"summary"}]}` (vacío si no existe; `original` = respuesta antes de ANSWER_VERIFY; `verify.status` "unverified" = no se verificó por el tope, sin `original`; `status` solo si la herramienta no se ejecutó o falló) |
+| GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str,"original"?:str,"verify"?:{"status":str,"notes":[str]},"no_tools"?:true} \| {"role":"tool","name":str,"status"?:"skipped"\|"error"} \| {"role":"summary"}]}` (vacío si no existe; `original` = respuesta antes de ANSWER_VERIFY; `verify.status` "unverified" = no se verificó por el tope, sin `original`; `no_tools` = respondió sin herramientas porque el historial superaba el tope; `status` solo si la herramienta no se ejecutó o falló) |
 | GET | `/memories/{user_id}` | `{"user_id": str, "memories": [{"key","text","created_at","thread_id","evidence","confidence","previous_text","updated_at"}]}` (más recientes primero; 503 sin store) |
 | DELETE | `/memories/{user_id}/{key}` | `{"deleted": key}`; 404 si no existe en el namespace de ese usuario |
 | GET | `/health` | `{"ok": true, "model": str}` |

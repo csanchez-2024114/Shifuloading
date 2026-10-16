@@ -35,7 +35,8 @@ from langgraph_bigtool import create_agent as create_bigtool_agent
 from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 
 from assistant import memory
-from assistant.agent import OLD_TOOL_NAMES, landing_due, landing_note, rename_old_tools, system_prompt_text
+from assistant.agent import (OLD_TOOL_NAMES, history_landing, landing_due, landing_note, mark_no_tools,
+                             rename_old_tools, system_prompt_text)
 from assistant.apps.crm_demo import crm_tools
 from assistant.config import Settings
 from assistant.extra_tools import extra_tools
@@ -287,6 +288,9 @@ class PromptedModel:
         def route(sent):  # devolver un Runnable hace que RunnableLambda lo invoque con la misma entrada
             if counter := landing_due(self.cap, sent):
                 counter.landing = True
+                if history_landing(counter, self.cap):  # sin herramientas por el historial: la UI lo avisa
+                    get_stream_writer()({"tipo": "sin_herramientas"})
+                    return landing | RunnableLambda(mark_no_tools)
                 return landing
             return bound
 
