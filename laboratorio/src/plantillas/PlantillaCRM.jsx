@@ -93,7 +93,22 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const [entrada, setEntrada] = useState(() => animado)
   const ir = (id) => conTransicion(() => { if (animado) setEntrada(true); setVista(id) })
   /** Aplica el estado que devolvió Shifu: lo que se va sale primero (desenfoque), después el resto se reacomoda y lo nuevo nace. */
-  const aplicarEstado = (nuevo) => {
+  // ── Puntos de guardado (estilo checkpoints de Alan): antes de cada cambio de Shifu se guarda el estado anterior, y la
+  // persona puede volver a cualquier punto. Todo por código, sin IA. Se guardan en el navegador para sobrevivir a recargas.
+  const claveP = `lab-puntos:${plantillaBase.id}`
+  const [puntos, setPuntos] = useState(() => { try { return JSON.parse(localStorage.getItem(claveP) || '[]') } catch { return [] } })
+  useEffect(() => { try { localStorage.setItem(claveP, JSON.stringify(puntos.slice(-30))) } catch { /* sin almacenamiento */ } }, [puntos, claveP])
+  const fotoActual = () => JSON.parse(JSON.stringify(estadoParaIA()))
+  const guardarPunto = (etiqueta, manual = false) => setPuntos((ps) => [...ps.slice(-29), { id: Date.now(), hora: new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }), etiqueta, manual, estado: fotoActual() }])
+  const volverA = (id) => {
+    const p = id ? puntos.find((x) => x.id === id) : [...puntos].reverse().find((x) => !x.manual) || puntos[puntos.length - 1]
+    if (!p) return false
+    aplicarEstado({ ...p.estado, toma: p.estado.toma || { activa: false } }, { sinPunto: true })
+    if (!id) setPuntos((ps) => ps.filter((x) => x.id !== p.id)) // deshacer consume el último punto automático
+    return p
+  }
+  const aplicarEstado = (nuevo, { sinPunto = false, etiqueta = 'Antes de un cambio de Shifu' } = {}) => {
+    if (!sinPunto) guardarPunto(etiqueta)
     const bloquesBase = nuevo.bloques ?? ultimo.current?.bloques ?? bloques.map(({ nuevo: _n, ...b }) => b)
     ultimo.current = { vista: nuevo.vista || vista, marca: nuevo.marca ?? marca, estructura: nuevo.estructura ?? estructura, bloques: bloquesBase.map(({ nuevo: _n, ...b }) => b), toma: nuevo.toma }
     if (!nuevo.bloques) return
@@ -145,7 +160,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
       <div className="mc-cuerpo">
         <nav className="mc-menu" aria-label="Secciones">
           <div className="mc-grupo">
-            <ul><li><button type="button" className={vista === 'inicio' ? 'on' : ''} aria-current={vista === 'inicio' ? 'page' : undefined} onClick={() => ir('inicio')}><LuLayoutDashboard aria-hidden="true" />Inicio</button></li></ul>
+            <ul><li><button type="button" className={vista === 'inicio' ? 'on' : ''} aria-current={vista === 'inicio' ? 'page' : undefined} data-seccion="inicio" onClick={() => ir('inicio')}><LuLayoutDashboard aria-hidden="true" />Inicio</button></li></ul>
           </div>
           {GRUPOS.map((g, gi) => {
             const items = plantilla.secciones.filter((s) => s.grupo === gi)
@@ -156,7 +171,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
                 <ul>
                   {items.map((s) => {
                     const I = ICONOS[s.icono] || LuTable
-                    return <li key={s.id}><button type="button" className={vista === s.id ? 'on' : ''} aria-current={vista === s.id ? 'page' : undefined} onClick={() => ir(s.id)}><I aria-hidden="true" />{s.titulo}</button></li>
+                    return <li key={s.id}><button type="button" className={vista === s.id ? 'on' : ''} aria-current={vista === s.id ? 'page' : undefined} data-seccion={s.id} onClick={() => ir(s.id)}><I aria-hidden="true" />{s.titulo}</button></li>
                   })}
                 </ul>
               </div>
@@ -192,7 +207,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
         </main>
       </div>
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
-      <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
+      <ChatLab puntos={puntos} onGuardarPunto={() => guardarPunto('Punto guardado por ti', true)} onVolver={volverA} contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
     </div>
     </VelContext.Provider></AnimarContext.Provider>
   )

@@ -296,3 +296,13 @@
 .lab-sug .mc-chat-sug { flex: 1; border-top: 0; scroll-behavior: smooth; mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%); }
 .lab-sug > button { flex: none; width: 26px; height: 26px; margin: 0 4px; border-radius: 999px; border: 1px solid var(--linea); background: var(--card); color: var(--tx); font-size: 15px; line-height: 1; cursor: pointer; }
 .lab-sug > button:disabled { opacity: .25; cursor: default; }
+
+.lab-piezas { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.lab-piezas i { font-style: normal; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--acento, #22d3a6) 22%, transparent); font-size: 12px; }
+
+/* Puntos de guardado en el encabezado del chat */
+.lab-puntos-barra button { min-width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--linea); background: var(--panel); color: var(--tx); font-size: 13px; cursor: pointer; }
+.lab-puntos-barra button:disabled { opacity: .35; cursor: default; }
+.lab-puntos { list-style: none; margin: 0; padding: 8px 12px; max-height: 180px; overflow-y: auto; border-bottom: 1px solid var(--linea); display: grid; gap: 6px; font-size: 12.5px; }
+.lab-puntos li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.lab-puntos li button { flex: none; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--linea); background: var(--card); color: var(--tx); font-size: 12px; cursor: pointer; }
