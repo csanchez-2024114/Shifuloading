@@ -8,6 +8,7 @@ import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, Lu
 import { COMPONENTES, AnimarContext, VelContext, FichaContext } from './vistas'
 import Ficha from './ficha'
 import { useSeleccion } from './seleccion'
+import { IconoSeccion } from './iconos'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe, datosEjemplo } from './datosEjemplo'
@@ -201,8 +202,8 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
                 <h2>{g}</h2>
                 <ul>
                   {items.map((s) => {
-                    const I = ICONOS[s.icono] || LuTable
-                    return <li key={s.id}><button type="button" className={vista === s.id ? 'on' : ''} aria-current={vista === s.id ? 'page' : undefined} data-seccion={s.id} onClick={() => ir(s.id)}><I aria-hidden="true" />{s.titulo}</button></li>
+                    // Ícono por el título desde el catálogo (D32); el genérico de su tipo mientras carga o si no hay coincidencia.
+                    return <li key={s.id}><button type="button" className={vista === s.id ? 'on' : ''} aria-current={vista === s.id ? 'page' : undefined} data-seccion={s.id} onClick={() => ir(s.id)}><IconoSeccion titulo={s.titulo} Generico={ICONOS[s.icono] || LuTable} aria-hidden="true" />{s.titulo}</button></li>
                   })}
                 </ul>
               </div>

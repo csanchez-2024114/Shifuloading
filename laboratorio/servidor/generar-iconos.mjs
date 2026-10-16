@@ -95,6 +95,11 @@ donante:HandHeart|HeartHandshake|VolunteerActivism; campana-recaudacion:Megaphon
 suscriptor:UserCheck|UserCircleCheck|HowToReg; plan:Layers|Stack|ViewModule; licencia:KeySquare|Key|VpnKey|Key; soporte:LifeBuoy|Lifebuoy|SupportAgent|Headset; ticket-soporte:Ticket|TicketCheck|ConfirmationNumber; version:GitBranch|GitBranch|AccountTree
 envio-paquete:PackageOpen|Package|LocalShipping; rastreo:Radar|Crosshair|GpsFixed|Navigation; repartidor:Bike|Truck|DeliveryDining; guia:FileText|Article|Description; aduana:Stamp|Seal|Approval; flota:TruckElectric|Truck|LocalShipping
 mostrador:Store|Storefront|Store; catalogo:BookOpen|Books|LibraryBooks; oferta:BadgePercent|Percent|LocalOffer; devolucion:PackageX|ArrowUUpLeft|AssignmentReturn; resena-producto:Star|StarHalf|RateReview; stock-bajo:PackageMinus|Warning|Inventory
+
+miembro:IdCard|UserCheck|CardMembership; entregable:PackageCheck|Package|Inventory; tratamiento:Stethoscope|HeartPulse|Healing|MedicalServices; caso:Briefcase|FolderOpen|Work; honorario:Banknote|Money|Payments; declaracion:FileText|FileCheck|Description
+sesion:Camera|Aperture|PhotoCamera; visita:DoorOpen|Footprints|MapPin|Place; reserva:CalendarCheck|CalendarPlus|EventAvailable|BookOnline; huesped:BedDouble|Bed|Hotel|User; servicio:ConciergeBell|Bell|RoomService|Wrench; renovacion:RefreshCw|ArrowsClockwise|Autorenew|Refresh
+cuenta:Wallet|Landmark|AccountBalance|Bank; demo:Presentation|MonitorPlay|PlayCircle|Play; orden:ClipboardList|ClipboardText|Assignment; devolucion:Undo2|ArrowUUpLeft|AssignmentReturn|ArrowBackUp|ArrowLeft; vacuna:Syringe|Vaccines|Injection; capacitacion:GraduationCap|School|Student
+comision:Percent|HandCoins|Coins|Payments; compra:ShoppingCart|Cart|ShoppingBag; entrega:Truck|Package|LocalShipping|Delivery; mantenimiento:Wrench|Tool|Build|Hammer; nomina:Banknote|Money|Payments|Wallet; promocion:BadgePercent|Percent|LocalOffer|Discount|Tag; referido:UserPlus|Share2|PersonAdd|Share
 `.trim().split(/[;\n]/).map((x) => x.trim()).filter(Boolean).map((x) => { const [c, n] = x.split(':'); return [c.trim(), n.split('|').map((s) => s.trim())] })
 
 /** El nombre real en cada familia (o null). Prueba cada nombre base con las convenciones de la familia. */
@@ -119,8 +124,8 @@ for (const [c, bases] of CONCEPTOS) {
   if (iconos[c]) continue
   const e = {}
   for (const fam of Object.keys(F)) { const r = buscar(fam, bases); if (r) e[fam] = r }
-  // Se queda solo si está en Lucide (la familia base del CRM) y en al menos 3 familias más.
-  if (e.lu && Object.keys(e).length >= 4) iconos[c] = e; else faltan.push(`${c} (${Object.keys(e).join(',') || 'ninguna'})`)
+  // Se queda solo si está en Lucide (la familia base del CRM) y en al menos 2 familias más.
+  if (e.lu && Object.keys(e).length >= 3) iconos[c] = e; else faltan.push(`${c} (${Object.keys(e).join(',') || 'ninguna'})`)
 }
 const variantes = Object.values(iconos).reduce((s, e) => s + Object.values(e).reduce((t, v) => t + (typeof v === 'string' ? 1 : Object.keys(v).length), 0), 0)
 mkdirSync('laboratorio/src/plantillas/catalogos', { recursive: true })
@@ -130,5 +135,12 @@ writeFileSync('laboratorio/src/plantillas/catalogos/iconos.js', `/* Catálogo de
 export const FAMILIAS = ${JSON.stringify(FAMILIAS, null, 1)}
 
 export const ICONOS = ${JSON.stringify(iconos)}
+`)
+// Módulo liviano para la pantalla: solo los íconos Lucide del catálogo, con import por nombre (el bundle incluye solo esos).
+const lu = [...new Set(Object.values(iconos).map((e) => e.lu))].sort()
+writeFileSync('laboratorio/src/plantillas/catalogos/iconos-lu.js', `/* GENERADO por servidor/generar-iconos.mjs: concepto → ícono Lucide (la familia base del CRM). Solo lo que usa la pantalla. */
+import { ${lu.join(', ')} } from 'react-icons/lu'
+
+export const LU = { ${Object.entries(iconos).map(([c, e]) => `'${c}': ${e.lu}`).join(', ')} }
 `)
 console.log(`${Object.keys(iconos).length} conceptos, ${variantes} íconos con sus estilos. Descartados ${faltan.length}: ${faltan.join('; ')}`)
