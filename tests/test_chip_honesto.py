@@ -110,3 +110,16 @@ def test_rechazo_de_la_tarjeta_emite_tool_end_skipped():
     update = {"HumanInTheLoopMiddleware.after_model": {"messages": [AIMessage("", tool_calls=[]), rechazo]}}
     [ev] = list(_update_events(update))
     assert ev["type"] == "tool_end" and ev["id"] == "r1" and ev["status"] == "skipped"
+
+
+def test_chip_del_investigador_cuenta_solo_busquedas_ejecutadas():
+    """Prueba real: el chip decía "4 búsquedas" y solo corrieron 2 (las otras las frenó el presupuesto)."""
+    from assistant.tools import investigar
+    from test_mejoras import SearchConUso, _inv_settings
+
+    cuatro = AIMessage(content="", tool_calls=[{"name": "web_search", "args": {"query": f"q{i}"}, "id": f"s{i}"}
+                                               for i in range(4)])
+    search, avisos = SearchConUso(), []
+    investigar(fake_llm(cuatro, "Resumen"), _inv_settings(investigator_max_searches=2), search, "task", avisos.append)
+    assert len(search.calls) == 2  # pedidas 4, ejecutadas 2
+    assert [a["args"]["query"] for a in avisos if a["tipo"] == "progreso"] == search.calls

@@ -446,6 +446,8 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
         found.append(f"[{query}]\n{text}")
         return text
 
+    pending: dict[str, dict] = {}  # llamadas a web_search pedidas por el modelo, por id: se avisan solo si corren
+
     sub = make_subinvestigador(model.model_copy(update={"callbacks": [counter]}), buscar_limitado, max_searches)
     final, cut = "", False
     # tags=["nostream"]: sus tokens no deben llegar al stream del agente principal.
@@ -456,10 +458,14 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
         stream_mode="updates",
     ):
         for msg in (update.get("model") or {}).get("messages", []):
-            for call in msg.tool_calls:
-                write({"tipo": "progreso", "herramienta": call["name"], "args": call["args"]})
+            pending.update({call["id"]: call for call in msg.tool_calls})
             if not msg.tool_calls:
                 final, cut = msg.text or "", _was_cut(msg)
+        # el chip cuenta solo las búsquedas que se ejecutaron: las rechazadas por un tope no son búsquedas
+        for msg in (update.get("tools") or {}).get("messages", []):
+            call = pending.pop(getattr(msg, "tool_call_id", None), None)
+            if call and msg.text != SEARCH_LIMIT_MSG and getattr(msg, "status", None) != "error":
+                write({"tipo": "progreso", "herramienta": call["name"], "args": call["args"]})
         # corte duro: sus propias llamadas ya agotaron el tope del mensaje o el presupuesto del investigador
         if settings.turn_token_cap and turn_tokens(thread_id) >= settings.turn_token_cap:
             stop["reason"] = "turn_cap"
