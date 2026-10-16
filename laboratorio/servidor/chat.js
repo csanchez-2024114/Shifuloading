@@ -86,7 +86,8 @@ Reglas:
 const LOGRO = /(?<!\p{L})(agregu[eé]|quit[eé]|cambi[eé]|mov[ií]|achiqu[eé]|agrand[eé]|puse|cre[eé]|hice|list[oa]|ajust[eé]|reemplac[eé]|renombr[eé])(?!\p{L})/iu
 const PROMESA = /(?<!\p{L})(voy a|vamos a|procedo|creo una|agrego un|pongo un|armo una?)(?!\p{L})/iu
 // ¿La persona pidió quitar/reemplazar algo? (o confirma con un sí lo que Shifu le preguntó). El código decide, no el modelo.
-const PIDE_QUITAR = /\b(quit|borr|elimin|sac|remuev|reemplaz|deshac|deshaz|cambi[ae] .* por|en vez de|ya no quiero|sin |como (estaba|antes))|^\s*(s[ií]|dale|ok|claro|hazlo)\b/i
+// Tolerante a tipeo ("qutiar", "qitar", "borar"): se escribe rápido y con errores.
+const PIDE_QUITAR = /\b(quit|qu?ti|qit|bor|borr|elimin|sac|remuev|reemplaz|deshac|deshaz|cambi[ae] .* por|en vez de|ya no quiero|sin |como (estaba|antes))|^\s*(s[ií]|dale|ok|claro|hazlo)\b/i
 
 async function llamar(k, mensajes, herramientas, sinHerramientas = false) {
   const r = await fetch('https://api.openai.com/v1/chat/completions', {

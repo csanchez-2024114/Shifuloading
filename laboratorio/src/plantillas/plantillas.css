@@ -306,3 +306,10 @@
 .lab-puntos { list-style: none; margin: 0; padding: 8px 12px; max-height: 180px; overflow-y: auto; border-bottom: 1px solid var(--linea); display: grid; gap: 6px; font-size: 12.5px; }
 .lab-puntos li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .lab-puntos li button { flex: none; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--linea); background: var(--card); color: var(--tx); font-size: 12px; cursor: pointer; }
+
+/* El chat nunca queda debajo de los bloques durante una transición (View Transitions dibuja los bloques con nombre en
+ * una capa encima de toda la página; el chat entra a la transición con su propio nombre y una capa más alta). */
+.mc-chat-panel { view-transition-name: lab-chat-panel; }
+.mc-chat-btn { view-transition-name: lab-chat-btn; }
+::view-transition-group(lab-chat-panel), ::view-transition-group(lab-chat-btn) { z-index: 1000; animation: none; }
+::view-transition-old(lab-chat-panel), ::view-transition-new(lab-chat-panel), ::view-transition-old(lab-chat-btn), ::view-transition-new(lab-chat-btn) { animation: none; }

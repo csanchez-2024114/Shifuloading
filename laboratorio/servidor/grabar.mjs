@@ -68,6 +68,8 @@ async function grabar(t, puerto) {
     writeFileSync(join(dir, 'revision', `t${String(s).padStart(3, '0')}s.jpg`), Buffer.from(c.data, 'base64'))
   }
   writeFileSync(join(dir, 'eventos.txt'), eventos.join('\n') + '\n')
+  // Tiempo de cada cuadro: para revisar justo lo que pasa después de cada respuesta de la IA.
+  writeFileSync(join(dir, 'tiempos.json'), JSON.stringify(cuadros.map((c) => +c.t.toFixed(2))))
   console.log(`✓ ${t.id}: ${cuadros.length} cuadros · ${join(dir, `${t.id}.mp4`)}`)
 }
 
