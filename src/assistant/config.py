@@ -39,7 +39,7 @@ class Settings:
     summary_keep_tokens: int = 0
     context_window_tokens: int = 0      # ventana del modelo; 0 = la del perfil del modelo (o DEFAULT_CONTEXT_WINDOW)
     compact_warn_pct: int = 70          # medidor en ámbar
-    compact_trigger_pct: int = 85       # medidor en rojo y compactación automática
+    compact_trigger_pct: int = 80       # medidor en rojo y compactación automática
     compact_keep_tokens: int = 0        # tokens recientes que se conservan al compactar; 0 = COMPACT_KEEP_PCT
     compact_keep_pct: int = 20          # % de la ventana que se conserva si no hay COMPACT_KEEP_TOKENS
     compact_prune_tools: bool = False   # capa 1: poda resultados viejos de herramientas en la vista del modelo
@@ -85,7 +85,7 @@ class Settings:
             summary_keep_tokens=int(os.getenv("SUMMARY_KEEP_TOKENS", "0")),
             context_window_tokens=int(os.getenv("CONTEXT_WINDOW_TOKENS", "0")),
             compact_warn_pct=int(os.getenv("COMPACT_WARN_PCT", "70")),
-            compact_trigger_pct=int(os.getenv("COMPACT_TRIGGER_PCT", "85")),
+            compact_trigger_pct=int(os.getenv("COMPACT_TRIGGER_PCT", "80")),
             compact_keep_tokens=int(os.getenv("COMPACT_KEEP_TOKENS", "0")),
             compact_keep_pct=int(os.getenv("COMPACT_KEEP_PCT", "20")),
             compact_prune_tools=_bool("COMPACT_PRUNE_TOOLS"),
@@ -126,6 +126,13 @@ class Settings:
         if self.compact_legacy():
             return self.summary_trigger_tokens
         return max(1, self.context_window() * self.compact_trigger_pct // 100)
+
+    def compact_due(self, context_tokens: int) -> bool:
+        """Compactar antes de esta llamada: el contexto pasó el umbral, o la llamada ya no cabría en la ventana con su
+        salida máxima (MAX_TOKENS), aunque aún no llegue al umbral."""
+        if context_tokens >= self.compact_trigger():
+            return True
+        return not self.compact_legacy() and context_tokens + (self.max_tokens or 0) >= self.context_window()
 
     def compact_keep(self) -> int:
         keep = (self.summary_keep_tokens or self.compact_keep_tokens

@@ -188,7 +188,8 @@ def test_compactar_sin_compactador_responde_501(make_settings):
 
 
 def test_compacta_por_porcentaje_de_la_ventana_una_vez_por_turno_con_registro(make_settings, mongo_checkpointer):
-    s = make_settings(memory_summarize=True, context_window_tokens=4000, compact_trigger_pct=85, compact_keep_pct=10)
+    s = make_settings(memory_summarize=True, context_window_tokens=4000, compact_trigger_pct=85, compact_keep_pct=10,
+                      max_tokens=0)  # sin reserva de salida: solo el disparo por porcentaje
     assert not s.compact_legacy() and s.compact_trigger() == 3400 and s.compact_keep() == 400
     llm = usage_chat(*[f"respuesta {i}" for i in range(12)], extra=2200)
     summ = summarizer(*["- resumen"] * 12)
@@ -210,6 +211,15 @@ def test_compacta_por_porcentaje_de_la_ventana_una_vez_por_turno_con_registro(ma
     # el encabezado deja claro que el resumen es de la parte más antigua
     first = _values(agent, thread)["messages"][0]
     assert first.content.startswith("Summary of the OLDEST part of this conversation")
+
+
+def test_compacta_antes_si_la_siguiente_llamada_no_cabe(make_settings):
+    s = make_settings(context_window_tokens=10000, compact_trigger_pct=80, max_tokens=4000)
+    assert s.compact_trigger() == 8000
+    assert not s.compact_due(5900)
+    assert s.compact_due(6000)  # 6000 + 4000 de salida máxima = la ventana entera, aunque aún no llega al 80%
+    assert s.compact_due(8000)
+    assert make_settings().compact_trigger_pct == 80
 
 
 def test_variables_anteriores_mantienen_el_disparo_por_tokens_de_mensajes(make_settings):

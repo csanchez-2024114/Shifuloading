@@ -396,7 +396,8 @@ class ResumenPorTurno(SummarizationMiddleware):
     - como máximo una por turno: el mensaje de resumen guarda el id del mensaje del usuario que abría el turno; y
       ninguna si el turno ya aterrizó por TURN_TOKEN_CAP;
     - disparo: con SUMMARY_TRIGGER_TOKENS (modo anterior) mira solo los tokens de los mensajes, igual que `keep`. Si no,
-      el contexto en uso (el mismo valor del medidor) frente a COMPACT_TRIGGER_PCT de la ventana. Nunca el uso
+      el contexto en uso (el mismo valor del medidor) frente a COMPACT_TRIGGER_PCT de la ventana, o antes si la
+      llamada con su salida máxima (MAX_TOKENS) ya no cabría en la ventana. Nunca el uso
       reportado por el último AIMessage tras compactar: seguía por encima del umbral y volvía a resumir en cada
       llamada (hasta 3 resúmenes en un turno en la prueba larga);
     - registro por compactación (antes/después, ratio, tokens gastados, segundos, capas) en el estado del hilo y en
@@ -439,7 +440,7 @@ class ResumenPorTurno(SummarizationMiddleware):
         stats = state.get("context_stats") or {}
         measure = (count_tokens_approximately(messages) if self.settings.compact_legacy()
                    else self.context_tokens(messages, stats))
-        if measure < self.settings.compact_trigger():
+        if not self.settings.compact_due(measure):
             return None
         return self.compact(messages, stats, human.id)
 
