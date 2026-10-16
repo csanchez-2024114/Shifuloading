@@ -153,3 +153,10 @@ def test_la_vista_tiene_la_forma_del_contrato(doc):
     assert set(v["contactos"][0]) == {"id", "n", "det", "canal", "etapa", "dueno", "dias", "extra"}
     assert set(v["eventos"][0]) == {"id", "e", "t", "h"}
     assert "user_id" not in v and "version" not in v
+
+
+def test_los_montos_se_leen_igual_con_punto_o_coma_decimal_y_con_separador_de_miles():
+    from app.crm import estructura as est
+    casos = {"12.50": 12.5, "12,50": 12.5, "Q 12,50": 12.5, "1,250": 1250, "1,190.50": 1190.5, "1.190,50": 1190.5, "1.190.500": 1190500, "2,300.50": 2300.5, "145": 145, "-3,5": -3.5, 7.25: 7.25}
+    for texto, esperado in casos.items():
+        assert est.valor_de_tipo("numero", texto, "Precio") == esperado, texto

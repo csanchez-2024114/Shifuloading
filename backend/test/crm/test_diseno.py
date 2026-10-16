@@ -432,3 +432,14 @@ def test_una_seccion_sin_ningun_campo_de_texto_recibe_uno_que_nombre_cada_fila()
     # si ya hay un campo de texto, no se toca nada
     ok, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Productos", "campos": [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}]}]}, AHORA)
     assert [c["nombre"] for c in ok["listas"][0]["campos"]] == ["Producto", "Precio"]
+
+
+def test_el_primer_campo_de_una_seccion_siempre_nombra_cada_fila():
+    doc = generar("u1", PANADERIA, AHORA)
+    # empezó por un teléfono: no dice QUÉ proveedor es cada fila
+    nuevo, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Proveedores", "campos": [{"nombre": "Teléfono"}, {"nombre": "Fecha próximo pedido", "tipo": "fecha"}, {"nombre": "Producto principal"}]}]}, AHORA)
+    assert [c["nombre"] for c in nuevo["listas"][0]["campos"]] == ["Nombre", "Teléfono", "Fecha próximo pedido", "Producto principal"]
+    # si ya empieza por lo que nombra la fila, no se toca
+    for primero in ("Proveedor", "Platillo", "Cliente", "Producto"):
+        ok, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Lista", "campos": [{"nombre": primero}, {"nombre": "Teléfono"}]}]}, AHORA)
+        assert [c["nombre"] for c in ok["listas"][0]["campos"]][0] == primero

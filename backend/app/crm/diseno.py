@@ -35,6 +35,7 @@ OCULTAS_AL_INICIO = ("contactos", "desarrollo", "actividad", "rrhh", "importar",
 CREAR_RECOMENDACIONES = False  # los consejos no se arman al inicio: la persona se los puede pedir a Shifu cuando quiera
 LARGO_NOMBRE_CORTO = 22
 NOMBRE_RECOMENDACIONES = "Recomendaciones"
+_NO_NOMBRA = re.compile(r"tel[eé]fono|celular|correo|e-?mail|fecha|precio|cantidad|monto|total|stock|direcci[oó]n|ciudad|estado|n[uú]mero|c[oó]digo|d[ií]as|costo", re.I)  # un campo así no puede ser el que nombra cada fila
 _PERSONAL = re.compile(r"equipo|trabajador|personal|empleado|staff|vendedor|colaborador", re.I)
 MAX_CAMPOS_CONTACTO_INICIALES = 1
 MAX_CAMPOS_POR_SECCION = 4
@@ -478,8 +479,9 @@ def aplicar_propuesta(doc: dict, propuesta: dict, ahora: datetime | None = None)
         if not isinstance(s, dict):
             continue
         campos = [c for c in (s.get("campos") if isinstance(s.get("campos"), list) else []) if isinstance(c, dict)][:MAX_CAMPOS_POR_SECCION]
-        if campos and not any(str(c.get("tipo") or "texto").lower() == "texto" for c in campos):
-            # Una lista sin ningún campo de texto (solo precio y cantidad) no dice de QUÉ es cada fila: se le pone un campo que nombre cada una.
+        if campos and (str(campos[0].get("tipo") or "texto").lower() != "texto" or _NO_NOMBRA.search(str(campos[0].get("nombre") or ""))):
+            # El primer campo tiene que decir DE QUÉ es cada fila (el producto, el proveedor…). Si la IA empezó por un precio, una fecha o un
+            # teléfono, la lista no diría qué es cada cosa: se le pone un campo de nombre al inicio.
             campos = [{"nombre": "Nombre", "tipo": "texto"}, *campos][:MAX_CAMPOS_POR_SECCION]
         try:
             doc = est.lista_crear(doc, nombre_corto(s.get("nombre"), negocio), campos or None, ahora)

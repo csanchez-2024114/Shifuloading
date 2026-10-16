@@ -34,11 +34,13 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `GET /crm/chat/historial` | — | `{ mensajes: [{ de: "yo"\|"shifu", t }], saludo: string\|null }`: la conversación guardada en el servidor y, si hace más de 6 horas que no hablan y hay algo pendiente, un saludo que retoma lo último |
 | `GET /crm/memoria` | — | `{ estilo, hechos[], trabajo }`: lo que Shifu recuerda de la persona (nada escondido) |
 | `DELETE /crm/chat` | — | 204. Borra el historial y todo lo que Shifu recuerda de la persona (el CRM no se toca) |
-| `POST /crm/tareas` | `{ t }` | CRM (entra en la columna `porHacer`) |
-| `PATCH /crm/tareas/:id` | `{ columna: "porHacer" \| "enCurso" \| "hecho" }` | CRM |
+| `POST /crm/tareas` | `{ t, vence?, hora? }` (`vence` AAAA-MM-DD, hoy o futura; `hora` HH:MM) | CRM (entra en la columna `porHacer`) |
+| `PATCH /crm/tareas/:id` | `{ columna?, t?, vence?, hora? }` (al menos uno; `vence: ""` le quita la fecha; solo se valida lo que se manda) | CRM |
 | `DELETE /crm/tareas/:id` | — | CRM |
 | `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM (422 si se intenta encender una que todavía no existe) |
 | `PUT /crm/secciones/:id` | `{ nombre }` (renombra una sección) | CRM |
+| `POST /crm/listas/:id/registros/lote` | `{ filas: [{ <idCampo>: valor }] (hasta 300), lote?: { id, nombre } }` (`id`: 6 a 40 letras, números, `_` o `-`; las tandas de una misma importación llevan el mismo `lote`) | `201` CRM + `importacion: { agregadas, omitidas }`. Se omiten filas vacías, repetidas o con un valor que no corresponde al tipo del campo; `422` con el motivo si no se pudo importar ninguna |
+| `DELETE /crm/listas/:id/importaciones/:lote` | — | CRM sin los registros de esa importación (incluso los editados). No se puede deshacer. `404` si ya no existe |
 | `POST /crm/listas/:id/registros` | `{ valores: { <idCampo>: valor } }` | `201` CRM (agrega un registro a una sección propia) |
 | `PATCH /crm/listas/:id/registros/:rid` | `{ valores: { <idCampo>: valor } }` | CRM |
 | `DELETE /crm/listas/:id/registros/:rid` | — | CRM |

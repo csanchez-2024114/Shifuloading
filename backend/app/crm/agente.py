@@ -136,6 +136,10 @@ HERRAMIENTAS = [
     _herramienta("definir_opciones", "Convierte un campo que YA existe en una lista de opciones fijas (por ejemplo Estado = pendiente, realizado, cancelado), o cambia las opciones de una lista. "
                  "Se conservan sus datos. Úsala en vez de quitar y volver a crear el campo.",
                  {"destino": {"type": "string"}, "campo": {"type": "string"}, "opciones": _OPCIONES}, ["destino", "campo", "opciones"]),
+    _herramienta("mover_campo", "Cambia el LUGAR de un campo en los contactos o en una sección propia (por ejemplo, ponerlo al principio). `posicion`: \"inicio\", \"final\" o un número (1 es el primero).",
+                 {"destino": {"type": "string"}, "campo": {"type": "string"}, "posicion": {"type": "string"}}, ["destino", "campo", "posicion"]),
+    _herramienta("renombrar_campo", "Le cambia el nombre a un campo que ya existe (sus datos se conservan).",
+                 {"destino": {"type": "string"}, "campo": {"type": "string"}, "nombre": {"type": "string"}}, ["destino", "campo", "nombre"]),
     _herramienta("quitar_campo", "Pide quitar un campo (y sus valores) de los contactos o de una sección propia. NO lo borra: deja una confirmación pendiente y tú debes preguntar si está seguro.",
                  {"destino": {"type": "string"}, "campo": {"type": "string"}}, ["destino", "campo"]),
     # Registros de las secciones propias
@@ -566,6 +570,30 @@ class Sesion:
         nuevas = next(x for x in self._campos_de(destino)[0] if x["id"] == c["id"])["opciones"]
         return f"Listo: “{c['nombre']}” de {destino} ahora es una lista con las opciones {', '.join(nuevas)}."
 
+    def _h_mover_campo(self, destino: str, campo: str, posicion: str) -> str:
+        campos, ambito, error = self._campos_de(destino)
+        if error:
+            return error
+        c = self._campo(campos, campo)
+        if c is None:
+            return f"No encontré el campo “{campo}”. Campos: {', '.join(x['nombre'] for x in campos) or 'ninguno'}."
+        self.doc = est.campo_mover(self.doc, ambito, c["id"], posicion, self.ahora)
+        self.vista = "contactos" if ambito == "contactos" else ambito
+        orden = ", ".join(x["nombre"] for x in self._campos_de(destino)[0])
+        return f"Listo: moví “{c['nombre']}”. Ahora el orden es: {orden}."
+
+    def _h_renombrar_campo(self, destino: str, campo: str, nombre: str) -> str:
+        campos, ambito, error = self._campos_de(destino)
+        if error:
+            return error
+        c = self._campo(campos, campo)
+        if c is None:
+            return f"No encontré el campo “{campo}”. Campos: {', '.join(x['nombre'] for x in campos) or 'ninguno'}."
+        anterior = c["nombre"]
+        self.doc = est.campo_renombrar(self.doc, ambito, c["id"], nombre, self.ahora)
+        self.vista = "contactos" if ambito == "contactos" else ambito
+        return f"Listo: el campo “{anterior}” ahora se llama “{nombre}”. Sus datos se conservaron."
+
     def _h_quitar_campo(self, destino: str, campo: str) -> str:
         campos, ambito, error = self._campos_de(destino)
         if error:
@@ -758,11 +786,18 @@ Fechas y citas
 - Las personas escriben día-mes-año (02-11-2026 es el 2 de noviembre de 2026). Conviértelas a AAAA-MM-DD y confirma en palabras (“lunes 2 de noviembre de 2026”). Habla siempre de las fechas en palabras, nunca como 2026-11-02. Si falta el año, usa el próximo que no quede en el pasado.
 - Si la herramienta dice que la fecha ya pasó o no existe, dilo en una línea y pide otra.
 
+Lo que SÍ se puede (nunca digas que “el sistema no lo permite” de esto)
+- Cambiar el lugar de un campo (mover_campo: por ejemplo ponerlo al principio) y cambiarle el nombre (renombrar_campo). Si una sección no tiene un campo que nombre cada fila, agrégalo con agregar_campo y luego muévelo al principio.
+- IMPORTAR un Excel: lo hace la persona con el botón “Importar” de cada sección (lee .xlsx y CSV, empareja las columnas, y si el Excel trae varias hojas elige la que se llama como la sección). Al importar se omiten solo las filas EXACTAMENTE iguales a una que ya existe; si algo cambió (por ejemplo ahora trae el nombre del producto) esas filas se agregan como nuevas. Lo importado se puede quitar: la barra “Importaciones de esta sección”, o “Vaciar esta sección” al final de la tabla.
+- Los precios y montos guardan decimales con punto (12.50) y se ven con punto decimal.
+
 Lo que NO puedes (dilo claro y haz lo más cercano)
+- LEER ni IMPORTAR archivos de Excel desde el chat: solo lees imágenes. Si te piden importar, explica que usen el botón “Importar” de la sección; NUNCA digas que importaste un archivo ni inventes que lo hiciste.
 - Mandar WhatsApp o correos, guardar notas o historial de conversaciones por contacto, y revisar disponibilidad de horarios.
 - Las secciones propias guardan texto, números y fechas, no se enlazan solas a los contactos: escribe el nombre del cliente tal como lo dijeron.
 
 Capturas e imágenes
+- Si la persona manda una captura o lista para COMPLETAR o ACTUALIZAR lo que YA existe en una sección (por ejemplo “ponles el nombre”, “corrige los precios”, “actualiza el stock”), NO agregues registros nuevos: usa cambiar_registro sobre los que ya están, buscándolos por un dato que coincida (precio, proveedor, nombre). Si varios coinciden y no puedes saber cuál es cuál, pídele UN dato que los distinga. Agrega registros nuevos solo cuando pide agregar.
 - Si la persona adjunta una imagen (una tabla, una lista de nombres, una nota, una foto o una captura de pantalla), LÉELA y actúa: di en una línea qué ves y haz lo que pidió. Si no escribió nada, di qué ves y haz lo más obvio o propón UNA acción concreta.
 - Si la imagen es una lista o tabla de personas o clientes, lo OBVIO es agregarlos, aunque la persona no haya escrito nada: hazlo sin preguntar.
 - De una lista o tabla de personas: agrega los contactos con agregar_contactos (el nombre, y el teléfono o correo en detalle si aparecen). Hasta 20 filas, hazlo directo y di cuántos agregaste y los primeros nombres. Con más de 20, agrega los primeros 20 y di cuántos faltan.
@@ -846,8 +881,8 @@ def _mensajes(doc: dict, texto: str, historial: list[dict], ahora: datetime, con
 _AFIRMA = re.compile(r"\s*(sí|si|dale|ok|okay|claro|correcto|confirmo|confirmado|va|vale|por supuesto|de acuerdo|exacto|eso|así es)\b", re.I)
 _ES_PREGUNTA = re.compile(r"[?¿]|^\s*(para qu[eé]|qu[eé]|c[oó]mo|cu[aá]l|cu[aá]nto|cu[aá]ntos|por qu[eé]|d[oó]nde|qui[eé]n|muestra|dime)\b", re.I)
 _PROMESA = re.compile(r"\b(voy a|vamos a|procedo|proceder[eé]|ahora (voy|creo|agrego|registro|asigno|cambio|actualizo))\b", re.I)
-_EXITO = re.compile(r"\b(he |ya )?(agregad|cread|registrad|agendad|actualizad|cambiad|movid|quitad|eliminad|apagad|encendid|guardad|asignad)[oa]s?\b"
-                    r"|\b(agregué|creé|registré|agendé|actualicé|cambié|moví|quité|eliminé|apagué|encendí|guardé|asigné)\b", re.I)
+_EXITO = re.compile(r"\b(he |ya )?(agregad|cread|registrad|agendad|actualizad|cambiad|movid|quitad|eliminad|apagad|encendid|guardad|asignad|importad|renombrad)[oa]s?\b"
+                    r"|\b(agregué|creé|registré|agendé|actualicé|cambié|moví|quité|eliminé|apagué|encendí|guardé|asigné|importé|renombré)\b", re.I)
 
 
 # Frases de logro que solo son verdad si la herramienta correspondiente funcionó en este mensaje.

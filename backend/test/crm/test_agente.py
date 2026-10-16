@@ -870,3 +870,24 @@ async def test_una_seccion_de_fabrica_oculta_aparece_sola_cuando_la_persona_la_u
     assert "contactos" not in r["doc"]["ocultas"] and "desarrollo" in r["doc"]["ocultas"]  # solo sale la que se usó
     r, _ = await correr(oculto, "recuérdame llamar mañana", dice("", llamar("agregar_tarea", texto="Llamar", fecha="2026-10-14")), dice("Listo."))
     assert "desarrollo" not in r["doc"]["ocultas"]
+
+
+@pytest.mark.asyncio
+async def test_se_puede_mover_un_campo_al_principio_y_renombrarlo_sin_perder_datos(doc):
+    from app.crm import estructura as est
+    base = est.lista_crear(doc, "Productos", [{"nombre": "Precio", "tipo": "numero"}, {"nombre": "Stock"}], AHORA)
+    base = est.campo_agregar(base, base["listas"][0]["id"], "Nombre", "texto", AHORA)
+    l = base["listas"][0]
+    base = est.registro_agregar(base, l["id"], {l["campos"][2]["id"]: "Leche", l["campos"][0]["id"]: 12}, AHORA)
+    r, _ = await correr(base, "pon el nombre al principio", dice("", llamar("mover_campo", destino="Productos", campo="Nombre", posicion="inicio")), dice("Listo."))
+    campos = r["doc"]["listas"][0]["campos"]
+    assert [c["nombre"] for c in campos] == ["Nombre", "Precio", "Stock"] and r["doc"]["listas"][0]["registros"][0]["valores"][campos[0]["id"]] == "Leche"  # el dato se queda con su campo
+    r, _ = await correr(r["doc"], "llama Existencias al stock", dice("", llamar("renombrar_campo", destino="Productos", campo="Stock", nombre="Existencias")), dice("Listo."))
+    assert [c["nombre"] for c in r["doc"]["listas"][0]["campos"]] == ["Nombre", "Precio", "Existencias"]
+    r, _ = await correr(r["doc"], "pon el precio al final", dice("", llamar("mover_campo", destino="Productos", campo="Precio", posicion="3")), dice("Listo."))
+    assert [c["nombre"] for c in r["doc"]["listas"][0]["campos"]] == ["Nombre", "Existencias", "Precio"]
+
+
+def test_decir_que_se_importo_algo_sin_haber_hecho_nada_se_detecta_como_logro_falso():
+    assert agente._EXITO.search("Importé los productos con nombres y precios con punto decimal.")
+    assert agente._EXITO.search("Ya los renombré")

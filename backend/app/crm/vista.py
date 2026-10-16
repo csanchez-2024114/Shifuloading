@@ -56,7 +56,11 @@ def vista_crm(doc: dict, ahora: datetime | None = None) -> dict:
         "camposContacto": doc["campos_contacto"],
         "ocultas": doc["ocultas"],
         "listas": [{"id": l["id"], "nombre": l["nombre"], "tipo": l.get("tipo"), "campos": l["campos"],
-                    "registros": [{"id": r["id"], "valores": r["valores"]} for r in l["registros"]]} for l in doc["listas"]],
+                    "registros": [{"id": r["id"], "valores": r["valores"]} for r in l["registros"]],
+                    # Las importaciones que siguen teniendo registros (si ya se borraron todos a mano, no se muestra).
+                    "importaciones": [{"id": i["id"], "nombre": i["nombre"], "creado": i["creado"].isoformat() if hasattr(i["creado"], "isoformat") else str(i["creado"]),
+                                       "cantidad": sum(1 for r in l["registros"] if r.get("lote") == i["id"])}
+                                      for i in l.get("importaciones", []) if any(r.get("lote") == i["id"] for r in l["registros"])]} for l in doc["listas"]],
         "vendedores": doc["vendedores"],
         "tareas": {col: [_tarea(x, nombres) for x in lista] for col, lista in doc["tareas"].items()},
         "eventos": [{"id": e["id"], "e": e["e"], "t": e["t"], "h": hace(e["ts"], ahora)} for e in doc["eventos"]],

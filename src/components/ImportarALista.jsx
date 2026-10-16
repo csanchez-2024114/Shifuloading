@@ -36,16 +36,29 @@ const textoDe = (v) => {
   return String(v).trim()
 }
 
+const esFecha = (v) => /^\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}$/.test(String(v).trim())
 const esNumero = (v) => /^[-+]?[\d.,\sQ$€]+$/.test(String(v).trim()) && /\d/.test(String(v))
 
-export default function ImportarALista({ lista, onImportar, onCerrar }) {
+/** ¿Los valores de una columna sirven para un campo de ese tipo? (números en precios, fechas en fechas; el texto sirve para todo.) */
+const sirve = (tipo, valores) => {
+  const llenos = valores.filter((v) => v !== '')
+  if (!llenos.length || (tipo !== 'numero' && tipo !== 'fecha')) return true
+  return llenos.filter((v) => (tipo === 'numero' ? esNumero(v) : esFecha(v))).length / llenos.length >= 0.7
+}
+
+export default function ImportarALista({ lista, onImportar, onQuitar, onCerrar }) {
   const [filas, setFilas] = useState([])
+  const [hojas, setHojas] = useState([]) // las hojas del libro de Excel (si trae varias, se puede elegir)
+  const [hoja, setHoja] = useState(0)
   const [pegado, setPegado] = useState('')
   const [aviso, setAviso] = useState('')
   const [conTitulos, setConTitulos] = useState(true)
   const [mapa, setMapa] = useState({}) // idCampo -> número de columna ('' = no importar)
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState(null)
+  const [archivoNombre, setArchivoNombre] = useState('Texto pegado')
+  const [loteId, setLoteId] = useState(null)
+  const [deshaciendo, setDeshaciendo] = useState(null) // null | 'pregunta' | 'haciendo'
   const archivo = useRef(null)
 
   useEffect(() => {
@@ -61,6 +74,8 @@ export default function ImportarALista({ lista, onImportar, onCerrar }) {
   // Cada campo busca su columna por nombre (igual o parecido); si no hay títulos, por posición.
   const emparejar = (tabla, tieneTitulos) => {
     const cols = Array.from({ length: tabla.reduce((m, f) => Math.max(m, f.length), 0) }, (_, i) => norm(tieneTitulos ? tabla[0]?.[i] : ''))
+    const cuerpo = (tieneTitulos ? tabla.slice(1) : tabla).slice(0, 60)
+    const columna = (j) => cuerpo.map((f) => f[j] ?? '')
     const usadas = new Set()
     const salida = {}
     lista.campos.forEach((c, k) => {
@@ -71,8 +86,12 @@ export default function ImportarALista({ lista, onImportar, onCerrar }) {
       salida[c.id] = i >= 0 ? i : ''
     })
     // Lo que no coincidió por nombre se asigna, en orden, a las columnas que quedaron libres: la persona lo ve en la vista previa y lo corrige si hace falta.
-    const libres = cols.map((_, j) => j).filter((j) => !usadas.has(j))
-    lista.campos.forEach((c) => { if (salida[c.id] === '' && libres.length) salida[c.id] = libres.shift() })
+    // (solo con columnas que sirven para ese campo: una columna de nombres no se pone en un campo de fecha).
+    lista.campos.forEach((c) => {
+      if (salida[c.id] !== '') return
+      const j = cols.findIndex((_, k) => !usadas.has(k) && sirve(c.tipo, columna(k)))
+      if (j >= 0) { usadas.add(j); salida[c.id] = j }
+    })
     return salida
   }
 
@@ -88,12 +107,17 @@ export default function ImportarALista({ lista, onImportar, onCerrar }) {
     const f = e.target.files?.[0]
     e.target.value = ''
     if (!f) return
-    setAviso('')
+    setAviso(''); setArchivoNombre(f.name)
     try {
       if (/\.xlsx$/i.test(f.name)) {
         const { default: leerXlsx } = await import('read-excel-file/browser')
         const r = await leerXlsx(f)
-        cargar(Array.isArray(r) && r[0]?.data ? r[0].data : r)
+        const libro = Array.isArray(r) && r[0]?.data ? r : [{ sheet: 'Hoja 1', data: r }]
+        // Si el libro trae varias hojas, se abre la que se llama como esta sección (Productos, Proveedores…); si no, la primera. Se puede cambiar.
+        const n = norm(lista.nombre)
+        const parecida = libro.findIndex((h) => { const x = norm(h.sheet); return x && (n.includes(x) || x.includes(n)) })
+        const i = parecida >= 0 ? parecida : 0
+        setHojas(libro); setHoja(i); cargar(libro[i].data)
       } else if (/\.xls$/i.test(f.name)) {
         setAviso('Ese es un Excel antiguo (.xls). Ábrelo y guárdalo como “Libro de Excel (.xlsx)” o como CSV, y vuelve a subirlo.')
       } else if (f.size > 2_000_000) {
@@ -104,18 +128,25 @@ export default function ImportarALista({ lista, onImportar, onCerrar }) {
     } catch { setAviso('No pude leer ese archivo. Revisa que sea un Excel (.xlsx) o un CSV.') }
   }
 
-  const alPegar = (texto) => { setPegado(texto); if (texto.trim()) cargar(leerTabla(texto)); else { setFilas([]); setAviso('') } }
+  const cambiarHoja = (i) => { setHoja(i); cargar(hojas[i].data) }
+  const alPegar = (texto) => { setPegado(texto); setArchivoNombre('Texto pegado'); if (texto.trim()) cargar(leerTabla(texto)); else { setFilas([]); setAviso('') } }
   const cambiarTitulos = (v) => { setConTitulos(v); setMapa(emparejar(filas, v)) }
 
   const aImportar = useMemo(() => datos.map((f) => Object.fromEntries(lista.campos.map((c) => [c.id, mapa[c.id] === '' || mapa[c.id] === undefined ? '' : (f[mapa[c.id]] ?? '')]).filter(([, v]) => v !== ''))).filter((o) => Object.keys(o).length), [datos, mapa, lista])
+  // Avisa si la columna elegida para un campo no parece del tipo que ese campo espera.
+  const alertas = useMemo(() => Object.fromEntries(lista.campos.filter((c) => mapa[c.id] !== '' && mapa[c.id] !== undefined && !sirve(c.tipo, datos.slice(0, 60).map((f) => f[mapa[c.id]] ?? '')))
+    .map((c) => [c.id, c.tipo === 'numero' ? 'números' : 'fechas'])), [lista, mapa, datos])
   const hayMapa = lista.campos.some((c) => mapa[c.id] !== '' && mapa[c.id] !== undefined)
 
   const importar = async () => {
     setEnviando(true); setAviso('')
+    // Todas las tandas de esta importación llevan el mismo lote: así se puede quitar entera si se importó lo que no era.
+    const lote = { id: `imp_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`, nombre: `${archivoNombre}${hojas.length > 1 ? ` · ${hojas[hoja].sheet}` : ''}`.slice(0, 80) }
+    setLoteId(lote.id)
     let agregadas = 0
     let omitidas = 0
     for (let i = 0; i < aImportar.length; i += LOTE) {
-      const r = await onImportar(aImportar.slice(i, i + LOTE))
+      const r = await onImportar(aImportar.slice(i, i + LOTE), lote)
       if (!r) { setAviso(agregadas ? 'Se importó una parte y luego algo falló. Revisa tu lista.' : 'No se pudo importar. Revisa que cada columna tenga lo que corresponde (por ejemplo, números en los precios).'); setEnviando(false); if (agregadas) setResultado({ agregadas, omitidas }); return }
       agregadas += r.agregadas; omitidas += r.omitidas
     }
@@ -135,6 +166,14 @@ export default function ImportarALista({ lista, onImportar, onCerrar }) {
             <b>¡Listo! Se importaron {resultado.agregadas.toLocaleString('es')} {resultado.agregadas === 1 ? 'registro' : 'registros'}.</b>
             {resultado.omitidas > 0 && <p>Se omitieron {resultado.omitidas} (filas vacías, repetidas o con un dato que no corresponde).</p>}
             <button type="button" className="btn-pildora mc-grande" onClick={onCerrar}>Ver mi lista</button>
+            {deshaciendo === null && <button type="button" className="mc-link" onClick={() => setDeshaciendo('pregunta')}>Me equivoqué: quitar esta importación</button>}
+            {deshaciendo && (
+              <div className="mc-aj-confirma mc-imp-deshacer" role="alertdialog" aria-label="Confirmar que se quita la importación">
+                <p>⚠ Se borrarán los {resultado.agregadas.toLocaleString('es')} registros que acabas de importar. Una vez que lo hagas, no se podrá deshacer.</p>
+                <button type="button" className="mc-peligro" disabled={deshaciendo === 'haciendo'} onClick={async () => { setDeshaciendo('haciendo'); const ok = await onQuitar(loteId); if (ok) onCerrar(); else setDeshaciendo('pregunta') }}>{deshaciendo === 'haciendo' ? 'Quitando…' : 'Sí, quitar la importación'}</button>
+                <button type="button" className="mc-link" disabled={deshaciendo === 'haciendo'} onClick={() => setDeshaciendo(null)}>Cancelar</button>
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -149,6 +188,11 @@ export default function ImportarALista({ lista, onImportar, onCerrar }) {
               </div>
             ) : (
               <div className="mc-imp-paso">
+                {hojas.length > 1 && (
+                  <label className="mc-imp-hoja">Tu Excel tiene varias hojas. Importar desde:
+                    <select value={hoja} onChange={(e) => cambiarHoja(Number(e.target.value))}>{hojas.map((h, i) => <option key={i} value={i}>{h.sheet}</option>)}</select>
+                  </label>
+                )}
                 <label className="mc-imp-check"><input type="checkbox" checked={conTitulos} onChange={(e) => cambiarTitulos(e.target.checked)} /> La primera fila son los títulos de las columnas</label>
                 <p className="mc-imp-guia">Dime de qué columna sale cada dato de tu lista:</p>
                 <div className="mc-imp-mapa">
@@ -158,6 +202,7 @@ export default function ImportarALista({ lista, onImportar, onCerrar }) {
                         <option value="">No importar</option>
                         {titulos.map((t, i) => <option key={i} value={i}>{t}</option>)}
                       </select>
+                      {alertas[c.id] && <em className="mc-imp-alerta">⚠ Esa columna no parece traer {alertas[c.id]}</em>}
                     </label>
                   ))}
                 </div>
@@ -172,7 +217,7 @@ export default function ImportarALista({ lista, onImportar, onCerrar }) {
                   <button type="button" className="btn-pildora mc-grande" disabled={enviando || !hayMapa || !aImportar.length} onClick={importar}>
                     {enviando ? 'Importando…' : `Importar ${aImportar.length.toLocaleString('es')} ${aImportar.length === 1 ? 'fila' : 'filas'}`}
                   </button>
-                  <button type="button" className="mc-link" onClick={() => { setFilas([]); setPegado(''); setAviso('') }}>Elegir otro archivo</button>
+                  <button type="button" className="mc-link" onClick={() => { setFilas([]); setHojas([]); setPegado(''); setAviso('') }}>Elegir otro archivo</button>
                 </div>
               </div>
             )}

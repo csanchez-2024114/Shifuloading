@@ -861,10 +861,88 @@ def test_se_pueden_importar_varias_filas_a_una_seccion_de_un_solo_golpe(cli, db)
     regs = [x for x in r.json()["listas"][0]["registros"]]
     assert [x["valores"][p] for x in regs] == ["Leche", "Arroz"] and regs[0]["valores"][precio] == 12.5  # en el orden del archivo
     # mismas filas otra vez: nada nuevo, y se avisa con claridad
-    assert cli.post(url, json={"filas": filas[:2]}, headers=H).status_code == 422
+    repetidas = cli.post(url, json={"filas": filas[:2]}, headers=H)
+    assert repetidas.status_code == 422
+    # y cuando nada sirve, el mensaje dice por qué (un texto donde va una fecha), no solo "no se pudo"
+    otra = _con_lista(db, "Pagos", [{"nombre": "Proveedor"}, {"nombre": "Fecha", "tipo": "fecha"}])
+    pr, fe = (c["id"] for c in otra["campos"])
+    r2 = cli.post(f"/api/v1/crm/listas/{otra['id']}/registros/lote", json={"filas": [{pr: "Gaming Zona GT", fe: "Distribuidora Sur"}]}, headers=H)
+    assert r2.status_code == 422 and "debe ser una fecha" in r2.json()["mensaje"]
     # validaciones: sección inexistente, demasiadas filas, valores raros, sin sesión
     assert cli.post("/api/v1/crm/listas/l_no/registros/lote", json={"filas": [{p: "x"}]}, headers=H).status_code == 404
     assert cli.post(url, json={"filas": [{p: "x"}] * 301}, headers=H).status_code == 422
     assert cli.post(url, json={"filas": [{p: {"$gt": ""}}]}, headers=H).status_code == 422
     assert cli.post(url, json={"filas": [{p: "x" * 201}]}, headers=H).status_code == 422
     assert cli.post(url, json={"filas": []}, headers=H).status_code == 422
+
+
+def test_una_importacion_se_puede_quitar_entera_y_solo_ella(cli, db):
+    crear(cli)
+    l = _con_lista(db, "Productos", [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}])
+    p, precio = (c["id"] for c in l["campos"])
+    lote = {"id": "imp_abc123", "nombre": "tienda.xlsx · Productos"}
+    url = f"/api/v1/crm/listas/{l['id']}"
+    # una importación grande llega en dos tandas con el mismo lote, y la persona ya había agregado uno a mano
+    cli.post(f"{url}/registros", json={"valores": {p: "Hecho a mano", precio: 10}}, headers=H)
+    cli.post(f"{url}/registros/lote", json={"filas": [{p: "Leche", precio: 12}, {p: "Arroz", precio: 8}], "lote": lote}, headers=H)
+    r = cli.post(f"{url}/registros/lote", json={"filas": [{p: "Frijol", precio: 15}], "lote": lote}, headers=H).json()
+    assert len(r["listas"][0]["registros"]) == 4 and r["listas"][0]["importaciones"] == [{"id": "imp_abc123", "nombre": "tienda.xlsx · Productos", "creado": r["listas"][0]["importaciones"][0]["creado"], "cantidad": 3}]
+    # editar uno importado no lo saca de la importación
+    importado = next(x for x in r["listas"][0]["registros"] if x["valores"][p] == "Leche")
+    cli.patch(f"{url}/registros/{importado['id']}", json={"valores": {precio: 13}}, headers=H)
+    quitada = cli.delete(f"{url}/importaciones/imp_abc123", headers=H)
+    assert quitada.status_code == 200
+    regs = quitada.json()["listas"][0]["registros"]
+    assert [x["valores"][p] for x in regs] == ["Hecho a mano"] and quitada.json()["listas"][0]["importaciones"] == []  # lo que escribió a mano se queda
+    assert cli.delete(f"{url}/importaciones/imp_abc123", headers=H).status_code == 404  # ya no existe
+    assert cli.delete(f"/api/v1/crm/listas/l_no/importaciones/imp_abc123", headers=H).status_code == 404
+    # un id de lote raro se rechaza
+    assert cli.post(f"{url}/registros/lote", json={"filas": [{p: "x"}], "lote": {"id": "../x", "nombre": "a"}}, headers=H).status_code == 422
+
+
+def test_una_tarea_se_crea_con_fecha_y_se_edita_sin_perder_lo_demas(cli):
+    crear(cli)
+    r = cli.post("/api/v1/crm/tareas", json={"t": "Llamar al proveedor", "vence": "2099-12-24", "hora": "10:30"}, headers=H).json()
+    t = r["tareas"]["porHacer"][0]
+    assert t["t"] == "Llamar al proveedor" and t["vence"] == "2099-12-24" and t["hora"] == "10:30"
+    url = f"/api/v1/crm/tareas/{t['id']}"
+    r = cli.patch(url, json={"t": "Llamar a Gaming Zona"}, headers=H).json()
+    t2 = r["tareas"]["porHacer"][0]
+    assert t2["t"] == "Llamar a Gaming Zona" and t2["vence"] == "2099-12-24"  # cambiar el texto no toca la fecha
+    r = cli.patch(url, json={"vence": None}, headers=H).json()
+    assert "vence" not in r["tareas"]["porHacer"][0] and "hora" not in r["tareas"]["porHacer"][0]  # quitarle la fecha
+    r = cli.patch(url, json={"columna": "hecho", "t": "Hecho: llamar"}, headers=H).json()
+    assert r["tareas"]["hecho"][0]["t"] == "Hecho: llamar" and r["tareas"]["porHacer"] == []
+    assert cli.patch(url, json={}, headers=H).status_code == 422
+    assert cli.post("/api/v1/crm/tareas", json={"t": "x", "vence": "2001-01-01"}, headers=H).status_code == 422  # el pasado no vale
+
+
+def test_se_puede_quitar_todo_lo_importado_de_una_seccion_y_se_queda_lo_escrito_a_mano(cli, db):
+    crear(cli)
+    l = _con_lista(db, "Productos", [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}])
+    p, precio = (c["id"] for c in l["campos"])
+    url = f"/api/v1/crm/listas/{l['id']}"
+    assert cli.delete(f"{url}/importaciones", headers=H).status_code == 404  # todavía no hay nada importado
+    cli.post(f"{url}/registros", json={"valores": {p: "A mano", precio: 5}}, headers=H)
+    cli.post(f"{url}/registros/lote", json={"filas": [{p: "Leche", precio: 12}, {p: "Arroz", precio: 8}], "lote": {"id": "imp_uno111", "nombre": "primero.xlsx"}}, headers=H)
+    r = cli.post(f"{url}/registros/lote", json={"filas": [{p: "Frijol", precio: 15}], "lote": {"id": "imp_dos222", "nombre": "segundo.xlsx"}}, headers=H).json()
+    assert len(r["listas"][0]["registros"]) == 4 and len(r["listas"][0]["importaciones"]) == 2
+    # una sección ajena no se toca
+    assert cli.delete("/api/v1/crm/listas/l_no/importaciones", headers=H).status_code == 404
+    quitada = cli.delete(f"{url}/importaciones", headers=H)
+    assert quitada.status_code == 200
+    assert [x["valores"][p] for x in quitada.json()["listas"][0]["registros"]] == ["A mano"] and quitada.json()["listas"][0]["importaciones"] == []
+
+
+def test_se_puede_vaciar_una_seccion_entera_y_se_queda_con_sus_columnas(cli, db):
+    crear(cli)
+    l = _con_lista(db, "Productos", [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}])
+    p, precio = (c["id"] for c in l["campos"])
+    url = f"/api/v1/crm/listas/{l['id']}/registros"
+    assert cli.delete(url, headers=H).status_code == 404  # ya está vacía
+    cli.post(url, json={"valores": {p: "A mano", precio: 5}}, headers=H)
+    cli.post(f"{url}/lote", json={"filas": [{p: "Leche", precio: 12}], "lote": {"id": "imp_uno111", "nombre": "x.xlsx"}}, headers=H)
+    r = cli.delete(url, headers=H)
+    assert r.status_code == 200 and r.json()["listas"][0]["registros"] == [] and r.json()["listas"][0]["importaciones"] == []
+    assert [c["nombre"] for c in r.json()["listas"][0]["campos"]] == ["Producto", "Precio"]  # la estructura se queda
+    assert cli.delete("/api/v1/crm/listas/l_no/registros", headers=H).status_code == 404

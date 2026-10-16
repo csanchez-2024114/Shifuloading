@@ -302,3 +302,55 @@ html.cambiando-tema *, html.cambiando-tema *::before, html.cambiando-tema *::aft
   transition: background-color .55s ease, color .55s ease, border-color .55s ease, box-shadow .55s ease, fill .55s ease, stroke .55s ease !important;
 }
 @media (prefers-reduced-motion: reduce) { html.cambiando-tema *, html.cambiando-tema *::before, html.cambiando-tema *::after { transition: none !important; } }
+
+.mc-imp-hoja { display: grid !important; gap: 6px; width: 100%; max-width: 420px; font-size: 14.5px; }
+.mc-imp-hoja select { padding: 11px 12px; border-radius: 10px; border: 1px solid var(--linea); background: var(--campo); color: var(--tx); font: 15px var(--fuente); outline: 0; }
+
+.mc-imp-alerta { font-style: normal; font-size: 12.5px; color: var(--ambar-t); }
+
+/* Editar, eliminar con confirmación e importaciones */
+.mc-form-titulo { grid-column: 1 / -1; margin: 0; font-size: 18px; }
+.mc-form-registro { margin-bottom: 8px; }
+.mc-fila-editable { cursor: pointer; transition: background .15s; }
+.mc-fila-editable:hover { background: rgba(var(--ink), .05); }
+.mc-acc { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
+.mc-fila:hover .mc-x, .mc-tarea:hover .mc-x { opacity: 1; }
+.mc-fila.mc-fila-confirma { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: rgba(229, 72, 77, .1); font-size: 15px; font-weight: 600; }
+.mc-confirma-acc { display: inline-flex; align-items: center; gap: 14px; }
+.mc-chico { padding: 9px 18px !important; font-size: 14px !important; }
+.mc-x:hover { background: rgba(var(--ink), .1); }
+.mc-buscar-lista { display: flex; align-items: center; gap: 10px; max-width: 420px; margin-top: 18px; padding: 10px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--linea); color: var(--tx3); }
+.mc-buscar-lista input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--tx); font: 15px var(--fuente); }
+.mc-importaciones { margin-top: 16px; border-radius: 14px; border: 1px solid var(--linea); background: var(--panel); }
+.mc-importaciones summary { padding: 13px 18px; cursor: pointer; font-weight: 600; font-size: 15px; color: var(--tx2); }
+.mc-imp-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 18px; border-top: 1px solid var(--linea); }
+.mc-imp-item > div:first-child { display: grid; gap: 3px; min-width: 0; }
+.mc-imp-item b { font-size: 15px; overflow-wrap: anywhere; }
+.mc-imp-item small { color: var(--tx3); font-size: 13px; }
+.mc-imp-item .mc-aj-confirma { width: 100%; }
+.mc-imp-deshacer { margin-top: 10px; justify-content: center; text-align: left; }
+.mc-aj-nota { color: #6ff0cb !important; }
+/* Las tareas ahora son una caja con el texto (que las mueve) y sus botones */
+.mc-tarea { display: flex; align-items: flex-start; gap: 6px; cursor: default; padding: 10px 10px 10px 14px; }
+.mc-tarea:active { transform: none; }
+.mc-tarea-mover { flex: 1; min-width: 0; padding: 2px 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.mc-tarea-acc { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+.mc-tarea-confirma { flex-direction: column; align-items: flex-end; gap: 6px; font-size: 12.5px; color: #ff9aa9; font-weight: 600; text-align: right; }
+.mc-tarea-confirma button { margin-left: 4px; }
+@media (max-width: 900px) { .mc-acc .mc-x, .mc-tarea .mc-x { opacity: 1; } }
+
+.mc-imp-todas { background: rgba(229, 72, 77, .06); }
+.mc-imp-todas b { color: #ff9aa9; }
+
+.mc-importaciones summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; list-style: none; }
+.mc-importaciones summary::-webkit-details-marker { display: none; }
+.mc-importaciones summary::after { content: "▾"; margin-left: auto; color: var(--tx3); transition: transform .2s; }
+.mc-importaciones[open] summary::after { transform: rotate(180deg); }
+.mc-importaciones summary b { color: var(--tx); font-size: 15px; }
+.mc-importaciones summary small { color: var(--tx3); font-weight: 400; font-size: 13px; }
+.mc-importaciones summary svg { color: #22d3a6; font-size: 18px; }
+.mc-importaciones { border-color: rgba(34, 211, 166, .35); }
+
+.mc-pie-lista { margin-top: 18px; display: flex; justify-content: flex-end; }
+.mc-pie-lista .mc-aj-confirma { justify-content: flex-end; max-width: 620px; }
+.mc-link-peligro { color: #ff9aa9 !important; font-size: 14px; }
