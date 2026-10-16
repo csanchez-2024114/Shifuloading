@@ -93,7 +93,7 @@ async function llamar(k, mensajes, herramientas, sinHerramientas = false) {
     body: JSON.stringify({ model: MODELO, temperature: 0, max_tokens: 700, messages: mensajes, tools: herramientas, ...(sinHerramientas ? { tool_choice: 'none' } : {}) }),
     signal: AbortSignal.timeout(30000),
   })
-  if (!r.ok) throw new Error(`OpenAI ${r.status}`)
+  if (!r.ok) { let c = ''; try { const j = await r.json(); c = `${j.error?.code || ''} ${j.error?.message?.slice(0, 120) || ''}` } catch { /* sin cuerpo */ } throw new Error(`OpenAI ${r.status} ${c}`) }
   return (await r.json()).choices[0].message
 }
 
@@ -221,6 +221,25 @@ export function chatLaboratorio() {
     name: 'chat-laboratorio',
     apply: 'serve',
     configureServer(server) {
+      // Grabaciones de revisión (laboratorio/grabaciones, fuera de git): lista y archivos, para verlas desde el hub.
+      const dirGrab = fileURLToPath(new URL('../grabaciones', import.meta.url))
+      server.middlewares.use('/api/lab/grabaciones', async (req, res) => {
+        const { readdirSync, statSync } = await import('node:fs')
+        let lista = []
+        try { lista = readdirSync(dirGrab).filter((d) => statSync(`${dirGrab}/${d}`).isDirectory()).sort().reverse().map((d) => ({ id: d, archivos: readdirSync(`${dirGrab}/${d}`) })) } catch { /* sin grabaciones */ }
+        res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(lista))
+      })
+      server.middlewares.use('/grabaciones', async (req, res, next) => {
+        const { createReadStream, existsSync, statSync } = await import('node:fs')
+        const ruta = decodeURIComponent((req.url || '').split('?')[0]).replace(/\.\./g, '')
+        const f = `${dirGrab}${ruta}`
+        if (!existsSync(f) || statSync(f).isDirectory()) return next()
+        const tam = statSync(f).size, rango = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '')
+        res.setHeader('Content-Type', f.endsWith('.mp4') ? 'video/mp4' : 'text/plain; charset=utf-8'); res.setHeader('Accept-Ranges', 'bytes')
+        // Safari solo reproduce video si el servidor entrega por rangos (206).
+        if (rango) { const ini = Number(rango[1] || 0), fin = rango[2] ? Number(rango[2]) : tam - 1; res.statusCode = 206; res.setHeader('Content-Range', `bytes ${ini}-${fin}/${tam}`); res.setHeader('Content-Length', fin - ini + 1); return createReadStream(f, { start: ini, end: fin }).pipe(res) }
+        res.setHeader('Content-Length', tam); createReadStream(f).pipe(res)
+      })
       server.middlewares.use('/api/lab/chat', async (req, res) => {
         if (req.method !== 'POST') { res.statusCode = 405; return res.end() }
         let cuerpo = '' // (los PDF viajan en base64: el límite lo pone el navegador al adjuntar, 8 MB)
@@ -236,6 +255,7 @@ export function chatLaboratorio() {
           console.log(`[chat-lab] "${String(p.texto).slice(0, 60)}" → cambios=${salida.cambios.length} fallos=${salida.fallos.length}`)
           res.end(JSON.stringify(salida))
         } catch (e) {
+          console.log('[chat-lab] ERROR', e?.stack?.split('\n').slice(0, 3).join(' | '))
           res.statusCode = 500
           res.end(JSON.stringify({ error: String(e.message || e) }))
         }

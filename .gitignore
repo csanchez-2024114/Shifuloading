@@ -3,3 +3,6 @@ dist
 .env*
 !.env.example
 laboratorio/dist
+
+# Videos de revisión del laboratorio (pesados, no se versionan)
+laboratorio/grabaciones/

@@ -176,7 +176,7 @@ export function prepararTurnoToma(estado, texto) {
     } else if (/\b(no|mejor|cambia|cambiar|en vez|prefiero)\b/i.test(texto)) {
       t.fase = 'juntando'
       t.rechazo = true
-      t.notas.push(String(texto).slice(0, 240))
+      // (el pedido de ajuste no se guarda como nota: se aplica con quitar_de_ficha/anotar_bloque)
       aviso = 'La persona pidió un ajuste. Si es reemplazar algo («mejor X en vez de Y»): quitar_de_ficha del bloque Y y anotar_bloque con X, las dos en este turno. Si es agregar: anotar_bloque. Usa solo lo que dijo en ESTE mensaje.'
     }
   }
