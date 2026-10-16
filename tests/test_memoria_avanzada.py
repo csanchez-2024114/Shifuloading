@@ -119,13 +119,13 @@ def test_cita_literal_da_quoted_y_cita_inventada_queda_sin_evidencia(settings):
     thread = uid()
     run_turn(agent, settings, "Hola, me llamo Ana y busco recetas", thread, user_id="ana")
 
-    por_texto = {v["text"]: v for v in _values(store, "ana")}
-    assert por_texto["El usuario se llama Ana"]["confidence"] == "quoted"
-    assert por_texto["El usuario se llama Ana"]["evidence"] == "me llamo Ana"
-    assert por_texto["El usuario se llama Ana"]["thread_id"] == thread
+    por_texto = {v["text"]: v for v in _values(store, "ana")}  # se guardan en forma neutra, sin "El usuario"
+    assert por_texto["Se llama Ana"]["confidence"] == "quoted"
+    assert por_texto["Se llama Ana"]["evidence"] == "me llamo Ana"
+    assert por_texto["Se llama Ana"]["thread_id"] == thread
     # sin MEMORY_VERIFY se guarda, pero sin evidencia (no se usa el último mensaje como evidencia)
-    assert por_texto["El usuario es médico"]["evidence"] == ""
-    assert por_texto["El usuario es médico"]["confidence"] == "unverified"
+    assert por_texto["Es médico"]["evidence"] == ""
+    assert por_texto["Es médico"]["confidence"] == "unverified"
 
 
 # --------------------------------------------------------------------------- 3. verificación al guardar

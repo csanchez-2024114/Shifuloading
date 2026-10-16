@@ -104,12 +104,26 @@ def memory_namespace(user_id: str) -> tuple[str, str, str]:
     return ("user", user_id, "memories")
 
 
+# sujeto genérico al inicio de un recuerdo: "El usuario vive en…" -> "Vive en…". Con sujeto, la búsqueda por palabras
+# casaba por "usuario" y perdía "La usuaria trabaja…" (prueba real). Solo recuerdos nuevos: los guardados no se tocan.
+_SUBJECT = re.compile(r"^\s*(?:(?:el|la)\s+usuari[oa](?:/[oa])?|al\s+usuario|a\s+la\s+usuaria|the\s+user)\s+", re.I)
+
+
+def neutral_fact(text: str) -> str:
+    """"El usuario vive en X" -> "Vive en X"; "Al usuario le gusta X" -> "Le gusta X". Lo demás, igual."""
+    rest = _SUBJECT.sub("", text, count=1)
+    if rest == text or not rest.strip():
+        return text
+    return rest[0].upper() + rest[1:]
+
+
 def save_memory(store, user_id: str, text: str, *, thread_id: str | None = None,
                 evidence: str = "", confidence: str = "unverified") -> str:
     """Guarda un recuerdo con su procedencia y devuelve su key (uuid hex).
     confidence: "verified" (lo confirmó el verificador), "quoted" (la cita aparece literal en lo que dijo
     el usuario) o "unverified" (sin evidencia). Los recuerdos viejos solo tienen text y created_at."""
     key = uuid.uuid4().hex
+    text = neutral_fact(text)
     store.put(
         memory_namespace(user_id),
         key,
@@ -131,6 +145,8 @@ def list_memories(store, user_id: str) -> list[dict]:
 
 
 NO_RELEVANT_MSG = "No relevant memories for this query."
+RECENT_FALLBACK = 5  # sin coincidencias por palabras: los más recientes, como mucho estos
+NO_MATCH_HEADER = "No memory shares words with this query; these are the most recent memories (check if one answers it):"
 KEYWORD_MARK = "(keyword match, less reliable)"
 NO_MEMORIES_MSG = "No memories saved for this user."
 SAVED_MSG = "Memory saved."
@@ -149,7 +165,10 @@ def recall(store, user_id: str, query: str, min_score: float = 0.0) -> str:
         if lines:
             return "\n".join(lines)
     elif items:
-        return "\n".join(f"- [id {key}] {text}" for key, text in items)
+        lines = [f"- [id {key}] {text}" for key, text in items]
+        if query.strip() and not _keyword_search(store, user_id, query, 1)[1]:
+            lines.insert(0, NO_MATCH_HEADER)
+        return "\n".join(lines)
     if query.strip() and store.search(memory_namespace(user_id), limit=1):
         return NO_RELEVANT_MSG  # hay recuerdos, pero ninguno pasa el umbral: no se devuelve el menos malo
     return NO_MEMORIES_MSG
@@ -305,7 +324,9 @@ user name named called favorite favourite prefer prefers like likes know remembe
 # Sinónimos de los datos personales más consultados: "ciudad" no comparte palabras con "vive en Querétaro".
 # Raíz (tras _stem) -> tema. Pocos y concretos, para no traer recuerdos de otro tema.
 _TOPICS = {**dict.fromkeys(("viv", "vivo", "ciuda", "resid", "domic", "mud", "radic", "live", "lives", "city"), "~vivir"),
-           **dict.fromkeys(("traba", "emple", "profe", "ofici", "puest", "work", "works", "job"), "~trabajo")}
+           **dict.fromkeys(("traba", "emple", "profe", "ofici", "puest", "work", "works", "job"), "~trabajo"),
+           # parche del modo por palabras: "qué me gusta comer" no comparte raíz con "comida favorita"
+           **dict.fromkeys(("comer", "comid", "alime", "food", "eat", "eats"), "~comida")}
 
 
 def _stem(word: str) -> str:
@@ -321,14 +342,21 @@ def content_stems(text: str, query: bool = False) -> set[str]:
     """Palabras con contenido como raíces. En un recuerdo, las palabras con mayúscula (nombres propios) solo valen
     completas ("=tomas"), para que "qué tomo" no encuentre a "Tomás"; la consulta aporta raíz y palabra completa."""
     out = set()
-    for raw in re.findall(r"\w+", text):
-        w = _normalize(raw)
+    for m in re.finditer(r"\w+", text):
+        raw, w = m.group(0), _normalize(m.group(0))
         if len(w) < 3 or w in _STOPWORDS or w.isdigit():
             continue
         if query:
             out |= {_stem(w), "=" + w}
+        elif not raw[0].isupper():
+            out.add(_stem(w))
         else:
-            out.add("=" + w if raw[0].isupper() else _stem(w))
+            out.add("=" + w)
+            # la primera palabra de una frase va en mayúscula sin ser nombre propio ("Vive en…", "Trabaja como…"):
+            # también cuenta por raíz, salvo raíces cortas y ambiguas ("Tomás" -> "tom" no debe casar con "tomo")
+            starts = not text[:m.start()].strip() or text[:m.start()].rstrip()[-1] in ".!?:;\n"
+            if starts and len(stem := _stem(w)) >= 4:
+                out.add(stem)
     return out
 
 
@@ -373,23 +401,25 @@ def search_memory_items(store, user_id: str, query: str = "", limit: int = 10,
         items = store.search(memory_namespace(user_id), query=query, limit=limit)
         return [(i.key, i.value["text"]) for i in items
                 if (i.value or {}).get("text") and (i.score is None or i.score >= min_score)]
-    items = store.search(memory_namespace(user_id), limit=_SEARCH_WINDOW)
-    items = [i for i in items if (getattr(i, "value", None) or {}).get("text")]
-    # más recientes primero (orden estable: sirve de desempate)
-    items.sort(key=_created_at, reverse=True)
+    return _keyword_search(store, user_id, query, limit)[0]
 
-    words = set(_words(query))
-    if words:
-        scored = []
-        for item in items:
-            haystack = _normalize(item.value["text"])
-            score = sum(1 for w in words if w in haystack)
-            scored.append((score, item))
-        if any(score > 0 for score, _ in scored):
-            # sort estable: a igual puntaje se conserva el orden por recencia
-            scored.sort(key=lambda p: p[0], reverse=True)
-            items = [item for score, item in scored if score > 0]
-    return [(i.key, i.value["text"]) for i in items[:limit]]
+
+def _keyword_search(store, user_id: str, query: str, limit: int = 10) -> tuple[list[tuple[str, str]], bool]:
+    """Búsqueda por palabras (MEMORY_SEMANTIC=0): mismo puntaje que keyword_matches (sin palabras genéricas como
+    "usuario", por raíces: "trabajo"/"trabaja"). Si nada coincide, los más recientes (máximo
+    RECENT_FALLBACK): mejor que un falso "no sé". Devuelve (recuerdos, coincidió)."""
+    items = [i for i in store.search(memory_namespace(user_id), limit=_SEARCH_WINDOW)
+             if (getattr(i, "value", None) or {}).get("text")]
+    items.sort(key=_created_at, reverse=True)  # más recientes primero: desempate estable
+    wanted = content_stems(query, query=True) if query.strip() else set()
+    if not wanted:
+        return [(i.key, i.value["text"]) for i in items[:limit]], not query.strip()
+    scored = [(len(wanted & content_stems(i.value["text"])), i) for i in items]
+    scored = [(n, i) for n, i in scored if n > 0]
+    if not scored:
+        return [(i.key, i.value["text"]) for i in items[:min(limit, RECENT_FALLBACK)]], False
+    scored.sort(key=lambda p: p[0], reverse=True)
+    return [(i.key, i.value["text"]) for _, i in scored[:limit]], True
 
 
 def startup_checks(settings: Settings) -> pymongo.MongoClient:

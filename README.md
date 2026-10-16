@@ -65,11 +65,15 @@ Pon en `.env` la URI `mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/
 - **Si lo cambias:** más alto da más "no tengo ese dato"; más bajo deja pasar más recuerdos sin relación.
 - **Recalibración con consultas de varios temas** (octubre 2026, mismas 28 consultas + 14 de varios temas y 10 más sobre recuerdos separados de trabajo y ciudad). El mejor umbral solo semántico salió en 0.6575, pero deja pasar tres irrelevantes más ("color favorito", "nombre de su pareja", "comida favorita"), así que **se mantiene 0.68**.
 
+**Sin búsqueda semántica (`MEMORY_SEMANTIC=0`)** se usa el mismo puntaje que el respaldo de abajo. Si nada coincide, devuelve los 5 recuerdos más recientes con el aviso "No memory shares words with this query…", en vez de un falso "no sé". Prueba real (antes): con 3 recuerdos guardados, "¿en qué trabajo?" y "¿qué me gusta comer?" dieron "no lo sé", porque la consulta solo coincidía por la palabra "usuario" con "El usuario vive en Querétaro".
+
+**Forma de los recuerdos nuevos:** se guardan neutros, sin sujeto ("Vive en Querétaro", no "El usuario vive…"); el código quita "El usuario", "La usuaria" o "The user" del inicio. Los recuerdos ya guardados no se modifican.
+
 **Respaldo por palabras (solo con búsqueda semántica).** Además de lo que pasa el umbral, `search_memories` devuelve los recuerdos que comparten al menos una palabra con contenido con la consulta, marcados `(keyword match, less reliable)`.
 - **Qué ignora:** palabras vacías y genéricas, como artículos, "mi", "qué", "usuario", "nombre", "llama", "favorito" o "prefiere". Con ellas, "nombre de mi gato" traería al perro.
 - **Variantes:** compara raíces, así que "trabajo" encuentra "trabaja" y "vivo" encuentra "vive".
-- **Sinónimos:** dos grupos pequeños, vivienda (ciudad, vive, residencia, mudarse) y trabajo (empleo, profesión, puesto).
-- **Nombres propios:** solo coinciden completos, así que "qué tomo" no encuentra a "Tomás".
+- **Sinónimos:** grupos pequeños: vivienda (ciudad, vive, residencia, mudarse), trabajo (empleo, profesión, puesto) y comida (comer, comida, alimento, food, eat). El de comida es un parche del modo por palabras, no la solución: la búsqueda semántica es la que entiende sinónimos.
+- **Nombres propios:** solo coinciden completos, así que "qué tomo" no encuentra a "Tomás". La primera palabra de una frase ("Vive en…", "Trabaja como…") cuenta también por raíz si esta tiene 4 letras o más.
 - **Resultado medido:**
 
   | Conjunto | Solo semántica | Con respaldo |

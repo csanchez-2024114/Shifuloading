@@ -139,8 +139,9 @@ row counts, data values, error messages, amounts, dates or budget of a one-off p
 today. Those are not facts about the user.
 
 Args:
-    text: The fact as a complete, self-contained sentence written in the user's language
-        (e.g. for an English speaker: "The user's name is Ana and they prefer short answers").
+    text: The fact as a short, self-contained sentence in the user's language, in neutral form with no subject:
+        never start with "The user" or its equivalent in the user's language (e.g. "Lives in Madrid",
+        "Works as a data engineer", "Favorite food is pozole").
     evidence: The user's exact words that state this fact, copied verbatim from their message.
 """
 
