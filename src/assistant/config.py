@@ -42,6 +42,11 @@ class Settings:
     compact_trigger_pct: int = 85       # medidor en rojo y compactación automática
     compact_keep_tokens: int = 0        # tokens recientes que se conservan al compactar; 0 = COMPACT_KEEP_PCT
     compact_keep_pct: int = 20          # % de la ventana que se conserva si no hay COMPACT_KEEP_TOKENS
+    compact_prune_tools: bool = False   # capa 1: poda resultados viejos de herramientas en la vista del modelo
+    compact_prune_age: int = 6          # antigüedad (en mensajes) a partir de la cual se podan
+    compact_structured: bool = False    # capa 2: resumen estructurado e incremental
+    compact_summary_max_tokens: int = 1200
+    compact_model: str = ""             # modelo del resumen; "" = LLM_MODEL
     memory_save_policy: str = "strict"  # strict: solo datos puntuales del usuario; broad: política anterior
     memory_max_per_turn: int = 3        # recuerdos guardados por mensaje; 0 = sin tope
     memory_verify: bool = False         # verifica con el LLM que un recuerdo lo dijo el usuario antes de guardarlo
@@ -83,6 +88,11 @@ class Settings:
             compact_trigger_pct=int(os.getenv("COMPACT_TRIGGER_PCT", "85")),
             compact_keep_tokens=int(os.getenv("COMPACT_KEEP_TOKENS", "0")),
             compact_keep_pct=int(os.getenv("COMPACT_KEEP_PCT", "20")),
+            compact_prune_tools=_bool("COMPACT_PRUNE_TOOLS"),
+            compact_prune_age=int(os.getenv("COMPACT_PRUNE_AGE", "6")),
+            compact_structured=_bool("COMPACT_STRUCTURED"),
+            compact_summary_max_tokens=int(os.getenv("COMPACT_SUMMARY_MAX_TOKENS", "1200")),
+            compact_model=os.getenv("COMPACT_MODEL", "").strip(),
             memory_save_policy=os.getenv("MEMORY_SAVE_POLICY", "strict").strip().lower(),
             memory_max_per_turn=int(os.getenv("MEMORY_MAX_PER_TURN", "3")),
             memory_verify=_bool("MEMORY_VERIFY"),

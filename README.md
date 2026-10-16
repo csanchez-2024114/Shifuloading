@@ -173,12 +173,12 @@ Siempre activo, sin costo extra de llamadas:
 - **Actualizar recuerdos:** `search_memories` muestra el id de cada recuerdo y `update_memory(id, texto, evidencia)` reemplaza uno existente cuando confirmas un cambio (p. ej. café de olla → té verde), en vez de dejar dos contradictorios. Pasa por la misma verificación que guardar (`MEMORY_VERIFY`), solo toca recuerdos de tu `user_id` (un id ajeno se rechaza con el mismo mensaje que uno inexistente) y guarda el valor anterior en `previous_text` y la fecha en `updated_at` para auditar o deshacer. El agente no puede borrar recuerdos: borrar es solo desde la interfaz.
 - **Gestión de recuerdos:** el botón 🧠 de la interfaz lista los recuerdos del ID de usuario actual, con fecha, confianza, evidencia y, si se actualizó, el valor anterior, y permite borrarlos. API: `GET /memories/{user_id}` y `DELETE /memories/{user_id}/{key}`.
 
-### Contexto y compactación (medidor siempre visible)
+### Contexto y compactación (medidor siempre visible; capas opcionales, apagadas por defecto)
 
 Cada conversación (`thread_id`) tiene su propio contexto, su propio contador y sus propios resúmenes; nada pasa de una a otra salvo la memoria global. La compactación **nunca** escribe en la memoria global.
 
 **Medidor** (cabecera de la interfaz): barra y texto "Contexto: 18.4k / 1.05M (2%)".
-- *Contexto en uso* = lo que enviaría la siguiente llamada: prompt del sistema + herramientas + historial que ve el modelo (ya resumido). Sale del `usage_metadata` real de la última respuesta (entrada + salida visible, sin el razonamiento, que no se reenvía) más lo añadido después. Si no hay uso real (conversación nueva, recién compactada, o bigtool sin respuestas) se estima con `count_tokens_approximately` y se marca "~ … · estimado". Tras la primera respuesta, la estimación usa el peso de prompt + herramientas medido en ese hilo.
+- *Contexto en uso* = lo que enviaría la siguiente llamada: prompt del sistema + herramientas + historial que ve el modelo (ya podado y resumido). Sale del `usage_metadata` real de la última respuesta (entrada + salida visible, sin el razonamiento, que no se reenvía) más lo añadido después. Si no hay uso real (conversación nueva, recién compactada, o bigtool sin respuestas) se estima con `count_tokens_approximately` y se marca "~ … · estimado". Tras la primera respuesta, la estimación usa el peso de prompt + herramientas medido en ese hilo.
 - Al pasar el cursor: total consumido en la conversación (entrada y salida de todas las llamadas: agente, resumen, verificadores, investigador, búsquedas) y el gasto del último turno.
 - Se actualiza en vivo (evento `context` tras cada llamada al modelo) y se reconstruye del checkpoint al recargar, sin gastar tokens: `GET /threads/{id}/context`.
 - Colores: normal, ámbar desde `COMPACT_WARN_PCT`, rojo desde `COMPACT_TRIGGER_PCT`. Una conversación nueva empieza en el contexto base (~2.9k estimados), no en cero.
@@ -191,11 +191,17 @@ Cada conversación (`thread_id`) tiene su propio contexto, su propio contador y 
 | `COMPACT_TRIGGER_PCT` | `85` | medidor en rojo y, con `MEMORY_SUMMARIZE=1`, compactación automática (salvo que `SUMMARY_TRIGGER_TOKENS` esté definida) |
 | `COMPACT_KEEP_TOKENS` | `0` | tokens recientes que se conservan al compactar; `0` = `COMPACT_KEEP_PCT` de la ventana |
 | `COMPACT_KEEP_PCT` | `20` | % de la ventana que se conserva si no hay `COMPACT_KEEP_TOKENS` (máximo la mitad del umbral) |
-
+| `COMPACT_PRUNE_TOOLS` | `0` | capa 1: poda de resultados viejos de herramientas |
+| `COMPACT_PRUNE_AGE` | `6` | antigüedad, en mensajes, desde la que se poda un resultado |
+| `COMPACT_STRUCTURED` | `0` | capa 2: resumen estructurado e incremental |
+| `COMPACT_SUMMARY_MAX_TOKENS` | `1200` | tope del resumen estructurado (si el modelo se pasa, se recorta por el final: CONTEXT primero) |
+| `COMPACT_MODEL` | `LLM_MODEL` | modelo del resumen |
 
 - **Disparo:** el mismo valor del medidor frente a `COMPACT_TRIGGER_PCT` × ventana. Como máximo una compactación por turno, y ninguna si el turno ya aterrizó (o aterriza en esa llamada) por `TURN_TOKEN_CAP`. Cada compactación registra tokens antes y después, ratio, tokens gastados en compactar, segundos y capas (`compaction_log` en el estado del hilo y en el log del servidor).
-- El resumen empieza con el encabezado "Summary of the OLDEST part of this conversation…" y el prompt del sistema dice que las preguntas sobre el inicio de la conversación se refieren a ese resumen.
-- Con bigtool (`USE_BIGTOOL=1`) el medidor y el endpoint funcionan con el uso real guardado, sin evento en vivo; la compactación no aplica (sin middleware).
+- **Capa 1, poda (`COMPACT_PRUNE_TOOLS=1`):** antes de cada llamada, los resultados de herramientas con más de `COMPACT_PRUNE_AGE` mensajes de antigüedad se reemplazan por `[tool result pruned: <herramienta>, <N> tokens. Ask again or re-run the tool if needed.]`. Se conservan siempre la llamada (nombre y argumentos) y la respuesta del asistente que interpretó el resultado. Solo cambia la vista del modelo: el checkpoint y la interfaz siguen teniendo todo. **No se podan:** los resultados del turno en curso (ahí está toda la evidencia que usa `ANSWER_VERIFY`, que solo mira el turno actual), los de la memoria global (`save_memory`, `search_memories`, `update_memory`: sus ids hacen falta para actualizar) y los de menos de 60 tokens (el aviso pesaría casi lo mismo). Un resultado podado de `deep_research` hace que una pregunta de seguimiento muy detallada pueda pedir investigar otra vez; la respuesta del asistente que lo resumió sigue visible.
+- **Capa 2, resumen estructurado (`COMPACT_STRUCTURED=1`):** secciones fijas USER FACTS (con cita literal), DECISIONS AND PREFERENCES, TASKS DONE (cifras y URLs), OPEN ITEMS y CONTEXT, en el idioma de la conversación. Es incremental: el modelo recibe el resumen anterior aparte y solo los mensajes nuevos; conserva lo anterior salvo contradicción, y en una contradicción anota el valor nuevo y el anterior. Regla anti-invención: solo lo que aparece en los mensajes. Sin la capa se usa el resumen anterior (`SUMMARY_PROMPT`).
+- En los dos casos el resumen empieza con el encabezado "Summary of the OLDEST part of this conversation…" y el prompt del sistema dice que las preguntas sobre el inicio de la conversación se refieren a ese resumen.
+- Con bigtool (`USE_BIGTOOL=1`) el medidor y el endpoint funcionan con el uso real guardado, sin evento en vivo; la compactación y la poda no aplican (sin middleware).
 
 ### Memoria global: solo información puntual (`MEMORY_SAVE_POLICY=strict`)
 
@@ -239,7 +245,7 @@ Detalles:
 
 **Con `USE_BIGTOOL=1`:**
 - Sí aplican los recuerdos con procedencia, `update_memory`, `MEMORY_VERIFY` y el prompt.
-- **`MEMORY_SUMMARIZE` y `ANSWER_VERIFY` no aplican**, porque langgraph-bigtool no soporta middleware. El medidor sí.
+- **`MEMORY_SUMMARIZE`, las capas de compactación y `ANSWER_VERIFY` no aplican**, porque langgraph-bigtool no soporta middleware. El medidor sí.
 - Propuesta para implementarlo a mano (no hecha):
   1. Construir el grafo de bigtool sin compilar (`create_bigtool_agent(...)` devuelve un `StateGraph`).
   2. Agregar un nodo `summarize` antes de `agent`. Ese nodo cuenta tokens con `count_tokens_approximately` y, si se pasa del umbral, llama al modelo con el mismo `SUMMARY_PROMPT` y devuelve `RemoveMessage(REMOVE_ALL_MESSAGES)` + el resumen + los últimos N mensajes, sin separar una llamada a herramienta de su respuesta.

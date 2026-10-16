@@ -21,9 +21,10 @@ from langchain.agents.middleware import (
     wrap_model_call,
 )
 from langchain.agents.middleware.types import hook_config
+from langchain.agents.middleware.summarization import _summary_config
 from langchain_core.callbacks import BaseCallbackHandler, get_usage_metadata_callback
 from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, SystemMessage, ToolMessage
-from langchain_core.messages.utils import count_tokens_approximately
+from langchain_core.messages.utils import count_tokens_approximately, get_buffer_string
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langchain_openai import ChatOpenAI
 from langgraph._internal._constants import CONFIG_KEY_RUNTIME
@@ -33,7 +34,7 @@ from langgraph.runtime import Runtime
 
 from assistant import citations
 from assistant.config import Settings, read_system_prompt
-from assistant.context import MedidorContexto, context_in_use
+from assistant.context import MedidorContexto, PodaHerramientas, context_in_use, prune_tool_results
 from assistant.memory import SUMMARY_SOURCE, memory_policy
 
 logger = logging.getLogger(__name__)
@@ -306,8 +307,8 @@ def make_checker_model(settings: Settings) -> ChatOpenAI:
 
 def make_summary_model(settings: Settings) -> ChatOpenAI:
     # tags=["nostream"]: sin esto el texto del resumen llega a la UI como tokens (stream_mode="messages").
-    return ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None, use_responses_api=True,
-                      reasoning={"effort": "low"}, tags=["nostream"])
+    return ChatOpenAI(model=settings.compact_model or settings.llm_model, api_key=settings.openai_api_key or None,
+                      use_responses_api=True, reasoning={"effort": "low"}, tags=["nostream"])
 
 
 SUMMARY_PROMPT = """Summarize the earlier part of a conversation between a user and an assistant so the assistant can \
@@ -339,6 +340,54 @@ Rules:
 # larga: a "¿qué te pedí al inicio?" respondió con el primer mensaje conservado en vez de con el resumen.
 SUMMARY_HEADER = ("Summary of the OLDEST part of this conversation. It replaces the earliest messages; the messages "
                   "after it are more recent. Questions about how the conversation started refer to this summary.\n\n")
+_OLD_HEADER = "Here is a summary of the conversation to date:\n\n"  # SummarizationMiddleware nativo
+
+STRUCTURED_SUMMARY_PROMPT = """You maintain the running summary of the OLDEST part of a conversation between a user and \
+an assistant. The summary replaces those messages, so anything you leave out is lost.
+
+You receive the PREVIOUS SUMMARY (may be empty) and NEW MESSAGES that follow it. Return the updated summary:
+- Keep every item of the previous summary unless the new messages contradict it. On a contradiction keep both values:
+  write the new value and add "(previously: <old value>)".
+- Add what matters from the new messages.
+- Include only what appears in the previous summary or the messages. Never infer, guess or add facts. If unsure, omit.
+
+Use exactly these sections, in this order (keep the headings as written, even if empty; write "-" for an empty one):
+USER FACTS: facts the user stated literally about themselves or their situation, each with a short verbatim quote of
+the user's words in quotation marks.
+DECISIONS AND PREFERENCES: what the user decided, chose, rejected or prefers, with their reasons.
+TASKS DONE: requests already answered, oldest first, each with its key result verbatim (numbers, names, chosen option,
+URLs that matter). Mark results that came from tools (web search, calculator).
+OPEN ITEMS: questions or tasks still pending.
+CONTEXT: anything else needed to continue the conversation.
+
+Write everything except the headings in the conversation's language; never mix languages within a sentence. Short
+bullet points, no preamble. At most {max_tokens} tokens: if space runs short, shorten CONTEXT and TASKS DONE first,
+never USER FACTS.
+
+PREVIOUS SUMMARY:
+{previous}
+
+NEW MESSAGES:
+{messages}"""
+
+
+def _summary_body(msg) -> str:
+    text = _content_text(msg)
+    for header in (SUMMARY_HEADER, _OLD_HEADER):
+        if text.startswith(header):
+            return text[len(header):]
+    return text
+
+
+def cap_summary(text: str, max_tokens: int) -> str:
+    """Tope duro del resumen estructurado: si el modelo se pasa, se quitan líneas del final (CONTEXT va al final)."""
+    if not max_tokens or count_tokens_approximately([HumanMessage(text)]) <= max_tokens:
+        return text
+    lines = text.splitlines()
+    while len(lines) > 1 and count_tokens_approximately([HumanMessage("\n".join(lines))]) > max_tokens:
+        lines.pop()
+    logger.warning("El resumen estructurado pasó de %d tokens; se recortó por el final", max_tokens)
+    return "\n".join(lines)
 
 
 class ResumenPorTurno(SummarizationMiddleware):
@@ -350,7 +399,8 @@ class ResumenPorTurno(SummarizationMiddleware):
       reportado por el último AIMessage tras compactar: seguía por encima del umbral y volvía a resumir en cada
       llamada (hasta 3 resúmenes en un turno en la prueba larga);
     - registro por compactación (antes/después, ratio, tokens gastados, segundos, capas) en el estado del hilo y en
-      el propio mensaje de resumen (la interfaz lo muestra en su sitio)."""
+      el propio mensaje de resumen (la interfaz lo muestra en su sitio);
+    - COMPACT_STRUCTURED: resumen con secciones fijas e incremental (resumen anterior + mensajes nuevos)."""
 
     def __init__(self, model, settings: Settings, base: int):
         super().__init__(
@@ -364,12 +414,13 @@ class ResumenPorTurno(SummarizationMiddleware):
         )
         self.settings = settings
         self.base = base
+        self.prune_age = settings.compact_prune_age if settings.compact_prune_tools else 0
 
     def _should_summarize_based_on_reported_tokens(self, messages, threshold):
         return False
 
     def context_tokens(self, messages, stats: dict | None = None) -> int:
-        return context_in_use(messages, self.base, (stats or {}).get("overhead"))[0]
+        return context_in_use(messages, self.base, self.prune_age, (stats or {}).get("overhead"))[0]
 
     def before_model(self, state, runtime):
         messages = state["messages"]
@@ -406,8 +457,11 @@ class ResumenPorTurno(SummarizationMiddleware):
         msg = HumanMessage(content=SUMMARY_HEADER + summary,
                            additional_kwargs={"lc_source": SUMMARY_SOURCE, "summary_turn": turn_id})
         overhead = (stats or {}).get("overhead") or self.base
-        after = overhead + count_tokens_approximately([msg, *kept])
-        layers = ["summary"]
+        after = overhead + count_tokens_approximately(
+            prune_tool_results([msg, *kept], self.prune_age) if self.prune_age else [msg, *kept])
+        layers = ["structured" if self.settings.compact_structured else "summary"]
+        if self.prune_age:
+            layers.append("prune")
         record = {"before": before, "after": after, "ratio": round(after / before, 3) if before else None,
                   "spent": spent, "secs": round(time.monotonic() - started, 1), "layers": layers,
                   "manual": manual, "at": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -417,6 +471,19 @@ class ResumenPorTurno(SummarizationMiddleware):
                     " manual" if manual else "", before, after, record["ratio"], spent, record["secs"], layers)
         return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), msg, *kept], "compaction_log": [record]}
 
+    def _create_summary(self, messages_to_summarize):
+        if not self.settings.compact_structured or not messages_to_summarize:
+            return super()._create_summary(messages_to_summarize)
+        first = messages_to_summarize[0]
+        previous = None
+        if first.type == "human" and first.additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
+            previous, messages_to_summarize = _summary_body(first), messages_to_summarize[1:]
+        limit = self.settings.compact_summary_max_tokens
+        prompt = STRUCTURED_SUMMARY_PROMPT.format(
+            max_tokens=limit, previous=previous or "(none)",
+            messages=get_buffer_string(messages_to_summarize, format="xml") if messages_to_summarize else "(none)")
+        response = self._summary_model.invoke(prompt, config=_summary_config())
+        return cap_summary(response.text.strip(), limit)
 
 
 def compact_thread(agent, thread_id: str, settings: Settings) -> dict | None:
@@ -570,8 +637,9 @@ class AnswerVerifier(AgentMiddleware):
 def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None):
     """`summarizer`/`checker`: modelos para la compactación/ANSWER_VERIFY (se inyectan en tests)."""
     base = fixed_prompt_tokens(tools, settings=settings)  # contexto de un hilo nuevo: prompt del sistema + herramientas
+    prune_age = settings.compact_prune_age if settings.compact_prune_tools else 0
     middleware = [
-        MedidorContexto(base),  # primero: sus after_model/after_agent corren al final
+        MedidorContexto(base, prune_age),  # primero: sus after_model/after_agent corren al final
         _make_system_prompt(settings),
         _nombres_antiguos,
         _razonamiento,
@@ -587,6 +655,8 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         }),
         AvisoCorte(),
     ]
+    if prune_age:
+        middleware.insert(3, PodaHerramientas(prune_age))  # tras los nombres antiguos; el resto ve la vista podada
     # el compactador existe siempre (botón "Compactar ahora"); en automático solo con MEMORY_SUMMARIZE
     compactor = ResumenPorTurno(summarizer or make_summary_model(settings), settings, base)
     if settings.memory_summarize:

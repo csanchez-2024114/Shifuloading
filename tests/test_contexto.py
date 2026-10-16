@@ -1,4 +1,5 @@
-"""Medidor de contexto, compactación por porcentaje de la ventana y política de memoria global. Sin tokens: modelos falsos; los que tocan estado de hilos, con MongoDBSaver en
+"""Medidor de contexto, compactación por porcentaje de la ventana, capas de ahorro (poda y resumen estructurado) y
+política de memoria global. Sin tokens: modelos falsos; los que tocan estado de hilos, con MongoDBSaver en
 assistant_test."""
 import re
 
@@ -231,6 +232,7 @@ def test_no_compacta_si_el_turno_ya_aterrizo(make_settings, monkeypatch):
     assert agent.compactor.before_model({"messages": list(msgs)}, runtime) is not None
 
 
+# --------------------------------------------------------------------------- bloque 3, capa 1: poda
 
 
 def _hilo_con_resultados_grandes():
@@ -245,12 +247,87 @@ def _hilo_con_resultados_grandes():
     return msgs
 
 
+def test_poda_viejos_conserva_recientes_llamadas_respuestas_y_memoria():
+    from assistant.context import PRUNED_MSG, prune_tool_results
+
+    msgs = _hilo_con_resultados_grandes() + [HumanMessage("nueva pregunta")]
+    vista = prune_tool_results(msgs, age=6)
+    tools = [m for m in vista if m.type == "tool"]
+    assert tools[0].content.startswith("[tool result pruned: web_search, ") and "tokens. Ask again" in tools[0].content
+    assert tools[1].content.startswith("[tool result pruned:")
+    assert tools[2].content.startswith("resultado 2")  # reciente (no pasa de 6 mensajes de antigüedad)
+    assert tools[3].content.startswith("recuerdo")      # memoria global: nunca se poda
+    assert PRUNED_MSG.split("{")[0] in tools[0].content
+    # llamadas y respuestas del asistente intactas; el original no se modifica
+    assert [m.tool_calls for m in vista if m.type == "ai"] == [m.tool_calls for m in msgs if m.type == "ai"]
+    assert "interpretación del resultado 0" in [m.content for m in vista]
+    assert msgs[2].content.startswith("resultado 0")
+    # el turno en curso nunca se poda, aunque sea viejo dentro del turno
+    turno = [HumanMessage("investiga")] + [m for i in range(4) for m in (
+        tool_call("web_search", {"query": f"t{i}"}, f"t{i}"),
+        ToolMessage("dato " * 400, tool_call_id=f"t{i}", name="web_search"))]
+    assert all(not m.content.startswith("[tool") for m in prune_tool_results(turno, age=2) if m.type == "tool")
 
 
+def test_poda_en_el_agente_cambia_la_vista_no_el_checkpoint(make_settings, mongo_checkpointer):
+    from assistant.agent import get_history
+
+    grande = "dato " * 400
+    s = make_settings(compact_prune_tools=True, compact_prune_age=6, context_window_tokens=128000)
+    respuestas = []
+    for i in range(3):
+        respuestas += [tool_call("web_search", {"query": f"q{i}"}, f"c{i}"), f"interpretación {i}"]
+    respuestas.append("final")
+    llm = usage_chat(*respuestas)
+    agent = _agent(s, llm, checkpointer=mongo_checkpointer, search_fn=lambda q, st: (f"{q}: {grande}", "duckduckgo"))
+    thread = uid()
+    for i in range(3):
+        run_turn(agent, s, f"busca {i}", thread)
+    run_turn(agent, s, "resume lo encontrado", thread)
+
+    vista = [m for m in llm.seen[-1] if m.type == "tool"]
+    assert vista[0].content.startswith("[tool result pruned: web_search")
+    assert not vista[-1].content.startswith("[tool result pruned")
+    guardados = [m for m in _values(agent, thread)["messages"] if m.type == "tool"]
+    assert all(grande[:50] in m.content for m in guardados)  # el historial guardado está completo
+    assert [h["name"] for h in get_history(agent, thread, s) if h["role"] == "tool"] == ["web_search"] * 3
+    # el medidor refleja la vista podada (uso real de la última llamada, que ya iba podada)
+    data = _client(agent, s).get(f"/threads/{thread}/context").json()
+    assert data["tokens"] < count_tokens_approximately(_values(agent, thread)["messages"]) + 1000
 
 
+# --------------------------------------------------------------------------- bloque 3, capa 2: resumen estructurado
 
 
+def test_resumen_estructurado_incremental_conserva_anterior_y_respeta_el_tope(make_settings, mongo_checkpointer):
+    from assistant.agent import STRUCTURED_SUMMARY_PROMPT
+
+    s = make_settings(memory_summarize=True, compact_structured=True, compact_summary_max_tokens=120,
+                      context_window_tokens=4000, compact_keep_pct=15)
+    ronda1 = ('USER FACTS:\n- Vive en Mérida ("vivo en Mérida")\nDECISIONS AND PREFERENCES:\n- Bebe café de olla\n'
+              'TASKS DONE:\n-\nOPEN ITEMS:\n-\nCONTEXT:\n-')
+    ronda2 = ('USER FACTS:\n- Vive en Mérida ("vivo en Mérida")\nDECISIONS AND PREFERENCES:\n'
+              '- Bebe té verde (previously: café de olla)\nTASKS DONE:\n-\nOPEN ITEMS:\n-\nCONTEXT:\n'
+              + "\n".join(f"- detalle de contexto número {i} con bastante texto" for i in range(40)))
+    summ = summarizer(ronda1, ronda2, ronda2, ronda2)
+    llm = usage_chat(*[f"respuesta {i}" for i in range(30)], extra=1500)
+    agent = _agent(s, llm, checkpointer=mongo_checkpointer, summ=summ)
+    thread = uid()
+    for i in range(30):
+        run_turn(agent, s, f"Mensaje {i}. Vivo en Mérida y tomo café de olla. " + FILLER, thread)
+        if len(summ.prompts) >= 2:
+            break
+    assert len(summ.prompts) >= 2, "no hubo dos rondas de compactación"
+    p1, p2 = summ.prompts[:2]
+    assert STRUCTURED_SUMMARY_PROMPT.split("\n")[0][:50] in p1 and "PREVIOUS SUMMARY:\n(none)" in p1
+    # incremental: la segunda ronda recibe el resumen anterior aparte, no los mensajes ya resumidos
+    assert ronda1 in p2 and "Summary of the OLDEST part" not in p2
+    assert "keep both values" in p2 and "Never infer, guess or add facts" in p2
+    resumen = _values(agent, thread)["messages"][0]
+    cuerpo = resumen.content.split("\n\n", 1)[1]
+    assert count_tokens_approximately([HumanMessage(cuerpo)]) <= 120  # tope duro
+    assert "Vive en Mérida" in cuerpo and "previously: café de olla" in cuerpo  # el recorte quita CONTEXT, no lo de arriba
+    assert _values(agent, thread)["compaction_log"][-1]["layers"] == ["structured"]
 
 
 # --------------------------------------------------------------------------- bloque 4: memoria global

@@ -1,11 +1,11 @@
-"""Contexto de cada conversación: medidor (tokens que enviaría la siguiente llamada) y registro de compactaciones.
-Todo es por hilo: vive en su checkpoint."""
+"""Contexto de cada conversación: medidor (tokens que enviaría la siguiente llamada), poda de resultados viejos de
+herramientas (COMPACT_PRUNE_TOOLS) y registro de compactaciones. Todo es por hilo: vive en su checkpoint."""
 import logging
 import operator
 from typing import Annotated
 
 from langchain.agents.middleware import AgentMiddleware, AgentState
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 from typing_extensions import NotRequired
 
@@ -18,6 +18,62 @@ class ContextState(AgentState):
     """Campos extra del estado del hilo (MedidorContexto y la compactación)."""
     context_stats: NotRequired[dict]                              # totales consumidos, último turno, overhead medido
     compaction_log: NotRequired[Annotated[list, operator.add]]   # un registro por compactación
+
+
+# --------------------------------------------------------------------------- capa 1: poda
+
+
+# Excepciones de la poda: la memoria global (lo que dijo el usuario y sus ids para update_memory) y, por ser del turno
+# en curso, la evidencia que ANSWER_VERIFY contrasta (solo usa herramientas del turno actual).
+PRUNE_KEEP_TOOLS = ("save_memory", "search_memories", "update_memory",
+                    "guardar_recuerdo", "buscar_recuerdos", "actualizar_recuerdo")  # nombres antiguos incluidos
+PRUNE_MIN_TOKENS = 60  # un resultado más corto que esto pesa casi lo mismo que el aviso: no se poda
+PRUNED_MSG = "[tool result pruned: {name}, {tokens} tokens. Ask again or re-run the tool if needed.]"
+_PRUNED_PREFIX = "[tool result pruned:"
+
+
+def turn_start(messages) -> int:
+    """Índice del último mensaje del usuario (el resumen no cuenta como usuario); -1 si no hay."""
+    return max((i for i, m in enumerate(messages) if m.type == "human"
+                and (m.additional_kwargs or {}).get("lc_source") != SUMMARY_SOURCE), default=-1)
+
+
+def _text(msg) -> str:
+    try:
+        return msg.text or ""
+    except Exception:  # noqa: BLE001
+        return str(msg.content)
+
+
+def prune_tool_results(messages, age: int) -> list:
+    """Copia de `messages` con el contenido de los resultados de herramientas de más de `age` mensajes de antigüedad
+    reemplazado por PRUNED_MSG. Conserva la llamada (nombre y argumentos, en el AIMessage) y la respuesta del asistente
+    que interpretó el resultado. No toca el turno en curso ni las herramientas de PRUNE_KEEP_TOOLS. No modifica el
+    historial guardado: es solo la vista que recibe el modelo."""
+    if age <= 0:
+        return list(messages)
+    start, last = turn_start(messages), len(messages) - 1
+    out = []
+    for i, m in enumerate(messages):
+        if (isinstance(m, ToolMessage) and i < start and last - i > age and m.name not in PRUNE_KEEP_TOOLS
+                and not _text(m).startswith(_PRUNED_PREFIX)):
+            tokens = count_tokens_approximately([m])
+            if tokens >= PRUNE_MIN_TOKENS:
+                m = m.model_copy(update={"content": PRUNED_MSG.format(name=m.name or "tool", tokens=tokens)})
+        out.append(m)
+    return out
+
+
+class PodaHerramientas(AgentMiddleware):
+    """COMPACT_PRUNE_TOOLS: antes de cada llamada al modelo poda los resultados viejos de herramientas (ver
+    prune_tool_results). El checkpoint y la interfaz siguen teniendo el resultado completo."""
+
+    def __init__(self, age: int):
+        super().__init__()
+        self.age = age
+
+    def wrap_model_call(self, request, handler):
+        return handler(request.override(messages=prune_tool_results(request.messages, self.age)))
 
 
 # --------------------------------------------------------------------------- medidor
@@ -35,12 +91,12 @@ def _last_compaction(messages) -> dict:
     return (summary.additional_kwargs or {}).get("compaction") or {} if summary is not None else {}
 
 
-def context_in_use(messages, base: int, overhead: int | None = None) -> tuple[int, bool]:
+def context_in_use(messages, base: int, prune_age: int = 0, overhead: int | None = None) -> tuple[int, bool]:
     """(tokens que enviaría la siguiente llamada, estimado). Con una respuesta del modelo posterior a la última
     compactación: su uso real (entrada + salida visible) más lo que se añadió después. Si no hay (hilo nuevo, recién
     compactado o modelo sin usage_metadata): prompt y herramientas (`overhead` medido o `base`) + la vista del modelo
     estimada, y se marca como estimado."""
-    view = list(messages)
+    view = prune_tool_results(messages, prune_age) if prune_age else list(messages)
     stale = set(_last_compaction(view).get("kept_ids") or ())  # su uso real es de antes de compactar
     for i in range(len(view) - 1, -1, -1):
         m = view[i]
@@ -51,7 +107,7 @@ def context_in_use(messages, base: int, overhead: int | None = None) -> tuple[in
     return (overhead or base) + (count_tokens_approximately(view) if view else 0), True
 
 
-def measured_overhead(messages) -> int | None:
+def measured_overhead(messages, prune_age: int = 0) -> int | None:
     """Lo que pesan prompt del sistema + herramientas según la última llamada real: su entrada menos la vista
     estimada. Mejora la estimación tras compactar (calibrada con el uso real de este hilo)."""
     if not messages or not isinstance(messages[-1], AIMessage):
@@ -59,7 +115,7 @@ def measured_overhead(messages) -> int | None:
     usage = messages[-1].usage_metadata or {}
     if not usage.get("input_tokens"):
         return None
-    view = messages[:-1]
+    view = prune_tool_results(messages[:-1], prune_age) if prune_age else messages[:-1]
     return max(0, usage["input_tokens"] - count_tokens_approximately(view))
 
 
@@ -70,16 +126,17 @@ class MedidorContexto(AgentMiddleware):
 
     state_schema = ContextState
 
-    def __init__(self, base: int):
+    def __init__(self, base: int, prune_age: int = 0):
         super().__init__()
         self.base = base
+        self.prune_age = prune_age
 
     def after_model(self, state, runtime):
         messages = state.get("messages") or []
-        overhead = measured_overhead(messages)
+        overhead = measured_overhead(messages, self.prune_age)
         if overhead is None:
             return None
-        tokens, estimated = context_in_use(messages, self.base, overhead)
+        tokens, estimated = context_in_use(messages, self.base, self.prune_age, overhead)
         runtime.stream_writer({"tipo": "contexto", "tokens": tokens, "estimated": estimated})
         return {"context_stats": {**(state.get("context_stats") or {}), "overhead": overhead}}
 
@@ -102,7 +159,8 @@ def context_report(values: dict, settings, base: int, can_compact: bool) -> dict
     """Respuesta de GET /threads/{id}/context, a partir del estado guardado del hilo (sin llamar al modelo)."""
     messages = values.get("messages") or []
     stats = values.get("context_stats") or {}
-    tokens, estimated = context_in_use(messages, base, stats.get("overhead"))
+    prune_age = settings.compact_prune_age if settings.compact_prune_tools else 0
+    tokens, estimated = context_in_use(messages, base, prune_age, stats.get("overhead"))
     if stats.get("total") is None:  # hilos sin medidor (anteriores o bigtool): suma del uso de sus respuestas
         usage = [m.usage_metadata for m in messages if isinstance(m, AIMessage) and m.usage_metadata]
         stats = {"total": sum(u.get("total_tokens", 0) or 0 for u in usage),
