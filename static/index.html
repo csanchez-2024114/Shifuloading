@@ -576,6 +576,8 @@ textarea#input:disabled { opacity: .6; }
     seg.innerHTML = renderMarkdown(text);
     b.appendChild(seg);
     if (original) b.appendChild(correctionNote(original, verify));
+    else if (verify && verify.status === "unverified")  // ANSWER_VERIFY no corrió: el mensaje llegó a su tope
+      b.appendChild(el("div", "vnote corrected", "⚠️ " + (verify.notes || []).join(" · ")));
     row.appendChild(b); messagesEl.appendChild(row);
   }
   // nota de ANSWER_VERIFY con la respuesta original desplegable
@@ -841,7 +843,8 @@ textarea#input:disabled { opacity: .6; }
     chip.title = "Los mensajes viejos se reemplazaron por un resumen; los datos clave se guardan aparte como recuerdos.";
     this.bubble.insertBefore(chip, this.bubble.firstChild);
   };
-  // ANSWER_VERIFY: "ok" deja una nota; "corrected" reemplaza la respuesta y deja ver la original (nunca en silencio)
+  // ANSWER_VERIFY: "ok" deja una nota; "corrected" reemplaza la respuesta y deja ver la original (nunca en silencio);
+  // "unverified" (el mensaje llegó a su tope y no se verificó) deja la nota "⚠️ No verificada…"
   AssistantBubble.prototype.verify = function (ev) {
     this.hideDots(); this.closeSeg();
     if (typeof ev.text !== "string") {  // el texto no cambió

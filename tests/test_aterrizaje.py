@@ -125,3 +125,74 @@ def test_respuesta_final_que_cruza_el_tope_no_se_aborta(make_settings, mongo_che
     msgs = _guardados(thread)
     _sin_huerfanos(msgs)
     assert msgs[-1].content == "1+1 son 2."
+
+
+def test_pasado_el_tope_no_verifica_y_la_respuesta_queda_no_verificada(make_settings, mongo_checkpointer):
+    """Prueba real: con TURN_TOKEN_CAP=4000 el turno aterrizó y aun así ANSWER_VERIFY gastó otra llamada (2.794)."""
+    from assistant.agent import UNVERIFIED_NOTE, build_agent, get_history
+    from assistant.tools import build_tools
+    from test_memoria_avanzada import recorder
+
+    s = make_settings(turn_token_cap=100000, model_call_limit=15, answer_verify=True)
+    # 70k + 15k de la búsqueda = 85k ≥ 80k: la respuesta es el aterrizaje; con evidencia, pero sin verificar
+    llm = ConCoste(messages=iter([tool_call("web_search", {"query": "leyes IA"}, "w1"), "Resumen parcial."]),
+                   costes=[70000, 10000], vistos=[])
+    checker = recorder("OK")
+    agent = build_agent(llm, build_tools(llm, s, search_fn=SearchConUso(15000)), s, checkpointer=mongo_checkpointer,
+                        checker=checker)
+    thread = uid()
+    ev = run_turn(agent, s, "compara leyes", thread)
+    assert [v["choice"] for v in llm.vistos] == [None, "none"]
+    assert checker.seen == []  # ninguna llamada de verificación pasado el tope
+    [ver] = [e for e in ev if e["type"] == "verify"]
+    assert ver["status"] == "unverified" and ver["notes"] == [UNVERIFIED_NOTE] and "text" not in ver
+    assert "verifying" not in [e.get("phase") for e in ev if e["type"] == "phase"]
+    [resp] = [m for m in get_history(agent, thread, s) if m["role"] == "assistant"]  # al recargar se sigue viendo
+    assert resp == {"role": "assistant", "content": "Resumen parcial.",
+                    "verify": {"status": "unverified", "notes": [UNVERIFIED_NOTE]}}
+    _sin_huerfanos(_guardados(thread))
+
+
+def test_bajo_el_tope_si_verifica(make_settings, mongo_checkpointer):
+    from assistant.agent import build_agent
+    from assistant.tools import build_tools
+    from test_memoria_avanzada import recorder
+
+    s = make_settings(turn_token_cap=100000, model_call_limit=15, answer_verify=True)
+    llm = ConCoste(messages=iter([tool_call("web_search", {"query": "q"}, "w1"), "Hay vuelos."]),
+                   costes=[1000, 1000], vistos=[])
+    checker = recorder("OK")
+    agent = build_agent(llm, build_tools(llm, s, search_fn=SearchConUso(1000)), s, checkpointer=mongo_checkpointer,
+                        checker=checker)
+    ev = run_turn(agent, s, "busca vuelos", uid())
+    assert len(checker.seen) == 1 and [e["status"] for e in ev if e["type"] == "verify"] == ["ok"]
+
+
+def test_historial_mas_pesado_que_el_tope_va_sin_herramientas(make_settings, mongo_checkpointer):
+    """Prueba real: el 2.º mensaje de un hilo de 5k tokens con tope 4.000. Ese turno no intenta herramientas."""
+    from assistant.agent import HISTORY_CAP_NOTE, SOFT_CAP_NOTE, turn_cap_msg
+
+    s = make_settings(turn_token_cap=4000, model_call_limit=15)
+    llm = ConCoste(messages=iter(["Respuesta corta.", "Sigo aquí."]), costes=[50, 50], vistos=[])
+    agent = _agente(s, llm, mongo_checkpointer)
+    thread = uid()
+    run_turn(agent, s, "hola", thread)
+    assert llm.vistos[0]["choice"] is None  # historial corto: herramientas disponibles
+    ev = run_turn(agent, s, "resume esto: " + "palabra " * 4000, thread)  # ~8k tokens aprox. > 4.000
+    assert llm.vistos[1]["choice"] == "none"
+    assert HISTORY_CAP_NOTE in llm.vistos[1]["system"] and SOFT_CAP_NOTE not in llm.vistos[1]["system"]
+    assert "Sigo aquí." in _texto(ev) and turn_cap_msg(4000) not in _texto(ev) and ev[-1]["type"] == "done"
+    _sin_huerfanos(_guardados(thread))
+
+
+def test_historial_mas_pesado_que_el_tope_en_bigtool(make_settings, mongo_checkpointer):
+    from assistant.agent import HISTORY_CAP_NOTE
+    from assistant.bigtool_agent import build_bigtool_agent
+
+    s = make_settings(use_bigtool=True, turn_token_cap=4000, model_call_limit=15)
+    llm = BigConCoste(messages=iter(["Respuesta corta."]), costes=[50], vistos=[])
+    agent = build_bigtool_agent(llm, s, checkpointer=mongo_checkpointer, memories_store=InMemoryStore(),
+                                embeddings=DeterministicFakeEmbedding(size=64), search_fn=SearchConUso())
+    ev = run_turn(agent, s, "resume esto: " + "palabra " * 4000, uid())
+    assert [v["choice"] for v in llm.vistos] == ["none"] and HISTORY_CAP_NOTE in llm.vistos[0]["system"]
+    assert "Respuesta corta." in _texto(ev) and ev[-1]["type"] == "done"

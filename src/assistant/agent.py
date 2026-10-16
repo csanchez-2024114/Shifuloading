@@ -21,6 +21,7 @@ from langchain.agents.middleware import (
 from langchain.agents.middleware.types import hook_config
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages.utils import count_tokens_approximately
 from langchain_openai import ChatOpenAI
 from langgraph._internal._constants import CONFIG_KEY_RUNTIME
 from langgraph.config import get_config
@@ -421,14 +422,18 @@ def is_evidence(output: str) -> bool:
     return tool_ran(output) or output.lstrip().startswith(_REUSED_RESEARCH)
 
 
+UNVERIFIED_NOTE = "No verificada: este mensaje llegó a su tope de tokens (TURN_TOKEN_CAP)"  # al usuario
+
+
 class AnswerVerifier(AgentMiddleware):
     """ANSWER_VERIFY: al terminar el turno, si se usó web_search/deep_research, una llamada barata
     contrasta la respuesta con lo recuperado. Si corrige, reemplaza el mensaje (mismo id) y avisa a la UI con el
     original: el cambio nunca es silencioso. Sin búsqueda en el turno no hace nada (0 tokens)."""
 
-    def __init__(self, checker):
+    def __init__(self, checker, cap: int = 0):
         super().__init__()
         self.checker = checker
+        self.cap = cap  # TURN_TOKEN_CAP: si el mensaje ya aterrizó o lo pasó, no se gasta otra llamada en verificar
 
     def after_agent(self, state, runtime):
         messages = state.get("messages") or []
@@ -440,6 +445,13 @@ class AnswerVerifier(AgentMiddleware):
         last = turn[-1] if turn else None
         if not evidence or not isinstance(last, AIMessage) or last.tool_calls or not _content_text(last).strip():
             return None
+        counter = _turn_counter()
+        if self.cap and counter and (counter.landing or counter.total >= self.cap):
+            # la respuesta se queda sin verificar, y se dice (en vivo y al recargar): nunca pasa por verificada
+            notes = [UNVERIFIED_NOTE]
+            runtime.stream_writer({"tipo": "verificacion", "status": "unverified", "notes": notes, "tokens": 0})
+            return {"messages": [last.model_copy(update={"additional_kwargs": {
+                **last.additional_kwargs, "answer_verify": {"status": "unverified", "notes": notes}}})]}
         original = _content_text(last)
         runtime.stream_writer({"tipo": "fase", "fase": "verifying"})  # la UI muestra "verificando…" mientras tanto
         try:
@@ -493,7 +505,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
             trim_tokens_to_summarize=None,
         ))
     if settings.answer_verify:
-        middleware.append(AnswerVerifier(checker or make_checker_model(settings)))
+        middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap))
     return create_agent(
         model,
         tools,
@@ -561,7 +573,8 @@ def _update_events(update: dict) -> Iterator[dict]:
             yield {"type": "token", "text": f"\n\n_{LIMIT_MSG}_"}
             continue
         for msg in node_update.get("messages", []) or []:
-            # nodos de create_agent ("model"/"tools") y de langgraph-bigtool ("agent"/"tools"/"select_tools")
+            # nodos de create_agent ("model"/"tools") y de langgraph-bigtool ("agent"/"tools"/"select_tools");
+            # tool_end sale de "tools"/"select_tools" y también del middleware HITL (rechazo de la tarjeta)
             if node in MODEL_NODES and isinstance(msg, AIMessage):
                 for call in msg.tool_calls:
                     yield {
@@ -607,6 +620,10 @@ def _step_kind(chunk) -> str | None:
 SOFT_CAP_NOTE = ("This message is close to its token budget: do not call tools. Answer now using only what you already "
                  "retrieved, and tell the user in one short line, in their language, what you could not complete and "
                  "that they can ask for it in a new, narrower message.")
+HISTORY_CAP_NOTE = ("This conversation is already longer than this message's token budget, so no tools are available "
+                    "in this turn. Answer with what you already know from the conversation; if the request needs a tool "
+                    "(search, research, calculation...), say so in one short line, in the user's language, and suggest "
+                    "asking it in a new conversation.")
 CANCELLED_TOOL_MSG = "Cancelled: this message reached its token cap before the tool finished."
 
 
@@ -617,6 +634,7 @@ class TurnTokens(BaseCallbackHandler):
     def __init__(self):
         self.total = 0
         self.landing = False  # ya se hizo la última llamada sin herramientas (aterrizaje suave)
+        self.history_over_cap = False  # el historial del hilo ya pesa más que el tope: el turno va sin herramientas
         self._lock = threading.Lock()
 
     def on_llm_end(self, response, **kwargs):
@@ -630,33 +648,52 @@ class TurnTokens(BaseCallbackHandler):
 _ACTIVE_TURNS: dict[str, TurnTokens] = {}  # hilo -> contador del mensaje en curso
 
 
-def landing_due(cap: int) -> TurnTokens | None:
-    """Contador del mensaje en curso si ya llegó al SOFT_CAP_RATIO de TURN_TOKEN_CAP (hay que aterrizar); si no, None.
-    Se llama dentro del grafo: el hilo sale de la config de la ejecución."""
-    if not cap:
-        return None
+def _turn_counter() -> TurnTokens | None:
+    """Contador del mensaje en curso. Se llama dentro del grafo: el hilo sale de la config de la ejecución."""
     try:
         thread_id = get_config()["configurable"].get("thread_id")
     except RuntimeError:  # fuera de un grafo
         return None
-    counter = _ACTIVE_TURNS.get(thread_id)
-    return counter if counter and counter.total >= cap * SOFT_CAP_RATIO else None
+    return _ACTIVE_TURNS.get(thread_id)
+
+
+def landing_due(cap: int, messages=None) -> TurnTokens | None:
+    """Contador del mensaje en curso si hay que aterrizar (llamada sin herramientas); si no, None. Se aterriza al
+    llegar al SOFT_CAP_RATIO de TURN_TOKEN_CAP o si `messages` (lo que se enviará al modelo) ya pesa más que el tope:
+    cualquier herramienta lo pasaría, así que se responde con lo que hay."""
+    counter = _turn_counter() if cap else None
+    if counter is None:
+        return None
+    if counter.total >= cap * SOFT_CAP_RATIO:
+        return counter
+    if messages is not None and count_tokens_approximately(messages) >= cap:
+        counter.history_over_cap = True
+        return counter
+    return None
+
+
+def landing_note(counter: TurnTokens, cap: int) -> str:
+    return HISTORY_CAP_NOTE if counter.history_over_cap and counter.total < cap * SOFT_CAP_RATIO else SOFT_CAP_NOTE
 
 
 class AterrizajeSuave(AgentMiddleware):
     """TURN_TOKEN_CAP con aterrizaje suave: al llegar al 80% del tope, la siguiente llamada va sin herramientas y con
-    SOFT_CAP_NOTE, así el usuario recibe una respuesta con lo ya recuperado en vez de solo el aviso de aborto."""
+    SOFT_CAP_NOTE, así el usuario recibe una respuesta con lo ya recuperado en vez de solo el aviso de aborto. Si el
+    historial del hilo ya pesa más que el tope, el turno entero va sin herramientas (HISTORY_CAP_NOTE). El tope frena
+    las llamadas extra, pero siempre deja una respuesta final (que puede pasarlo: es una sola llamada)."""
 
     def __init__(self, cap: int):
         super().__init__()
         self.cap = cap
 
     def wrap_model_call(self, request, handler):
-        if request.tools and (counter := landing_due(self.cap)):
+        sent = [request.system_message, *request.messages] if request.system_message else request.messages
+        if request.tools and (counter := landing_due(self.cap, sent)):
             counter.landing = True
             system = request.system_message.text if request.system_message else ""
+            note = landing_note(counter, self.cap)
             request = request.override(tool_choice="none",
-                                       system_message=SystemMessage(content=f"{system}\n\n{SOFT_CAP_NOTE}".strip()))
+                                       system_message=SystemMessage(content=f"{system}\n\n{note}".strip()))
         return handler(request)
 
 
@@ -793,7 +830,8 @@ def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
             if text:
                 out.append({"role": "assistant", "content": text})
                 if corrected := msg.additional_kwargs.get("answer_verify"):
-                    out[-1]["original"] = corrected.get("original", "")
+                    if corrected.get("status") != "unverified":  # "no verificada" no tiene original
+                        out[-1]["original"] = corrected.get("original", "")
                     out[-1]["verify"] = {"status": corrected.get("status", "corrected"), "notes": corrected.get("notes", [])}
             for call in msg.tool_calls:
                 out.append({"role": "tool", "name": call.get("name")})

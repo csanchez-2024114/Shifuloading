@@ -114,7 +114,8 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings) -> Ite
     # - solo chunks con ns == () (raíz); ignora subagentes/modelos internos
     # - "messages": (token, metadata); si metadata["langgraph_node"] == "model" y token.text → evento token
     # - "updates": dict nodo→update. "model" con AIMessage.tool_calls → tool_start por cada call;
-    #   "tools" con ToolMessage → tool_end; clave "__interrupt__" → evento interrupt
+    #   "tools"/"select_tools" y el middleware HITL (rechazo de la tarjeta) con ToolMessage → tool_end;
+    #   clave "__interrupt__" → evento interrupt
     # - excepciones → evento error (mensaje legible) y termina; SIEMPRE cierra con done (si no hubo error)
 def get_history(agent, thread_id: str, settings) -> list[dict]
     # agent.get_state(run_config(...)).values.get("messages", []) →
@@ -138,6 +139,7 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 {"type": "summarized"}                                                                    // MEMORY_SUMMARIZE: se resumió la conversación vieja
 {"type": "verify", "status": "ok", "notes": [], "tokens": 812}                           // ANSWER_VERIFY, solo si el turno usó web_search/investigador
 {"type": "verify", "status": "corrected"|"kept_original", "text": "texto final", "original": "respuesta original", "notes": ["..."], "tokens": 950}
+{"type": "verify", "status": "unverified", "notes": ["No verificada: este mensaje llegó a su tope de tokens (TURN_TOKEN_CAP)"], "tokens": 0}  // el turno ya aterrizó o pasó el tope: no se verifica
 // "text"/"original" solo si el texto cambió. kept_original = se descartó la corrección del verificador (p. ej. traía cifras
 // que no están en la evidencia); puede venir con citas inventadas quitadas. Reglas de citas en citations.py (en código).
 {"type": "error", "message": "texto legible"}
@@ -150,7 +152,9 @@ límite de longitud (MAX_TOKENS). Escribe «continúa» y sigo justo donde me qu
 queda en el historial, con `additional_kwargs.cut = true`). No hay evento nuevo.
 
 Tope por mensaje (TURN_TOKEN_CAP): al 80% la siguiente llamada va sin herramientas (aterrizaje suave: respuesta normal,
-sin aviso propio). Solo si se cruza el tope sin aterrizar y el modelo pide más herramientas llega un `token` final con
+sin aviso propio). Si el historial del hilo ya pesa más que el tope, todo el mensaje va sin herramientas. El tope frena
+las llamadas extra pero siempre permite una respuesta final; esa respuesta no pasa por ANSWER_VERIFY (evento `verify`
+con `status: "unverified"`, y en el historial `verify: {"status": "unverified", "notes": [...]}` sin `original`). Solo si se cruza el tope sin aterrizar y el modelo pide más herramientas llega un `token` final con
 "⚠️ Detuve este mensaje: superó el tope de N tokens por mensaje (TURN_TOKEN_CAP)…" (N con punto de miles: 45.000)
 seguido de `done`. Las herramientas que ya corrían terminan y guardan su resultado; las que no habían empezado quedan
 respondidas con "Cancelled: …" en el historial, para que el hilo siga usable. No hay evento nuevo.
@@ -175,7 +179,7 @@ empiezan con `:`.
 | GET | `/` | sirve `static/index.html` |
 | POST | `/chat` | body `{"message": str, "thread_id": str, "user_id": str, "effort"?: "bajo"\|"medio"\|"alto"\|null}` → `text/event-stream` con los eventos de arriba. `effort` (selector de la UI) manda sobre el clasificador; null o ausente = automático |
 | POST | `/resume` | body `{"thread_id": str, "user_id": str, "decisions": [{"type": "approve"} \| {"type": "reject", "message": str}]}` → mismo stream SSE. Internamente `Command(resume={"decisions": decisions})` |
-| GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str,"original"?:str} \| {"role":"tool","name":str,"status"?:"skipped"\|"error"} \| {"role":"summary"}]}` (vacío si no existe; `original` = respuesta antes de ANSWER_VERIFY; `status` solo si la herramienta no se ejecutó o falló) |
+| GET | `/history/{thread_id}` | `{"thread_id": str, "messages": [{"role":"user"\|"assistant","content":str,"original"?:str,"verify"?:{"status":str,"notes":[str]}} \| {"role":"tool","name":str,"status"?:"skipped"\|"error"} \| {"role":"summary"}]}` (vacío si no existe; `original` = respuesta antes de ANSWER_VERIFY; `verify.status` "unverified" = no se verificó por el tope, sin `original`; `status` solo si la herramienta no se ejecutó o falló) |
 | GET | `/memories/{user_id}` | `{"user_id": str, "memories": [{"key","text","created_at","thread_id","evidence","confidence","previous_text","updated_at"}]}` (más recientes primero; 503 sin store) |
 | DELETE | `/memories/{user_id}/{key}` | `{"deleted": key}`; 404 si no existe en el namespace de ese usuario |
 | GET | `/health` | `{"ok": true, "model": str}` |

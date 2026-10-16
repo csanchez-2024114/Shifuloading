@@ -271,3 +271,32 @@ def test_investigacion_aprobada(page, base_url):
     chip = _chip_investigacion(page)
     assert "done" in chip["cls"] and "✓" in chip["text"] and "🧠 Investigación" in chip["text"], chip
     assert "no realizada" not in chip["text"] and "Esperando" not in chip["text"]
+
+
+def test_respuesta_no_verificada_por_el_tope_se_ve_en_vivo_y_al_recargar(page, base_url):
+    """ANSWER_VERIFY no corre pasado TURN_TOKEN_CAP: la UI lo dice en vez de callar (respuestas simuladas)."""
+    import json
+
+    nota = "No verificada: este mensaje llegó a su tope de tokens (TURN_TOKEN_CAP)"
+    eventos = [{"type": "token", "text": "Resumen parcial."},
+               {"type": "verify", "status": "unverified", "notes": [nota], "tokens": 0}, {"type": "done"}]
+    sse = "".join(f"data: {json.dumps(e)}\n\n" for e in eventos)
+    _fresh(page, base_url, True)
+    page.route("**/chat", lambda r: r.fulfill(status=200, headers={"Content-Type": "text/event-stream"}, body=sse))
+    try:
+        _send(page, "compara leyes")
+        _idle(page)
+        assert "⚠️ " + nota in page.locator("#messages .row.assistant").last.inner_text()
+    finally:
+        page.unroute("**/chat")
+    historial = {"thread_id": "x", "messages": [
+        {"role": "user", "content": "compara leyes"},
+        {"role": "assistant", "content": "Resumen parcial.", "verify": {"status": "unverified", "notes": [nota]}}]}
+    page.route("**/history/*", lambda r: r.fulfill(status=200, json=historial))
+    try:
+        page.goto(f"{base_url}?thread=no-verificada")
+        page.wait_for_selector("#messages .row.assistant .vnote", timeout=10000)
+        assert page.locator("#messages .row.assistant .vnote").inner_text() == "⚠️ " + nota
+        assert page.locator("#messages details").count() == 0  # sin "ver original": no hubo corrección
+    finally:
+        page.unroute("**/history/*")

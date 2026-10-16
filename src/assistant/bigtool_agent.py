@@ -35,7 +35,7 @@ from langgraph_bigtool import create_agent as create_bigtool_agent
 from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 
 from assistant import memory
-from assistant.agent import OLD_TOOL_NAMES, SOFT_CAP_NOTE, landing_due, rename_old_tools, system_prompt_text
+from assistant.agent import OLD_TOOL_NAMES, landing_due, landing_note, rename_old_tools, system_prompt_text
 from assistant.apps.crm_demo import crm_tools
 from assistant.config import Settings
 from assistant.extra_tools import extra_tools
@@ -263,7 +263,7 @@ class PromptedModel:
 
     def __init__(self, model, cap: int = 0):
         self.model = model
-        self.cap = cap  # TURN_TOKEN_CAP: al 80%, la llamada va sin herramientas (aterrizaje suave)
+        self.cap = cap  # TURN_TOKEN_CAP: al 80% (o con un historial más pesado que el tope), sin herramientas
 
     def bind_tools(self, tools, **kwargs):
         if effort := _ctx("razonamiento"):
@@ -279,11 +279,13 @@ class PromptedModel:
         landing = self.model.bind_tools(list(unicas.values()), **{**kwargs, "tool_choice": "none"})
 
         def prompt(msgs):
-            note = f"\n\n{SOFT_CAP_NOTE}" if landing_due(self.cap) else ""
-            return [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT + note), *rename_old_tools(msgs)]
+            msgs = rename_old_tools(msgs)
+            counter = landing_due(self.cap, [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT), *msgs])
+            note = f"\n\n{landing_note(counter, self.cap)}" if counter else ""
+            return [SystemMessage(system_prompt_text() + BIGTOOL_PROMPT + note), *msgs]
 
-        def route(_):  # devolver un Runnable hace que RunnableLambda lo invoque con la misma entrada
-            if counter := landing_due(self.cap):
+        def route(sent):  # devolver un Runnable hace que RunnableLambda lo invoque con la misma entrada
+            if counter := landing_due(self.cap, sent):
                 counter.landing = True
                 return landing
             return bound
