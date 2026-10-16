@@ -34,6 +34,22 @@ function Marco({ src, ancho, titulo, maxAncho }) {
   )
 }
 
+/** Videos de revisión (laboratorio/grabaciones): se graban con servidor/grabar.mjs y se revisan antes de mostrarse. */
+function Grabaciones() {
+  const [lista, setLista] = useState(null)
+  useEffect(() => { fetch('/api/lab/grabaciones').then((r) => r.json()).then(setLista).catch(() => setLista([])) }, [])
+  if (!lista) return <p className="lab-nota">Cargando…</p>
+  if (!lista.length) return <p className="lab-nota">Todavía no hay grabaciones.</p>
+  return (
+    <div className="lab-grab">{lista.map((g) => (
+      <figure key={g.id} className="lab-marco">
+        <figcaption>{g.id} · {g.archivos.filter((a) => a.endsWith('.mp4')).map((a) => <a key={a} href={`/grabaciones/${g.id}/${a}`} target="_blank" rel="noreferrer">{a.replace('.mp4', '')}</a>)}{g.archivos.includes('eventos.txt') && <a href={`/grabaciones/${g.id}/eventos.txt`} target="_blank" rel="noreferrer">eventos</a>}</figcaption>
+        {g.archivos.includes('escritorio-1440x900.mp4') && <video src={`/grabaciones/${g.id}/escritorio-1440x900.mp4`} controls preload="metadata" />}
+      </figure>
+    ))}</div>
+  )
+}
+
 export default function LaboratorioPage() {
   const [q, setQ] = useSearchParams()
   const plantilla = q.get('plantilla') || 'embudo'
@@ -67,6 +83,16 @@ export default function LaboratorioPage() {
         <h1>Laboratorio de plantillas</h1>
         <p className="lab-nota">Solo en desarrollo. Datos de ejemplo, nada se guarda.</p>
 
+        <h2>Demos y vistas</h2>
+        <ul className="lab-lista">{[
+          ['demo', '🤖 Demo IA · flujo completo', '8 pedidos reales: marca, crear, embudo, mover, algo que no existe, quitar'],
+          ['toma', '📝 Toma de diseño', 'Pedir un inicio nuevo → ficha → ajuste → «sí» → se arma'],
+          ['nuevo', '👋 Usuario nuevo · primer ingreso', 'Recorrido con datos de ejemplo que se borran al final'],
+          ['vacio', '🌫️ Sin datos (sombría)', 'Cómo se ve antes del primer registro'],
+          ['una', '💬 Chat libre con Shifu', 'Probar cualquier pedido (marca, enlaces, PDF, crear secciones…)'],
+          ['galeria', '📊 Galería de gráficos', 'Los 43 tipos con datos de la plantilla'],
+          ['grabaciones', '🎬 Grabaciones en video', 'Revisadas antes de mostrarse, en 4 resoluciones'],
+        ].map(([v, t, d]) => <li key={v}><button type="button" className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}><b>{t}</b><small>{d}</small></button></li>)}</ul>
         <h2>Simular cuestionario (asignación)</h2>
         <div className="lab-brief">
           <select value={brief.rubro} onChange={(e) => setBrief({ ...brief, rubro: e.target.value })} aria-label="Rubro">{['servicios', 'agencia', 'comercio', 'salud', 'educacion', 'tecnologia', 'inmobiliaria', 'otro'].map((r) => <option key={r}>{r}</option>)}</select>
@@ -104,8 +130,8 @@ export default function LaboratorioPage() {
         <div className="lab-botones">{DATOS.map(([v, t]) => <button key={v} type="button" className={datos === v ? 'on' : ''} onClick={() => fijar('datos', v)}>{t}</button>)}</div>
         <h2>Tema</h2>
         <div className="lab-botones">{[['oscuro', 'Oscuro'], ['claro', 'Claro']].map(([v, t]) => <button key={v} type="button" className={tema === v ? 'on' : ''} onClick={() => fijar('tema', v)}>{t}</button>)}</div>
-        <h2>Modo</h2>
-        <div className="lab-botones">{[['una', 'Un ancho'], ['comparar', 'Comparar 3 anchos'], ['todas', 'Todas las plantillas'], ['galeria', 'Galería de gráficos'], ['demo', 'Demo IA (flujo completo)'], ['nuevo', 'Usuario nuevo (recorrido)']].map(([v, t]) => <button key={v} type="button" className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}>{t}</button>)}</div>
+        <h2>Comparar</h2>
+        <div className="lab-botones">{[['comparar', 'Comparar 3 anchos'], ['todas', 'Todas las plantillas']].map(([v, t]) => <button key={v} type="button" className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}>{t}</button>)}</div>
         {modo !== 'comparar' && (
           <>
             <h2>Ancho</h2>
@@ -119,6 +145,9 @@ export default function LaboratorioPage() {
         {modo === 'una' && <Marco src={urlVista(plantilla, datos, tema, estilo)} ancho={ancho} titulo={todas.find((p) => p.id === plantilla)?.nombre} maxAncho={disp - 8} />}
         {modo === 'demo' && <Marco src={urlVista(plantilla, datos, tema, estilo, '&demo=1')} ancho={ancho} titulo="Demo IA: 8 pedidos reales seguidos (crear, modificar, branding, algo que no existe, quitar)" maxAncho={disp - 8} />}
         {modo === 'nuevo' && <Marco src={urlVista(plantilla, 'muchos', tema, estilo, '&recorrido=1')} ancho={ancho} titulo="Primera entrada de un usuario nuevo" maxAncho={disp - 8} />}
+        {modo === 'toma' && <Marco src={urlVista(plantilla, 'muchos', tema, estilo, '&demo=toma')} ancho={ancho} titulo="Toma de diseño: ficha → ajuste → «sí» → se arma por código (IA real)" maxAncho={disp - 8} />}
+        {modo === 'vacio' && <Marco src={urlVista(plantilla, 'vacio', tema, estilo)} ancho={ancho} titulo="Sin datos: vista sombría" maxAncho={disp - 8} />}
+        {modo === 'grabaciones' && <Grabaciones />}
         {modo === 'galeria' && <Marco src={urlVista(plantilla, datos, tema, estilo, '&galeria=1')} ancho={ancho} titulo="Galería de gráficos" maxAncho={disp - 8} />}
         {modo === 'comparar' && (
           <div className="lab-fila">{COMPARAR.map((a) => <Marco key={a} src={urlVista(plantilla, datos, tema, estilo)} ancho={a} titulo={a < 700 ? 'Móvil' : a < 1000 ? 'Tablet' : 'Escritorio'} maxAncho={(disp - 32) * (a / COMPARAR.reduce((s, x) => s + x, 0))} />)}</div>
