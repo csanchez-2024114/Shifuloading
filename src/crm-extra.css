@@ -143,16 +143,18 @@
 /* ───────── Temas: oscuro (por defecto) y claro. Todo el color sale de estas variables. ───────── */
 .carga, .mc, .mc-chat {
   --ink: 255, 255, 255; --sombra: 0, 0, 0;
-  --bg: #070b0a; --bg-top: #0a0f0e; --card: #0c1211; --campo: rgba(0, 0, 0, .35);
-  --tx: #fff; --tx2: #c4cbd2; --tx3: #98a0aa; --on-bg: #fff; --on-tx: #050807;
-  --burbuja: #2a312f; --btn-abierto: #1a2220;
+  /* Un oscuro con más luz que el negro puro (verde-gris profundo) y texto más claro: se ve vivo, no apagado. */
+  --bg: #121b18; --bg-top: #16211e; --card: #1b2824; --campo: rgba(0, 0, 0, .26);
+  --tx: #f6f9f8; --tx2: #d3dbd8; --tx3: #a9b4b0; --on-bg: #fff; --on-tx: #050807;
+  --burbuja: #31403b; --btn-abierto: #26352f;
   --azul-t: #aab3ff; --morado-t: #bdaeff; --rojo-t: #ff9db3; --ambar-t: #ffc66b;
 }
 .mc[data-tema="claro"], .mc-chat[data-tema="claro"] {
-  --ink: 20, 33, 29; --sombra: 20, 33, 29;
-  --bg: #eef3f1; --bg-top: #fff; --card: #fff; --campo: #f6f9f8;
-  --tx: #14211d; --tx2: #44524d; --tx3: #5f6d68; --on-bg: #14211d; --on-tx: #fff;
-  --burbuja: #e8eeec; --btn-abierto: #e3eae7;
+  /* Un blanco "papel" cálido y de poco contraste, en vez de blanco puro: cansa menos la vista. */
+  --ink: 38, 48, 44; --sombra: 38, 40, 34;
+  --bg: #e5e4dd; --bg-top: #efede6; --card: #f2f0e9; --campo: #e9e7df;
+  --tx: #26302c; --tx2: #4d5853; --tx3: #646e69; --on-bg: #26302c; --on-tx: #f7f5ef;
+  --burbuja: #e3e1d8; --btn-abierto: #dddbd1;
   --azul-t: #3b47c9; --morado-t: #5b3fd6; --rojo-t: #c2284f; --ambar-t: #96600a;
   --verde: #0f9f7a;
 }
@@ -199,3 +201,104 @@
 .mc-link { border: 0; background: transparent; color: var(--tx2); font: 600 13.5px var(--fuente); text-decoration: underline; text-underline-offset: 3px; }
 .mc-cab .btn-pildora { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; font-size: 13.5px; }
 .mc-menu li button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ───────── Más limpio y más grande ───────── */
+.mc-cuerpo { grid-template-columns: 270px 1fr; gap: 20px; padding: 20px; }
+.mc-menu li button { padding: 14px 16px; font-size: 16px; gap: 14px; }
+.mc-menu li button svg { font-size: 21px; }
+.mc-grupo h2 { font-size: 11.5px; margin-bottom: 8px; }
+.mc-main { padding: 34px 38px 120px; }
+.mc-cab h1 { font-size: 34px; margin-bottom: 8px; }
+.mc-cab p { font-size: 15.5px; max-width: 620px; line-height: 1.5; }
+.mc-cab .btn-pildora { padding: 14px 26px; font-size: 16px; }
+.mc-fila { padding: 18px 20px; font-size: 16px; }
+.mc-fila.cab { font-size: 13px; }
+.mc-shifu p { font-size: 15.5px; line-height: 1.55; }
+.mc-form-registro label { font-size: 14px; }
+.mc-form-registro input, .mc-form-registro select { padding: 13px 14px; font-size: 16px; }
+.mc-vacio-foto { padding: 54px 28px; gap: 14px; }
+.mc-vacio-foto b { font-size: 22px; }
+.mc-vacio-foto p { max-width: 520px; font-size: 16px; line-height: 1.55; }
+.mc-vacio-acciones { display: grid; justify-items: center; gap: 12px; margin-top: 8px; }
+.mc-vacio-acciones .mc-grande { padding: 18px 34px; font-size: 18px; gap: 10px; }
+.mc-vacio-acciones .mc-link { font-size: 15px; }
+.mc-pedir { margin-top: 14px; display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border-radius: 14px; border: 1.5px dashed rgba(var(--ink), .22); background: transparent; color: var(--tx); font: 600 15px var(--fuente); text-align: left; cursor: pointer; transition: background .2s, border-color .2s; }
+.mc-pedir:hover { background: rgba(124, 92, 255, .12); border-color: rgba(124, 92, 255, .6); }
+.mc-pedir svg { flex: none; font-size: 20px; color: #a58bff; }
+.mc-pedir small { display: block; margin-top: 2px; color: var(--tx3); font: 400 12.5px var(--fuente); }
+.mc-pedir + .mc-rehacer { margin-top: auto; }
+.mc-chat-foto { margin-right: 4px; }
+@media (max-width: 900px) {
+  .mc-cuerpo { grid-template-columns: 1fr; padding: 12px; }
+  .mc-main { padding: 22px 16px 110px; }
+  .mc-cab h1 { font-size: 28px; }
+  .mc-pedir { display: none; }
+}
+
+/* Importar a una sección */
+.mc-cab-acc { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mc-sec { display: inline-flex; align-items: center; gap: 8px; padding: 13px 20px; border-radius: 999px; border: 1.5px solid rgba(var(--ink), .22); background: transparent; color: var(--tx); font: 600 15px var(--fuente); cursor: pointer; transition: background .2s; }
+.mc-sec:hover { background: rgba(var(--ink), .08); }
+.mc-modal { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 20px; background: rgba(0, 0, 0, .62); backdrop-filter: blur(3px); animation: entra-mc .2s ease both; }
+.mc-modal-caja { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; padding: 28px; border-radius: 22px; background: var(--card); border: 1px solid var(--linea); box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.mc-modal-caja header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.mc-modal-caja h2 { margin: 0 0 6px; font-size: 24px; }
+.mc-modal-caja header p { margin: 0; color: var(--tx3); font-size: 15px; }
+.mc-modal-x { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(var(--ink), .08); color: var(--tx); cursor: pointer; display: grid; place-items: center; font-size: 18px; }
+.mc-imp-paso { display: grid; gap: 14px; justify-items: start; }
+.mc-imp-paso small { color: var(--tx3); font-size: 13.5px; }
+.mc-imp-paso label { font-size: 14.5px; font-weight: 600; color: var(--tx2); }
+.mc-imp-paso textarea { width: 100%; box-sizing: border-box; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--linea); background: var(--campo); color: var(--tx); font: 14px ui-monospace, Consolas, monospace; resize: vertical; outline: 0; }
+.mc-imp-paso .mc-imp-o { width: 100%; }
+.mc-imp-check { display: flex !important; align-items: center; gap: 10px; font-weight: 500 !important; cursor: pointer; }
+.mc-imp-check input { width: 18px; height: 18px; accent-color: #22d3a6; }
+.mc-imp-guia { margin: 4px 0 0; font-size: 15px; font-weight: 600; }
+.mc-imp-mapa { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.mc-imp-mapa label { display: grid; gap: 6px; font-size: 13px; color: var(--tx3); }
+.mc-imp-mapa select { padding: 11px 12px; border-radius: 10px; border: 1px solid var(--linea); background: var(--campo); color: var(--tx); font: 15px var(--fuente); outline: 0; }
+.mc-imp-vista { width: 100%; }
+.mc-imp-tabla { margin-top: 8px; border: 1px solid var(--linea); border-radius: 12px; overflow: hidden; font-size: 14px; }
+.mc-imp-tabla > div { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 10px; padding: 10px 14px; border-top: 1px solid var(--linea); }
+.mc-imp-tabla > div:first-child { border-top: 0; }
+.mc-imp-tabla .cab { background: rgba(var(--ink), .06); color: var(--tx3); font-size: 12.5px; font-weight: 600; }
+.mc-imp-tabla span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-imp-acciones { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.mc-imp-listo { display: grid; justify-items: center; gap: 12px; padding: 20px 10px; text-align: center; }
+.mc-imp-listo b { font-size: 21px; }
+.mc-imp-listo p { margin: 0; color: var(--tx3); }
+.mc-grande { padding: 16px 30px; font-size: 17px; display: inline-flex; align-items: center; gap: 10px; }
+
+/* Ajustes */
+.mc-ajustes { margin-top: auto; display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border: 0; border-radius: 12px; background: transparent; color: var(--tx2); font: 500 16px var(--fuente); text-align: left; cursor: pointer; transition: background .2s, color .2s; }
+.mc-ajustes svg { flex: none; font-size: 21px; }
+.mc-ajustes:hover { background: rgba(var(--ink), .06); color: var(--tx); }
+.mc-ajustes.on { color: var(--tx); background: linear-gradient(135deg, rgba(124, 92, 255, .3), rgba(34, 211, 166, .16)); box-shadow: inset 0 0 0 1px rgba(var(--ink), .1); }
+.mc-pedir + .mc-ajustes { margin-top: auto; }
+.mc-aj { display: grid; gap: 30px; margin-top: 26px; max-width: 760px; }
+.mc-aj h2 { margin: 0 0 12px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--tx3); }
+.mc-aj-temas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.mc-aj-temas button { display: grid; justify-items: start; gap: 4px; padding: 20px; border-radius: 16px; border: 1.5px solid var(--linea); background: transparent; color: var(--tx); font-family: var(--fuente); text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
+.mc-aj-temas button svg { font-size: 26px; margin-bottom: 6px; }
+.mc-aj-temas button b { font-size: 17px; }
+.mc-aj-temas button small { color: var(--tx3); font-size: 13.5px; }
+.mc-aj-temas button:hover { background: rgba(var(--ink), .05); }
+.mc-aj-temas button.on { border-color: #22d3a6; background: rgba(34, 211, 166, .1); }
+.mc-aj-fila { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; padding: 20px; border-radius: 16px; border: 1px solid var(--linea); background: var(--panel); }
+.mc-aj-fila > div:first-child { display: grid; gap: 4px; min-width: 0; max-width: 460px; }
+.mc-aj-fila b { font-size: 17px; }
+.mc-aj-fila small { color: var(--tx3); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.mc-aj-confirma { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.mc-aj-confirma p { margin: 0; flex-basis: 100%; font-size: 15px; font-weight: 600; color: #ff9aa9; }
+.mc-peligro { padding: 13px 22px; border-radius: 999px; border: 0; background: #e5484d; color: #fff; font: 600 15px var(--fuente); cursor: pointer; }
+.mc-peligro:hover:not(:disabled) { background: #cf3a40; }
+.mc-peligro:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 900px) {
+  .mc-ajustes { width: auto; margin-top: 0; padding: 10px 14px; font-size: 14.5px; white-space: nowrap; }
+  .mc-aj-temas { grid-template-columns: 1fr; }
+}
+
+/* Al cambiar de tema, los colores se mezclan poco a poco en vez de saltar de golpe (la clase se pone solo durante el cambio). */
+html.cambiando-tema *, html.cambiando-tema *::before, html.cambiando-tema *::after {
+  transition: background-color .55s ease, color .55s ease, border-color .55s ease, box-shadow .55s ease, fill .55s ease, stroke .55s ease !important;
+}
+@media (prefers-reduced-motion: reduce) { html.cambiando-tema *, html.cambiando-tema *::before, html.cambiando-tema *::after { transition: none !important; } }

@@ -67,6 +67,8 @@ export const crm = {
   contactosActualizar: (id, cambios) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/contactos/${id}`, cambios) : simulado.crm.contactosActualizar(id, cambios)),
   contactosEliminar: (id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/contactos/${id}`) : simulado.crm.contactosEliminar(id)),
   /** Registros de una sección propia (los valores van por id de campo). */
+  /** Importa varias filas (de un Excel, por ejemplo) a una sección: [{ idCampo: valor }]. Devuelve el CRM y `importacion: { agregadas, omitidas }`. */
+  registrosImportar: (listaId, filas) => (HAY_SERVIDOR ? pedir('POST', `/crm/listas/${listaId}/registros/lote`, { filas }) : simulado.crm.sinServidor()),
   registrosCrear: (listaId, valores) => (HAY_SERVIDOR ? pedir('POST', `/crm/listas/${listaId}/registros`, { valores }) : simulado.crm.sinServidor()),
   registrosEliminar: (listaId, id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/registros/${id}`) : simulado.crm.sinServidor()),
   tareasCrear: (t) => (HAY_SERVIDOR ? pedir('POST', '/crm/tareas', { t }) : simulado.crm.tareasCrear(t)),

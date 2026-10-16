@@ -848,3 +848,23 @@ def test_la_siguiente_pregunta_no_pide_sesion_exige_lo_basico_y_sin_ia_manda_a_l
     assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": ""}).status_code == 422
     assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "qa": [{"pregunta": "p", "respuesta": "r"}] * 7}).status_code == 422
     assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": "x" * 301}).status_code == 422
+
+
+def test_se_pueden_importar_varias_filas_a_una_seccion_de_un_solo_golpe(cli, db):
+    crear(cli)
+    l = _con_lista(db, "Productos", [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}, {"nombre": "Cantidad", "tipo": "numero"}])
+    p, precio, cant = (c["id"] for c in l["campos"])
+    url = f"/api/v1/crm/listas/{l['id']}/registros/lote"
+    filas = [{p: "Leche", precio: "Q 12,50", cant: "20"}, {p: "Arroz", precio: "8", cant: "5"}, {p: "Frijol", precio: "mucho"}, {}, {p: "Leche", precio: "12.5", cant: "20"}]
+    r = cli.post(url, json={"filas": filas}, headers=H)
+    assert r.status_code == 201 and r.json()["importacion"] == {"agregadas": 2, "omitidas": 3}  # "mucho" no es precio, una fila vacía y una repetida
+    regs = [x for x in r.json()["listas"][0]["registros"]]
+    assert [x["valores"][p] for x in regs] == ["Leche", "Arroz"] and regs[0]["valores"][precio] == 12.5  # en el orden del archivo
+    # mismas filas otra vez: nada nuevo, y se avisa con claridad
+    assert cli.post(url, json={"filas": filas[:2]}, headers=H).status_code == 422
+    # validaciones: sección inexistente, demasiadas filas, valores raros, sin sesión
+    assert cli.post("/api/v1/crm/listas/l_no/registros/lote", json={"filas": [{p: "x"}]}, headers=H).status_code == 404
+    assert cli.post(url, json={"filas": [{p: "x"}] * 301}, headers=H).status_code == 422
+    assert cli.post(url, json={"filas": [{p: {"$gt": ""}}]}, headers=H).status_code == 422
+    assert cli.post(url, json={"filas": [{p: "x" * 201}]}, headers=H).status_code == 422
+    assert cli.post(url, json={"filas": []}, headers=H).status_code == 422

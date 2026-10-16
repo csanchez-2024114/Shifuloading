@@ -286,6 +286,7 @@ class Sesion:
             if funcion is None or not isinstance(args, dict):
                 return f"La herramienta {nombre} no existe."
             resultado = funcion(**args)
+            self._revelar_la_vista()
             if resultado.startswith(_PREFIJOS_DE_FALLO):
                 self.fallos.append(resultado[:160])
             else:
@@ -296,6 +297,13 @@ class Sesion:
             return f"No se pudo: {e.mensaje}"
         except TypeError:
             return "Faltan datos o hay datos de más para esa herramienta."
+
+    def _revelar_la_vista(self) -> None:
+        """Si Shifu va a abrir una sección de fábrica que estaba oculta (la persona acaba de agregar un cliente, una tarea, a alguien del equipo…),
+        se muestra: el menú crece solo con lo que la persona de verdad usa."""
+        v = self.vista
+        if v in IDS_SECCION and v in self.doc["ocultas"] and v != "cobros":
+            self.doc = est.seccion_mostrar(self.doc, v, self.ahora)
 
     def _orden_de_borrar_viene_de_la_imagen(self) -> bool:
         """Con una imagen en el mensaje, borrar u ocultar solo procede si la persona lo pidió con SUS palabras: lo escrito dentro de la

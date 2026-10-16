@@ -105,13 +105,17 @@ class PedirSeguimiento(BaseModel):
     brief: BriefEntrada
 
 
+class RespuestaIA(Seguimiento):
+    abierta: bool = False  # la pregunta fue de texto libre
+
+
 class SiguienteEntrada(_Texto):
     """Lo contestado hasta ahora en el cuestionario: las 3 preguntas fijas y las que la IA ya hizo."""
     model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
     nombre: str = Field("", max_length=60)
     ubicacion: Optional[Ubicacion] = None
     que_vendes: Optional[str] = Field(None, max_length=300)
-    qa: list[Seguimiento] = Field(default_factory=list, max_length=6)
+    qa: list[RespuestaIA] = Field(default_factory=list, max_length=6)
 
 
 class FilaContacto(_Texto):
@@ -133,6 +137,19 @@ class ContactoCambios(_Texto):
     etapa: Optional[str] = Field(None, max_length=30)
     dueno: Optional[str] = Field(None, max_length=60)
     extra: Optional[dict[str, Any]] = None
+
+
+class RegistrosLote(_Texto):
+    """Filas para importar (de un Excel, por ejemplo): cada una va por id de campo."""
+    filas: list[dict[str, Any]] = Field(..., min_length=1, max_length=300)
+
+    @field_validator("filas")
+    @classmethod
+    def _filas_sanas(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        for fila in v:
+            if len(fila) > est.MAX_CAMPOS or any(not isinstance(x, (str, int, float)) or isinstance(x, bool) or len(str(x)) > 200 for x in fila.values()):
+                raise ValueError("cada fila debe tener valores de texto o número de hasta 200 caracteres")
+        return v
 
 
 class RegistroValores(BaseModel):
@@ -271,6 +288,23 @@ async def eliminar_contacto(contacto_id: str, request: Request, user: dict = Dep
 @router.post("/listas/{lista_id}/registros", status_code=201)
 async def crear_registro(lista_id: str, request: Request, datos: RegistroValores, user: dict = Depends(get_current_user)):
     return await _aplicar(request, user, lambda d: est.registro_agregar(d, lista_id, datos.valores), 201)
+
+
+@router.post("/listas/{lista_id}/registros/lote", status_code=201)
+async def crear_registros_lote(lista_id: str, request: Request, datos: RegistrosLote, user: dict = Depends(get_current_user)):
+    """Importa varias filas a una sección. Responde el CRM actualizado y `importacion: { agregadas, omitidas }`."""
+    resumen: dict[str, int] = {}
+
+    def cambiar(d: dict) -> dict:
+        nuevo, agregadas, omitidas = est.registros_agregar_lote(d, lista_id, datos.filas)
+        resumen.update(agregadas=agregadas, omitidas=omitidas)
+        return nuevo
+
+    try:
+        doc = await repo.actualizar(request.app.state.db, user["id"], cambiar)
+    except op.ErrorCrm as e:
+        return _error(e)
+    return JSONResponse({**vista_crm(doc), "importacion": resumen}, status_code=201)
 
 
 @router.patch("/listas/{lista_id}/registros/{registro_id}")

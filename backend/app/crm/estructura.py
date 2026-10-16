@@ -316,6 +316,37 @@ def registro_agregar(doc: dict, lista_id: str, valores: dict[str, Any], ahora: d
     return out
 
 
+def registros_agregar_lote(doc: dict, lista_id: str, filas: list[dict[str, Any]], ahora: datetime | None = None) -> tuple[dict, int, int]:
+    """Importa varias filas de una vez (por ejemplo, las de un Excel). Cada fila va por id de campo. Devuelve (CRM, agregadas, omitidas).
+    Se omiten las filas vacías, las que traen un valor que no sirve para su campo (un texto donde va un precio) y las que ya existen idénticas."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    l = _lista(out, lista_id)
+    nuevos: list[dict] = []
+    omitidas = 0
+    existentes = [{k: v for k, v in r["valores"].items() if v is not None} for r in l["registros"]]
+    for fila in filas:
+        if len(l["registros"]) + len(nuevos) >= MAX_REGISTROS:
+            omitidas += 1
+            continue
+        try:
+            ok = valores_validos(l["campos"], fila)
+        except ErrorCrm:
+            omitidas += 1
+            continue
+        limpio = {k: v for k, v in ok.items() if v is not None}
+        if not limpio or limpio in existentes:
+            omitidas += 1
+            continue
+        existentes.append(limpio)
+        nuevos.append({"id": nuevo_id(), "valores": ok, "creado": ahora})
+    if not nuevos:
+        raise ErrorCrm(422, "No pude importar ninguna fila: revisa que las columnas elegidas tengan los datos que corresponden (números en precios y cantidades).")
+    l["registros"][0:0] = nuevos  # en el mismo orden del archivo, arriba
+    _registrar(out, "📥", f"Importaste {len(nuevos)} {'registro' if len(nuevos) == 1 else 'registros'} en “{l['nombre']}”", ahora)
+    return out, len(nuevos), omitidas
+
+
 def registro_actualizar(doc: dict, lista_id: str, registro_id: str, valores: dict[str, Any], ahora: datetime | None = None) -> dict:
     ahora = ahora or ahora_utc()
     out = _copia(doc)
