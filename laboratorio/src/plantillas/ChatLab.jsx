@@ -9,6 +9,26 @@ import TextoChat from '@base/components/TextoChat'
 import { capturarRegion, imagenDeArchivo, SelectorCaptura } from '@base/components/CapturaPantalla'
 
 let n = 0
+/** Colores dominantes de una imagen, MEDIDOS (no adivinados): se agrupan los píxeles visibles y se devuelven los hex más presentes. */
+function paletaDe(url) {
+  return new Promise((ok) => {
+    const img = new Image(); img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const c = document.createElement('canvas'); const w = 80, h = Math.max(1, Math.round(80 * img.height / img.width)); c.width = w; c.height = h
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h); const d = x.getImageData(0, 0, w, h).data
+      const cub = {}
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 128) continue
+        const [r, g, b] = [d[i], d[i + 1], d[i + 2]], max = Math.max(r, g, b), min = Math.min(r, g, b)
+        if (max > 242 && min > 242) continue // casi blanco: fondo
+        const k = `${r >> 4},${g >> 4},${b >> 4}`; (cub[k] ||= { n: 0, r: 0, g: 0, b: 0 }); cub[k].n++; cub[k].r += r; cub[k].g += g; cub[k].b += b
+      }
+      const hex = (v) => Math.round(v).toString(16).padStart(2, '0')
+      ok(Object.values(cub).sort((a, b) => b.n - a.n).slice(0, 6).map((q) => `#${hex(q.r / q.n)}${hex(q.g / q.n)}${hex(q.b / q.n)}`))
+    }
+    img.onerror = () => ok([]); img.src = url
+  })
+}
 const mensaje = (de, t, imagen) => ({ id: `m${++n}`, de, t, imagen })
 const SUGERENCIAS = [
   ['Diseño', 'Haz la gráfica más chica y ponla a la derecha'],
@@ -34,12 +54,13 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
   const enviar = async (texto, img) => {
     const t = (texto || '').trim()
     if ((!t && !img) || escribiendo) return
-    setMensajes((l) => [...l, mensaje('yo', t, img?.url)]); setTxt(''); setImagen(null); setErrorImg('')
+    setMensajes((l) => [...l, mensaje('yo', t || (img?.pdf ? `📄 ${img.nombre}` : ''), img?.url)]); setTxt(''); setImagen(null); setErrorImg('')
     setEscribiendo(true)
     try {
       const historial = mensajes.slice(-12).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 500) }))
+      const paleta = img?.url ? await paletaDe(img.url) : null
       const r = await fetch('/api/lab/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plantilla: plantilla.id, estado: estadoActual(), texto: t, historial, imagen: img?.url, seccion: seccionActual }) })
+        body: JSON.stringify({ plantilla: plantilla.id, estado: estadoActual(), texto: t || (img?.pdf ? 'Te paso este PDF.' : 'Te paso esta imagen.'), historial, imagen: img?.url || undefined, archivo: img?.pdf, paleta, seccion: seccionActual }) })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || r.status)
       if (d.cambios?.length) onEstado(d.estado)
@@ -65,6 +86,11 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
   // Un logo (SVG/PNG/WebP) viaja tal cual, con su transparencia; el resto se convierte como en el CRM base (JPG liviano).
   const adjuntar = async (archivo) => {
     try {
+      if (archivo.type === 'application/pdf') {
+        if (archivo.size > 8_000_000) { setErrorImg('El PDF pesa más de 8 MB.'); return }
+        const url = await new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = mal; r.readAsDataURL(archivo) })
+        setImagen({ url: null, pdf: url, nombre: archivo.name }); setErrorImg(''); return
+      }
       if (['image/svg+xml', 'image/png', 'image/webp'].includes(archivo.type) && archivo.size <= 1_500_000) {
         const url = await new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = mal; r.readAsDataURL(archivo) })
         setImagen({ url })
@@ -93,7 +119,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
           </div>
           {(imagen || errorImg) && (
             <div className="mc-adjunto" role="status">
-              {imagen && <img src={imagen.url} alt="Captura lista para enviar" />}
+              {imagen?.url && <img src={imagen.url} alt="Captura lista para enviar" />}{imagen?.pdf && <span>📄 {imagen.nombre}</span>}
               <span>{imagen ? 'Captura lista. Cuéntale a Shifu qué quieres cambiar ahí.' : errorImg}</span>
               <button type="button" onClick={() => { setImagen(null); setErrorImg('') }} aria-label="Quitar la captura"><LuX /></button>
             </div>
@@ -101,8 +127,8 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
           <form onSubmit={(e) => { e.preventDefault(); enviar(txt, imagen) }}>
             <button type="button" className="mc-chat-cam" onClick={() => setEligiendo(true)} disabled={escribiendo} aria-label="Capturar una parte de la pantalla" title="Capturar una parte de la pantalla"><LuCamera /></button>
             <button type="button" className="mc-chat-cam" onClick={() => archivoRef.current?.click()} disabled={escribiendo} aria-label="Adjuntar una imagen o tu logo" title="Adjuntar una imagen o tu logo (SVG o PNG)"><LuPaperclip /></button>
-            <input ref={archivoRef} type="file" accept="image/svg+xml,image/png,image/webp,image/jpeg" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) adjuntar(f); e.target.value = '' }} />
-            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres cambiar aquí…' : 'Escribe, captura o pega una imagen…'} aria-label="Mensaje para Shifu" maxLength={600} />
+            <input ref={archivoRef} type="file" accept="image/svg+xml,image/png,image/webp,image/jpeg,application/pdf" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) adjuntar(f); e.target.value = '' }} />
+            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres cambiar aquí…' : 'Escribe, captura o pega una imagen…'} aria-label="Mensaje para Shifu" maxLength={2000} />
             <button type="submit" disabled={(!txt.trim() && !imagen) || escribiendo} aria-label="Enviar"><LuSend /></button>
           </form>
         </section>
