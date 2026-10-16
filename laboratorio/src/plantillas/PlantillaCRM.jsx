@@ -1,7 +1,7 @@
 /* Dibuja un CRM completo a partir de una plantilla (estructura + vistas) y unos datos. Usa el mismo marco visual que
  * CrmPage (.mc, .mc-top, .mc-menu, .mc-main y los temas de crm-extra.css) para que lo que se prueba sea lo que se integra.
  * Si la plantilla no pasa `validarPlantilla`, muestra los errores en vez de dibujarla mal. */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
@@ -9,7 +9,7 @@ import { COMPONENTES, AnimarContext, VelContext } from './vistas'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
 import { registrosDe, datosEjemplo } from './datosEjemplo'
-import ChatLab from './ChatLab'
+import ChatLab, { GUION } from './ChatLab'
 import Recorrido, { pasosDe } from './Recorrido'
 import { fijarRegion } from './regional'
 import { tokensDeMarca, cargarFuentes } from './marca'
@@ -71,7 +71,7 @@ function LogoMarca({ src, tema }) {
 }
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
-export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBase, nivel = 'pocos', tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos }) {
+export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBase, nivel = 'pocos', tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos, demo = false }) {
   const [enRecorrido, setEnRecorrido] = useState(recorrido)
   // Formatos (moneda, miles, fechas, horas) según la configuración regional de la persona: se fija antes de dibujar.
   fijarRegion(pais)
@@ -92,6 +92,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const ir = (id) => conTransicion(() => setVista(id))
   /** Aplica el estado que devolvió Shifu: lo que se va sale primero (desenfoque), después el resto se reacomoda y lo nuevo nace. */
   const aplicarEstado = (nuevo) => {
+    ultimo.current = { vista: nuevo.vista || vista, marca: nuevo.marca || marca, estructura: nuevo.estructura || estructura, bloques: nuevo.bloques.map(({ nuevo: _n, ...b }) => b) }
     const ids = new Set(nuevo.bloques.map((b) => b.uid))
     const viejos = new Set(bloques.map((b) => b.uid))
     const fuera = bloques.filter((b) => !ids.has(b.uid)).map((b) => b.uid)
@@ -105,7 +106,8 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
     if (!fuera.length || !animado || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return final()
     setSaliendo(fuera); setTimeout(final, 700 * vel)
   }
-  const estadoParaIA = () => ({ vista, marca, estructura, bloques: bloques.map(({ nuevo: _n, ...b }) => b) })
+  const ultimo = useRef(null) // el último estado aplicado (puede no haberse dibujado todavía por la transición)
+  const estadoParaIA = () => ultimo.current || ({ vista, marca, estructura, bloques: bloques.map(({ nuevo: _n, ...b }) => b) })
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
@@ -185,7 +187,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
         </main>
       </div>
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
-      <ChatLab tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
+      <ChatLab guion={demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
     </div>
     </VelContext.Provider></AnimarContext.Provider>
   )

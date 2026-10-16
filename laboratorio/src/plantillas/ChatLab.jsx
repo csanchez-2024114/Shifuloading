@@ -37,7 +37,19 @@ const SUGERENCIAS = [
   ['Marca', 'Pon mis colores: azul #1E40AF y naranja #F97316, letra Poppins'],
 ]
 
-export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto }) {
+/** Guion de la demo del flujo completo (modo "Demo IA" del laboratorio): pedidos reales a la IA real, uno tras otro. */
+export const GUION = [
+  'Hola, ¿qué puedes hacer?',
+  'Pon mis colores: azul #1E40AF y naranja #F97316, letra Poppins para todo',
+  'Quiero llevar el inventario de productos con su cantidad, mínimo, costo y proveedor, y ver en el inicio cuáles se están acabando',
+  'Agrega un embudo de los estados',
+  'Haz la gráfica de embudo más chica y ponla a la derecha',
+  'Pon un gráfico de velas japonesas',
+  'Agrega un campo de cumpleaños a la primera sección',
+  'Quita la sección de inventario',
+]
+
+export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion }) {
   const [abierto, setAbierto] = useState(true)
   useEffect(() => { onAbierto?.(abierto) }, [abierto]) // eslint-disable-line react-hooks/exhaustive-deps
   const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Esta es la pantalla de **${plantilla.nombre}**. Dime qué quieres ver distinto: quitar, agregar, agrandar, achicar o mover cualquier bloque.`)])
@@ -48,8 +60,18 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
   const [capturando, setCapturando] = useState(false)
   const [errorImg, setErrorImg] = useState('')
   const fin = useRef(null)
+  // Siempre el estado MÁS RECIENTE de la pantalla (no el de cuando se armó este render): si no, un pedido que sale justo
+  // después de otro (o en la demo) mandaría una foto vieja y borraría el cambio anterior.
+  const estadoRef = useRef(estadoActual); estadoRef.current = estadoActual
   const campo = useRef(null)
   useEffect(() => { fin.current?.scrollIntoView?.({ block: 'end' }) }, [mensajes, escribiendo, abierto])
+  // Demo: manda el siguiente pedido del guion cuando Shifu termina de contestar (con una pausa para ver el cambio).
+  const [paso, setPaso] = useState(0)
+  useEffect(() => {
+    if (!guion || escribiendo || paso >= guion.length) return undefined
+    const t = setTimeout(() => { setPaso((x) => x + 1); enviar(guion[paso]) }, paso === 0 ? 1500 : 4500)
+    return () => clearTimeout(t)
+  }, [guion, escribiendo, paso]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const enviar = async (texto, img) => {
     const t = (texto || '').trim()
@@ -60,7 +82,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
       const historial = mensajes.slice(-12).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 500) }))
       const paleta = img?.url ? await paletaDe(img.url) : null
       const r = await fetch('/api/lab/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plantilla: plantilla.id, estado: estadoActual(), texto: t || (img?.pdf ? 'Te paso este PDF.' : 'Te paso esta imagen.'), historial, imagen: img?.url || undefined, archivo: img?.pdf, paleta, seccion: seccionActual }) })
+        body: JSON.stringify({ plantilla: plantilla.id, estado: estadoRef.current(), texto: t || (img?.pdf ? 'Te paso este PDF.' : 'Te paso esta imagen.'), historial, imagen: img?.url || undefined, archivo: img?.pdf, paleta, seccion: seccionActual }) })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || r.status)
       if (d.cambios?.length) onEstado(d.estado)
@@ -104,7 +126,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     <div className="mc-chat" data-tema={tema}>
       {abierto && (
         <section className="mc-chat-panel" aria-label="Chat con Shifu" hidden={eligiendo || capturando}>
-          <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>Edita el diseño de tu inicio</small></div>
+          <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>{guion ? `Demo: pedido ${Math.min(paso, guion.length)} de ${guion.length}` : 'Edita el diseño de tu inicio'}</small></div>
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (

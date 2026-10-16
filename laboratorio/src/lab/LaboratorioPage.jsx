@@ -105,7 +105,7 @@ export default function LaboratorioPage() {
         <h2>Tema</h2>
         <div className="lab-botones">{[['oscuro', 'Oscuro'], ['claro', 'Claro']].map(([v, t]) => <button key={v} type="button" className={tema === v ? 'on' : ''} onClick={() => fijar('tema', v)}>{t}</button>)}</div>
         <h2>Modo</h2>
-        <div className="lab-botones">{[['una', 'Un ancho'], ['comparar', 'Comparar 3 anchos'], ['todas', 'Todas las plantillas'], ['galeria', 'Galería de gráficos']].map(([v, t]) => <button key={v} type="button" className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}>{t}</button>)}</div>
+        <div className="lab-botones">{[['una', 'Un ancho'], ['comparar', 'Comparar 3 anchos'], ['todas', 'Todas las plantillas'], ['galeria', 'Galería de gráficos'], ['demo', 'Demo IA (flujo completo)'], ['nuevo', 'Usuario nuevo (recorrido)']].map(([v, t]) => <button key={v} type="button" className={modo === v ? 'on' : ''} onClick={() => fijar('modo', v)}>{t}</button>)}</div>
         {modo !== 'comparar' && (
           <>
             <h2>Ancho</h2>
@@ -117,6 +117,8 @@ export default function LaboratorioPage() {
 
       <main className="lab-zona" ref={zona}>
         {modo === 'una' && <Marco src={urlVista(plantilla, datos, tema, estilo)} ancho={ancho} titulo={todas.find((p) => p.id === plantilla)?.nombre} maxAncho={disp - 8} />}
+        {modo === 'demo' && <Marco src={urlVista(plantilla, datos, tema, estilo, '&demo=1')} ancho={ancho} titulo="Demo IA: 8 pedidos reales seguidos (crear, modificar, branding, algo que no existe, quitar)" maxAncho={disp - 8} />}
+        {modo === 'nuevo' && <Marco src={urlVista(plantilla, 'muchos', tema, estilo, '&recorrido=1')} ancho={ancho} titulo="Primera entrada de un usuario nuevo" maxAncho={disp - 8} />}
         {modo === 'galeria' && <Marco src={urlVista(plantilla, datos, tema, estilo, '&galeria=1')} ancho={ancho} titulo="Galería de gráficos" maxAncho={disp - 8} />}
         {modo === 'comparar' && (
           <div className="lab-fila">{COMPARAR.map((a) => <Marco key={a} src={urlVista(plantilla, datos, tema, estilo)} ancho={a} titulo={a < 700 ? 'Móvil' : a < 1000 ? 'Tablet' : 'Escritorio'} maxAncho={(disp - 32) * (a / COMPARAR.reduce((s, x) => s + x, 0))} />)}</div>
