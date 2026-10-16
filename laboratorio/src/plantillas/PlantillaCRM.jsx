@@ -13,6 +13,7 @@ import ChatLab from './ChatLab'
 import Recorrido, { pasosDe } from './Recorrido'
 import { fijarRegion } from './regional'
 import { tokensDeMarca, cargarFuentes } from './marca'
+import { plantillaEfectiva } from './edicion'
 import { Grafico, GRAFICOS } from './graficos'
 import '@base/crm.css'
 import '@base/crm-extra.css'
@@ -40,6 +41,19 @@ function conTamano(bloques) {
     ancho: b.ancho || (ANCHO_COMPLETO.includes(b.vista) || b.uid === solo ? 12 : 6),
     alto: b.alto || (b.vista === 'kpis' ? 1 : b.vista === 'tablero' || b.vista === 'agenda' ? 2 : 2) }))
 }
+/** Datos de ejemplo para lo que Shifu agregó: cada sección nueva y cada campo nuevo tiene su propia semilla, así los
+ * datos que ya estaban no cambian al agregar algo (no "saltan" los números). Sin ejemplos (nivel vacío) no se inventa nada. */
+function extenderDatos(datos, base, est, nivel) {
+  if (!datos || (!est.secciones?.length && !Object.keys(est.campos || {}).length)) return datos
+  const registros = { ...datos.registros }
+  for (const sec of est.secciones || []) registros[sec.id] = datosEjemplo({ id: `${base.id}:${sec.id}`, secciones: [sec] }, nivel).registros[sec.id] || []
+  for (const [sid, extras] of Object.entries(est.campos || {})) {
+    const extra = datosEjemplo({ id: `${base.id}:${sid}:campos`, secciones: [{ id: sid, campos: extras }] }, nivel).registros[sid] || []
+    registros[sid] = (registros[sid] || []).map((r, i) => ({ ...r, valores: { ...r.valores, ...(extra[i]?.valores || {}) } }))
+  }
+  return { ...datos, registros }
+}
+
 /** Logo del negocio. Si es oscuro y el tema es oscuro (o claro sobre claro), muestra una versión de alto contraste automática. */
 function LogoMarca({ src, tema }) {
   const [luz, setLuz] = useState(null) // luminancia media de los píxeles visibles del logo (0 negro … 1 blanco)
@@ -57,7 +71,7 @@ function LogoMarca({ src, tema }) {
 }
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
 
-export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos }) {
+export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBase, nivel = 'pocos', tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos }) {
   const [enRecorrido, setEnRecorrido] = useState(recorrido)
   // Formatos (moneda, miles, fechas, horas) según la configuración regional de la persona: se fija antes de dibujar.
   fijarRegion(pais)
@@ -65,10 +79,14 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
   const def = ESTILOS.find((e) => e.id === estilo) || ESTILOS[0]
   const animado = def.base === 'vivo'
   // El inicio SOLO lo cambia la IA (chat): recibe un estado nuevo y la pantalla se transforma animada.
-  const [bloques, setBloques] = useState(() => conTamano(plantilla.inicio.map((w, i) => ({ ...w, uid: `b${i}` }))))
+  const [bloques, setBloques] = useState(() => conTamano(plantillaBase.inicio.map((w, i) => ({ ...w, uid: `b${i}` }))))
   const [saliendo, setSaliendo] = useState([])
   // Marca del negocio (D19): la cambia solo Shifu. Base = tokens actuales; la marca los reemplaza y el código cuida el contraste.
   const [marca, setMarca] = useState({})
+  // Estructura que Shifu cambió (secciones nuevas, campos, ocultas, nombres). La plantilla efectiva = base + esto.
+  const [estructura, setEstructura] = useState({})
+  const plantilla = useMemo(() => plantillaEfectiva(plantillaBase, { estructura }), [plantillaBase, estructura])
+  const datos = useMemo(() => extenderDatos(datosBase, plantillaBase, estructura, nivel), [datosBase, plantillaBase, estructura, nivel])
   useEffect(() => { cargarFuentes(marca) }, [marca])
   const [chatAbierto, setChatAbierto] = useState(true)
   const ir = (id) => conTransicion(() => setVista(id))
@@ -82,17 +100,18 @@ export default function PlantillaCRM({ plantilla, datos, tema = 'oscuro', estilo
       setBloques(nuevo.bloques.map((b) => (viejos.has(b.uid) ? { ...b, nuevo: false } : { ...b, nuevo: true })))
       if (nuevo.vista && nuevo.vista !== vista) setVista(nuevo.vista)
       if (nuevo.marca) setMarca(nuevo.marca)
+      if (nuevo.estructura) setEstructura(nuevo.estructura)
     })
     if (!fuera.length || !animado || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return final()
     setSaliendo(fuera); setTimeout(final, 700 * vel)
   }
-  const estadoParaIA = () => ({ vista, marca, bloques: bloques.map(({ nuevo: _n, ...b }) => b) })
+  const estadoParaIA = () => ({ vista, marca, estructura, bloques: bloques.map(({ nuevo: _n, ...b }) => b) })
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
   // Vista "sombría" (D25): sin datos, la misma vista se dibuja con datos fantasma, apagada, y un mensaje encima. Así cada
   // vista y gráfico muestra su forma (qué va a ver) sin fingir números: los datos fantasma no se leen ni se pueden tocar.
-  const fantasma = useMemo(() => datosEjemplo(plantilla, 'pocos'), [plantilla])
+  const fantasma = useMemo(() => extenderDatos(datosEjemplo(plantillaBase, 'pocos'), plantillaBase, estructura, 'pocos'), [plantillaBase, estructura])
   const dibujarCon = (s, nombreVista, opciones, d) => {
     if (nombreVista === 'grafico') return <Grafico key={opciones?.tipo} tipo={opciones?.tipo} seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, d)} opciones={opciones || {}} />
     const V = COMPONENTES[nombreVista]

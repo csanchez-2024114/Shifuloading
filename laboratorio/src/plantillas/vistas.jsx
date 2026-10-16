@@ -63,12 +63,26 @@ function Vacio({ seccion }) {
   )
 }
 
-function Tabla({ seccion, campos, registros }) {
+/** Filtro y orden de una tabla (los define Shifu): filtro = { campo, menorOIgual?: número | id de otro campo, mayorOIgual?, igual? }. */
+function filtrar(registros, opciones = {}) {
+  const f = opciones.filtro
+  const val = (r, x) => (typeof x === 'string' && x in r.valores ? Number(r.valores[x]) : Number(x))
+  let rs = f?.campo ? registros.filter((r) => { const v = r.valores[f.campo]
+    if (f.igual !== undefined) return String(v) === String(f.igual)
+    if (f.menorOIgual !== undefined && !(Number(v) <= val(r, f.menorOIgual))) return false
+    if (f.mayorOIgual !== undefined && !(Number(v) >= val(r, f.mayorOIgual))) return false
+    return true }) : registros
+  if (opciones.orden?.campo) rs = [...rs].sort((a, b) => { const x = a.valores[opciones.orden.campo], y = b.valores[opciones.orden.campo]; return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'es')) * (opciones.orden.dir === 'desc' ? -1 : 1) })
+  return opciones.limite ? rs.slice(0, opciones.limite) : rs
+}
+
+function Tabla({ seccion, campos, registros: todos, opciones = {} }) {
+  const registros = filtrar(todos, opciones)
   const animar = useContext(AnimarContext)
   const [orden, setOrden] = useState(null) // { id, dir: 1 | -1 }
   const [busca, setBusca] = useState('')
   const [pagina, setPagina] = useState(0)
-  if (!registros.length) return <Vacio seccion={seccion} />
+  if (!registros.length) return todos.length ? <div className="mc-vacio-grande pl-vacio"><b>Nada que mostrar por ahora</b><p>Ningún registro de {seccion.titulo} cumple el filtro de este bloque.</p></div> : <Vacio seccion={seccion} />
   // Con mucha data la tabla nunca crece sin fin: se busca, se pagina y el cuerpo tiene alto máximo con scroll propio.
   const q = busca.trim().toLowerCase()
   const filtradas = q ? registros.filter((r) => campos.some((c) => String(ver(c.tipo, r.valores[c.id])).toLowerCase().includes(q))) : registros

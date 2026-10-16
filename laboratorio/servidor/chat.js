@@ -29,7 +29,8 @@ Reglas:
 - Todo el inicio debe caber en una pantalla: si agregas bloques, considera achicar otros (ancho 3-4 para gráficas chicas).
 - Si una herramienta devuelve ERROR, corrige y vuelve a intentar, o explica la verdad.
 - Un pedido = el MÍNIMO de bloques. Varias cifras de un mismo campo (promedio, mediana, mínimo…) van en UN bloque "estadisticas". No agregues resúmenes que no pidieron.
-- Si lo que piden NO existe: no agregues nada todavía; di que no existe y OFRECE la alternativa más parecida, preguntando.
+- Si piden LLEVAR algo que todavía no tiene sección (inventario, cobros, proveedores…): créalo YA con crear_seccion (campos sensatos) y, si piden verlo en el inicio, agrega el bloque (por ejemplo una tabla con filtro: cantidad menorOIgual mínimo). No preguntes umbrales: elige uno razonable y dilo.
+- Si piden un TIPO DE GRÁFICO o vista que no existe en el catálogo: no agregues nada todavía; di que no existe y OFRECE la alternativa más parecida, preguntando.
 - Antes de decir que un gráfico no existe, búscalo en graficos_posibles de TODAS las secciones.
 - Nunca copies textos internos como "Así se ve ahora".
 - Para decir DÓNDE quedó algo usa solo "donde_se_ve" / "Así se ve ahora" de los resultados; si no quedó donde pidieron, muévelo o ajusta anchos.
@@ -37,7 +38,7 @@ Reglas:
 - Responde en español, corto (1-3 líneas), cálido, sin tecnicismos: nunca digas uid, b1, kpis, vista, opciones, columnas ni números de ancho/alto. Di "el resumen", "la gráfica", "más chico", "a la derecha".`
 
 const LOGRO = /\b(agregu[eé]|quit[eé]|cambi[eé]|mov[ií]|achiqu[eé]|agrand[eé]|puse|cre[eé]|hice|list[oa]|ajust[eé]|reemplac[eé])\b/i
-const PROMESA = /\b(voy a|vamos a|procedo)\b/i
+const PROMESA = /\b(voy a|vamos a|procedo|creo una|agrego un|pongo un|armo una?)\b/i
 // ¿La persona pidió quitar/reemplazar algo? (o confirma con un sí lo que Shifu le preguntó). El código decide, no el modelo.
 const PIDE_QUITAR = /\b(quit|borr|elimin|sac|remuev|reemplaz|cambi[ae] .* por|en vez de|ya no quiero|sin )|^\s*(s[ií]|dale|ok|claro|hazlo)\b/i
 
@@ -93,7 +94,7 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
         }
       }
       // Si ofrece un sustituto ("lo más parecido") pero ya lo aplicó, el código deshace todo: un sustituto se OFRECE, no se impone.
-      if (/m[aá]s parecid|en su lugar|como alternativa|no existe|no hay/i.test(respuesta) && cambios.length && correcciones < MAX_CORRECCIONES) {
+      if (/m[aá]s parecid|en su lugar|como alternativa/i.test(respuesta) && cambios.some((c) => ['agregar_bloque', 'cambiar_visual'].includes(c.herramienta)) && correcciones < MAX_CORRECCIONES) {
         estado = estadoInicial; cambios.length = 0
         correcciones++; mensajes.push(ia, { role: 'user', content: '[Aviso interno] Aplicaste un sustituto sin preguntar y ya lo deshice (la pantalla está como al principio). Di que eso no existe y PREGUNTA si quiere la alternativa; no llames herramientas.' }); continue
       }

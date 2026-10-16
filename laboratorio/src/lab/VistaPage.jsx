@@ -25,5 +25,5 @@ export default function VistaPage() {
   useEffect(() => { document.documentElement.style.colorScheme = tema === 'claro' ? 'light' : 'dark' }, [tema])
   if (!plantilla) return <p style={{ padding: 24 }}>No existe la plantilla «{id}».</p>
   if (q.get('galeria')) { fijarRegion(pais); return <VelContext.Provider value={vel}><GaleriaGraficos key={pais} plantilla={plantilla} datos={datos} tema={tema} vel={vel} /></VelContext.Provider> }
-  return <PlantillaCRM key={`${id}-${nivelInicial}-${estilo}-${vel}-${pais}`} recorrido={recorrido} onBorrarEjemplos={() => setNivel('vacio')} plantilla={plantilla} datos={datos} tema={tema} estilo={estilo} vel={vel} pais={pais} negocio="Negocio de prueba" />
+  return <PlantillaCRM key={`${id}-${nivelInicial}-${estilo}-${vel}-${pais}`} recorrido={recorrido} onBorrarEjemplos={() => setNivel('vacio')} plantilla={plantilla} datos={datos} nivel={nivel} tema={tema} estilo={estilo} vel={vel} pais={pais} negocio="Negocio de prueba" />
 }

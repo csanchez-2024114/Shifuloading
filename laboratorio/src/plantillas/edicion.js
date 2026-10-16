@@ -2,7 +2,7 @@
  * Funciones puras (sin React, sin API): reciben el estado y devuelven el nuevo estado o un error legible.
  * Las usa el servidor del laboratorio (servidor/chat.js) al ejecutar las herramientas del modelo, y nada más las cambia.
  * Lo que el modelo pide fuera de esto (una vista que no existe, un campo equivocado) se rechaza aquí, no se dibuja mal. */
-import { VISTAS, revisarVista, camposDe } from './validar.js'
+import { VISTAS, revisarVista, camposDe, validarPlantilla, TIPOS_CAMPO } from './validar.js'
 import { compatibles, GRAFICOS } from './graficos.jsx'
 import { FUENTES, esHex, tokensDeMarca, revisarLogo } from './marca.js'
 
@@ -17,7 +17,12 @@ const ajustarAncho = (a) => ANCHOS_COL.reduce((m, x) => (Math.abs(x - a) < Math.
 export const rangosDe = (opciones = {}) => opciones.rangos
   || [{ desde: null, hasta: -1 }, { desde: 0, hasta: 7 }, ...((opciones.dias || 30) > 7 ? [{ desde: 8, hasta: opciones.dias || 30 }] : [])]
 
-function seccionDe(plantilla, id) { return plantilla.secciones.find((s) => s.id === id || s.titulo.toLowerCase() === String(id || '').toLowerCase()) }
+// Acepta el id, el título o el título escrito de otra forma ("inventario productos limpieza" → inventario_productos_limpiez…).
+function seccionDe(plantilla, id) {
+  const q = slug(id)
+  return plantilla.secciones.find((s) => s.id === id || s.titulo.toLowerCase() === String(id || '').toLowerCase())
+    || plantilla.secciones.find((s) => slug(s.titulo) === q || s.id === q.slice(0, 30) || (q.length > 5 && (s.id.startsWith(q.slice(0, 25)) || q.startsWith(s.id))))
+}
 function bloqueDe(estado, uid) { return estado.bloques.find((b) => b.uid === uid) }
 
 /** Dónde cae de verdad cada bloque en la rejilla (12 columnas, acomodo "dense" como el CSS): lo calcula el código,
@@ -38,8 +43,23 @@ export function ubicar(bloques) {
 }
 const ubicacion = (u) => (u ? `fila ${u.fila}, ${u.lado}` : '')
 
+const slug = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x'
+
+/** La plantilla tal como la ve la persona: la base + lo que Shifu le cambió a la estructura (secciones nuevas, campos
+ * agregados, secciones ocultas o renombradas). La usan la pantalla, el validador y el modelo: una sola verdad. */
+export function plantillaEfectiva(plantilla, estado = {}) {
+  const e = estado.estructura || {}
+  const base = plantilla.secciones.filter((x) => !(e.ocultas || []).includes(x.id)).map((x) => ({ ...x,
+    ...(e.titulos?.[x.id] ? { titulo: e.titulos[x.id] } : {}),
+    ...(x.campos && e.campos?.[x.id] ? { campos: [...x.campos, ...e.campos[x.id]] } : {}) }))
+  const nuevas = (e.secciones || []).filter((x) => !(e.ocultas || []).includes(x.id)).map((x) => ({ ...x, campos: [...x.campos, ...(e.campos?.[x.id] || [])], ...(e.titulos?.[x.id] ? { titulo: e.titulos[x.id] } : {}) }))
+  const i = base.findIndex((x) => x.grupo > 0)
+  return { ...plantilla, secciones: i < 0 ? [...base, ...nuevas] : [...base.slice(0, i), ...nuevas, ...base.slice(i)] }
+}
+
 /** Lo que el modelo ve de la pantalla: bloques actuales y, por sección, sus campos y las vistas que admite. */
-export function describirPantalla(plantilla, estado) {
+export function describirPantalla(plantillaBase, estado) {
+  const plantilla = plantillaEfectiva(plantillaBase, estado)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   return {
     plantilla: plantilla.nombre,
@@ -66,7 +86,14 @@ export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
   return { ...r, resultado: `${r.resultado} Así se ve ahora: ${r.estado.bloques.map((b) => `${b.uid} (${b.vista}) → ${ubicacion(u[b.uid])}`).join('; ')}.` }
 }
 
-function ejecutarSin(plantilla, estado, nombre, args = {}, contexto = {}) {
+function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
+  const plantilla = plantillaEfectiva(plantillaBase, estado)
+  const est = estado.estructura || {}
+  // Cambio de estructura: se valida la plantilla COMPLETA resultante; si algo queda inválido, no se aplica.
+  const conEstructura = (nueva, resultado) => {
+    const errores = validarPlantilla(plantillaEfectiva(plantillaBase, { ...estado, estructura: nueva }))
+    return errores.length ? no(errores.join(' ')) : si({ ...estado, estructura: nueva }, resultado)
+  }
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const no = (resultado) => ({ estado, ok: false, resultado: `ERROR: ${resultado}` })
   const si = (nuevo, resultado) => ({ estado: nuevo, ok: true, resultado })
@@ -151,6 +178,36 @@ function ejecutarSin(plantilla, estado, nombre, args = {}, contexto = {}) {
     case 'restablecer_marca':
       if (!contexto.pideQuitar && !/marca|colores|original|shifu/i.test(contexto.texto || '')) return no('la persona no pidió volver a los colores originales.')
       return si({ ...estado, marca: {} }, 'Volvió el diseño base de Shifu (colores, fondos y tipografía originales, sin logo).')
+    case 'crear_seccion': {
+      const titulo = String(args.titulo || '').trim().slice(0, 28); if (!titulo) return no('falta el título de la sección.')
+      if (plantilla.secciones.some((x) => x.titulo.toLowerCase() === titulo.toLowerCase())) return no(`ya existe una sección «${titulo}»: úsala o agrégale campos en vez de duplicarla.`)
+      const campos = (args.campos || []).slice(0, 8).map((c) => ({ id: slug(c.nombre), nombre: String(c.nombre).slice(0, 24), tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones.slice(0, 7).map(String) } : {}), ...(c.ejemplos ? { ejemplos: c.ejemplos.slice(0, 12).map(String) } : {}) }))
+      if (!campos.length) return no('una sección necesita al menos un campo.')
+      const bad = campos.find((c) => !TIPOS_CAMPO.includes(c.tipo)); if (bad) return no(`el campo «${bad.nombre}» tiene tipo «${bad.tipo}»; tipos posibles: ${TIPOS_CAMPO.join(', ')}.`)
+      let id = slug(titulo); while (plantilla.secciones.some((x) => x.id === id)) id += '_2'
+      const vista = ['tabla', 'tablero', 'agenda', 'vencimientos'].includes(args.vista) ? args.vista : 'tabla'
+      const secc = { id, titulo, grupo: args.grupo === 1 ? 1 : 0, icono: { tablero: 'tablero', agenda: 'calendario', vencimientos: 'reloj' }[vista] || 'tabla', vista, ...(args.opciones ? { opciones: args.opciones } : {}), campos }
+      return conEstructura({ ...est, secciones: [...(est.secciones || []), secc] }, `Sección «${titulo}» creada (id ${id}) con ${campos.length} campos: ${campos.map((c) => `${c.nombre} (${c.tipo})`).join(', ')}. Vista: ${vista}. Puedes ponerla en el inicio con agregar_bloque.`)
+    }
+    case 'agregar_campo': {
+      const sec = seccionDe(plantilla, args.seccion); if (!sec?.campos) return no(`la sección «${args.seccion}» no existe o no tiene campos.`)
+      if (!TIPOS_CAMPO.includes(args.tipo)) return no(`tipo «${args.tipo}» no existe (${TIPOS_CAMPO.join(', ')}).`)
+      const c = { id: slug(args.nombre), nombre: String(args.nombre).slice(0, 24), tipo: args.tipo, ...(args.opciones ? { opciones: args.opciones.slice(0, 7).map(String) } : {}), ...(args.ejemplos ? { ejemplos: args.ejemplos.slice(0, 12).map(String) } : {}) }
+      if (sec.campos.some((x) => x.id === c.id || x.nombre.toLowerCase() === c.nombre.toLowerCase())) return no(`«${sec.titulo}» ya tiene el campo «${c.nombre}».`)
+      if (sec.campos.length >= 8) return no(`«${sec.titulo}» ya tiene 8 campos (el máximo).`)
+      return conEstructura({ ...est, campos: { ...(est.campos || {}), [sec.id]: [...(est.campos?.[sec.id] || []), c] } }, `Campo «${c.nombre}» (${c.tipo}) agregado a «${sec.titulo}».`)
+    }
+    case 'renombrar_seccion': {
+      const sec = seccionDe(plantilla, args.seccion); if (!sec) return no(`la sección «${args.seccion}» no existe.`)
+      const titulo = String(args.titulo || '').trim().slice(0, 28); if (!titulo) return no('falta el nuevo nombre.')
+      return conEstructura({ ...est, titulos: { ...(est.titulos || {}), [sec.id]: titulo } }, `«${sec.titulo}» ahora se llama «${titulo}».`)
+    }
+    case 'quitar_seccion': {
+      const sec = seccionDe(plantilla, args.seccion); if (!sec) return no(`la sección «${args.seccion}» no existe.`)
+      if (!contexto.pideQuitar) return no(`la persona no pidió quitar «${sec.titulo}». Pregúntale primero.`)
+      const r = conEstructura({ ...est, ocultas: [...(est.ocultas || []), sec.id] }, `Sección «${sec.titulo}» quitada del menú (sus datos se conservan; se puede volver a mostrar). También se quitaron sus bloques del inicio.`)
+      return r.ok ? { ...r, estado: { ...r.estado, bloques: r.estado.bloques.filter((b) => b.seccion !== sec.id) } } : r
+    }
     case 'abrir_seccion': {
       const s = seccionDe(plantilla, args.seccion); if (!s && args.seccion !== 'inicio') return no(`la sección «${args.seccion}» no existe.`)
       return si({ ...estado, vista: s ? s.id : 'inicio' }, `Abierta la sección ${s ? s.titulo : 'Inicio'}.`)
@@ -163,7 +220,7 @@ function ejecutarSin(plantilla, estado, nombre, args = {}, contexto = {}) {
 export const HERRAMIENTAS = [
   ['quitar_bloque', 'Quita un bloque del inicio.', { bloque: { type: 'string', description: 'id del bloque, ej. b2' } }, ['bloque']],
   ['agregar_bloque', 'Agrega un bloque al inicio con una vista del catálogo sobre una sección.', {
-    seccion: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', description: 'opciones de la vista: ids de campos (ver "vistas" y "secciones"). Para grafico: {tipo: uno de graficos_posibles de esa sección, ...}' , additionalProperties: true },
+    seccion: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', description: 'opciones de la vista: ids de campos (ver "vistas" y "secciones"). Para grafico: {tipo: uno de graficos_posibles de esa sección, ...}. Para tabla: {filtro: {campo, menorOIgual: número o id de otro campo | mayorOIgual | igual}, orden: {campo, dir: asc|desc}, limite}' , additionalProperties: true },
     ancho: { type: 'integer', enum: ANCHOS_COL }, alto: { type: 'integer', minimum: 1, maximum: ALTO_MAX }, posicion: { type: 'integer', minimum: 1 } }, ['seccion', 'vista']],
   ['cambiar_visual', 'Cambia la vista o sus opciones de un bloque existente (mantiene su lugar y tamaño).', {
     bloque: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', additionalProperties: true }, seccion: { type: 'string' } }, ['bloque', 'vista']],
@@ -176,5 +233,11 @@ export const HERRAMIENTAS = [
     primario: { type: 'string' }, secundario: { type: 'string' }, fondo: { type: 'string' }, superficie: { type: 'string' }, texto: { type: 'string' },
     fuenteTitulos: { type: 'string', enum: Object.keys(FUENTES) }, fuenteTexto: { type: 'string', enum: Object.keys(FUENTES) }, nombre: { type: 'string' } }, []],
   ['usar_logo', 'Pone como logo del negocio la imagen que la persona adjuntó EN ESTE mensaje (SVG/PNG/WebP con fondo transparente).', {}, []],
+  ['crear_seccion', 'Crea una sección NUEVA en el menú, con sus campos (máx. 8). Úsala cuando la persona quiere llevar algo que hoy no existe (inventario, cobros, proveedores, lo que sea). Para tablero/vencimientos/agenda pasa opciones (por: id campo estado / fecha: id campo fecha…); los id de campo son el nombre en minúsculas sin acentos con _ .', {
+    titulo: { type: 'string' }, vista: { type: 'string', enum: ['tabla', 'tablero', 'agenda', 'vencimientos'] }, opciones: { type: 'object', additionalProperties: true }, grupo: { type: 'integer', enum: [0, 1] },
+    campos: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string' }, tipo: { type: 'string', enum: ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estado'] }, opciones: { type: 'array', items: { type: 'string' } }, ejemplos: { type: 'array', items: { type: 'string' } } }, required: ['nombre', 'tipo'] } } }, ['titulo', 'campos']],
+  ['agregar_campo', 'Agrega un campo a una sección existente.', { seccion: { type: 'string' }, nombre: { type: 'string' }, tipo: { type: 'string', enum: ['texto', 'numero', 'dinero', 'fecha', 'hora', 'estado'] }, opciones: { type: 'array', items: { type: 'string' } }, ejemplos: { type: 'array', items: { type: 'string' } } }, ['seccion', 'nombre', 'tipo']],
+  ['renombrar_seccion', 'Cambia el nombre de una sección.', { seccion: { type: 'string' }, titulo: { type: 'string' } }, ['seccion', 'titulo']],
+  ['quitar_seccion', 'Quita una sección del menú (y sus bloques del inicio). Solo si la persona lo pidió.', { seccion: { type: 'string' } }, ['seccion']],
   ['restablecer_marca', 'Vuelve al diseño base de Shifu (quita colores, tipografías y logo propios).', {}, []],
 ].map(([name, description, properties, required]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } }))
