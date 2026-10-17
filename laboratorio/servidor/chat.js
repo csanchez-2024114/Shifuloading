@@ -147,7 +147,7 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
       // Posición: si dice "derecha"/"izquierda", algún bloque que tocó en este mensaje debe haber quedado ahí (lo calcula el código).
       const lado = respuesta.match(/\b(derecha|izquierda)\b/i)?.[1]?.toLowerCase()
       if (lado && cambios.length) {
-        const u = edicion.ubicar(estado.bloques)
+        const u = edicion.ubicarTodo(estado) // inicio y pestañas: el bloque tocado puede estar en cualquier lienzo
         // Lo que se pidió ubicar es lo que se agregó o movió; un bloque solo redimensionado no cuenta (si no, "derecha" pasaría por otro).
         const idDe = (c) => c.args.bloque || c.resultado.match(/Agregado el bloque (\S+):/)?.[1]
         const ubicados = cambios.filter((c) => ['agregar_bloque', 'mover_bloque'].includes(c.herramienta)).map(idDe).filter(Boolean)

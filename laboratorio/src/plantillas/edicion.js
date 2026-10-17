@@ -79,6 +79,12 @@ export function acomodar(bloques, fijos = new Set()) {
       const p = pos[arriba], b = bs.find((x) => x.uid === arriba)
       if (b.vista !== 'kpis' && p.h < ALTO_MAX && p.f + p.h === f && libreEn(f, p.c, p.w)) { bs = bs.map((x) => (x.uid === arriba ? { ...x, alto: p.h + 1 } : x)); hecho = true }
     }
+    // Si nadie lo tapa creciendo: el primer bloque que viene DESPUÉS del hueco y no cabe en él se angosta al ancho del
+    // hueco (mínimo 3) para subir a ocuparlo (p. ej. tras achicar un bloque a pedido, el de abajo sube a su lado).
+    if (!hecho && largo >= 3) {
+      const despues = bs.find((b) => { const q = pos[b.uid]; return !fijos.has(b.uid) && b.vista !== 'kpis' && (q.f > f || (q.f === f && q.c > c)) && q.w > largo })
+      if (despues) { bs = bs.map((b) => (b === despues ? { ...b, ancho: largo } : b)); hecho = true }
+    }
     if (!hecho) imposibles.add(`${f},${c}`)
   }
   return bs
@@ -107,7 +113,8 @@ function ajustarSeccion(x, e) {
   const quitados = e.camposQuitados?.[x.id] || [], nombres = e.nombresCampo?.[x.id] || {}, opciones = e.opcionesEstado?.[x.id] || {}
   return { ...x,
     campos: x.campos.filter((c) => !quitados.includes(c.id)).map((c) => ({ ...c, ...(nombres[c.id] ? { nombre: nombres[c.id] } : {}), ...(opciones[c.id] ? { opciones: opciones[c.id] } : {}) })),
-    ...(e.ficha?.[x.id] ? { ficha: e.ficha[x.id] } : {}), ...(e.tarjeta?.[x.id] ? { tarjeta: e.tarjeta[x.id] } : {}) }
+    ...(e.ficha?.[x.id] ? { ficha: e.ficha[x.id] } : {}), ...(e.tarjeta?.[x.id] ? { tarjeta: e.tarjeta[x.id] } : {}),
+    ...(e.paginas?.[x.id] ? { pagina: e.paginas[x.id] } : {}) }
 }
 
 /** Cómo se ve la ficha de un registro: la que definió la persona o, por defecto, todos sus campos en un grupo. */
@@ -361,7 +368,10 @@ export function describirPantalla(plantillaBase, estado) {
     // Lo que se puede deshacer: cada pedido que cambió algo, con lo que dijo la persona y qué cambió (medido por el código).
     pedidos_anteriores: (estado.puntos || []).map((p) => ({ pedido: p.n, dijo: p.antes_de, cambio: p.cambio || ['bloques', 'marca', 'estructura'], hora: p.hora })),
     marca: { ...(estado.marca || {}), logo: estado.marca?.logo ? '(tiene logo)' : '(sin logo)', fuentes_permitidas: Object.keys(FUENTES), nota: 'Branding: cualquier color (hex) de fondo, superficie, texto, principal y secundario, y tipografía de títulos y de texto. El código ajusta lo que no se lea.' },
-    rejilla: 'Inicio en 12 columnas. ancho ∈ [3,4,6,8,12] (3 = cuatro por fila, 12 = ancho completo). alto ∈ 1..4 filas. Todo debe caber en una pantalla: más bloques = bloques más bajos.',
+    pestana_abierta: estado.vista || 'inicio',
+    // Cada pestaña es un cuaderno en blanco: las herramientas de bloques sirven en cualquier pestaña con pestana=<id>.
+    pestanas_con_piezas: Object.fromEntries(Object.entries(estado.estructura?.paginas || {}).map(([pid, bs]) => [pid, bs.map((b) => ({ id: b.uid, vista: b.vista, seccion: b.seccion, donde_se_ve: ubicacion(ubicar(bs)[b.uid]), ancho: b.ancho, alto: b.alto, opciones: b.opciones }))])),
+    rejilla: 'Inicio y cada pestaña en 12 columnas. ancho ∈ [3,4,6,8,12] (3 = cuatro por fila, 12 = ancho completo). alto ∈ 1..4 filas. Todo debe caber en una pantalla: más bloques = bloques más bajos.',
     bloques: estado.bloques.map((b, i) => ({ id: b.uid, posicion: i + 1, donde_se_ve: ubicacion(ubicar(estado.bloques)[b.uid]), vista: b.vista, seccion: b.seccion, titulo_seccion: porId[b.seccion]?.titulo, opciones: b.opciones, ancho: b.ancho, alto: b.alto,
       // Los grupos que la persona VE ahora (los por defecto no viven en opciones): sin esto el modelo no sabe qué conservar.
       ...(b.vista === 'vencimientos' ? { grupos_actuales: rangosDe(b.opciones).map((r) => (r.desde === null ? 'Vencidos {vencidos:true}' : `De ${r.desde} a ${r.hasta} días {desde:${r.desde},hasta:${r.hasta}}`)) } : {}) })),
@@ -379,7 +389,42 @@ export function describirPantalla(plantillaBase, estado) {
 }
 
 /** Ejecuta UNA operación. Devuelve { estado, ok, resultado } — resultado es el texto que lee el modelo. */
+// ── Pestaña como cuaderno en blanco (D49) ──
+// Cada sección puede tener su propio lienzo de piezas (estructura.paginas[id]), igual que el inicio. Mientras no lo tenga,
+// se ve con su vista de siempre; al primer cambio, esa vista pasa a ser la primera pieza del lienzo.
+const HERR_BLOQUE = new Set(['agregar_bloque', 'quitar_bloque', 'mover_bloque', 'cambiar_tamano', 'cambiar_visual', 'cambiar_rangos'])
+const PAGINABLE = (s) => !!s && (s.campos || s.fuente) && VISTAS_INICIO.includes(s.vista)
+export function paginaDe(plantilla, estado, secId) {
+  const s = plantilla.secciones.find((x) => x.id === secId); if (!PAGINABLE(s)) return null
+  return estado.estructura?.paginas?.[secId] || [{ uid: `p_${secId}`, seccion: secId, vista: s.vista, opciones: s.opciones || {}, ancho: 12, alto: 3 }]
+}
+/** En qué lienzo está un bloque: null = inicio; si no, el id de la pestaña. */
+function lienzoDeBloque(estado, uid) {
+  if (!uid || (estado.bloques || []).some((b) => b.uid === uid)) return null
+  for (const [pid, bs] of Object.entries(estado.estructura?.paginas || {})) if (bs.some((b) => b.uid === uid)) return pid
+  return String(uid).startsWith('p_') ? String(uid).slice(2) : null // la pieza por defecto de una pestaña sin lienzo propio
+}
+/** Dónde se ve cada bloque en TODOS los lienzos (inicio y pestañas). */
+export function ubicarTodo(estado) {
+  return Object.assign({}, ubicar(estado.bloques || []), ...Object.values(estado.estructura?.paginas || {}).map((bs) => ubicar(bs)))
+}
+
 export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
+  if (HERR_BLOQUE.has(nombre)) {
+    const pid = args.pestana && args.pestana !== 'inicio' ? args.pestana : lienzoDeBloque(estado, args.bloque)
+    if (pid) {
+      const efectiva = plantillaEfectiva(plantilla, estado)
+      const sec = efectiva.secciones.find((x) => x.id === pid)
+      if (!sec) return { estado, ok: false, resultado: `ERROR: la pestaña «${pid}» no existe. Pestañas: inicio, ${efectiva.secciones.filter(PAGINABLE).map((x) => x.id).join(', ')}.` }
+      const pagina = paginaDe(efectiva, estado, pid)
+      if (!pagina) return { estado, ok: false, resultado: `ERROR: «${sec.titulo}» no admite piezas (es una pestaña fija del sistema).` }
+      // Se usa la MISMA lógica del inicio sobre el lienzo de la pestaña (validación, acomodo, ubicación).
+      const r = ejecutar(plantilla, { ...estado, bloques: pagina }, nombre, { ...args, pestana: undefined, seccion: args.seccion || (nombre === 'agregar_bloque' ? pid : args.seccion) }, contexto)
+      if (!r.ok) return { ...r, estado }
+      const est = r.estado.estructura || estado.estructura || {}
+      return { ...r, estado: { ...r.estado, bloques: estado.bloques, estructura: { ...est, paginas: { ...(est.paginas || {}), [pid]: r.estado.bloques } } }, resultado: `En la pestaña «${sec.titulo}»: ${r.resultado}` }
+    }
+  }
   const r0 = ejecutarSin(plantilla, estado, nombre, args, contexto)
   if (!r0.ok || !r0.estado.bloques) return r0
   // Acomodo automático tras cada cambio de bloques; lo que la persona acaba de redimensionar queda como lo pidió.
@@ -532,7 +577,10 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
       const sec = seccionDe(plantilla, args.seccion); if (!sec) return no(`la sección «${args.seccion}» no existe.`)
       // (sin candado por palabras: es reversible con los puntos de guardado internos)
       const r = conEstructura({ ...est, ocultas: [...(est.ocultas || []), sec.id] }, `Sección «${sec.titulo}» quitada del menú (sus datos se conservan; se puede volver a mostrar). También se quitaron sus bloques del inicio.`)
-      return r.ok ? { ...r, estado: { ...r.estado, bloques: r.estado.bloques.filter((b) => b.seccion !== sec.id) } } : r
+      if (!r.ok) return r
+      // También se va su lienzo y las piezas que la usan en otras pestañas (si no, quedarían bloques sin sección).
+      const pags = Object.fromEntries(Object.entries(r.estado.estructura.paginas || {}).filter(([pid]) => pid !== sec.id).map(([pid, bs]) => [pid, bs.filter((b) => b.seccion !== sec.id)]))
+      return { ...r, estado: { ...r.estado, bloques: r.estado.bloques.filter((b) => b.seccion !== sec.id), estructura: { ...r.estado.estructura, paginas: pags } } }
     }
     // ── Ficha, tarjeta y campos (D28): todo editable por chat; el código cuida que nada quede huérfano ──
     case 'cambiar_ficha': {
@@ -665,9 +713,9 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
 
 /** Esquemas de las herramientas para el modelo (formato OpenAI). */
 export const HERRAMIENTAS = [
-  ['quitar_bloque', 'Quita un bloque del inicio.', { bloque: { type: 'string', description: 'id del bloque, ej. b2' } }, ['bloque']],
-  ['agregar_bloque', 'Agrega un bloque al inicio con una vista del catálogo sobre una sección.', {
-    seccion: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', description: 'opciones de la vista: ids de campos (ver "vistas" y "secciones"). Para grafico: {tipo: uno de graficos_posibles de esa sección, ...}. Para tabla: {filtro: {campo, menorOIgual: número o id de otro campo | mayorOIgual | igual}, orden: {campo, dir: asc|desc}, limite}' , additionalProperties: true },
+  ['quitar_bloque', 'Quita un bloque (del inicio o de una pestaña: el código sabe dónde está por su id).', { bloque: { type: 'string', description: 'id del bloque, ej. b2' } }, ['bloque']],
+  ['agregar_bloque', 'Agrega una pieza (bloque) al inicio o a cualquier pestaña, con una vista del catálogo sobre una sección. Cada pestaña es un cuaderno en blanco: puede llevar varias piezas.', {
+    pestana: { type: 'string', description: 'dónde va: "inicio" (por defecto) o el id de una sección. Si la persona está mirando una pestaña (pestana_abierta) y dice «aquí» o «en esta pestaña», es esa.' }, seccion: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', description: 'opciones de la vista: ids de campos (ver "vistas" y "secciones"). Para grafico: {tipo: uno de graficos_posibles de esa sección, ...}. Para tabla: {filtro: {campo, menorOIgual: número o id de otro campo | mayorOIgual | igual}, orden: {campo, dir: asc|desc}, limite}' , additionalProperties: true },
     ancho: { type: 'integer', enum: ANCHOS_COL }, alto: { type: 'integer', minimum: 1, maximum: ALTO_MAX }, posicion: { type: 'integer', minimum: 1 } }, ['seccion', 'vista']],
   ['cambiar_visual', 'Cambia la vista o sus opciones de un bloque existente (mantiene su lugar y tamaño).', {
     bloque: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', additionalProperties: true }, seccion: { type: 'string' } }, ['bloque', 'vista']],

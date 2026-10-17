@@ -233,7 +233,19 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
                 <div><h1>{actual.titulo}</h1>{(actual.campos || actual.fuente) && <p>{registrosDe(actual, datos).length ? `${registrosDe(actual, datos).length.toLocaleString('es')} registros.` : 'Todavía no hay registros.'}</p>}</div>
                 {actual.campos && <button type="button" className="btn-pildora">Agregar</button>}
               </div>
-              <div className="pl-seccion">{dibujar(actual, actual.vista, actual.opciones)}</div>
+              {/* Pestaña con lienzo propio (D49): varias piezas como el inicio; sin lienzo, su vista de siempre. */}
+              {actual.pagina ? (
+                actual.pagina.length ? (
+                  <div className="pl-inicio pl-pagina">
+                    {actual.pagina.map((w, i) => (
+                      <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}`} data-bloque={w.uid} style={{ '--i': i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
+                        <h2>{nombreBloque(w, porId)}</h2>
+                        {dibujar(porId[w.seccion], w.vista, w.opciones)}
+                      </section>
+                    ))}
+                  </div>
+                ) : <div className="mc-vacio-grande pl-vacio pl-pagina-vacia"><b>Esta pestaña está en blanco</b><p>Pídele a Shifu qué quieres ver aquí: una lista, un tablero, un calendario, una gráfica…</p></div>
+              ) : <div className="pl-seccion">{dibujar(actual, actual.vista, actual.opciones)}</div>}
             </>
           )}
         </main>
