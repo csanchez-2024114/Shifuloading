@@ -141,7 +141,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     if settings.auth_enabled and appdata is None:
         raise ConfigError("AUTH_ENABLED=1 necesita la base de negocio (APP_MONGODB_URI y APP_MONGODB_DB).")
     auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
-                       settings.login_lock_minutes) if settings.auth_enabled else None
+                       settings.login_lock_minutes, settings.login_max_fails_ip) if settings.auth_enabled else None
 
     app = FastAPI(title="Agente 0")
 

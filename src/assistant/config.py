@@ -73,7 +73,8 @@ class Settings:
     auth_enabled: bool = False          # cuentas de usuario: el user_id sale de la sesión, nunca del navegador
     session_ttl_days: int = 14          # caducidad de la sesión (renovación deslizante)
     cookie_secure: str = "auto"         # cookie Secure: auto (si la petición llega por https), 1 o 0
-    login_max_fails: int = 5            # fallos de login por correo o IP antes del bloqueo
+    login_max_fails: int = 5            # fallos de login por correo antes del bloqueo
+    login_max_fails_ip: int = 20        # fallos de login por IP antes del bloqueo (más alto: IP compartidas)
     login_lock_minutes: int = 10        # ventana de fallos y duración del bloqueo
 
     @classmethod
@@ -130,7 +131,8 @@ class Settings:
             auth_enabled=_bool("AUTH_ENABLED"),
             session_ttl_days=int(os.getenv("SESSION_TTL_DAYS", "14")),
             cookie_secure=os.getenv("COOKIE_SECURE", "auto").strip().lower(),
-            login_max_fails=int(os.getenv("LOGIN_MAX_FAILS", "5")),
+            login_max_fails=int(os.getenv("LOGIN_MAX_FAILS_PER_EMAIL") or os.getenv("LOGIN_MAX_FAILS") or "5"),
+            login_max_fails_ip=int(os.getenv("LOGIN_MAX_FAILS_PER_IP") or "20"),
             login_lock_minutes=int(os.getenv("LOGIN_LOCK_MINUTES", "10")),
         )
 

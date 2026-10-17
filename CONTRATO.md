@@ -190,7 +190,7 @@ empiezan con `:`.
 | GET | `/health` | `{"ok": true, "model": str, "auth_enabled": bool}` |
 | GET | `/auth/me` | `{"auth_enabled": false}` sin cuentas; con cuentas `{"auth_enabled": true, "user": null}` o `{"auth_enabled": true, "user": {"display_name", "email"}, "csrf": str}` |
 | POST | `/auth/register` | body `{"email", "password", "display_name"?}` → crea la cuenta e inicia sesión: cookie `agente0_session` (HttpOnly, SameSite=Lax, Secure con https) y `{"user", "csrf"}`. 400 con mensaje genérico |
-| POST | `/auth/login` | body `{"email", "password"}` → cookie + `{"user", "csrf"}`; 401 "Correo o contraseña incorrectos." (igual exista o no el correo); 429 tras 5 fallos en 10 min por correo o IP |
+| POST | `/auth/login` | body `{"email", "password"}` → cookie + `{"user", "csrf"}`; 401 "Correo o contraseña incorrectos." (igual exista o no el correo); 429 tras 5 fallos en 10 min por correo o 20 por IP (`LOGIN_MAX_FAILS_PER_EMAIL`, `LOGIN_MAX_FAILS_PER_IP`) |
 | POST | `/auth/logout` | borra la sesión y la cookie |
 | POST | `/auth/delete-account` | body `{"password"}` → borra usuario, sesiones, conversaciones (IA y negocio) y memoria global; 401 si la contraseña no es correcta |
 | GET | `/threads` | `{"threads": [{"thread_id", "title", "created_at", "last_activity"}]}` del usuario de la sesión |

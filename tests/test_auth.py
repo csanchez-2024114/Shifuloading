@@ -87,18 +87,40 @@ def test_login_incorrecto_es_generico_y_se_bloquea_tras_5_fallos(appdata):
     assert (e.value.status, e.value.message) == (429, LOCKED_ERROR)
 
 
-def test_bloqueo_por_ip_aunque_cambie_el_correo(appdata):
+def test_ip_con_10_fallos_en_correos_distintos_no_se_bloquea_y_a_los_20_si(appdata):
     from assistant.auth import AuthError
 
     svc = _svc(appdata)
     svc.register("ana@ejemplo.com", "contraseña-larga-1")
-    for i in range(5):
+    for i in range(10):
+        with pytest.raises(AuthError):
+            svc.login(f"x{i}@ejemplo.com", "mala-contraseña", "6.6.6.6")
+    assert svc.login("ana@ejemplo.com", "contraseña-larga-1", "6.6.6.6")[1]  # 10 fallos repartidos: entra
+    for i in range(10, 20):
         with pytest.raises(AuthError):
             svc.login(f"x{i}@ejemplo.com", "mala-contraseña", "6.6.6.6")
     with pytest.raises(AuthError) as e:
         svc.login("ana@ejemplo.com", "contraseña-larga-1", "6.6.6.6")
     assert e.value.status == 429
     assert svc.login("ana@ejemplo.com", "contraseña-larga-1", "8.8.8.8")[1]  # otra IP sí entra
+
+
+def test_umbrales_configurables(appdata, monkeypatch):
+    from assistant.auth import AuthError
+    from assistant.config import Settings
+
+    monkeypatch.setenv("LOGIN_MAX_FAILS_PER_EMAIL", "2")
+    monkeypatch.setenv("LOGIN_MAX_FAILS_PER_IP", "3")
+    s = Settings.from_env()
+    assert (s.login_max_fails, s.login_max_fails_ip) == (2, 3)
+    svc = _svc(appdata, max_fails=s.login_max_fails, max_fails_ip=s.login_max_fails_ip)
+    svc.register("ana@ejemplo.com", "contraseña-larga-1")
+    for i in range(3):
+        with pytest.raises(AuthError):
+            svc.login(f"x{i}@ejemplo.com", "mala-contraseña", "6.6.6.6")
+    with pytest.raises(AuthError) as e:
+        svc.login("ana@ejemplo.com", "contraseña-larga-1", "6.6.6.6")
+    assert e.value.status == 429
 
 
 def test_sesion_caducada_y_renovacion_deslizante(appdata):

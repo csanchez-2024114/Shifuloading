@@ -140,7 +140,7 @@ def test_login_endpoint_generico_y_bloqueo(make_settings):
     r1 = c.post("/auth/login", json={"email": "ana@ejemplo.com", "password": "mala-contraseña"})
     r2 = c.post("/auth/login", json={"email": "nadie@ejemplo.com", "password": "mala-contraseña"})
     assert r1.status_code == r2.status_code == 401 and r1.json() == r2.json() == {"detail": LOGIN_ERROR}
-    for _ in range(3):
+    for _ in range(4):  # 5 fallos del mismo correo (la IP aguanta 20)
         c.post("/auth/login", json={"email": "ana@ejemplo.com", "password": "mala-contraseña"})
     r = c.post("/auth/login", json={"email": "ana@ejemplo.com", "password": PW})
     assert r.status_code == 429 and r.json() == {"detail": LOCKED_ERROR}

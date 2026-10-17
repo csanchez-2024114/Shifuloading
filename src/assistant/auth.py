@@ -54,11 +54,13 @@ def csrf_ok(token: str, sent: str | None) -> bool:
 
 
 class AuthService:
-    def __init__(self, data: AppData, ttl_days: int = 14, max_fails: int = 5, lock_minutes: int = 10):
+    def __init__(self, data: AppData, ttl_days: int = 14, max_fails: int = 5, lock_minutes: int = 10,
+                 max_fails_ip: int = 20):
         self.data = data
         self.ttl = timedelta(days=ttl_days)
-        self.max_fails = max_fails
-        self.window = timedelta(minutes=lock_minutes)  # 5 fallos en 10 minutos -> 10 minutos de bloqueo
+        # umbral por correo y, más alto, por IP: varios usuarios detrás de un mismo NAT no se bloquean entre sí
+        self.max_fails = {"email": max_fails, "ip": max_fails_ip}
+        self.window = timedelta(minutes=lock_minutes)  # fallos dentro de la ventana -> bloqueo de la misma duración
         self.ph = PasswordHasher()  # argon2id con los parámetros por defecto de argon2-cffi
         self._dummy = self.ph.hash(secrets.token_urlsafe(16))  # iguala tiempos con correos inexistentes
 
@@ -92,7 +94,7 @@ class AuthService:
         if not (ok and user and user.get("status") == "active"):
             for k in keys:
                 self.data.attempts.record_failure(k, now)
-                if self.data.attempts.failures_since(k, now - self.window) >= self.max_fails:
+                if self.data.attempts.failures_since(k, now - self.window) >= self.max_fails[k.split(":", 1)[0]]:
                     self.data.attempts.lock(k, now + self.window)
             raise AuthError(401, LOGIN_ERROR)
         self.data.attempts.clear(keys[0])

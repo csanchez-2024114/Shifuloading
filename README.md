@@ -327,7 +327,7 @@ La base de la IA **nunca** guarda correos, contraseñas, nombres ni datos de log
 | `APP_MONGODB_URI` / `APP_MONGODB_DB` | vacías | base de negocio; obligatorias con `AUTH_ENABLED=1` |
 | `SESSION_TTL_DAYS` | `14` | caducidad de la sesión, con renovación deslizante |
 | `COOKIE_SECURE` | `auto` | cookie `Secure`: `auto` (si llega por https), `1` o `0` |
-| `LOGIN_MAX_FAILS` / `LOGIN_LOCK_MINUTES` | `5` / `10` | 5 fallos en 10 minutos por correo o por IP bloquean 10 minutos |
+| `LOGIN_MAX_FAILS_PER_EMAIL` / `LOGIN_MAX_FAILS_PER_IP` / `LOGIN_LOCK_MINUTES` | `5` / `20` / `10` | 5 fallos en 10 minutos por correo, o 20 por IP (más alto: varios usuarios pueden compartir IP), bloquean 10 minutos. `LOGIN_MAX_FAILS` sigue valiendo como respaldo del umbral por correo |
 
 Seguridad:
 - Contraseñas con argon2id (`argon2-cffi`), al menos 10 caracteres; nunca en texto plano ni en logs.
