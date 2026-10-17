@@ -322,15 +322,21 @@ Keep VERBATIM (exact spelling, values and units):
 - the user's stated preferences, likes, dislikes and personal facts (name, job, city...), attributed to the user;
 - open questions, pending tasks and commitments the assistant made.
 
-Always end with a section "Problems solved so far": one bullet per problem, question or task already answered
-(the oldest first), each with its final result or answer verbatim (numbers, names, chosen option). Keep every item
-from the earlier summary's list and add the new ones; never drop one.
+Always end with a section headed exactly "Problems solved so far" (keep this heading in English, as written): one
+bullet per problem, question or task already answered (the oldest first), each with its final result or answer
+verbatim (numbers, names, chosen option). Keep every item from the earlier summary's list and add the new ones;
+never drop one. If nothing has been answered yet, write a single "-" under the heading.
 
 Rules:
 - If the messages start with an earlier summary, merge it in: keep all of its facts unless the user corrected them.
-- Write facts the user stated as "The user said ...". Do not add facts, guesses or interpretations.
+- Attribute the user's facts to the user, with the attribution itself translated into the conversation's language
+  (never an English "The user said" followed by words in another language). Do not add facts, guesses or
+  interpretations.
 - Mark clearly what came from tools (web results, calculations) versus from the user.
-- Write in the conversation's language. Use short bullet points grouped by topic. No preamble.
+- Write everything except the heading above in the conversation's language; never mix languages within a sentence.
+- The summary must not contradict itself: never write that nothing was solved, or that something is pending, when
+  another bullet shows it done.
+- Use short bullet points grouped by topic. No preamble.
 
 <messages>
 {messages}

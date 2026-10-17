@@ -71,6 +71,11 @@ def test_prompt_del_resumen_pide_lista_de_problemas_resueltos():
     from assistant.agent import SUMMARY_PROMPT
 
     assert "Problems solved so far" in SUMMARY_PROMPT and "VERBATIM" in SUMMARY_PROMPT
+    # sin mezcla de idiomas ni contradicciones (prueba real: "The user said vive en Mérida…" y "No hay tareas
+    # resueltas" junto a una tarea resuelta)
+    assert '"The user said ..."' not in SUMMARY_PROMPT and "never mix languages within a sentence" in SUMMARY_PROMPT
+    assert "keep this heading in English" in SUMMARY_PROMPT and 'write a single "-"' in SUMMARY_PROMPT
+    assert "must not contradict itself" in SUMMARY_PROMPT
 
 
 # --------------------------------------------------------------------------- 2. recuerdos con varios temas
