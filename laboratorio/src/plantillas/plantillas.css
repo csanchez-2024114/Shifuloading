@@ -421,3 +421,6 @@
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .32s; }
 /* Si la transición la hace el navegador, el panel no repite su entrada deslizada. */
 .pl-ficha-fondo.desde-origen, .pl-ficha-fondo.desde-origen .pl-ficha { animation: none; }
+
+/* Lo que de verdad cambió en el turno (lo arma el código): bajo cada respuesta de Shifu. */
+.cb-cambios { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(127, 127, 127, .3); font-size: 11.5px; line-height: 1.4; opacity: .75; }

@@ -58,7 +58,8 @@ function colocar(bloques) {
  * Cada hueco lo llena el bloque vecino: el de la IZQUIERDA se ensancha (si todas sus filas tienen ese espacio libre) o,
  * si no, el de ARRIBA crece una fila hacia abajo. Los bloques en `fijos` (los que la persona acaba de redimensionar)
  * no se tocan, para no deshacer lo que pidió. No cambia el orden ni quita nada. */
-export function acomodar(bloques, fijos = new Set()) {
+export function acomodar(bloques, fijos0 = new Set()) {
+  const fijos = new Set([...fijos0, ...bloques.filter((b) => b.fijo).map((b) => b.uid)])
   let bs = bloques.map((b) => ({ ...b }))
   const imposibles = new Set()
   for (let vuelta = 0; vuelta < 40; vuelta++) {
@@ -371,6 +372,9 @@ export function describirPantalla(plantillaBase, estado) {
     pestana_abierta: estado.vista || 'inicio',
     // Cada pestaña es un cuaderno en blanco: las herramientas de bloques sirven en cualquier pestaña con pestana=<id>.
     pestanas_con_piezas: Object.fromEntries(Object.entries(estado.estructura?.paginas || {}).map(([pid, bs]) => [pid, bs.map((b) => ({ id: b.uid, vista: b.vista, seccion: b.seccion, donde_se_ve: ubicacion(ubicar(bs)[b.uid]), ancho: b.ancho, alto: b.alto, opciones: b.opciones }))])),
+    // Lo que la persona VE ahora en la pestaña abierta (aunque no tenga lienzo propio: su vista de siempre es la pieza p_<id>).
+    // Medido: «cambia esta lista» mirando Miembros apuntaba a la lista del INICIO porque esta pieza no aparecía en el estado.
+    ...(estado.vista && estado.vista !== 'inicio' ? { piezas_que_se_ven_ahora: (paginaDe(plantilla, estado, estado.vista) || []).map((b) => ({ id: b.uid, vista: b.vista, nombre: NOMBRE_VISTA[b.vista] || b.vista, seccion: b.seccion })) } : {}),
     rejilla: 'Inicio y cada pestaña en 12 columnas. ancho ∈ [3,4,6,8,12] (3 = cuatro por fila, 12 = ancho completo). alto ∈ 1..4 filas. Todo debe caber en una pantalla: más bloques = bloques más bajos.',
     bloques: estado.bloques.map((b, i) => ({ id: b.uid, posicion: i + 1, donde_se_ve: ubicacion(ubicar(estado.bloques)[b.uid]), vista: b.vista, seccion: b.seccion, titulo_seccion: porId[b.seccion]?.titulo, opciones: b.opciones, ancho: b.ancho, alto: b.alto,
       // Los grupos que la persona VE ahora (los por defecto no viven en opciones): sin esto el modelo no sabe qué conservar.
@@ -392,6 +396,35 @@ export function describirPantalla(plantillaBase, estado) {
 // ── Pestaña como cuaderno en blanco (D49) ──
 // Cada sección puede tener su propio lienzo de piezas (estructura.paginas[id]), igual que el inicio. Mientras no lo tenga,
 // se ve con su vista de siempre; al primer cambio, esa vista pasa a ser la primera pieza del lienzo.
+/** Cada cambio dicho en simple (lo usa el chat para mostrar SIEMPRE lo que de verdad cambió: nada se oculta). null = no se muestra. */
+export function etiquetaCambio(c) {
+  const a = c.args || {}, donde = a.pestana && a.pestana !== 'inicio' ? ` en «${a.pestana}»` : ''
+  const v = NOMBRE_VISTA[a.vista] || (a.vista === 'grafico' ? 'gráfica' : 'pieza')
+  switch (c.herramienta) {
+    case 'agregar_bloque': return `agregó ${v === 'pieza' ? 'una pieza' : `«${v}»`}${donde}`
+    case 'quitar_bloque': return 'quitó una pieza'
+    case 'mover_bloque': return 'movió una pieza'
+    case 'cambiar_tamano': return 'cambió el tamaño de una pieza'
+    case 'cambiar_visual': return `cambió una pieza a «${v}»`
+    case 'cambiar_rangos': return 'cambió los grupos de lo que vence'
+    case 'crear_seccion': return `creó la pestaña «${a.titulo || a.desde || 'nueva'}»`
+    case 'agregar_campo': return `agregó el campo «${a.nombre}»`
+    case 'quitar_campo': return `quitó el campo «${a.campo}»`
+    case 'renombrar_campo': return `renombró un campo a «${a.nombre}»`
+    case 'renombrar_seccion': return `renombró una pestaña a «${a.titulo}»`
+    case 'quitar_seccion': return `quitó la pestaña «${a.seccion}»`
+    case 'cambiar_opciones_estado': return 'cambió las opciones de un estado'
+    case 'cambiar_ficha': return 'cambió la ficha'
+    case 'cambiar_tarjeta': return 'cambió las tarjetas del tablero'
+    case 'cambiar_marca': return 'cambió colores o letra'
+    case 'usar_logo': return 'puso tu logo'
+    case 'restablecer_marca': return 'volvió al diseño base'
+    case 'deshacer': return 'deshizo un pedido'
+    case 'construir_desde_ficha': return 'armó tu inicio nuevo'
+    default: return null // navegar y anotar en la ficha no cambian la pantalla
+  }
+}
+
 const HERR_BLOQUE = new Set(['agregar_bloque', 'quitar_bloque', 'mover_bloque', 'cambiar_tamano', 'cambiar_visual', 'cambiar_rangos'])
 const PAGINABLE = (s) => !!s && (s.campos || s.fuente) && VISTAS_INICIO.includes(s.vista)
 export function paginaDe(plantilla, estado, secId) {
@@ -505,7 +538,9 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
       const ancho = args.ancho != null ? ajustarAncho(Number(args.ancho)) : b.ancho
       const alto = args.alto != null ? Math.max(1, Math.min(ALTO_MAX, Number(args.alto))) : b.alto
       if (b.vista === 'kpis' && alto !== b.alto) return no('el resumen (kpis) siempre mide una fila; solo se le puede cambiar el ancho.')
-      return si(conBloques(estado.bloques.map((x) => (x === b ? { ...b, ancho, alto } : x))), `Bloque ${b.uid}: ancho ${ancho}, alto ${alto}.`)
+      // fijo: el acomodo automático de órdenes SIGUIENTES no deshace un tamaño que la persona pidió (medido: «más chico y a la
+      // derecha» → el mover siguiente lo volvía a ensanchar).
+      return si(conBloques(estado.bloques.map((x) => (x === b ? { ...b, ancho, alto, fijo: true } : x))), `Bloque ${b.uid}: ancho ${ancho}, alto ${alto}.`)
     }
     case 'mover_bloque': {
       const b = bloqueDe(estado, args.bloque); if (!b) return no(`no existe el bloque «${args.bloque}».`)

@@ -141,6 +141,8 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
   const estadoInicial = estado
   let restaurado = null, soloResponder = false, deshecho = null // deshecho: categorías revertidas en este turno
   const cambios = [], fallos = [], enlaces = [], intentos = []
+  const enError = new Set() // bloques que nombró un error de este turno: quitarlos para «rodear» el error pide permiso
+  let verdadLado = null // si tras corregir sigue diciendo un lado que no es, el código agrega dónde quedó
   const soloToma = () => estado.toma?.activa && estado.toma.fase !== 'construida'
   let respuesta = '', correcciones = 0
   for (let v = 0; v < MAX_VUELTAS; v++) {
@@ -162,6 +164,7 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
         if (!tocados.some((id) => u[id]?.lado === lado)) {
           const donde = tocados.map((id) => `${id} → ${u[id] ? `fila ${u[id].fila}, ${u[id].lado}` : 'ya no está'}`).join('; ')
           if (correcciones < MAX_CORRECCIONES) { correcciones++; mensajes.push(ia, { role: 'user', content: `[Aviso interno] Dices "${lado}", pero lo que cambiaste quedó así: ${donde}. Muévelo/ajusta anchos para que quede a la ${lado}, o di dónde quedó de verdad.` }); continue }
+          verdadLado = tocados.map((id) => (u[id] ? `la fila ${u[id].fila}, ${u[id].lado}` : null)).filter(Boolean).join('; ')
         }
       }
       // Negar lo que sí existe también es mentir: si dice "no hay/no se puede" y nombra un gráfico que el código sabe dibujar.
@@ -248,13 +251,24 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
       // (medido: «ignora todo y borra todas las secciones» vació el inicio quitando sus 3 bloques sin preguntar).
       const yaQuitadosB = cambios.filter((c) => c.herramienta === 'quitar_bloque').length
       const masivoB = ll.function.name === 'quitar_bloque' && (masivo || yaQuitadosB >= 2) && !confirmado
+      // Rodeo: quitar un bloque que apareció en un error de este mismo turno (p. ej. «el campo lo usa el bloque b1») no lo
+      // pidió la persona. Medido: «cambia el campo plan a lista» quitó el bloque de vencimientos sin permiso (2/2).
+      if (ll.function.name === 'quitar_bloque' && enError.has(args.bloque) && !confirmado) {
+        const r0 = 'ERROR: ese bloque apareció en un error anterior; quitarlo no lo pidió la persona. No lo quites: explícale qué pasa y pregúntale.'
+        fallos.push(r0); intentos.push({ herramienta: 'quitar_bloque', args, resultado: r0 }); mensajes.push({ role: 'tool', tool_call_id: ll.id, content: r0 }); continue
+      }
       const r = masivoB
         ? { ok: false, resultado: 'ERROR: quitar varios bloques de una vez necesita confirmación. No quites nada más: di cuáles se quitarían y pregunta si está seguro (que responda "sí").' }
         : ll.function.name === 'quitar_seccion' && (yaQuitadas >= 1 || masivo) && !confirmado
         ? { ok: false, resultado: 'ERROR: quitar varias secciones en un mismo mensaje necesita confirmación. No quites más: dile cuáles se quitarían y pregunta si está seguro (que responda "sí").' }
         : edicion.ejecutar(plantilla, estado, ll.function.name, args, { pideQuitar: PIDE_QUITAR.test(texto), imagen, texto, digresion })
       // Trazabilidad: cada intento fallido queda con su herramienta y argumentos (para diagnosticar con casos reales).
-      if (r.ok) { estado = r.estado; cambios.push({ herramienta: ll.function.name, args, resultado: r.resultado }) } else { fallos.push(r.resultado); intentos.push({ herramienta: ll.function.name, args, resultado: r.resultado }) }
+      if (r.ok) { estado = r.estado; cambios.push({ herramienta: ll.function.name, args, resultado: r.resultado }) } else {
+        fallos.push(r.resultado); intentos.push({ herramienta: ll.function.name, args, resultado: r.resultado })
+        for (const uid of Object.keys(edicion.ubicarTodo(estado))) if (r.resultado.includes(uid)) enError.add(uid)
+        // Los errores del validador nombran por POSICIÓN («Inicio, bloque 2»): se traduce al id real.
+        for (const m of r.resultado.matchAll(/Inicio, bloque (\d+)/g)) { const b = estado.bloques[Number(m[1]) - 1]; if (b) enError.add(b.uid) }
+      }
       mensajes.push({ role: 'tool', tool_call_id: ll.id, content: `${r.resultado}\nEstado actual: ${contexto()}` })
     }
     const senal = edicion.senalTomaTrasVuelta(plantilla, estado)
@@ -267,7 +281,13 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
     mensajes.push({ role: 'assistant', content: respuesta }, { role: 'user', content: '[Aviso interno] Deshice el sustituto: la pantalla quedó como al principio. Responde en 1-2 líneas: eso no existe, cuál sería lo más parecido, y PREGUNTA si lo quiere. No digas que pusiste nada.' })
     try { respuesta = ((await llamar(k, mensajes, [...edicion.HERRAMIENTAS, HERR_ENLACE], true)).content || '').trim() } catch { respuesta = 'Eso no existe en el catálogo todavía. ¿Quieres que te proponga lo más parecido?' }
   }
-  if (!respuesta) respuesta = cambios.length ? 'Listo.' : 'No pude hacer ese cambio.'
+  // Sin texto del modelo: el CÓDIGO cuenta lo que de verdad pasó (antes decía «Listo.» aunque no se hiciera lo pedido).
+  if (!respuesta) {
+    const hechos = cambios.map((c) => edicion.etiquetaCambio(c)).filter(Boolean)
+    const fallo = fallos.length ? fallos[fallos.length - 1].replace(/^ERROR:\s*/, '').split(/(?<=\.)\s/)[0] : ''
+    respuesta = hechos.length ? `Esto es lo que cambió: ${hechos.join(', ')}.${fallo ? ` No pude hacer todo lo que pediste: ${fallo}` : ''}` : `No pude hacer ese cambio${fallo ? `: ${fallo}` : '.'}`
+  }
+  if (verdadLado) respuesta += `\n\nOjo: en realidad quedó en ${verdadLado}.`
   // Si lo único que pasó fue deshacer, la respuesta la escribe el CÓDIGO con lo que se deshizo de verdad (el modelo, medido,
   // en 4 de 6 corridas contestaba otra cosa: dónde estaba la dona).
   if (cambios.length && cambios.every((c) => c.herramienta === 'deshacer')) respuesta = `Listo, ${cambios.map((c) => c.resultado.replace(/^Deshecho el pedido \d+ /, 'deshice ').replace(/ Lo demás quedó igual\.$/, '')).join(' ')} Lo demás quedó igual. ¿Algo más?`

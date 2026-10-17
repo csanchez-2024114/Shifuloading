@@ -9,7 +9,7 @@ import TextoChat from '@base/components/TextoChat'
 import { capturarRegion, imagenDeArchivo, SelectorCaptura } from '@base/components/CapturaPantalla'
 import { sugerenciasPara } from './sugerencias'
 import { capturarRegionLab, piezasEnRegion } from './captura'
-import { tarjetaToma } from './edicion.js'
+import { tarjetaToma, etiquetaCambio } from './edicion.js'
 
 let n = 0
 /** Colores dominantes de una imagen, MEDIDOS (no adivinados): se agrupan los píxeles visibles y se devuelven los hex más presentes. */
@@ -32,7 +32,7 @@ function paletaDe(url) {
     img.onerror = () => ok([]); img.src = url
   })
 }
-const mensaje = (de, t, imagen) => ({ id: `m${++n}`, de, t, imagen })
+const mensaje = (de, t, imagen, cambios) => ({ id: `m${++n}`, de, t, imagen, cambios })
 const SUGERENCIAS = [
   ['Diseño', 'Haz la gráfica más chica y ponla a la derecha'],
   ['Vencimientos', 'Quita "De 8 a 30" y pon "De 1 a 45"'],
@@ -123,7 +123,8 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
       if (d.estado) onEstado(d.estado)
       // Para revisar en el laboratorio: qué herramientas corrieron de verdad (lo que dice vs lo que hizo).
       console.info('[chat-lab]', { cambios: d.cambios, fallos: d.fallos })
-      setMensajes((l) => [...l, mensaje('shifu', d.respuesta)])
+      // Lo que de verdad cambió (lo arma el código, no la IA): se muestra siempre bajo la respuesta (nada se oculta).
+      setMensajes((l) => [...l, mensaje('shifu', d.respuesta, null, (d.cambios || []).map(etiquetaCambio).filter(Boolean))])
     } catch {
       setMensajes((l) => [...l, mensaje('shifu', 'No pude conectarme. Revisa que el laboratorio esté corriendo e inténtalo de nuevo.')])
     } finally { setEscribiendo(false) }
@@ -175,7 +176,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
               <div key={m.id} className={`cb ${m.de}`}>{m.de === 'shifu' && <ShifuAvatar size={26} />}
-                <div className="cb-t">{m.imagen && <img className="cb-img" src={m.imagen} alt="Captura enviada a Shifu" />}{m.de === 'shifu' ? <TextoChat texto={m.t} /> : m.t}</div></div>
+                <div className="cb-t">{m.imagen && <img className="cb-img" src={m.imagen} alt="Captura enviada a Shifu" />}{m.de === 'shifu' ? <TextoChat texto={m.t} /> : m.t}{m.cambios?.length > 0 && <small className="cb-cambios" title="Lo que cambió de verdad en tu CRM">Cambios: {m.cambios.join(' · ')}</small>}</div></div>
             ))}
             {escribiendo && <div className="cb shifu"><ShifuAvatar size={26} /><p className="puntos" aria-label="Shifu está escribiendo"><i /><i /><i /></p></div>}
             <div ref={fin} />
