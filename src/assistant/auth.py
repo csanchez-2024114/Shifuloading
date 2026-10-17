@@ -27,6 +27,25 @@ REGISTER_ERROR = "No se pudo crear la cuenta con esos datos."
 LOCKED_ERROR = "Demasiados intentos fallidos. Espera unos minutos y vuelve a intentarlo."
 PASSWORD_RULE = f"La contraseña debe tener al menos {MIN_PASSWORD_LEN} caracteres."
 
+# recuperación de contraseña (PASSWORD_RESET_ENABLED): misma respuesta exista o no el correo
+RESET_TTL = timedelta(minutes=30)
+RESET_LIMITS = {"email": 3, "ip": 10}  # solicitudes por ventana (LOGIN_LOCK_MINUTES); las de más se ignoran
+RESET_SENT = ("Si el correo está registrado, te enviamos un enlace para cambiar la contraseña. "
+              "Caduca en 30 minutos.")
+RESET_INVALID = "El enlace no es válido o ya caducó. Pide uno nuevo."
+RESET_DONE = "Contraseña cambiada. Ya puedes entrar con la nueva."
+RESET_SUBJECT = "Cambia tu contraseña de Agente 0"
+RESET_BODY = """Hola, {name}:
+
+Alguien (seguramente tú) pidió cambiar la contraseña de tu cuenta de Agente 0. Para elegir una nueva, abre este
+enlace en los próximos 30 minutos:
+
+{link}
+
+El enlace sirve una sola vez. Al cambiarla se cierran todas tus sesiones abiertas.
+Si no lo pediste, ignora este correo: tu contraseña sigue igual.
+"""
+
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -127,3 +146,37 @@ class AuthService:
 
     def check_password(self, user: dict, password: str) -> bool:
         return self._verify(user["password_hash"], password or "")
+
+    def request_reset(self, email: str, ip: str) -> tuple[dict, str] | None:
+        """(usuario, token del enlace) o None si el correo no existe o se pasó el límite de solicitudes. Solo vale el
+        último enlace pedido. Quien llama responde siempre lo mismo (RESET_SENT)."""
+        email = normalize_email(email)
+        now = datetime.now(timezone.utc)
+        keys = {"email": f"reset:email:{email}", "ip": f"reset:ip:{ip or 'desconocida'}"}
+        if any(self.data.attempts.failures_since(k, now - self.window) >= RESET_LIMITS[kind]
+               for kind, k in keys.items()):
+            return None
+        for k in keys.values():
+            self.data.attempts.record_failure(k, now)  # cuenta cada solicitud, exista o no el correo
+        user = self.data.users.get_by_email(email) if _EMAIL_RE.match(email) else None
+        if user is None or user.get("status") != "active":
+            return None
+        token = secrets.token_urlsafe(32)
+        self.data.resets.delete_for_user(user["user_id"])
+        self.data.resets.create(token_hash(token), user["user_id"], now + RESET_TTL)
+        return user, token
+
+    def reset_password(self, token: str, password: str) -> dict:
+        """Cambia la contraseña con un enlace válido (de un solo uso) y cierra todas las sesiones del usuario."""
+        if not isinstance(password, str) or not MIN_PASSWORD_LEN <= len(password) <= MAX_PASSWORD_LEN:
+            raise AuthError(400, PASSWORD_RULE)  # antes de gastar el enlace: un error de tecleo no lo invalida
+        row = self.data.resets.consume(token_hash(token)) if token else None
+        if row is None or row["expires_at"] <= datetime.now(timezone.utc):
+            raise AuthError(400, RESET_INVALID)
+        user = self.data.users.get(row["user_id"])
+        if user is None or user.get("status") != "active":
+            raise AuthError(400, RESET_INVALID)
+        self.data.users.set_password(user["user_id"], self.ph.hash(password))
+        self.data.sessions.delete_for_user(user["user_id"])
+        self.data.attempts.clear(f"email:{user['email']}")
+        return user

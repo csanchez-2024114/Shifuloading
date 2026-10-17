@@ -63,7 +63,7 @@ def app_ab(make_settings):
 def test_sin_sesion_todo_responde_401(make_settings):
     app, *_ = _app(make_settings)
     c = TestClient(app, headers=ORIGIN)
-    assert c.get("/auth/me").json() == {"auth_enabled": True, "user": None}
+    assert c.get("/auth/me").json() == {"auth_enabled": True, "password_reset": False, "user": None}
     for method, url in [("get", "/threads"), ("get", "/history/x"), ("get", "/threads/x/context"),
                         ("get", "/me/memories")]:
         assert getattr(c, method)(url).status_code == 401, url

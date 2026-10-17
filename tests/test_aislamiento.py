@@ -56,7 +56,7 @@ def test_ninguna_base_guarda_lo_de_la_otra(make_settings, mongo_client, mongo_ch
         assert "Summary of the OLDEST part" in ai["checkpoints"] + ai["checkpoint_writes"]  # hubo resumen
 
         negocio = _dump(mongo_client[APP_TEST_DB])
-        assert set(negocio) <= {"users", "sessions", "threads", "login_attempts", "login_locks"}
+        assert set(negocio) <= {"users", "sessions", "threads", "login_attempts", "login_locks", "password_resets"}
         for col, texto in negocio.items():
             for p in ["Tlacotalpan", "trompos", "relleno para que", "Summary of the OLDEST", "messages",
                       "memories", "Vive en", "buenos días, "]:
