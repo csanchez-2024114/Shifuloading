@@ -50,10 +50,11 @@ const MEDIR = `(() => {
       // La caja visible de cada línea: recortada por los contenedores con overflow (un texto con "…" no invade al vecino).
       const recortes = []; for (let e = n.parentElement; e && e !== b.parentElement; e = e.parentElement) if (getComputedStyle(e).overflow !== 'visible') recortes.push(e.getBoundingClientRect())
       for (const l of lineas) { let x = { left: l.left, right: l.right, top: l.top, bottom: l.bottom }; for (const r of recortes) x = { left: Math.max(x.left, r.left), right: Math.min(x.right, r.right), top: Math.max(x.top, r.top), bottom: Math.min(x.bottom, r.bottom) }; if (x.right - x.left > 1 && x.bottom - x.top > 1) textos.push({ x, n }) }
-      // Palabra partida: una palabra (de 4+ letras) que quedó repartida en 2 líneas.
+      // Palabra partida: una palabra (de 4+ letras) que quedó repartida en 2 líneas. El corte después de un guion
+      // («e-commerce», «FAC-2024-089») es tipografía normal: el guion separa palabras.
       if (lineas.length > 1 && !fallas.some((f) => f.tipo === 'partida')) {
         const t = n.textContent; let i = 0
-        for (const w of t.split(/(\\s+)/)) { if (w.trim().length >= 4) { const r2 = document.createRange(); r2.setStart(n, i); r2.setEnd(n, i + w.length); const rs = [...r2.getClientRects()].filter((x) => x.width > 1); if (rs.length > 1 && Math.abs(rs[0].top - rs[rs.length - 1].top) > 2) { fallas.push({ tipo: 'partida', t: w.slice(0, 20) }); break } } i += w.length }
+        for (const w of t.split(/(\\s+|-)/)) { if (w.trim().length >= 4) { const r2 = document.createRange(); r2.setStart(n, i); r2.setEnd(n, i + w.length); const rs = [...r2.getClientRects()].filter((x) => x.width > 1); if (rs.length > 1 && Math.abs(rs[0].top - rs[rs.length - 1].top) > 2) { fallas.push({ tipo: 'partida', t: w.slice(0, 20) }); break } } i += w.length }
       }
     }
     for (let i = 0; i < textos.length && !fallas.some((f) => f.tipo === 'encimado'); i++) for (let j = i + 1; j < textos.length; j++) {

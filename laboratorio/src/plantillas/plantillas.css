@@ -317,7 +317,7 @@
 
 /* ── Piezas a prueba de todo (D37): reaccionan al ancho de SU BLOQUE (container queries), no al de la pantalla.
  * Lo mide servidor/estres.mjs: cada pieza × 4 tamaños × datos extremos (vacío, 1, 220, nombres larguísimos o de 1 letra). */
-.pl-bloque { container: bloque / inline-size; }
+.pl-bloque, .pl-seccion { container: bloque / inline-size; }
 /* Las píldoras de estado nunca invaden la columna vecina: se recortan con "…" (el texto completo queda en title). */
 .pl-pildora { max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
 .pl-tabla-fila > span { overflow-wrap: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
@@ -325,6 +325,12 @@
 .pl-kpis { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
 .pl-agenda { grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); }
 .pl-venc { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
+/* Tablas con muchas columnas: cada columna mide al menos 110px; si no caben, la tabla se desplaza de lado dentro de su
+ * bloque (antes «Participantes» se partía en una columna de 60px). Los encabezados se recortan con «…» (title completo). */
+.pl-tabla-marco { overflow-x: auto; overscroll-behavior-x: contain; }
+.pl-tabla { min-width: min-content; }
+.pl-tabla-fila { grid-template-columns: repeat(var(--n), minmax(110px, 1fr)); }
+.pl-tabla-cab > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Bloque angosto: la tabla pasa a tarjetas (etiqueta: valor) y los KPIs a una franja que se desliza. */
 @container bloque (max-width: 420px) {
   .pl-tabla { border: 0; display: grid; gap: 8px; }

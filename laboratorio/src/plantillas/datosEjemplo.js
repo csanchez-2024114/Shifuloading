@@ -57,7 +57,9 @@ export function datosEjemplo(plantilla, nivel = 'pocos') {
     registros[s.id] = Array.from({ length: n }, (_, i) => {
       const valores = Object.fromEntries(s.campos.map((c) => [c.id, valor(c, r)]))
       // Coherencia: una campaña termina DESPUÉS de empezar (antes salían 44 con fin < inicio y la línea de tiempo no los dibujaba).
-      if (valores.inicio && valores.fin && valores.fin < valores.inicio) {
+      // Solo si los dos son FECHAS (en Turnos «inicio» y «fin» son horas: tratarlas como fecha daba «NaN-NaN-NaN»).
+      const esFecha = (id) => s.campos.some((c) => c.id === id && c.tipo === 'fecha')
+      if (esFecha('inicio') && esFecha('fin') && valores.inicio && valores.fin && valores.fin < valores.inicio) {
         const d = new Date(`${valores.inicio}T00:00:00`); d.setDate(d.getDate() + 3 + Math.floor(r() * 28)); valores.fin = isoDia(d)
       }
       // Marcado como ejemplo: «Borrar ejemplos» quita SOLO estos y nunca un registro real (riesgo visto en Airtable).

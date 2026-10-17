@@ -235,7 +235,7 @@ export function prepararTurnoToma(estado, texto) {
     // Objetivo = lo que viene después de "para …" ("diséñame un inicio para controlar mis cobros" → "controlar mis cobros"), sin lo que ya son bloques.
     const obj = (String(texto).match(/\bpara\s+([^:.;]+)/i)?.[1] || '').trim().slice(0, 120)
     e = { ...e, toma: { ...tomaVacia(), activa: true, fase: 'juntando', ficha: { ...tomaVacia().ficha, objetivo: obj } } }
-    return { estado: e, aviso: 'El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_ficha SOLO lo que la persona dijo en este mensaje (bloques: qué ver y de qué sección; marca si la dijo) y luego haz la pregunta de FALTA.', digresion: false }
+    return { estado: e, aviso: 'El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_bloque (una llamada por cada cosa) SOLO lo que la persona dijo en este mensaje que quiere ver, y anotar_ficha solo para marca o restricciones si las dijo; luego haz la pregunta de FALTA.', digresion: false }
   }
   const t = e.toma
   if (!t.activa) return { estado: e, aviso: null, digresion: false }

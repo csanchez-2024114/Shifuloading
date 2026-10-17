@@ -175,7 +175,9 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
       if (estado.toma?.activa && estado.toma.fase !== 'construida' && correcciones < MAX_CORRECCIONES) {
         const pedidas = new Set((texto.toLowerCase().match(/(resumen|gr[aá]fica|dona|barras|columnas|l[ií]nea|pastel|lista|tablero|agenda|por vencer|vencimientos|embudo)/g) || []).map((x) => (['dona', 'barras', 'columnas', 'línea', 'linea', 'pastel', 'embudo'].includes(x) ? 'gráfica' : x.replace('grafica', 'gráfica'))))
         const anotadas = cambios.filter((c) => c.herramienta === 'anotar_bloque').length
-        if (anotadas > 0 && anotadas < pedidas.size) { correcciones++; mensajes.push(ia, { role: 'user', content: `[Aviso del código] En este mensaje pidió ${pedidas.size} cosas (${[...pedidas].join(', ')}) y anotaste ${anotadas}. Anota con anotar_bloque las que faltan.` }); continue }
+        // También con 0 anotadas: si nombró piezas concretas y no anotó ninguna, se le pide (medido: «diséñame un inicio con una
+        // lista, un tablero y lo que vence» quedaba con la ficha vacía). Solo cuenta lo que escribió: no empuja a inventar.
+        if (pedidas.size > 0 && anotadas < pedidas.size) { correcciones++; mensajes.push(ia, { role: 'user', content: `[Aviso del código] En este mensaje pidió ${pedidas.size} cosas (${[...pedidas].join(', ')}) y anotaste ${anotadas}. Anota con anotar_bloque las que faltan.` }); continue }
       }
       if (!soloToma() && PROMESA.test(respuesta)) aviso = '[Aviso interno] No anuncies: hazlo ahora con las herramientas, o pregunta solo el dato que falta.'
       else if (!soloToma() && LOGRO.test(respuesta) && !cambios.length) aviso = `[Aviso interno] Dices que hiciste un cambio, pero ninguna herramienta cambió la pantalla${fallos.length ? ` (fallaron: ${fallos.slice(-2).join(' | ')})` : ''}. Llama a la herramienta o di la verdad.`

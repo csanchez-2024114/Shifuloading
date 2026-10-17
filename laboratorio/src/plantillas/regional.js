@@ -38,7 +38,8 @@ function crear(pais) {
     numeroCorto: (n) => escala(n),
     pct: (f) => pct.format(f),
     fecha: (iso) => { const d = new Date(`${iso}T00:00:00`); return (d.getFullYear() === new Date().getFullYear() ? fecha : fechaAnio).format(d).replace('.', '') },
-    hora: (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); const d = new Date(); d.setHours(h, m || 0, 0, 0); return hora.format(d) },
+    // Un valor que no es hora (dato mal escrito) se muestra tal cual en vez de tumbar la pantalla.
+    hora: (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); if (!Number.isFinite(h) || h < 0 || h > 23) return String(hhmm ?? ''); const d = new Date(); d.setHours(h, m || 0, 0, 0); return hora.format(d) },
   }
 }
 
