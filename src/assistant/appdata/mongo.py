@@ -91,6 +91,9 @@ class MongoThreads:
             self.col.update_one({"thread_id": thread_id, "title": ""}, {"$set": {"title": title}})
         self.col.update_one({"thread_id": thread_id}, {"$set": update})
 
+    def rename(self, thread_id, title):
+        self.col.update_one({"thread_id": thread_id}, {"$set": {"title": title}})
+
     def list_for_user(self, user_id):
         return [_doc(d) for d in self.col.find({"user_id": user_id}).sort("last_activity", pymongo.DESCENDING)]
 

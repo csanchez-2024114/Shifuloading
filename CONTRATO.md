@@ -195,10 +195,11 @@ empiezan con `:`.
 | POST | `/auth/delete-account` | body `{"password"}` → borra usuario, sesiones, conversaciones (IA y negocio) y memoria global; 401 si la contraseña no es correcta |
 | GET | `/threads` | `{"threads": [{"thread_id", "title", "created_at", "last_activity"}]}` del usuario de la sesión |
 | POST | `/threads` | crea una conversación a su nombre: `{"thread_id", "title": ""}` |
+| PATCH | `/threads/{thread_id}` | body `{"title"}` → `{"thread_id", "title"}`; renombra (espacios colapsados, 1 a 80 caracteres, si no 400). Solo cambia la fila de negocio, sin modelo |
 | DELETE | `/threads/{thread_id}` | borra sus checkpoints (IA) y su fila (negocio) |
 | GET / DELETE | `/me/memories`, `/me/memories/{key}` | recuerdos del usuario de la sesión |
 
-Con `AUTH_ENABLED=1`: sin sesión, 401. Las peticiones que cambian estado (POST/DELETE con sesión) exigen `Origin` o `Referer` de la misma página y la cabecera `X-CSRF-Token` (si no, 403). Un hilo ajeno o inexistente responde **404** en `/chat`, `/resume`, `/history`, `/threads/{id}/context`, `/threads/{id}/compact` y `DELETE /threads/{id}`. El `user_id` del body de `/chat` y `/resume` se ignora: sale de la sesión. Las rutas `/memories/{user_id}` solo existen con `AUTH_ENABLED=0`.
+Con `AUTH_ENABLED=1`: sin sesión, 401. Las peticiones que cambian estado (POST/PATCH/DELETE con sesión) exigen `Origin` o `Referer` de la misma página y la cabecera `X-CSRF-Token` (si no, 403). Un hilo ajeno o inexistente responde **404** en `/chat`, `/resume`, `/history`, `/threads/{id}/context`, `/threads/{id}/compact`, `PATCH /threads/{id}` y `DELETE /threads/{id}`. El `user_id` del body de `/chat` y `/resume` se ignora: sale de la sesión. Las rutas `/memories/{user_id}` solo existen con `AUTH_ENABLED=0`.
 
 `server.create_app(agent=None) -> FastAPI`: si recibe `agent`, NO hace chequeos de arranque (para tests).
 `server.app` se crea perezosamente (al pedirlo uvicorn); ahí corren `memory.startup_checks` y un `ConfigError` se imprime sin traceback y sale con código 1.

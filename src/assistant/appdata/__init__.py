@@ -7,6 +7,15 @@ TITLE_WORDS = 6
 TITLE_CHARS = 48
 
 
+MAX_TITLE_CHARS = 80
+
+
+def clean_title(title: str) -> str | None:
+    """Título puesto por el usuario: espacios colapsados, 1 a MAX_TITLE_CHARS caracteres. None si no vale."""
+    title = " ".join((title or "").split())
+    return title if 0 < len(title) <= MAX_TITLE_CHARS else None
+
+
 def thread_title(text: str) -> str:
     """Título de una conversación: las primeras palabras de su primer mensaje (sin llamar al modelo)."""
     words = (text or "").split()

@@ -191,3 +191,37 @@ def test_sin_cuentas_todo_sigue_como_antes(make_settings):
     assert c.get("/auth/me").json() == {"auth_enabled": False}
     assert c.get("/memories/usuario").status_code == 200
     assert c.post("/auth/login", json={"email": "a@b.co", "password": PW}).status_code == 404
+
+
+def test_renombrar_conversacion_solo_el_dueno(app_ab, make_settings):
+    app, agent, appdata, store, a, b = app_ab
+    tid = a.post("/threads").json()["thread_id"]
+    _chat(a, tid, "hola, primer mensaje")
+    r = a.patch(f"/threads/{tid}", json={"title": "  Viaje   a Oaxaca "})
+    assert r.status_code == 200 and r.json() == {"thread_id": tid, "title": "Viaje a Oaxaca"}
+    assert a.get("/threads").json()["threads"][0]["title"] == "Viaje a Oaxaca"
+    assert a.patch(f"/threads/{tid}", json={"title": "x" * 81}).status_code == 400
+    assert a.patch(f"/threads/{tid}", json={"title": "   "}).status_code == 400
+    assert a.patch(f"/threads/{tid}", json={"title": "x" * 80}).status_code == 200
+    # otro usuario o un hilo inexistente: 404, y el título no cambia
+    assert b.patch(f"/threads/{tid}", json={"title": "mío"}).status_code == 404
+    assert b.patch("/threads/no-existe", json={"title": "mío"}).status_code == 404
+    assert appdata.threads.get(tid)["title"] == "x" * 80
+    # sin cabecera CSRF: 403
+    sin_csrf = TestClient(app, headers=ORIGIN, cookies=a.cookies)
+    assert sin_csrf.patch(f"/threads/{tid}", json={"title": "y"}).status_code == 403
+    # el siguiente mensaje no pisa el título puesto por el usuario
+    _chat(a, tid, "otro mensaje")
+    assert appdata.threads.get(tid)["title"] == "x" * 80
+
+
+def test_renombrar_no_existe_sin_cuentas(make_settings):
+    from assistant.agent import build_agent
+    from assistant.server import create_app
+    from assistant.tools import build_tools
+
+    s = make_settings()
+    llm = Eco(messages=iter([]))
+    agent = build_agent(llm, build_tools(llm, s, search_fn=FakeSearch()), s, checkpointer=InMemorySaver())
+    c = TestClient(create_app(agent=agent, settings=s, store=InMemoryStore()), headers=ORIGIN)
+    assert c.patch("/threads/x", json={"title": "y"}).status_code == 404

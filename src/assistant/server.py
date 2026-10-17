@@ -17,7 +17,7 @@ from assistant import agent as agent_mod
 from assistant import ai_data
 from assistant import context as context_mod
 from assistant import memory
-from assistant.appdata import thread_title
+from assistant.appdata import MAX_TITLE_CHARS, clean_title, thread_title
 from assistant.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
 from assistant.config import ROOT, ConfigError, Settings
 
@@ -51,6 +51,10 @@ class LoginIn(BaseModel):
 
 class PasswordIn(BaseModel):
     password: str
+
+
+class RenameIn(BaseModel):
+    title: str
 
 
 def _build_real_agent(settings: Settings):
@@ -315,6 +319,18 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         user = _changing(request)
         row = appdata.threads.create(uuid.uuid4().hex, user["user_id"])
         return {"thread_id": row["thread_id"], "title": ""}
+
+    @app.patch("/threads/{thread_id}")
+    def rename_thread(thread_id: str, body: RenameIn, request: Request):
+        """Renombra la conversación (solo el dueño). Solo cambia la fila de negocio; no llama al modelo."""
+        _require_auth()
+        user = _changing(request)
+        _owned(user, thread_id)
+        title = clean_title(body.title)
+        if title is None:
+            raise HTTPException(400, f"El título debe tener entre 1 y {MAX_TITLE_CHARS} caracteres.")
+        appdata.threads.rename(thread_id, title)
+        return {"thread_id": thread_id, "title": title}
 
     @app.delete("/threads/{thread_id}")
     def delete_thread(thread_id: str, request: Request):

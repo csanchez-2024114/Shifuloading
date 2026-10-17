@@ -307,6 +307,7 @@ textarea#input:disabled { opacity: .6; }
       <div class="tid">hilo <span id="threadid"></span></div>
     </div>
     <button id="newbtn" class="btn" type="button" aria-label="Nueva conversación"><span class="long">Nueva conversación</span><span class="short" aria-hidden="true">+ Nueva</span></button>
+    <button id="renthreadbtn" class="btn auth-only" type="button" aria-label="Renombrar conversación" title="Renombrar esta conversación">✎</button>
     <button id="delthreadbtn" class="btn auth-only" type="button" aria-label="Borrar conversación" title="Borrar esta conversación">🗑</button>
     <button id="membtn" class="btn" type="button" aria-expanded="false" aria-controls="memories" aria-label="Recuerdos" title="Recuerdos guardados">🧠</button>
     <button id="setbtn" class="btn" type="button" aria-expanded="false" aria-controls="settings" aria-label="Ajustes" title="Ajustes">&#9881;&#xFE0E;</button>
@@ -1430,6 +1431,24 @@ textarea#input:disabled { opacity: .6; }
   $("logoutbtn").addEventListener("click", async function () {
     try { await apiFetch("/auth/logout", { method: "POST" }); } catch (e) { /* ignore */ }
     location.href = location.pathname;  // sin ?thread: nada de la sesión anterior queda a la vista
+  });
+  $("renthreadbtn").addEventListener("click", async function () {
+    if (state.streaming || state.pending || !state.threadId) return;
+    var id = state.threadId, cur = state.threads.filter(function (t) { return t.id === id; })[0];
+    var title = prompt("Nuevo nombre de la conversación (máximo 80 caracteres):", cur ? cur.title : "");
+    if (title === null) return;
+    title = title.replace(/\s+/g, " ").trim();
+    if (!title || title.length > 80) { messagesEl.appendChild(el("div", "sys", "El nombre debe tener entre 1 y 80 caracteres.")); return; }
+    var r = null;
+    try {
+      r = await apiFetch("/threads/" + encodeURIComponent(id), {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: title })
+      });
+    } catch (e) { /* ignore */ }
+    if (!r || !r.ok) { messagesEl.appendChild(el("div", "sys", "No pude renombrar la conversación.")); return; }
+    var data = await r.json();
+    state.threads.forEach(function (t) { if (t.id === id) t.title = data.title; });
+    renderThreadSelect();
   });
   $("delthreadbtn").addEventListener("click", async function () {
     if (state.streaming || state.pending || !state.threadId) return;

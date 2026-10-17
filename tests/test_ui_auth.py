@@ -80,7 +80,7 @@ def _options(page):
 def test_registro_chat_salir_entrar_y_aislamiento(base_url, browser):
     ctx_a = browser.new_context()
     a = ctx_a.new_page()
-    a.on("dialog", lambda d: d.accept())
+    a.on("dialog", lambda d: d.accept("  Viaje a   Oaxaca ") if d.type == "prompt" else d.accept())
     a.goto(base_url)
     assert a.is_visible("#authview") and not a.is_visible("#composer")  # sin sesión no se ve el chat
     _register(a, "Ana", "ana@ejemplo.com")
@@ -122,6 +122,14 @@ def test_registro_chat_salir_entrar_y_aislamiento(base_url, browser):
     assert hilo_a not in _options(b) and "hola desde Ana" not in b.inner_text("#messages")
     assert b.request.get(base_url + f"history/{hilo_a}").status == 404
     assert b.request.get(base_url + f"threads/{hilo_a}/context").status == 404
+
+    # renombrar desde la lista de conversaciones: el nombre se guarda en el servidor y sobrevive a recargar
+    a.click("#renthreadbtn")
+    a.wait_for_function("() => document.querySelector('#thread').selectedOptions[0].textContent.startsWith('Viaje a Oaxaca')")
+    assert a.request.get(base_url + "threads").json()["threads"][0]["title"] == "Viaje a Oaxaca"
+    a.reload()
+    a.wait_for_function("() => (document.querySelector('#thread').selectedOptions[0] || {}).textContent?.startsWith('Viaje a Oaxaca')")
+    assert b.request.patch(base_url + f"threads/{hilo_a}", data={"title": "mío"}).status in (403, 404)
 
     # borrar la conversación (con confirmación)
     a.click("#delthreadbtn")

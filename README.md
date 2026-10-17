@@ -336,6 +336,7 @@ Seguridad:
 - Sesión del lado del servidor: token `secrets.token_urlsafe(32)` en una cookie `HttpOnly`, `SameSite=Lax` (y `Secure` con https); en la base solo su hash.
 - CSRF: las peticiones que cambian estado exigen un `Origin`/`Referer` de la misma página **y** la cabecera `X-CSRF-Token` (derivada del token de sesión, la entrega `/auth/me`).
 - Propiedad: chat, reanudar, historial, medidor, compactar y borrar comprueban que el hilo es del usuario de la sesión; si no, **404** (no 403, para no revelar que existe). Los recuerdos se leen y borran en `/me/memories`.
+- Renombrar una conversación (botón ✎ junto a la lista) cambia solo su título en negocio: máximo 80 caracteres, solo el dueño (404 si no es suya), sin llamar al modelo. El título automático (primeras palabras del primer mensaje) ya no lo pisa.
 - Borrar una conversación borra sus checkpoints en la IA y su fila en negocio. Borrar la cuenta (con la contraseña) borra el usuario, sus sesiones, sus conversaciones y toda su memoria global.
 - **Pendiente:** recuperación de contraseña por correo (no hay servicio de correo).
 

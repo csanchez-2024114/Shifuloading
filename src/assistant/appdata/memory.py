@@ -71,6 +71,10 @@ class _Threads:
             if title and not row["title"]:
                 row["title"] = title
 
+    def rename(self, thread_id, title):
+        if thread_id in self.rows:
+            self.rows[thread_id]["title"] = title
+
     def list_for_user(self, user_id):
         return sorted((dict(t) for t in self.rows.values() if t["user_id"] == user_id),
                       key=lambda t: t["last_activity"], reverse=True)

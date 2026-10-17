@@ -146,3 +146,16 @@ def test_csrf_derivado_del_token():
     from assistant.auth import csrf_for, csrf_ok
 
     assert csrf_ok("tok", csrf_for("tok")) and not csrf_ok("tok", csrf_for("otro")) and not csrf_ok("tok", None)
+
+
+def test_renombrar_hilo_en_el_repositorio_y_titulo_normalizado(appdata):
+    from assistant.appdata import MAX_TITLE_CHARS, clean_title
+
+    assert clean_title("  Viaje   a\nOaxaca ") == "Viaje a Oaxaca"
+    assert clean_title("x" * MAX_TITLE_CHARS) == "x" * 80
+    assert clean_title("x" * 81) is None and clean_title("   ") is None and clean_title("") is None
+    appdata.threads.create("t1", "u1", "primeras palabras")
+    appdata.threads.rename("t1", "Viaje a Oaxaca")
+    assert appdata.threads.get("t1")["title"] == "Viaje a Oaxaca"
+    appdata.threads.touch("t1", "otro título automático")  # el automático no pisa el puesto por el usuario
+    assert appdata.threads.get("t1")["title"] == "Viaje a Oaxaca"
