@@ -184,7 +184,8 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
         thread_id, messages = _thread_messages(checkpointer)
         return memory.remember(memories_store, _ctx("user_id", "anon"), text, evidence, memory.user_texts(messages),
                                thread_id=thread_id, verifier=verifier, saved_this_turn=memory.turn_saves(messages),
-                               max_per_turn=settings.memory_max_per_turn)
+                               max_per_turn=settings.memory_max_per_turn, dedup=settings.memory_dedup,
+                               dedup_score=settings.memory_dedup_score)
 
     @tool("search_memories", description=BUSCAR_RECUERDOS_DOC)
     def buscar_recuerdos(query: str) -> str:

@@ -314,12 +314,46 @@ def _provenance(text: str, quote: str, texts: list[str], verifier) -> tuple[str,
     return evidence, ("quoted" if evidence else "unverified")
 
 
+DUPLICATE_MSG = ("Not run: an equivalent memory already exists (id: {key}): \"{text}\". Do not save it again. If "
+                 "the fact changed, call update_memory with that id and the new value.")
+DEDUP_MIN_STEMS = 2         # un recuerdo con menos palabras con contenido no se compara por palabras
+DEDUP_CONTAINMENT = 0.8     # parte de las raíces del más corto que deben estar en el otro
+
+
+def _fact_stems(text: str) -> set[str]:
+    # modo consulta en los dos lados: así "toma té verde" y "Toma té verde; dejó el café" comparten la raíz de
+    # "toma" aunque una vaya en mayúscula (en modo recuerdo, la mayúscula solo vale como palabra completa)
+    return {s for s in content_stems(neutral_fact(text), query=True) if not s.startswith("=")}
+
+
+def find_duplicate(store, user_id: str, text: str, min_score: float = 0.85) -> tuple[str, str] | None:
+    """(key, texto) de un recuerdo del usuario con la misma información que `text`, o None. Por palabras: las raíces
+    del más corto están casi todas en el otro. Con búsqueda semántica, también por puntuación (≥ `min_score`)."""
+    new = _fact_stems(text)
+    items = [i for i in store.search(memory_namespace(user_id), limit=_SEARCH_WINDOW)
+             if (getattr(i, "value", None) or {}).get("text")]
+    for i in items:
+        old = _fact_stems(i.value["text"])
+        small = min(new, old, key=len)
+        if len(small) >= DEDUP_MIN_STEMS and len(new & old) / len(small) >= DEDUP_CONTAINMENT:
+            return i.key, i.value["text"]
+    if getattr(store, "index_config", None) and text.strip():
+        for i in store.search(memory_namespace(user_id), query=text, limit=3):
+            if (i.value or {}).get("text") and i.score is not None and i.score >= min_score:
+                return i.key, i.value["text"]
+    return None
+
+
 def remember(store, user_id: str, text: str, quote: str, texts: list[str], *,
-             thread_id: str | None = None, verifier=None, saved_this_turn: int = 0, max_per_turn: int = 0) -> str:
+             thread_id: str | None = None, verifier=None, saved_this_turn: int = 0, max_per_turn: int = 0,
+             dedup: bool = False, dedup_score: float = 0.85) -> str:
     """Lógica común de save_memory (agente normal y bigtool). Devuelve el mensaje para el agente.
-    `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope."""
+    `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope.
+    `dedup` (MEMORY_DEDUP): no guarda un dato equivalente a uno existente; sugiere update_memory con su id."""
     if max_per_turn and saved_this_turn >= max_per_turn:
         return TURN_LIMIT_MSG.format(limit=max_per_turn)
+    if dedup and (dup := find_duplicate(store, user_id, text, dedup_score)):
+        return DUPLICATE_MSG.format(key=dup[0], text=dup[1])
     prov = _provenance(text, quote, texts, verifier)
     if prov is None:
         return ("Not saved: the user never stated this in the conversation. Do not save assumptions; "

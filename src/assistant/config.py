@@ -49,6 +49,8 @@ class Settings:
     compact_model: str = ""             # modelo del resumen; "" = LLM_MODEL
     memory_save_policy: str = "strict"  # strict: solo datos puntuales del usuario; broad: política anterior
     memory_max_per_turn: int = 3        # recuerdos guardados por mensaje; 0 = sin tope
+    memory_dedup: bool = False          # save_memory rechaza un dato equivalente a uno existente
+    memory_dedup_score: float = 0.85    # con MEMORY_SEMANTIC: puntuación desde la que dos recuerdos son el mismo
     memory_verify: bool = False         # verifica con el LLM que un recuerdo lo dijo el usuario antes de guardarlo
     answer_verify: bool = False         # segundo paso que contrasta la respuesta con lo buscado en la web
     memory_min_score: float = 0.68      # búsqueda semántica (Atlas): puntuación mínima; calibrado, ver README
@@ -95,6 +97,8 @@ class Settings:
             compact_model=os.getenv("COMPACT_MODEL", "").strip(),
             memory_save_policy=os.getenv("MEMORY_SAVE_POLICY", "strict").strip().lower(),
             memory_max_per_turn=int(os.getenv("MEMORY_MAX_PER_TURN", "3")),
+            memory_dedup=_bool("MEMORY_DEDUP"),
+            memory_dedup_score=float(os.getenv("MEMORY_DEDUP_SCORE", "0.85")),
             memory_verify=_bool("MEMORY_VERIFY"),
             answer_verify=_bool("ANSWER_VERIFY"),
             memory_min_score=float(os.getenv("MEMORY_MIN_SCORE", "0.68")),

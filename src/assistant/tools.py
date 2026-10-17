@@ -165,9 +165,11 @@ def save_memory_doc(policy: str = "strict") -> str:
     return GUARDAR_RECUERDO_DOC if policy == "broad" else GUARDAR_RECUERDO_STRICT_DOC
 
 
-def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: int = 0) -> BaseTool:
+def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: int = 0, dedup: bool = False,
+                          dedup_score: float = 0.85) -> BaseTool:
     """`verifier` (MEMORY_VERIFY): (candidato, textos_usuario) -> (respaldado, cita); None = sin verificar.
-    `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope."""
+    `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope.
+    `dedup` (MEMORY_DEDUP): rechaza datos equivalentes a uno existente."""
 
     @tool("save_memory", description=save_memory_doc(policy))
     def guardar_recuerdo(text: str, runtime: ToolRuntime[Context], evidence: str = "") -> str:
@@ -177,7 +179,7 @@ def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: i
         return memory.remember(runtime.store, runtime.context.user_id, text, evidence, texts,
                                thread_id=thread_id, verifier=verifier,
                                saved_this_turn=memory.turn_saves(messages, runtime.tool_call_id),
-                               max_per_turn=max_per_turn)
+                               max_per_turn=max_per_turn, dedup=dedup, dedup_score=dedup_score)
 
     return guardar_recuerdo
 
@@ -633,7 +635,8 @@ def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, 
         calculadora,
         fecha_hora,
         check_python_syntax,
-        make_guardar_recuerdo(verifier, settings.memory_save_policy, settings.memory_max_per_turn),
+        make_guardar_recuerdo(verifier, settings.memory_save_policy, settings.memory_max_per_turn,
+                              settings.memory_dedup, settings.memory_dedup_score),
         make_buscar_recuerdos(settings.memory_min_score),
         make_actualizar_recuerdo(verifier),
         make_investigador(model, settings, search_fn),
