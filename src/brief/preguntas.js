@@ -6,10 +6,10 @@ const o = (v, e, t, d) => ({ v, e, t, d })
 
 export const PREGUNTAS = [
   // ───────── 1 · Tu negocio ─────────
-  { id: 'nombre', capitulo: 'Tu negocio', emoji: '👋', tipo: 'texto', requerido: true,
-    titulo: '¡Te damos la bienvenida a Shifu! ¿Cómo se llama tu negocio?',
-    sub: 'Con eso empezamos a armar tu CRM a tu medida.', placeholder: 'Por ejemplo: Estudio Aurora' },
-  { id: 'ubicacion', capitulo: 'Tu negocio', emoji: '🌎', tipo: 'ubicacion',
+  { id: 'nombre', capitulo: 'Para empezar', emoji: '👋', tipo: 'texto', requerido: true,
+    titulo: '¡Te damos la bienvenida a Shifu! ¿Cómo se llama tu negocio o proyecto?',
+    sub: 'Puede ser un negocio, un equipo, un club o algo tuyo. Con eso empezamos.', placeholder: 'Por ejemplo: Estudio Aurora' },
+  { id: 'ubicacion', capitulo: 'Para empezar', emoji: '🌎', tipo: 'ubicacion',
     titulo: (r) => `Mucho gusto${r.nombre ? `, ${r.nombre}` : ''}. ¿Desde dónde trabajas?`,
     sub: 'Nos ayuda a sugerirte moneda, impuestos y horarios.',
     opciones: [o('gt', '🇬🇹', 'Guatemala'), o('mx', '🇲🇽', 'México'), o('co', '🇨🇴', 'Colombia'), o('es', '🇪🇸', 'España'), o('us', '🇺🇸', 'Estados Unidos'), o('otro', '🌍', 'Otro país')] },
@@ -17,9 +17,9 @@ export const PREGUNTAS = [
     titulo: '¿A qué se dedica tu negocio?', sub: 'Elige el que más se parezca: así te sugerimos etapas y campos.',
     opciones: [o('servicios', '💼', 'Servicios profesionales'), o('agencia', '🎨', 'Agencia o estudio creativo'), o('comercio', '🛍️', 'Comercio y retail'), o('salud', '🩺', 'Salud y bienestar'),
       o('educacion', '🎓', 'Educación'), o('tecnologia', '💻', 'Tecnología'), o('inmobiliaria', '🏠', 'Inmobiliaria y construcción'), o('otro', '✨', 'Otro')] },
-  { id: 'que_vendes', capitulo: 'Tu negocio', emoji: '🧺', tipo: 'parrafo', requerido: true,
-    titulo: 'En una frase: ¿qué vendes o qué servicio das?', sub: 'Con tus palabras. Es lo que más nos ayuda a armar un CRM distinto al de cualquier otro negocio.',
-    placeholder: 'Por ejemplo: pan y pasteles por encargo para fiestas' },
+  { id: 'que_vendes', capitulo: 'Para empezar', emoji: '💬', tipo: 'parrafo', requerido: true,
+    titulo: 'Cuéntame con tus palabras: ¿a qué te dedicas y qué quieres tener en orden?', sub: 'Como si se lo contaras a un amigo. No tiene que ser perfecto: es lo que más me ayuda a armar algo hecho para ti.',
+    placeholder: 'Por ejemplo: vendo pan por encargo y quiero llevar mis pedidos · doy clases de guitarra y quiero tener a mis alumnos y horarios en orden · coordino un grupo de voluntarios…' },
   { id: 'tiempo', capitulo: 'Tu negocio', emoji: '⏳', tipo: 'una',
     titulo: '¿Hace cuánto empezaste?', sub: 'No hay respuesta mala: todos empezamos en algún lado.',
     opciones: [o('idea', '💡', 'Solo es una idea'), o('nuevo', '🌱', 'Menos de 1 año'), o('medio', '🌿', '1 a 3 años'), o('veterano', '🌳', 'Más de 3 años')] },

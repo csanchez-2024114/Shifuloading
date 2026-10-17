@@ -15,7 +15,7 @@ Endpoints (relativos al prefijo):
   PATCH  /contactos/{id}          — Cambia nombre, etapa, canal, responsable o detalle
   DELETE /contactos/{id}
   POST   /tareas                  — Nueva tarea (entra en "Por hacer")
-  PATCH  /tareas/{id}             — La mueve de columna
+  PATCH  /tareas/{id}             — La mueve de columna o cambia su texto, fecha u hora
   DELETE /tareas/{id}
   PUT    /automatizaciones/{id}   — Activa o apaga
   PUT    /secciones/{id}          — Renombra una sección (integrada o propia)
@@ -105,19 +105,25 @@ class PedirSeguimiento(BaseModel):
     brief: BriefEntrada
 
 
+class RespuestaIA(Seguimiento):
+    abierta: bool = False  # la pregunta fue de texto libre
+
+
 class SiguienteEntrada(_Texto):
     """Lo contestado hasta ahora en el cuestionario: las 3 preguntas fijas y las que la IA ya hizo."""
     model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
     nombre: str = Field("", max_length=60)
     ubicacion: Optional[Ubicacion] = None
     que_vendes: Optional[str] = Field(None, max_length=300)
-    qa: list[Seguimiento] = Field(default_factory=list, max_length=6)
+    qa: list[RespuestaIA] = Field(default_factory=list, max_length=6)
 
 
 class FilaContacto(_Texto):
     n: str = Field(..., min_length=1, max_length=40)
     det: Optional[str] = Field(None, max_length=120)
     extra: Optional[dict[str, Any]] = None  # valores de los campos extra de los contactos, por id de campo
+    canal: Optional[str] = Field(None, min_length=1, max_length=40)
+    etapa: Optional[str] = Field(None, max_length=30)
 
 
 class ContactosCrear(_Texto):
@@ -135,16 +141,40 @@ class ContactoCambios(_Texto):
     extra: Optional[dict[str, Any]] = None
 
 
+class LoteImportacion(_Texto):
+    id: str = Field(..., pattern=r"^[A-Za-z0-9_-]{6,40}$")
+    nombre: str = Field("Importación", max_length=80)
+
+
+class RegistrosLote(_Texto):
+    """Filas para importar (de un Excel, por ejemplo): cada una va por id de campo. `lote` identifica la importación para poder quitarla entera."""
+    filas: list[dict[str, Any]] = Field(..., min_length=1, max_length=300)
+    lote: Optional[LoteImportacion] = None
+
+    @field_validator("filas")
+    @classmethod
+    def _filas_sanas(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        for fila in v:
+            if len(fila) > est.MAX_CAMPOS or any(not isinstance(x, (str, int, float)) or isinstance(x, bool) or len(str(x)) > 200 for x in fila.values()):
+                raise ValueError("cada fila debe tener valores de texto o número de hasta 200 caracteres")
+        return v
+
+
 class RegistroValores(BaseModel):
     valores: dict[str, Any] = Field(..., max_length=est.MAX_CAMPOS)  # por id de campo
 
 
 class TareaNueva(_Texto):
     t: str = Field(..., min_length=1, max_length=60)
+    vence: Optional[str] = Field(None, max_length=12)
+    hora: Optional[str] = Field(None, max_length=8)
 
 
-class TareaMover(_Texto):
-    columna: str = Field(..., max_length=20)
+class TareaCambios(_Texto):
+    columna: Optional[str] = Field(None, max_length=20)
+    t: Optional[str] = Field(None, min_length=1, max_length=60)
+    vence: Optional[str] = Field(None, max_length=12)  # "" le quita la fecha
+    hora: Optional[str] = Field(None, max_length=8)
 
 
 class AutomatizacionFijar(BaseModel):
@@ -273,6 +303,41 @@ async def crear_registro(lista_id: str, request: Request, datos: RegistroValores
     return await _aplicar(request, user, lambda d: est.registro_agregar(d, lista_id, datos.valores), 201)
 
 
+@router.post("/listas/{lista_id}/registros/lote", status_code=201)
+async def crear_registros_lote(lista_id: str, request: Request, datos: RegistrosLote, user: dict = Depends(get_current_user)):
+    """Importa varias filas a una sección. Responde el CRM actualizado y `importacion: { agregadas, omitidas }`."""
+    resumen: dict[str, int] = {}
+
+    def cambiar(d: dict) -> dict:
+        nuevo, agregadas, omitidas = est.registros_agregar_lote(d, lista_id, datos.filas, lote=datos.lote.model_dump() if datos.lote else None)
+        resumen.update(agregadas=agregadas, omitidas=omitidas)
+        return nuevo
+
+    try:
+        doc = await repo.actualizar(request.app.state.db, user["id"], cambiar)
+    except op.ErrorCrm as e:
+        return _error(e)
+    return JSONResponse({**vista_crm(doc), "importacion": resumen}, status_code=201)
+
+
+@router.delete("/listas/{lista_id}/registros")
+async def vaciar_lista(lista_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Borra TODOS los registros de una sección (la sección y sus campos se quedan). No se puede deshacer."""
+    return await _aplicar(request, user, lambda d: est.registros_vaciar(d, lista_id))
+
+
+@router.delete("/listas/{lista_id}/importaciones")
+async def quitar_todas_las_importaciones(lista_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Quita TODO lo importado en una sección (lo escrito a mano se queda). No se puede deshacer."""
+    return await _aplicar(request, user, lambda d: est.importaciones_quitar_todas(d, lista_id))
+
+
+@router.delete("/listas/{lista_id}/importaciones/{lote_id}")
+async def quitar_importacion(lista_id: str, lote_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Quita una importación entera (todos sus registros). No se puede deshacer."""
+    return await _aplicar(request, user, lambda d: est.importacion_quitar(d, lista_id, lote_id))
+
+
 @router.patch("/listas/{lista_id}/registros/{registro_id}")
 async def cambiar_registro(lista_id: str, registro_id: str, request: Request, datos: RegistroValores, user: dict = Depends(get_current_user)):
     return await _aplicar(request, user, lambda d: est.registro_actualizar(d, lista_id, registro_id, datos.valores))
@@ -287,12 +352,26 @@ async def eliminar_registro(lista_id: str, registro_id: str, request: Request, u
 
 @router.post("/tareas", status_code=201)
 async def crear_tarea(request: Request, datos: TareaNueva, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: op.tareas_crear(d, datos.t), 201)
+    return await _aplicar(request, user, lambda d: op.tareas_crear(d, datos.t, vence=datos.vence, hora=datos.hora), 201)
 
 
 @router.patch("/tareas/{tarea_id}")
-async def mover_tarea(tarea_id: str, request: Request, datos: TareaMover, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: op.tareas_mover(d, tarea_id, datos.columna))
+async def mover_tarea(tarea_id: str, request: Request, datos: TareaCambios, user: dict = Depends(get_current_user)):
+    cambios = datos.model_dump(exclude_unset=True, exclude_none=True)
+    if "vence" in datos.model_fields_set and datos.vence is None:
+        cambios["vence"] = ""
+    if not cambios:
+        return JSONResponse({"mensaje": "No hay nada que cambiar."}, status_code=422)
+
+    def cambiar(d: dict) -> dict:
+        campos = {k: v for k, v in cambios.items() if k in ("t", "vence", "hora")}
+        if campos:
+            d = op.tareas_actualizar(d, tarea_id, campos)
+        if "columna" in cambios:
+            d = op.tareas_mover(d, tarea_id, cambios["columna"])
+        return d
+
+    return await _aplicar(request, user, cambiar)
 
 
 @router.delete("/tareas/{tarea_id}")

@@ -30,6 +30,7 @@ class Modelo:
 @pytest.fixture(autouse=True)
 def limpio(monkeypatch):
     monkeypatch.setattr(agente, "_pausa_hasta", 0.0)
+    monkeypatch.setattr(diseno, "CREAR_RECOMENDACIONES", True)  # la mayoría de estas pruebas revisan las recomendaciones; la prueba de abajo comprueba el valor por defecto
     monkeypatch.setattr(diseno, "_dia", ["", 0])
 
 
@@ -118,8 +119,8 @@ async def test_la_ia_arma_el_crm_de_una_panaderia():
     m = Modelo(PROPUESTA)
     nuevo = await diseno.disenar(doc, PANADERIA, modelo=m, ahora=AHORA)
     assert nuevo["etapas"] == ["Consulta", "Pedido confirmado", "En horno", "Entregado"]
-    assert [c["nombre"] for c in nuevo["campos_contacto"]] == ["Cumpleaños", "Alergias"]
-    assert [l["nombre"] for l in nuevo["listas"]] == ["Pedidos de pasteles", "Proveedores"]
+    assert [c["nombre"] for c in nuevo["campos_contacto"]] == ["Cumpleaños"]  # solo 1 campo extra: el CRM inicial es lo más simple posible
+    assert [l["nombre"] for l in nuevo["listas"]] == ["Pedidos de pasteles", "Proveedores"]  # hasta 2: una por cada cosa que quiere tener en orden
     assert [c["tipo"] for c in nuevo["listas"][0]["campos"]] == ["texto", "texto", "fecha", "numero"]
     assert nuevo["secciones"] == {"contactos": "Clientes", "desarrollo": "Producción"}
     assert {a["id"] for a in nuevo["automatizaciones"] if a["on"]} == {"recordatorios"}  # "bienvenida" todavía no existe: no se enciende
@@ -220,7 +221,7 @@ TACOS = {
 async def test_un_negocio_de_tacos_recibe_menu_pedidos_gastos_y_trabajadores():
     b = {**PANADERIA, "nombre": "TaChat's", "que_vendes": "tacos con pedidos por WhatsApp"}
     nuevo = await diseno.disenar(generar("u1", b, AHORA), b, modelo=Modelo(TACOS), ahora=AHORA)
-    assert [l["nombre"] for l in nuevo["listas"]] == ["Menú y precios", "Pedidos", "Gastos del día", "Trabajadores", "Recomendaciones"]
+    assert [l["nombre"] for l in nuevo["listas"]] == ["Menú y precios", "Pedidos", "Recomendaciones"]  # hasta 2 secciones propias; Gastos y Trabajadores los agrega la persona después
     assert nuevo["secciones"]["desarrollo"] == "Pendientes del día"
 
 
@@ -237,10 +238,10 @@ async def test_el_tablero_se_renombra_antes_para_poder_crear_una_seccion_propia_
 def test_los_cobros_integrados_se_ocultan_porque_todavia_no_funcionan():
     doc = generar("u1", PANADERIA, AHORA)
     nuevo, aplicado = diseno.aplicar_propuesta(doc, {"resumen": "ok"}, AHORA)
-    assert nuevo["ocultas"] == ["cobros"] and aplicado["ocultas"] == ["cobros"]
+    assert "cobros" in nuevo["ocultas"] and "cobros" in aplicado["ocultas"]
     # y se puede volver a mostrar cuando la persona quiera
     from app.crm import estructura as est
-    assert est.seccion_mostrar(nuevo, "cobros", AHORA)["ocultas"] == []
+    assert "cobros" not in est.seccion_mostrar(nuevo, "cobros", AHORA)["ocultas"]
 
 
 def test_las_recomendaciones_quedan_como_una_seccion_con_un_registro_por_consejo():
@@ -258,11 +259,11 @@ def test_no_hay_recomendaciones_si_la_ia_no_las_da():
     assert aplicado["recomendaciones"] == 0 and all(l["nombre"] != "Recomendaciones" for l in nuevo["listas"])
 
 
-def test_hasta_cinco_secciones_y_siete_campos_cada_una():
+def test_el_crm_inicial_es_lo_mas_simple_dos_secciones_y_cuatro_campos():
     doc = generar("u1", PANADERIA, AHORA)
     propuesta = {"secciones": [{"nombre": f"Sección {i}", "campos": [{"nombre": f"Campo {j}"} for j in range(12)]} for i in range(10)]}
     nuevo, _ = diseno.aplicar_propuesta(doc, propuesta, AHORA)
-    assert len(nuevo["listas"]) == 5 and all(len(l["campos"]) == 7 for l in nuevo["listas"])
+    assert len(nuevo["listas"]) == 2 and all(len(l["campos"]) == 4 for l in nuevo["listas"])
 
 
 @pytest.mark.asyncio
@@ -302,7 +303,7 @@ def test_si_hay_una_seccion_propia_de_personal_se_oculta_el_equipo_integrado():
     nuevo, aplicado = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Trabajadores y turnos", "campos": [{"nombre": "Nombre"}, {"nombre": "Turno"}]}]}, AHORA)
     assert "rrhh" in nuevo["ocultas"] and "rrhh" in aplicado["ocultas"]
     sin_personal, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Menú", "campos": [{"nombre": "Platillo"}]}]}, AHORA)
-    assert "rrhh" not in sin_personal["ocultas"]  # sin sección de personal, el equipo integrado se queda
+    assert "rrhh" in sin_personal["ocultas"]  # de fábrica todo arranca oculto; "Equipo" aparece cuando la persona agrega a alguien
 
 
 def test_las_recomendaciones_llevan_su_tipo_para_que_el_menu_las_ponga_aparte():
@@ -312,7 +313,7 @@ def test_las_recomendaciones_llevan_su_tipo_para_que_el_menu_las_ponga_aparte():
     nuevo, _ = diseno.aplicar_propuesta(doc, TACOS, AHORA)
     v = vista_crm(nuevo, AHORA)
     tipos = {l["nombre"]: l["tipo"] for l in v["listas"]}
-    assert tipos["Recomendaciones"] == "recomendaciones" and tipos["Pedidos"] is None
+    assert tipos["Recomendaciones"] == "recomendaciones" and tipos["Menú y precios"] is None
 
 
 # ───────── El cuestionario lo escribe la IA, una pregunta a la vez ─────────
@@ -332,15 +333,27 @@ async def test_la_ia_hace_la_siguiente_pregunta_viendo_todo_lo_contestado():
 
 
 @pytest.mark.asyncio
-async def test_la_ia_puede_terminar_solo_despues_del_minimo_y_nunca_pasa_del_maximo():
-    qa = lambda n: [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo"} for i in range(n)]
+async def test_se_termina_solo_despues_de_la_pregunta_abierta_y_del_minimo_y_nunca_se_pasa_del_maximo():
+    qa = lambda n, abierta_en=None: [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo", "abierta": i == abierta_en} for i in range(n)]
     # antes del mínimo, un "listo" no se acepta: se sigue con las preguntas fijas
     assert (await diseno.siguiente_pregunta({**DATOS, "qa": qa(1)}, modelo=Modelo({"listo": True})))["modo"] == "base"
+    # si la IA dice "listo" sin haber hecho la pregunta abierta, se hace la abierta (que es lo que de verdad dice qué busca la persona)
     r = await diseno.siguiente_pregunta({**DATOS, "qa": qa(diseno.MIN_IA)}, modelo=Modelo({"listo": True, "rubro": "otro"}))
-    assert r == {"modo": "ia", "pregunta": None, "rubro": "otro"}
-    # en el máximo ni siquiera se llama al modelo
+    assert r["rubro"] == "otro" and r["pregunta"]["tipo"] == "parrafo" and "dentro de un mes" in r["pregunta"]["titulo"]
+    # contestada la abierta y cumplido el mínimo, se termina sin volver a llamar a la IA
     m = Modelo(RuntimeError("no debía llamarse"))
+    r = await diseno.siguiente_pregunta({**DATOS, "qa": qa(diseno.MIN_IA, abierta_en=diseno.MIN_IA - 1)}, modelo=m)
+    assert r["pregunta"] is None and r["modo"] == "ia" and m.recibido is None
+    # en el máximo tampoco se llama al modelo
     assert (await diseno.siguiente_pregunta({**DATOS, "qa": qa(diseno.MAX_IA)}, modelo=m))["pregunta"] is None and m.recibido is None
+
+
+@pytest.mark.asyncio
+async def test_la_ultima_pregunta_posible_siempre_es_la_abierta_aunque_la_ia_haga_otra():
+    qa = [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo", "abierta": False} for i in range(diseno.MAX_IA - 1)]
+    m = Modelo({"rubro": "otro", "pregunta": {"titulo": "¿Una pregunta más de opciones?", "tipo": "una", "opciones": [{"t": "Sí"}, {"t": "No"}]}})
+    r = await diseno.siguiente_pregunta({**DATOS, "qa": qa}, modelo=m)
+    assert r["pregunta"]["tipo"] == "parrafo" and "ÚLTIMA pregunta posible" in " ".join(msg.content for msg in m.recibido)
 
 
 @pytest.mark.asyncio
@@ -354,11 +367,79 @@ async def test_una_pregunta_repetida_o_mal_hecha_o_una_falla_de_la_ia_pasan_a_la
 
 @pytest.mark.asyncio
 async def test_un_rubro_inventado_se_descarta_y_la_pregunta_abierta_no_dice_opcional():
+    qa = [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo", "abierta": False} for i in range(diseno.MIN_IA - 1)]
     m = Modelo({"rubro": "naves espaciales", "pregunta": {"titulo": "¿Qué te gustaría contarnos de tus clientes?", "tipo": "texto"}})
-    r = await diseno.siguiente_pregunta(DATOS, modelo=m)
+    r = await diseno.siguiente_pregunta({**DATOS, "qa": qa}, modelo=m)
     assert r["rubro"] is None and r["pregunta"]["tipo"] == "parrafo" and "Opcional" not in r["pregunta"]["sub"]
+
+
+@pytest.mark.asyncio
+async def test_la_abierta_no_se_hace_a_mitad_del_cuestionario_se_reintenta_con_una_de_opciones():
+    class DosVeces(Modelo):
+        def __init__(self):
+            super().__init__(None)
+            self.llamadas = 0
+
+        async def ainvoke(self, mensajes):
+            self.llamadas += 1
+            self.recibido = mensajes
+            return AIMessage(content=json.dumps({"pregunta": {"titulo": "¿Qué cuentas tienes que llevar?", "tipo": "texto"}} if self.llamadas == 1 else {"pregunta": PREG}))
+
+    m = DosVeces()
+    r = await diseno.siguiente_pregunta(DATOS, modelo=m)  # sin preguntas hechas: todavía no toca la abierta
+    assert m.llamadas == 2 and r["pregunta"]["tipo"] == "una" and "NO puede ser de texto abierto" in " ".join(msg.content for msg in m.recibido)
+
+
+@pytest.mark.asyncio
+async def test_la_primera_pregunta_de_que_quiere_tener_en_orden_permite_varias_opciones():
+    from app.crm import diseno as d
+    assert "la primera SIEMPRE es \"varias\"" in d._SISTEMA_SIGUIENTE and "nunca de “vos”" in d._SISTEMA_SIGUIENTE
 
 
 def test_el_resumen_para_la_ia_no_llena_de_guiones_lo_que_no_se_pregunto():
     texto = diseno.resumen_del_brief({"nombre": "Yunque", "que_vendes": "rejas", "seguimiento": [{"pregunta": "¿Cómo cobras?", "respuesta": "Anticipo"}]})
     assert "Negocio: Yunque" in texto and "¿Cómo cobras?: Anticipo" in texto and "—" not in texto
+
+
+# ───────── El CRM nace limpio ─────────
+
+def test_el_crm_nace_limpio_solo_con_las_secciones_de_la_persona_y_lo_de_fabrica_oculto():
+    doc = generar("u1", PANADERIA, AHORA)
+    nuevo, aplicado = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Productos", "campos": [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}]}]}, AHORA)
+    assert set(diseno.OCULTAS_AL_INICIO) <= set(nuevo["ocultas"]) and [l["nombre"] for l in nuevo["listas"]] == ["Productos"]
+    # y todo se puede volver a mostrar
+    from app.crm import estructura as est
+    assert "contactos" not in est.seccion_mostrar(nuevo, "contactos", AHORA)["ocultas"]
+
+
+def test_sin_ninguna_seccion_propia_clientes_se_queda_a_la_vista():
+    doc = generar("u1", PANADERIA, AHORA)
+    nuevo, _ = diseno.aplicar_propuesta(doc, {"resumen": "ok"}, AHORA)
+    assert "contactos" not in nuevo["ocultas"]  # tiene que haber por dónde empezar
+
+
+def test_las_recomendaciones_no_se_arman_al_inicio_por_defecto(monkeypatch):
+    monkeypatch.setattr(diseno, "CREAR_RECOMENDACIONES", False)
+    nuevo, aplicado = diseno.aplicar_propuesta(generar("u1", PANADERIA, AHORA), TACOS, AHORA)
+    assert aplicado["recomendaciones"] == 0 and all(l["nombre"] != "Recomendaciones" for l in nuevo["listas"])
+
+
+def test_una_seccion_sin_ningun_campo_de_texto_recibe_uno_que_nombre_cada_fila():
+    doc = generar("u1", PANADERIA, AHORA)
+    nuevo, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Productos", "campos": [{"nombre": "Precio", "tipo": "numero"}, {"nombre": "Cantidad en stock", "tipo": "numero"}]}]}, AHORA)
+    campos = nuevo["listas"][0]["campos"]
+    assert [c["nombre"] for c in campos] == ["Nombre", "Precio", "Cantidad en stock"] and campos[0]["tipo"] == "texto"
+    # si ya hay un campo de texto, no se toca nada
+    ok, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Productos", "campos": [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}]}]}, AHORA)
+    assert [c["nombre"] for c in ok["listas"][0]["campos"]] == ["Producto", "Precio"]
+
+
+def test_el_primer_campo_de_una_seccion_siempre_nombra_cada_fila():
+    doc = generar("u1", PANADERIA, AHORA)
+    # empezó por un teléfono: no dice QUÉ proveedor es cada fila
+    nuevo, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Proveedores", "campos": [{"nombre": "Teléfono"}, {"nombre": "Fecha próximo pedido", "tipo": "fecha"}, {"nombre": "Producto principal"}]}]}, AHORA)
+    assert [c["nombre"] for c in nuevo["listas"][0]["campos"]] == ["Nombre", "Teléfono", "Fecha próximo pedido", "Producto principal"]
+    # si ya empieza por lo que nombra la fila, no se toca
+    for primero in ("Proveedor", "Platillo", "Cliente", "Producto"):
+        ok, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Lista", "campos": [{"nombre": primero}, {"nombre": "Teléfono"}]}]}, AHORA)
+        assert [c["nombre"] for c in ok["listas"][0]["campos"]][0] == primero

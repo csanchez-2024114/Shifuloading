@@ -80,9 +80,14 @@ def valor_de_tipo(tipo: str, valor: Any, campo: str = "", opciones: list[str] | 
             n = float(valor)
         else:
             limpio = re.sub(r"[^\d,.\-]", "", str(valor))
-            # Una sola coma y ningún punto: con 1 o 2 dígitos después es decimal ("3,5"); con 3 es separador de miles ("1,250").
-            if limpio.count(",") == 1 and "." not in limpio and len(limpio.split(",")[1]) != 3:
-                limpio = limpio.replace(",", ".")
+            if "," in limpio and "." in limpio:
+                # Con los dos, el que aparece al final es el decimal: "1,190.50" y "1.190,50" valen lo mismo (1190.5).
+                decimal = "," if limpio.rfind(",") > limpio.rfind(".") else "."
+                limpio = limpio.replace("," if decimal == "." else ".", "").replace(decimal, ".")
+            elif limpio.count(",") == 1 and len(limpio.split(",")[1]) != 3:
+                limpio = limpio.replace(",", ".")  # una sola coma con 1 o 2 dígitos después es decimal ("3,5"); con 3 es separador de miles ("1,250")
+            elif limpio.count(".") > 1:
+                limpio = limpio.replace(".", "")  # "1.190.500": puntos como separador de miles
             else:
                 limpio = limpio.replace(",", "")
             try:
@@ -278,6 +283,48 @@ def campo_hacer_lista(doc: dict, ambito: str, campo_id: str, opciones: Any, ahor
     return out
 
 
+def campo_mover(doc: dict, ambito: str, campo_id: str, posicion: Any, ahora: datetime | None = None) -> dict:
+    """Cambia el lugar de un campo (de los contactos o de una sección propia). `posicion`: "inicio", "final" o el número de lugar (1 = primero)."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    campos, donde = _ambito(out, ambito)
+    i = next((k for k, c in enumerate(campos) if c["id"] == campo_id), None)
+    if i is None:
+        raise ErrorCrm(404, "Ese campo no existe.")
+    p = str(posicion).strip().lower()
+    if p in ("inicio", "principio", "primero", "al inicio", "al principio"):
+        destino = 0
+    elif p in ("final", "ultimo", "último", "al final"):
+        destino = len(campos) - 1
+    else:
+        try:
+            destino = int(p) - 1
+        except ValueError:
+            raise ErrorCrm(422, "La posición debe ser “inicio”, “final” o un número (1 es el primero).") from None
+    destino = max(0, min(len(campos) - 1, destino))
+    campo = campos.pop(i)
+    campos.insert(destino, campo)
+    _registrar(out, "↔️", f"Moviste el campo “{campo['nombre']}” de {donde} al lugar {destino + 1}", ahora)
+    return out
+
+
+def campo_renombrar(doc: dict, ambito: str, campo_id: str, nombre: Any, ahora: datetime | None = None) -> dict:
+    """Le cambia el nombre a un campo (los datos que ya tenía se conservan)."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    campos, donde = _ambito(out, ambito)
+    campo = next((c for c in campos if c["id"] == campo_id), None)
+    if campo is None:
+        raise ErrorCrm(404, "Ese campo no existe.")
+    n = _nombre(nombre, LARGO_NOMBRE, "el nombre del campo")
+    if any(c["id"] != campo_id and _igual(c["nombre"], n) for c in campos):
+        raise ErrorCrm(422, f"Ya existe un campo llamado “{n}”.")
+    anterior = campo["nombre"]
+    campo["nombre"] = n
+    _registrar(out, "✏️", f"Renombraste el campo “{anterior}” a “{n}” en {donde}", ahora)
+    return out
+
+
 def campo_eliminar(doc: dict, ambito: str, campo_id: str, ahora: datetime | None = None) -> dict:
     """Quita un campo y los valores que tenía guardados."""
     ahora = ahora or ahora_utc()
@@ -313,6 +360,86 @@ def registro_agregar(doc: dict, lista_id: str, valores: dict[str, Any], ahora: d
     l["registros"].insert(0, {"id": nuevo_id(), "valores": ok, "creado": ahora})
     primero = next((str(v) for c in l["campos"] if (v := ok.get(c["id"])) is not None), "un registro")
     _registrar(out, "➕", f"Agregaste “{primero}” en “{l['nombre']}”", ahora)
+    return out
+
+
+def registros_agregar_lote(doc: dict, lista_id: str, filas: list[dict[str, Any]], ahora: datetime | None = None, lote: dict | None = None) -> tuple[dict, int, int]:
+    """Importa varias filas de una vez (por ejemplo, las de un Excel). Cada fila va por id de campo. Devuelve (CRM, agregadas, omitidas).
+    Se omiten las filas vacías, las que traen un valor que no sirve para su campo (un texto donde va un precio) y las que ya existen idénticas.
+    `lote` ({id, nombre}) marca de qué importación vienen, para poder quitarla entera después (una importación grande llega en varias tandas con el mismo id)."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    l = _lista(out, lista_id)
+    nuevos: list[dict] = []
+    omitidas = 0
+    primer_problema = ""
+    existentes = [{k: v for k, v in r["valores"].items() if v is not None} for r in l["registros"]]
+    for fila in filas:
+        if len(l["registros"]) + len(nuevos) >= MAX_REGISTROS:
+            omitidas += 1
+            continue
+        try:
+            ok = valores_validos(l["campos"], fila)
+        except ErrorCrm as e:
+            omitidas += 1
+            primer_problema = primer_problema or e.mensaje
+            continue
+        limpio = {k: v for k, v in ok.items() if v is not None}
+        if not limpio or limpio in existentes:
+            omitidas += 1
+            continue
+        existentes.append(limpio)
+        nuevos.append({"id": nuevo_id(), "valores": ok, "creado": ahora, **({"lote": lote["id"]} if lote else {})})
+    if not nuevos:
+        raise ErrorCrm(422, "No pude importar ninguna fila: revisa que cada columna tenga lo que corresponde." + (f" Por ejemplo: {primer_problema}" if primer_problema else ""))
+    l["registros"][0:0] = nuevos  # en el mismo orden del archivo, arriba
+    if lote and not any(i["id"] == lote["id"] for i in l.setdefault("importaciones", [])):
+        l["importaciones"].append({"id": lote["id"], "nombre": " ".join(str(lote.get("nombre") or "Importación").split())[:80], "creado": ahora})
+    _registrar(out, "📥", f"Importaste {len(nuevos)} {'registro' if len(nuevos) == 1 else 'registros'} en “{l['nombre']}”", ahora)
+    return out, len(nuevos), omitidas
+
+
+def importacion_quitar(doc: dict, lista_id: str, lote_id: str, ahora: datetime | None = None) -> dict:
+    """Quita de la sección todos los registros de una importación (incluso los que la persona ya editó). No se puede deshacer."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    l = _lista(out, lista_id)
+    quitar = [r for r in l["registros"] if r.get("lote") == lote_id]
+    if not quitar and not any(i["id"] == lote_id for i in l.get("importaciones", [])):
+        raise ErrorCrm(404, "Esa importación no existe.")
+    nombre = next((i["nombre"] for i in l.get("importaciones", []) if i["id"] == lote_id), "una importación")
+    l["registros"] = [r for r in l["registros"] if r.get("lote") != lote_id]
+    l["importaciones"] = [i for i in l.get("importaciones", []) if i["id"] != lote_id]
+    _registrar(out, "🧹", f"Quitaste la importación “{nombre}” ({len(quitar)} {'registro' if len(quitar) == 1 else 'registros'}) de “{l['nombre']}”", ahora)
+    return out
+
+
+def registros_vaciar(doc: dict, lista_id: str, ahora: datetime | None = None) -> dict:
+    """Borra TODOS los registros de una sección (lo importado y lo escrito a mano). La sección y sus campos se quedan. No se puede deshacer."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    l = _lista(out, lista_id)
+    if not l["registros"]:
+        raise ErrorCrm(404, "Esta sección ya está vacía.")
+    n = len(l["registros"])
+    l["registros"] = []
+    l["importaciones"] = []
+    _registrar(out, "🧹", f"Vaciaste “{l['nombre']}” ({n} {'registro' if n == 1 else 'registros'})", ahora)
+    return out
+
+
+def importaciones_quitar_todas(doc: dict, lista_id: str, ahora: datetime | None = None) -> dict:
+    """Quita de la sección TODO lo que se importó (todas sus importaciones, incluso lo editado). Lo que la persona escribió a mano se queda."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    l = _lista(out, lista_id)
+    quitar = [r for r in l["registros"] if r.get("lote")]
+    if not quitar and not l.get("importaciones"):
+        raise ErrorCrm(404, "Esta sección no tiene nada importado.")
+    n_imp = len(l.get("importaciones", []))
+    l["registros"] = [r for r in l["registros"] if not r.get("lote")]
+    l["importaciones"] = []
+    _registrar(out, "🧹", f"Quitaste todo lo importado en “{l['nombre']}” ({len(quitar)} {'registro' if len(quitar) == 1 else 'registros'} de {n_imp} {'importación' if n_imp == 1 else 'importaciones'})", ahora)
     return out
 
 

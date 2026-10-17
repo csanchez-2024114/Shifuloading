@@ -88,7 +88,7 @@ export default function BriefPage() {
   // Con todo lo que ya contó, la IA escribe la siguiente pregunta (o dice que ya sabe lo suficiente). Si tarda o falla, siguen las de respaldo.
   const pedirSiguiente = async (preguntas) => {
     setPensando(true)
-    const qa = preguntas.map((p) => ({ pregunta: p.titulo, respuesta: respuestaDe(p, resp[p.id]) })).filter((s) => s.respuesta)
+    const qa = preguntas.map((p) => ({ pregunta: p.titulo, respuesta: respuestaDe(p, resp[p.id]), abierta: p.tipo === 'parrafo' })).filter((s) => s.respuesta)
     let r = { modo: 'base' }
     try {
       r = await Promise.race([

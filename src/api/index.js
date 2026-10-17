@@ -67,9 +67,20 @@ export const crm = {
   contactosActualizar: (id, cambios) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/contactos/${id}`, cambios) : simulado.crm.contactosActualizar(id, cambios)),
   contactosEliminar: (id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/contactos/${id}`) : simulado.crm.contactosEliminar(id)),
   /** Registros de una sección propia (los valores van por id de campo). */
+  /** Importa varias filas (de un Excel, por ejemplo) a una sección: [{ idCampo: valor }]. Devuelve el CRM y `importacion: { agregadas, omitidas }`. */
+  registrosImportar: (listaId, filas, lote) => (HAY_SERVIDOR ? pedir('POST', `/crm/listas/${listaId}/registros/lote`, { filas, lote }) : simulado.crm.sinServidor()),
+  /** Quita una importación entera (todos sus registros). No se puede deshacer. */
+  importacionQuitar: (listaId, loteId) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/importaciones/${loteId}`) : simulado.crm.sinServidor()),
+  /** Quita TODO lo importado en una sección (lo escrito a mano se queda). No se puede deshacer. */
+  importacionesQuitarTodas: (listaId) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/importaciones`) : simulado.crm.sinServidor()),
+  /** Borra TODOS los registros de una sección (la sección y sus campos se quedan). No se puede deshacer. */
+  registrosVaciar: (listaId) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/registros`) : simulado.crm.sinServidor()),
+  registrosActualizar: (listaId, id, valores) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/listas/${listaId}/registros/${id}`, { valores }) : simulado.crm.sinServidor()),
   registrosCrear: (listaId, valores) => (HAY_SERVIDOR ? pedir('POST', `/crm/listas/${listaId}/registros`, { valores }) : simulado.crm.sinServidor()),
   registrosEliminar: (listaId, id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/registros/${id}`) : simulado.crm.sinServidor()),
-  tareasCrear: (t) => (HAY_SERVIDOR ? pedir('POST', '/crm/tareas', { t }) : simulado.crm.tareasCrear(t)),
+  tareasCrear: (t, vence, hora) => (HAY_SERVIDOR ? pedir('POST', '/crm/tareas', { t, ...(vence ? { vence } : {}), ...(hora ? { hora } : {}) }) : simulado.crm.tareasCrear(t)),
+  /** Cambia el texto, la fecha ("" se la quita) o la hora de una tarea. */
+  tareasActualizar: (id, cambios) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/tareas/${id}`, cambios) : simulado.crm.sinServidor()),
   tareasMover: (id, destino) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/tareas/${id}`, { columna: destino }) : simulado.crm.tareasMover(id, destino)),
   tareasEliminar: (id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/tareas/${id}`) : simulado.crm.tareasEliminar(id)),
   automatizacionFijar: (id, on) => (HAY_SERVIDOR ? pedir('PUT', `/crm/automatizaciones/${id}`, { on }) : simulado.crm.automatizacionFijar(id, on)),
