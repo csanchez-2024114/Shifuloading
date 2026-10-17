@@ -4,7 +4,8 @@
  * íconos, selección de piezas, deshacer, acomodo automático…).
  * Reglas que respeta: nunca se muestran plantillas para elegir (D29, D49); si las respuestas no alcanzan, una sola pregunta
  * simple de qué quiere llevar (D7); tema del sistema (D9); los datos de ejemplo se borran sin tocar nada real.
- * Laboratorio: nada se guarda ni se envía (la cuenta es de mentira). */
+ * Laboratorio: la cuenta es de mentira. Lo que hace la persona se guarda en este navegador y sobrevive a recargar (D57);
+ * la contraseña nunca se guarda. */
 import { useEffect, useMemo, useState } from 'react'
 import { PREGUNTAS } from '@base/brief/preguntas'
 import Logo from '@base/components/Logo'
@@ -14,6 +15,7 @@ import { asignar } from '../plantillas/asignar'
 import { plantillaPorId } from '../plantillas/semillas'
 import { datosEjemplo, sinEjemplos } from '../plantillas/datosEjemplo'
 import { fijarRegion, PAISES } from '../plantillas/regional'
+import { cargar, guardar, borrarTodo } from './guardado'
 import '@base/brief.css'
 import './experiencia.css'
 
@@ -46,6 +48,20 @@ export default function ExperienciaPage() {
   const [aviso, setAviso] = useState('')
   const [eleccion, setEleccion] = useState(null) // id de la estructura de partida (interno: el usuario nunca lo ve como «plantilla»)
   const [ejemplosBorrados, setEjemplosBorrados] = useState(false)
+  const [recorridoVisto, setRecorridoVisto] = useState(false)
+  // Guardado (D57): hasta leerlo no se dibuja nada (así no parpadea la bienvenida antes de volver a tu CRM).
+  const [guardado, setGuardado] = useState(null)
+  const [seguro, setSeguro] = useState(false) // «Empezar de nuevo» pide un segundo toque: ahora sí borra algo
+  useEffect(() => {
+    cargar().then((g) => {
+      const x = g.experiencia
+      if (x) { setPaso(x.paso === 'armando' || x.paso === 'cuenta' ? 'cuenta' : x.paso); setIdx(x.idx || 0); setResp(x.resp || {}); setEleccion(x.eleccion || null); setEjemplosBorrados(!!x.ejemplosBorrados); setRecorridoVisto(!!x.recorridoVisto) }
+      setGuardado(g)
+    })
+  }, [])
+  useEffect(() => {
+    if (guardado) guardar('experiencia', { paso, idx, resp, eleccion, ejemplosBorrados, recorridoVisto }) // sin la cuenta: la contraseña no se guarda
+  }, [guardado, paso, idx, resp, eleccion, ejemplosBorrados, recorridoVisto])
   const tema = useMemo(temaSistema, [])
   const pais = PAISES[resp.ubicacion?.pais] ? resp.ubicacion.pais : 'gt'
 
@@ -62,14 +78,21 @@ export default function ExperienciaPage() {
     return () => clearTimeout(t)
   }, [paso, asig])
 
-  const reiniciar = () => { setPaso('bienvenida'); setIdx(0); setResp({}); setCuenta({ nombre: '', apellido: '', correo: '', clave: '' }); setEleccion(null); setEjemplosBorrados(false) }
+  const reiniciar = async () => {
+    if (!seguro) { setSeguro(true); setTimeout(() => setSeguro(false), 4000); return }
+    await borrarTodo()
+    setSeguro(false); setGuardado({}); setPaso('bienvenida'); setIdx(0); setResp({}); setCuenta({ nombre: '', apellido: '', correo: '', clave: '' }); setEleccion(null); setEjemplosBorrados(false); setRecorridoVisto(false)
+  }
+
+  if (!guardado) return <div className="brief exp" aria-busy="true" />
 
   if (paso === 'crm' && plantilla) {
     return (
       <>
         <PlantillaCRM key={plantilla.id} plantilla={plantilla} datos={datos} nivel={ejemplosBorrados ? 'vacio' : 'muchos'} tema={tema} estilo="vivo-compacto" vel={1.6} pais={pais}
-          negocio={resp.nombre || 'Mi negocio'} mostrarPlantilla={false} recorrido onBorrarEjemplos={() => setEjemplosBorrados(true)} />
-        <button type="button" className="exp-reiniciar" onClick={reiniciar} title="Volver a empezar la experiencia desde el registro">↺ Empezar de nuevo</button>
+          negocio={resp.nombre || 'Mi negocio'} mostrarPlantilla={false} recorrido={!recorridoVisto} onFinRecorrido={() => setRecorridoVisto(true)} onBorrarEjemplos={() => setEjemplosBorrados(true)}
+          inicial={guardado.crm} chatInicial={guardado.chat} onGuardar={guardar} />
+        <button type="button" className={`exp-reiniciar${seguro ? ' seguro' : ''}`} onClick={reiniciar} title="Volver a empezar la experiencia desde el registro">{seguro ? '¿Seguro? Se borra tu CRM · toca otra vez' : '↺ Empezar de nuevo'}</button>
       </>
     )
   }
@@ -98,7 +121,7 @@ export default function ExperienciaPage() {
       <header className="brief-cab">
         <Logo height={26} color="#14211d" />
         {paso === 'cuestionario' && <span className="brief-paso" aria-live="polite">{idx + 1} de {LISTA.length}</span>}
-        <span className="exp-lab">Laboratorio · nada se guarda</span>
+        <span className="exp-lab">Laboratorio · se guarda en este navegador</span>
       </header>
       <main className="brief-main">
         {paso === 'bienvenida' && (
@@ -141,7 +164,7 @@ export default function ExperienciaPage() {
             <span className="chip-cap">Último paso</span>
             <div className="emoji" aria-hidden="true">🔐</div>
             <h1>Crea tu cuenta para guardar tu CRM</h1>
-            <p className="sub">En el laboratorio no se crea nada de verdad: es para vivir el recorrido completo.</p>
+            <p className="sub">En el laboratorio la cuenta es de prueba: tu CRM se guarda en este navegador y la contraseña no se guarda.</p>
             <div className="exp-campos">
               <input className="campo" placeholder="Nombre" value={cuenta.nombre} onChange={(e) => setCuenta({ ...cuenta, nombre: e.target.value })} aria-label="Nombre" autoFocus />
               <input className="campo" placeholder="Apellido" value={cuenta.apellido} onChange={(e) => setCuenta({ ...cuenta, apellido: e.target.value })} aria-label="Apellido" />

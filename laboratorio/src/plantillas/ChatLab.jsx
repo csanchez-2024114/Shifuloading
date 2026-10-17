@@ -82,10 +82,12 @@ function Sugerencias({ deshabilitado, onElegir, ideas = SUGERENCIAS }) {
   )
 }
 
-export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion, contexto, abiertoInicial = true, muestra }) {
+export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion, contexto, abiertoInicial = true, muestra, inicial, onMensajes }) {
   const [abierto, setAbierto] = useState(abiertoInicial)
   useEffect(() => { onAbierto?.(abierto) }, [abierto]) // eslint-disable-line react-hooks/exhaustive-deps
-  const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Este es tu CRM: dime qué quieres ver distinto y lo cambio. Puedo agregar, quitar, agrandar, achicar o mover cualquier pieza, en el inicio o en cualquier pestaña. Y llevo tus datos: dime «agrega a María López, plan mensual» o pregúntame «¿cuánto me pagaron este mes?».`)])
+  // La conversación guardada (D57) vuelve tal cual (sin imágenes: pesan y ya cumplieron su papel); los ids siguen desde ahí.
+  const [mensajes, setMensajes] = useState(() => { if (inicial?.length) { n = Math.max(n, ...inicial.map((m) => Number(String(m.id).slice(1)) || 0)); return inicial } return [mensaje('shifu', `Hola 👋 Soy Shifu. Este es tu CRM: dime qué quieres ver distinto y lo cambio. Puedo agregar, quitar, agrandar, achicar o mover cualquier pieza, en el inicio o en cualquier pestaña. Y llevo tus datos: dime «agrega a María López, plan mensual» o pregúntame «¿cuánto me pagaron este mes?».`)] })
+  useEffect(() => { onMensajes?.(mensajes.map(({ imagen: _i, ...m }) => m)) }, [mensajes]) // eslint-disable-line react-hooks/exhaustive-deps
   const [escribiendo, setEscribiendo] = useState(false)
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null)

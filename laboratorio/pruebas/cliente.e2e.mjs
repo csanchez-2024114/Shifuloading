@@ -79,7 +79,7 @@ for (let i = 0; i < 25; i++) {
     if (await js(`!!document.querySelector('[role=radiogroup]')`)) await clicTexto('Guatemala', '[role=radiogroup] .op')
     await esp(200); await clicTexto('Continuar') || await clicTexto('Crear mi CRM')
   } else if (tipo === 'parrafo') {
-    await escribir('main textarea', /vendes/i.test(t) ? RESP.que_vendes : 'Se me olvida quién ya pagó y quién está por vencer'); await esp(200); await clicTexto('Continuar') || await clicTexto('Crear mi CRM')
+    await escribir('main textarea', /vendes|te dedicas/i.test(t) ? RESP.que_vendes : 'Se me olvida quién ya pagó y quién está por vencer'); await esp(200); await clicTexto('Continuar') || await clicTexto('Crear mi CRM')
   } else if (tipo === 'varias') {
     const quiero = /lograr/i.test(t) ? RESP.objetivos : []
     if (quiero.length) for (const o of quiero) await clicTexto(o); else await js(`document.querySelector('[role=group] .op').click()`)
@@ -163,6 +163,25 @@ if (conIA) {
   await escribir('.mc-chat-panel form input[aria-label]', PEDIDOS[0]); await esp(150); await js(`document.querySelector('.mc-chat-panel form button[type=submit]')?.click()`); await esp(6000)
   await paso('chat-sin-ia', await js(`[...document.querySelectorAll('.mc-chat-msgs .cb.shifu')].at(-1)?.innerText?.slice(0, 160) || ''`))
 }
+// ── Guardar (D57): recargar y volver al MISMO CRM — misma conversación, mismas piezas, mismos registros ──
+const foto = async () => {
+  if (movil) { await js(`document.querySelector('.mc-chat-panel header button')?.click()`); await esp(500) }
+  await js(`document.querySelector('.mc-menu button[data-seccion=inicio]')?.click()`); await esp(900)
+  const piezas = await js(`document.querySelectorAll('.pl-inicio .pl-bloque').length`)
+  const sec = await js(`document.querySelector('.mc-menu button[data-seccion]:not([data-seccion=inicio])')?.dataset.seccion`)
+  await js(`document.querySelector('.mc-menu button[data-seccion="${sec}"]')?.click()`); await esp(900)
+  const registros = await js(`document.querySelector('.mc-cab p')?.textContent || ''`)
+  if (!(await js(`!!document.querySelector('.mc-chat-panel')`))) { await js(`document.querySelector('.mc-chat-btn')?.click()`); await esp(600) }
+  const mensajes = await js(`document.querySelectorAll('.mc-chat-msgs .cb').length`)
+  return { enCrm: await js(`!!document.querySelector('.mc-menu')`), piezas, registros, mensajes }
+}
+const antes = await foto()
+await esp(1500) // el guardado agrupa los cambios de 0,6 s
+await cmd('Page.reload'); await esp(4000)
+const despues = await foto()
+const igual = JSON.stringify(antes) === JSON.stringify(despues)
+await paso('tras-recargar', `${igual ? 'igual' : 'DISTINTO'}: ${JSON.stringify(antes)} → ${JSON.stringify(despues)}`)
+if (!igual) eventos.push(`${ts()}s GUARDAR: al recargar cambió ${JSON.stringify(antes)} → ${JSON.stringify(despues)}`)
 await cmd('Page.stopScreencast')
 // Video: cada cuadro dura hasta el siguiente (el screencast solo manda cuadros cuando algo cambia).
 const lista = cuadros.map((c, i) => { const f = join(dir, 'cuadros', `c${String(i).padStart(5, '0')}.jpg`); writeFileSync(f, Buffer.from(c.data, 'base64')); return `file '${f}'\nduration ${((cuadros[i + 1]?.t ?? c.t + 1) - c.t).toFixed(3)}` })
@@ -172,6 +191,6 @@ if (cuadros.length) {
 }
 writeFileSync(join(dir, 'llamadas.json'), JSON.stringify([...llamadas.values()]))
 writeFileSync(join(dir, 'informe.json'), JSON.stringify({ tamano: `${w}x${h}`, conIA, pasos, conversacion, eventos }, null, 1))
-console.log(`\n${pasos.length} pasos · ${eventos.filter((e) => /EXCEPCIÓN|error/.test(e)).length} errores · ${pasos.filter((p) => p.desbordeX || p.fuera.length).length} pasos con algo fuera de pantalla · video: ${join(dir, 'recorrido.mp4')}`)
+console.log(`\n${pasos.length} pasos · ${eventos.filter((e) => /EXCEPCIÓN|error|GUARDAR/.test(e)).length} errores · ${pasos.filter((p) => p.desbordeX || p.fuera.length).length} pasos con algo fuera de pantalla · video: ${join(dir, 'recorrido.mp4')}`)
 for (const e of eventos.slice(0, 12)) console.log('  ', e)
 ws.close(); ch.kill()

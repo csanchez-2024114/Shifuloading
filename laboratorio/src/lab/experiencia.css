@@ -13,3 +13,5 @@
 .exp .exp-ayuda { margin: 6px 0 0; font-size: 13px; color: #5b6b66; }
 /* En el celular el chat ocupa la pantalla: el botón del laboratorio tapaba la cámara y el clip (prueba de cliente). */
 @media (max-width: 700px) { body:has(.mc-chat-panel) .exp-reiniciar { display: none; } }
+/* Segundo toque para empezar de nuevo (D57: ahora borra el CRM guardado). */
+.exp-reiniciar.seguro { background: #b42318; border-color: #b42318; }

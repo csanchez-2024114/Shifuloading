@@ -6,3 +6,6 @@ laboratorio/dist
 
 # Videos de revisión del laboratorio (pesados, no se versionan)
 laboratorio/grabaciones/
+
+# CRMs guardados en el laboratorio (D57): datos de prueba de cada navegador, no se versionan
+laboratorio/.guardado/

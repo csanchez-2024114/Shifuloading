@@ -68,23 +68,24 @@ function LogoMarca({ src, tema }) {
 }
 const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista', calendario_mes: 'Calendario', tablero_dinero: 'Por etapa y monto', cifra: 'Cifra', atencion: 'Atención', franjas: 'Por atender', matriz: 'Cruce' }
 
-export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBase, nivel = 'pocos', tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos, demo = false, mostrarPlantilla = true }) {
+export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBase, nivel = 'pocos', tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos, onFinRecorrido, demo = false, mostrarPlantilla = true, inicial, chatInicial, onGuardar }) {
   const [enRecorrido, setEnRecorrido] = useState(recorrido)
   // Formatos (moneda, miles, fechas, horas) según la configuración regional de la persona: se fija antes de dibujar.
   fijarRegion(pais)
-  const [vista, setVista] = useState('inicio')
+  // inicial: el CRM guardado (D57) — piezas, marca, estructura, datos, toma y puntos de deshacer — tal como quedó.
+  const [vista, setVista] = useState(inicial?.vista || 'inicio')
   const def = ESTILOS.find((e) => e.id === estilo) || ESTILOS[0]
   const animado = def.base === 'vivo'
   // El inicio SOLO lo cambia la IA (chat): recibe un estado nuevo y la pantalla se transforma animada.
-  const [bloques, setBloques] = useState(() => acomodar(conTamano(plantillaBase.inicio.map((w, i) => ({ ...w, uid: `b${i}` })))))
+  const [bloques, setBloques] = useState(() => inicial?.bloques || acomodar(conTamano(plantillaBase.inicio.map((w, i) => ({ ...w, uid: `b${i}` })))))
   const [saliendo, setSaliendo] = useState([])
   // Marca del negocio (D19): la cambia solo Shifu. Base = tokens actuales; la marca los reemplaza y el código cuida el contraste.
-  const [marca, setMarca] = useState({})
+  const [marca, setMarca] = useState(inicial?.marca || {})
   // Estructura que Shifu cambió (secciones nuevas, campos, ocultas, nombres). La plantilla efectiva = base + esto.
-  const [estructura, setEstructura] = useState({})
+  const [estructura, setEstructura] = useState(inicial?.estructura || {})
   const plantilla = useMemo(() => plantillaEfectiva(plantillaBase, { estructura }), [plantillaBase, estructura])
   // Lo que la persona agregó, cambió o borró por chat (D50): vive en el estado como el diseño y se deshace igual.
-  const [misDatos, setMisDatos] = useState({})
+  const [misDatos, setMisDatos] = useState(inicial?.datos || {})
   const datos = useMemo(() => aplicarDatos(extenderDatos(datosBase, plantillaBase, estructura, nivel), misDatos, estructura.mapeoEstado), [datosBase, plantillaBase, estructura, nivel, misDatos])
   // Para que el servidor del chat arme los MISMOS registros que se ven aquí (ejemplos de qué tamaño, si ya se borraron).
   const muestra = useMemo(() => ({ nivel, pais, ejemplos: Object.values(datosBase?.registros || {}).some((rs) => rs.some((r) => r.ejemplo)) }), [datosBase, nivel, pais])
@@ -120,11 +121,14 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const { modo: eligiendoPiezas, barra: barraSeleccion } = useSeleccion(raiz)
   // Cascadas de entrada solo al cargar o al cambiar de sección; al aplicar cambios de Shifu se apaga para no re-animar lo que no cambió.
   const [entrada, setEntrada] = useState(() => animado)
-  const ir = (id) => conTransicion(() => { if (animado) setEntrada(true); setVista(id) })
+  // La pestaña que se mira también va en el último estado: la IA debe saber dónde está la persona (antes, tras un cambio de
+  // Shifu, navegar por el menú no lo actualizaba y «aquí» apuntaba a la pestaña anterior).
+  const ir = (id) => { if (ultimo.current) ultimo.current = { ...ultimo.current, vista: id }; conTransicion(() => { if (animado) setEntrada(true); setVista(id) }) }
   /** Aplica el estado que devolvió Shifu: lo que se va sale primero (desenfoque), después el resto se reacomoda y lo nuevo nace. */
   const aplicarEstado = (nuevo) => {
     const bloquesBase = nuevo.bloques ?? ultimo.current?.bloques ?? bloques.map(({ nuevo: _n, ...b }) => b)
     ultimo.current = { vista: nuevo.vista || vista, marca: nuevo.marca ?? marca, estructura: nuevo.estructura ?? estructura, datos: nuevo.datos ?? misDatos, bloques: bloquesBase.map(({ nuevo: _n, ...b }) => b), toma: nuevo.toma, puntos: nuevo.puntos }
+    onGuardar?.('crm', ultimo.current) // lo que hizo Shifu queda guardado (D57)
     if (nuevo.datos) setMisDatos(nuevo.datos)
     if (!nuevo.bloques) return
     if (animado) setEntrada(false)
@@ -141,7 +145,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
     if (!fuera.length || !animado || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return final()
     setSaliendo(fuera); setTimeout(final, 700 * vel)
   }
-  const ultimo = useRef(null) // el último estado aplicado (puede no haberse dibujado todavía por la transición)
+  const ultimo = useRef(inicial || null) // el último estado aplicado (puede no haberse dibujado todavía por la transición)
   const estadoParaIA = () => ultimo.current || ({ vista, marca, estructura, datos: misDatos, bloques: bloques.map(({ nuevo: _n, ...b }) => b), toma: ultimo.current?.toma })
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
@@ -239,8 +243,8 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
       </div>
       {barraSeleccion}
       {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} desdeOrigen={abierta.transicion} />}
-      {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
-      <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} muestra={muestra} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} abiertoInicial={!recorrido} /* durante el recorrido el chat espera cerrado: abierto tapaba las piezas que señala (prueba de cliente) */ />
+      {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => { setEnRecorrido(false); onFinRecorrido?.() }} onTerminar={() => { setEnRecorrido(false); onFinRecorrido?.(); onBorrarEjemplos?.() }} />}
+      <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} muestra={muestra} onEstado={aplicarEstado} inicial={chatInicial} onMensajes={(m) => onGuardar?.('chat', m)} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} abiertoInicial={!recorrido} /* durante el recorrido el chat espera cerrado: abierto tapaba las piezas que señala (prueba de cliente) */ />
     </div>
     </FichaContext.Provider></VelContext.Provider></AnimarContext.Provider>
   )
