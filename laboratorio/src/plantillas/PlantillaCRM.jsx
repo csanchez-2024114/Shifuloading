@@ -7,6 +7,7 @@ import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
 import { COMPONENTES, AnimarContext, VelContext, FichaContext } from './vistas'
 import Ficha from './ficha'
+import { COMPONENTES_EXTRA } from './vistas-extra'
 import { useSeleccion } from './seleccion'
 import { IconoSeccion } from './iconos'
 import { ESTILOS } from './estilos'
@@ -86,9 +87,9 @@ function LogoMarca({ src, tema }) {
   const invertir = luz !== null && ((tema === 'oscuro' && luz < 0.35) || (tema === 'claro' && luz > 0.8))
   return <img className="pl-logo" src={src} alt="Logo del negocio" style={invertir ? { filter: tema === 'oscuro' ? 'brightness(0) invert(1)' : 'brightness(0)' } : undefined} />
 }
-const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista' }
+const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista', calendario_mes: 'Calendario', tablero_dinero: 'Por etapa y monto', cifra: 'Cifra', atencion: 'Atención', franjas: 'Por atender', matriz: 'Cruce' }
 
-export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBase, nivel = 'pocos', tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos, demo = false }) {
+export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBase, nivel = 'pocos', tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos, demo = false, mostrarPlantilla = true }) {
   const [enRecorrido, setEnRecorrido] = useState(recorrido)
   // Formatos (moneda, miles, fechas, horas) según la configuración regional de la persona: se fija antes de dibujar.
   fijarRegion(pais)
@@ -166,7 +167,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const fantasma = useMemo(() => extenderDatos(datosEjemplo(plantillaBase, 'pocos'), plantillaBase, estructura, 'pocos'), [plantillaBase, estructura])
   const dibujarCon = (s, nombreVista, opciones, d) => {
     if (nombreVista === 'grafico') return <Grafico key={opciones?.tipo} tipo={opciones?.tipo} seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, d)} opciones={opciones || {}} />
-    const V = COMPONENTES[nombreVista]
+    const V = COMPONENTES[nombreVista] || COMPONENTES_EXTRA[nombreVista]
     return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, d)} opciones={opciones || {}} datos={d} /> : null
   }
   const dibujar = (s, nombreVista, opciones) => {
@@ -187,7 +188,8 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
       <header className="mc-top">
         {marca.logo ? <LogoMarca src={marca.logo} tema={tema} /> : <Logo height={24} color="var(--tx)" />}
         <span className="mc-negocio">{marca.nombre || negocio}</span>
-        <span className="pl-plantilla" title={plantilla.para}>Plantilla: {plantilla.nombre}</span>
+        {/* Solo en el laboratorio: en la experiencia real la estructura de partida es interna (D49). */}
+        {mostrarPlantilla && <span className="pl-plantilla" title={plantilla.para}>Plantilla: {plantilla.nombre}</span>}
       </header>
       <div className="mc-cuerpo">
         <nav className="mc-menu" aria-label="Secciones">

@@ -16,7 +16,7 @@ const QUE_ES = {
 }
 
 export function pasosDe(plantilla, bloques, porId) {
-  const pasos = [{ sel: '.mc-cab', texto: `Este es tu CRM: **${plantilla.nombre}**. Lo armé con tus respuestas. Por ahora tiene datos de ejemplo para que veas cómo se usa.` }]
+  const pasos = [{ sel: '.mc-cab', texto: `Este es tu CRM. Lo armé con tus respuestas. Por ahora tiene datos de ejemplo para que veas cómo se usa.` }]
   for (const b of bloques) {
     const s = porId[b.seccion]?.titulo || ''
     const texto = b.vista === 'grafico' ? `${GRAFICOS[b.opciones?.tipo]?.nombre || 'Gráfico'} de ${s}: se calcula solo con tus datos.` : (QUE_ES[b.vista] || ((x) => x))(s)

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import LaboratorioPage from './lab/LaboratorioPage'
 import VistaPage from './lab/VistaPage'
+import ExperienciaPage from './lab/ExperienciaPage'
 import '@base/styles.css'
 import '@base/home.css'
 
@@ -12,6 +13,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<LaboratorioPage />} />
         <Route path="/vista" element={<VistaPage />} />
+        <Route path="/experiencia" element={<ExperienciaPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

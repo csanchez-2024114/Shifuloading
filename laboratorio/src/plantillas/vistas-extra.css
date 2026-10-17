@@ -1,0 +1,98 @@
+/* Vistas extra del laboratorio: solo container queries (@container bloque). */
+.pl-vx-marco { display: flex; flex-direction: column; min-height: 0; min-width: 0; height: 100%; gap: 6px; }
+.pl-vx-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+
+/* Calendario */
+.pl-vx-cal { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; min-height: 0; height: 100%; }
+.pl-vx-cal-cab { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+.pl-vx-cal-cab b { font-size: 13px; color: var(--tx); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-vx-cal-nav { display: flex; gap: 4px; flex: none; }
+.pl-vx-cal-nav button { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--linea); background: var(--card); color: var(--tx); font-size: 14px; cursor: pointer; padding: 0; }
+.pl-vx-cal-nav button.hoy { width: auto; padding: 0 10px; font-size: 12px; }
+.pl-vx-cal-rejilla { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; min-height: 0; }
+.pl-vx-cal-dow { text-align: center; font-size: 10px; color: var(--tx3); padding: 2px 0; text-transform: lowercase; }
+.pl-vx-cal-celda { min-width: 0; min-height: 0; padding: 2px; border-radius: 6px; background: rgba(var(--ink), .03); border: 1px solid transparent; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 1px; }
+.pl-vx-cal-celda.fuera { opacity: .35; pointer-events: none; }
+.pl-vx-cal-celda.hoy { border-color: var(--verde); }
+.pl-vx-cal-celda em { font-style: normal; font-size: 10px; color: var(--tx3); text-align: right; font-variant-numeric: tabular-nums; }
+.pl-vx-cal-celda ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; min-width: 0; }
+.pl-vx-cal-celda li { font-size: 10px; padding: 1px 3px; border-radius: 4px; background: color-mix(in srgb, var(--acento, #22d3a6) 14%, transparent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.pl-vx-cal-celda li i { display: inline-block; width: 5px; height: 5px; border-radius: 999px; margin-right: 3px; vertical-align: middle; }
+.pl-vx-cal-aviso { font-size: 11px; color: var(--tx3); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-vx-cal-lista { display: none; }
+.pl-vx-cal-lista section { padding: 8px; border-radius: 10px; border: 1px solid var(--linea); background: var(--card); margin-bottom: 6px; }
+.pl-vx-cal-lista h4 { margin: 0 0 6px; font-size: 12px; color: var(--tx2); }
+.pl-vx-cal-lista li { list-style: none; font-size: 12px; padding: 6px 8px; border-radius: 8px; background: rgba(var(--ink), .05); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@container bloque (max-width: 380px) {
+  .pl-vx-cal-rejilla { display: none; }
+  .pl-vx-cal-lista { display: block; }
+}
+
+/* Tablero dinero (reusa pl-tablero / pl-col / pl-tarjeta) */
+.pl-vx-td-total { display: block; font-size: 11px; color: var(--tx3); font-weight: 400; margin-top: 2px; }
+.pl-vx-td-dias { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; background: rgba(var(--ink), .08); color: var(--tx2); }
+.pl-vx-td-dias.aviso { background: color-mix(in srgb, #f5a623 22%, transparent); color: var(--ambar-t, #f5a623); }
+.pl-vx-td-dias.alerta { background: color-mix(in srgb, #f0587a 22%, transparent); color: var(--rojo-t); }
+
+/* Cifra */
+.pl-vx-cifra { display: grid; gap: 8px; align-content: center; min-height: 0; height: 100%; padding: 4px 0; }
+.pl-vx-cifra-cab { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pl-vx-cifra-cab small { color: var(--tx3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.pl-vx-cifra-ayuda { flex: none; width: 20px; height: 20px; border-radius: 999px; border: 1px solid var(--linea); background: var(--card); color: var(--tx3); font-size: 12px; display: grid; place-items: center; cursor: help; }
+.pl-vx-cifra-num { font: 700 clamp(22px, 8cqi, 42px) var(--fuente); letter-spacing: -0.03em; color: var(--tx); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-vx-cifra-trend { font-size: 13px; color: var(--tx2); }
+.pl-vx-cifra-trend.sube { color: var(--verde-t, #22d3a6); }
+.pl-vx-cifra-trend.baja { color: var(--rojo-t); }
+.pl-vx-cifra-meta { height: 6px; border-radius: 999px; background: rgba(var(--ink), .08); overflow: hidden; }
+.pl-vx-cifra-meta i { display: block; height: 100%; border-radius: inherit; background: var(--c, var(--tx3)); }
+
+/* Atención */
+.pl-vx-atencion { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; min-height: 0; height: 100%; }
+.pl-vx-atencion-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pl-vx-atencion-kpis div { padding: 10px 8px; border-radius: 12px; background: var(--card); border: 1px solid var(--linea); min-width: 0; }
+.pl-vx-atencion-kpis small { display: block; font-size: 11px; color: var(--tx3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-vx-atencion-kpis strong { display: block; font-size: 20px; margin-top: 2px; }
+.pl-vx-atencion-kpis .alerta strong { color: var(--rojo-t); }
+.pl-vx-atencion-kpis .aviso strong { color: var(--ambar-t, #f5a623); }
+.pl-vx-atencion ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pl-vx-atencion li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(var(--ink), .05); font-size: 12.5px; min-width: 0; }
+.pl-vx-atencion li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-vx-atencion li em { flex: none; font-style: normal; font-size: 12px; color: var(--tx2); }
+
+@container bloque (max-width: 320px) {
+  .pl-vx-atencion-kpis { grid-template-columns: 1fr; }
+  .pl-vx-atencion-kpis strong { font-size: 18px; }
+}
+
+/* Franjas */
+.pl-vx-franjas { display: grid; gap: 6px; min-height: 0; height: 100%; align-content: start; } /* alto del bloque: así su scroll interno funciona y no se corta */
+.pl-vx-franja { border-radius: 12px; border: 1px solid var(--linea); background: var(--card); min-width: 0; overflow: hidden; }
+.pl-vx-franja-cab { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 0; background: transparent; color: var(--tx); font: inherit; cursor: pointer; text-align: left; }
+.pl-vx-franja-cab span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.pl-vx-franja-cab i { font-style: normal; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(var(--ink), .08); }
+.pl-vx-franja-cab::before { content: '▸'; color: var(--tx3); transition: transform .15s; }
+.pl-vx-franja.abierta .pl-vx-franja-cab::before { transform: rotate(90deg); }
+.pl-vx-franja ul { list-style: none; margin: 0; padding: 0 8px 8px; display: grid; gap: 4px; max-height: 200px; overflow-y: auto; overscroll-behavior: contain; }
+.pl-vx-franja:not(.abierta) ul { display: none; }
+.pl-vx-franja li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; background: rgba(var(--ink), .05); font-size: 12.5px; min-width: 0; }
+.pl-vx-franja li > b { font-size: 11px; color: var(--tx3); font-variant-numeric: tabular-nums; }
+.pl-vx-franja li > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-vx-franja li > em { font-style: normal; font-size: 11px; color: var(--tx3); flex: none; }
+.pl-vx-franja.urgente { border-top: 3px solid #f0587a; }
+.pl-vx-franja.vencido { border-top: 3px solid #f0587a; }
+.pl-vx-franja.hoy { border-top: 3px solid #f5a623; }
+
+/* Matriz */
+.pl-vx-matriz { overflow: auto; overscroll-behavior: contain; min-height: 0; max-height: 100%; }
+.pl-vx-matriz table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 0; }
+.pl-vx-matriz th, .pl-vx-matriz td { padding: 6px 8px; border: 1px solid var(--linea); text-align: center; min-width: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-vx-matriz th { background: rgba(var(--ink), .05); color: var(--tx3); font-weight: 600; font-size: 11px; position: sticky; top: 0; z-index: 1; }
+.pl-vx-matriz th.fila { text-align: left; position: sticky; left: 0; z-index: 2; background: var(--card); }
+.pl-vx-matriz td.fila { text-align: left; font-weight: 500; position: sticky; left: 0; background: var(--card); z-index: 1; }
+.pl-vx-matriz td b { font-variant-numeric: tabular-nums; }
+.pl-vx-matriz .pct { display: block; font-size: 10px; color: var(--tx3); font-weight: 400; }
+
+@container bloque (max-width: 400px) {
+  .pl-vx-matriz th, .pl-vx-matriz td { padding: 4px 5px; font-size: 11px; }
+}

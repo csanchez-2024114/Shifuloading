@@ -1446,7 +1446,7 @@ export const GRAFICOS = {
     opciones: () => ({ bins: null }), calcular: (r, c, o) => calcHistograma(r, c, o) },
   caja: { nombre: 'Caja y bigotes', familia: F.di, requiere: { medida: 1 }, Componente: Caja,
     opciones: (b) => ({ agrupar: b.estado || null }), calcular: (r, c, o) => calcCaja(r, c, o) },
-  calendario: { nombre: 'Calendario de calor', familia: F.ti, requiere: { fecha: 1 }, Componente: Calendario,
+  calendario: { nombre: 'Mapa de calor por día', familia: F.ti, requiere: { fecha: 1 }, Componente: Calendario,
     opciones: () => ({ semanas: 16, funcion: 'conteo' }), calcular: (r, c, o, hoy) => calcCalendario(r, c, o, hoy) },
   cascada: { nombre: 'Cascada', familia: F.ti, requiere: { fecha: 1 }, Componente: Cascada,
     opciones: (b) => ({ funcion: sumaOConteo(b), meses: 12 }), calcular: (r, c, o, hoy) => calcCascada(r, c, o, hoy) },

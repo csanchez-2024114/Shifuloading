@@ -50,4 +50,12 @@ caso('quitar una sección se lleva su lienzo y sus piezas en otras pestañas', (
   const r = ejecutar(p, b, 'quitar_seccion', { seccion: 'pagos' }); assert.ok(r.ok, r.resultado)
   assert.equal(pag(r.estado, 'pagos'), undefined); assert.ok(pag(r.estado, 'miembros').every((x) => x.seccion !== 'pagos'))
 })
+caso('mirando una pestaña: agregar va ahí por defecto (sin recursión)', () => {
+  const r = ejecutar(p, { ...E, vista: 'miembros' }, 'agregar_bloque', { vista: 'kpis', opciones: { por: 'estado' } }); assert.ok(r.ok, r.resultado)
+  assert.equal(pag(r.estado, 'miembros').length, 2); assert.deepEqual(r.estado.bloques.map((b) => b.uid), ['b0']); assert.equal(r.estado.vista, 'miembros')
+})
+caso('mirando una pestaña: tocar un bloque del inicio sin decirlo se rechaza; con pestana="inicio" sí', () => {
+  const r1 = ejecutar(p, { ...E, vista: 'miembros' }, 'cambiar_visual', { bloque: 'b0', vista: 'tabla' }); assert.equal(r1.ok, false); assert.match(r1.resultado, /INICIO/)
+  const r2 = ejecutar(p, { ...E, vista: 'miembros' }, 'agregar_bloque', { pestana: 'inicio', vista: 'tabla', seccion: 'pagos' }); assert.ok(r2.ok, r2.resultado); assert.equal(r2.estado.bloques.length, 2)
+})
 console.log(`\n${ok} pruebas bien`); await v.close()

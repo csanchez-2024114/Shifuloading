@@ -2,7 +2,7 @@
  * Funciones puras (sin React, sin API): reciben el estado y devuelven el nuevo estado o un error legible.
  * Las usa el servidor del laboratorio (servidor/chat.js) al ejecutar las herramientas del modelo, y nada más las cambia.
  * Lo que el modelo pide fuera de esto (una vista que no existe, un campo equivocado) se rechaza aquí, no se dibuja mal. */
-import { VISTAS, revisarVista, camposDe, validarPlantilla, TIPOS_CAMPO } from './validar.js'
+import { VISTAS, revisarVista, camposDe, validarPlantilla, TIPOS_CAMPO, normalizarOpciones } from './validar.js'
 import { compatibles, GRAFICOS, opcionesPorDefecto } from './graficos.jsx'
 import { FUENTES, esHex, tokensDeMarca, revisarLogo } from './marca.js'
 
@@ -11,7 +11,7 @@ export const PESTANAS = Object.fromEntries(Object.values(import.meta.glob('./bib
 
 export const ANCHOS_COL = [3, 4, 6, 8, 12]
 export const ALTO_MAX = 4
-const VISTAS_INICIO = ['kpis', 'tablero', 'agenda', 'vencimientos', 'grafico', 'tabla']
+const VISTAS_INICIO = ['kpis', 'tablero', 'agenda', 'vencimientos', 'grafico', 'tabla', 'calendario_mes', 'tablero_dinero', 'cifra', 'atencion', 'franjas', 'matriz']
 // id nuevo e irrepetible: si se reusara el de un bloque quitado, la animación lo confundiría con el viejo.
 const nuevoUid = () => `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 const ajustarAncho = (a) => ANCHOS_COL.reduce((m, x) => (Math.abs(x - a) < Math.abs(m - a) ? x : m), 6)
@@ -144,7 +144,7 @@ export const HERRAMIENTAS_BLOQUEADAS_EN_TOMA = new Set([
   'cambiar_ficha', 'cambiar_tarjeta', 'quitar_campo', 'renombrar_campo', 'cambiar_opciones_estado',
 ])
 const GRAF_ALIAS = { barras: 'barras', barra: 'barras', columnas: 'columnas', dona: 'dona', pastel: 'pastel', linea: 'linea', 'línea': 'linea' }
-const NOMBRE_VISTA = { kpis: 'resumen con cifras', tablero: 'tablero por etapas', agenda: 'agenda', vencimientos: 'por vencer', grafico: 'gráfica', tabla: 'lista' }
+const NOMBRE_VISTA = { kpis: 'resumen con cifras', tablero: 'tablero por etapas', agenda: 'agenda', vencimientos: 'por vencer', grafico: 'gráfica', tabla: 'lista', calendario_mes: 'calendario del mes', tablero_dinero: 'tablero con montos', cifra: 'cifra con meta y tendencia', atencion: 'panel de atención', franjas: 'bandeja por prioridad', matriz: 'cruce de dos campos' }
 const PREGUNTA_FALTA = {
   objetivo: '¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)',
   secciones: '¿Qué partes de tu negocio quieres ver ahí? (ventas, clientes, inventario, lo que uses a diario…)',
@@ -411,6 +411,13 @@ export function ubicarTodo(estado) {
 
 export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
   if (HERR_BLOQUE.has(nombre)) {
+    // Si la persona está MIRANDO una pestaña, las piezas van ahí por defecto; tocar el inicio desde ahí exige decirlo
+    // (pestana="inicio"). Medido: «aquí pon un resumen» mirando Miembros cambiaba el inicio y decía «en la pestaña Miembros».
+    const mirando = estado.vista && estado.vista !== 'inicio' ? estado.vista : null
+    if (mirando && !args.pestana) {
+      if (nombre === 'agregar_bloque') args = { ...args, pestana: mirando }
+      else if (args.bloque && !lienzoDeBloque(estado, args.bloque)) return { estado, ok: false, resultado: `ERROR: la persona está mirando la pestaña «${mirando}» y «${args.bloque}» es un bloque del INICIO (no se ve aquí). Usa los bloques de esta pestaña (pestanas_con_piezas, o p_${mirando} si no tiene) o, si pidió el inicio, pon pestana="inicio".` }
+    }
     const pid = args.pestana && args.pestana !== 'inicio' ? args.pestana : lienzoDeBloque(estado, args.bloque)
     if (pid) {
       const efectiva = plantillaEfectiva(plantilla, estado)
@@ -419,10 +426,11 @@ export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
       const pagina = paginaDe(efectiva, estado, pid)
       if (!pagina) return { estado, ok: false, resultado: `ERROR: «${sec.titulo}» no admite piezas (es una pestaña fija del sistema).` }
       // Se usa la MISMA lógica del inicio sobre el lienzo de la pestaña (validación, acomodo, ubicación).
-      const r = ejecutar(plantilla, { ...estado, bloques: pagina }, nombre, { ...args, pestana: undefined, seccion: args.seccion || (nombre === 'agregar_bloque' ? pid : args.seccion) }, contexto)
+      // La llamada interna trabaja sobre el lienzo de la pestaña como si fuera el inicio (vista neutra: sin re-enrutar).
+      const r = ejecutar(plantilla, { ...estado, vista: 'inicio', bloques: pagina }, nombre, { ...args, pestana: undefined, seccion: args.seccion || (nombre === 'agregar_bloque' ? pid : args.seccion) }, contexto)
       if (!r.ok) return { ...r, estado }
       const est = r.estado.estructura || estado.estructura || {}
-      return { ...r, estado: { ...r.estado, bloques: estado.bloques, estructura: { ...est, paginas: { ...(est.paginas || {}), [pid]: r.estado.bloques } } }, resultado: `En la pestaña «${sec.titulo}»: ${r.resultado}` }
+      return { ...r, estado: { ...r.estado, vista: estado.vista, bloques: estado.bloques, estructura: { ...est, paginas: { ...(est.paginas || {}), [pid]: r.estado.bloques } } }, resultado: `En la pestaña «${sec.titulo}»: ${r.resultado}` }
     }
   }
   const r0 = ejecutarSin(plantilla, estado, nombre, args, contexto)
@@ -475,7 +483,7 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
       // Cambiar un bloque que NO es gráfica (resumen, tablero, lista…) por otra cosa es quitarlo: solo si lo pidieron.
       const s = seccionDe(plantilla, args.seccion || viejo?.seccion); if (!s) return no(`la sección «${args.seccion}» no existe. Secciones: ${plantilla.secciones.filter((x) => x.campos || x.fuente).map((x) => x.id).join(', ')}.`)
       if (!VISTAS_INICIO.includes(args.vista)) return no(`la vista «${args.vista}» no existe en el inicio. Vistas posibles: ${VISTAS_INICIO.join(', ')}.`)
-      const opciones = args.opciones || {}
+      const opciones = normalizarOpciones(args.vista, args.opciones || {})
       const errores = revisarVista(args.vista, opciones, camposDe(s, porId), `«${s.titulo}»`)
       if (args.vista === 'grafico') {
         const posibles = compatibles(camposDe(s, porId)).map((g) => g.id)
@@ -715,7 +723,7 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
 export const HERRAMIENTAS = [
   ['quitar_bloque', 'Quita un bloque (del inicio o de una pestaña: el código sabe dónde está por su id).', { bloque: { type: 'string', description: 'id del bloque, ej. b2' } }, ['bloque']],
   ['agregar_bloque', 'Agrega una pieza (bloque) al inicio o a cualquier pestaña, con una vista del catálogo sobre una sección. Cada pestaña es un cuaderno en blanco: puede llevar varias piezas.', {
-    pestana: { type: 'string', description: 'dónde va: "inicio" (por defecto) o el id de una sección. Si la persona está mirando una pestaña (pestana_abierta) y dice «aquí» o «en esta pestaña», es esa.' }, seccion: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', description: 'opciones de la vista: ids de campos (ver "vistas" y "secciones"). Para grafico: {tipo: uno de graficos_posibles de esa sección, ...}. Para tabla: {filtro: {campo, menorOIgual: número o id de otro campo | mayorOIgual | igual}, orden: {campo, dir: asc|desc}, limite}' , additionalProperties: true },
+    pestana: { type: 'string', description: 'dónde va: "inicio" (por defecto) o el id de una sección. Si la persona está mirando una pestaña (pestana_abierta) y dice «aquí» o «en esta pestaña», es esa.' }, seccion: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', description: 'opciones de la vista: ids de campos (ver "vistas" y "secciones"). calendario_mes {fecha, titulo?, estado?}: el mes en rejilla con los registros de cada día (distinto del gráfico «calendario» de calor). tablero_dinero {por: estado, suma: dinero}: columnas con total. cifra {funcion: conteo|suma|promedio, valor?, meta?: número, fecha?: para comparar con el periodo anterior, periodo?: mes|semana, ayuda?: texto}. atencion {fecha, estado?, excluir?}: vencidos y por vencer. franjas {fecha, estado?, urgentes?: [opciones]}: bandeja por prioridad. matriz {filas: texto, columnas: estado}. Para grafico: {tipo: uno de graficos_posibles de esa sección, ...}. Para tabla: {filtro: {campo, menorOIgual: número o id de otro campo | mayorOIgual | igual}, orden: {campo, dir: asc|desc}, limite}' , additionalProperties: true },
     ancho: { type: 'integer', enum: ANCHOS_COL }, alto: { type: 'integer', minimum: 1, maximum: ALTO_MAX }, posicion: { type: 'integer', minimum: 1 } }, ['seccion', 'vista']],
   ['cambiar_visual', 'Cambia la vista o sus opciones de un bloque existente (mantiene su lugar y tamaño).', {
     bloque: { type: 'string' }, vista: { type: 'string', enum: VISTAS_INICIO }, opciones: { type: 'object', additionalProperties: true }, seccion: { type: 'string' } }, ['bloque', 'vista']],

@@ -4,6 +4,7 @@
 import { useMemo } from 'react'
 import { Grafico, compatibles } from '../plantillas/graficos'
 import { COMPONENTES, AnimarContext } from '../plantillas/vistas'
+import { COMPONENTES_EXTRA } from '../plantillas/vistas-extra'
 import { camposDe } from '../plantillas/validar'
 import { datosEjemplo, registrosDe } from '../plantillas/datosEjemplo'
 import { ESTILOS } from '../plantillas/estilos'
@@ -48,6 +49,12 @@ function vistasPara(campos) {
   if (de('estado')) out.push({ vista: 'tablero', opciones: { por: de('estado'), titulo, detalle } })
   if (de('fecha')) out.push({ vista: 'agenda', opciones: { fecha: de('fecha'), hora: de('hora'), titulo, detalle, dias: 7 } })
   if (de('fecha')) out.push({ vista: 'vencimientos', opciones: { fecha: de('fecha'), titulo, detalle, grupos: [7, 30] } })
+  // Herramientas que se piden por chat (vistas-extra.jsx).
+  const texto = campos.find((c) => c.tipo === 'texto')?.id, plata = campos.find((c) => ['dinero', 'numero'].includes(c.tipo))?.id
+  if (de('fecha')) out.push({ vista: 'calendario_mes', opciones: { fecha: de('fecha'), titulo, estado: de('estado') } }, { vista: 'atencion', opciones: { fecha: de('fecha'), estado: de('estado') } }, { vista: 'franjas', opciones: { fecha: de('fecha'), estado: de('estado'), titulo, detalle } })
+  if (de('estado') && plata) out.push({ vista: 'tablero_dinero', opciones: { por: de('estado'), suma: plata, titulo, detalle, dias_en: de('fecha') } })
+  out.push({ vista: 'cifra', opciones: { funcion: plata ? 'suma' : 'conteo', valor: plata, meta: 1000, fecha: de('fecha'), ayuda: 'Prueba de ayuda' } })
+  if (de('estado') && texto) out.push({ vista: 'matriz', opciones: { filas: texto, columnas: de('estado') } })
   return out
 }
 
@@ -58,7 +65,7 @@ export default function Estres({ plantilla: base, variante = 'pocos', tema = 'os
   const piezas = []
   for (const s of plantilla.secciones.filter((x) => x.campos?.length && !x.fuente)) {
     const campos = camposDe(s, porId), registros = registrosDe(s, datos)
-    for (const v of vistasPara(campos)) piezas.push({ id: `${s.id}:${v.vista}`, titulo: `${v.vista} · ${s.titulo}`, el: (() => { const V = COMPONENTES[v.vista]; return <V seccion={s} campos={campos} registros={registros} opciones={v.opciones} datos={datos} /> })() })
+    for (const v of vistasPara(campos)) piezas.push({ id: `${s.id}:${v.vista}`, titulo: `${v.vista} · ${s.titulo}`, el: (() => { const V = COMPONENTES[v.vista] || COMPONENTES_EXTRA[v.vista]; return <V seccion={s} campos={campos} registros={registros} opciones={v.opciones} datos={datos} /> })() })
     for (const g of compatibles(campos)) piezas.push({ id: `${s.id}:grafico:${g.id}`, titulo: `${g.nombre} · ${s.titulo}`, el: <Grafico tipo={g.id} seccion={s} campos={campos} registros={registros} opciones={g.opciones} /> })
   }
   return (

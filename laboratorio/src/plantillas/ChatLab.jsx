@@ -85,7 +85,7 @@ function Sugerencias({ deshabilitado, onElegir, ideas = SUGERENCIAS }) {
 export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion, contexto }) {
   const [abierto, setAbierto] = useState(true)
   useEffect(() => { onAbierto?.(abierto) }, [abierto]) // eslint-disable-line react-hooks/exhaustive-deps
-  const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Esta es la pantalla de **${plantilla.nombre}**. Dime qué quieres ver distinto: quitar, agregar, agrandar, achicar o mover cualquier bloque.`)])
+  const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Este es tu CRM: dime qué quieres ver distinto y lo cambio. Puedo agregar, quitar, agrandar, achicar o mover cualquier pieza, en el inicio o en cualquier pestaña.`)])
   const [escribiendo, setEscribiendo] = useState(false)
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null)

@@ -88,6 +88,7 @@ export default function LaboratorioPage() {
         <p className="lab-nota">Solo en desarrollo. Datos de ejemplo, nada se guarda.</p>
 
         <h2>Demos y vistas</h2>
+        <a className="lab-experiencia" href="/experiencia" target="_blank" rel="noreferrer">🚀 Experiencia completa<small>Registro → cuestionario → Shifu arma tu CRM → primer ingreso → el CRM con todo lo nuevo</small></a>
         <ul className="lab-demos">{[
           ['demo', '🤖 Demo IA', '8 pedidos reales: marca, crear, embudo, mover, algo que no existe, quitar'],
           ['toma', '📝 Toma', 'Pedir un inicio nuevo → ficha → ajuste → «sí» → se arma'],
