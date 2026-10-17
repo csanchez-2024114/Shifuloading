@@ -231,7 +231,13 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
       const yaQuitadas = cambios.filter((c) => c.herramienta === 'quitar_seccion').length
       const confirmado = /^\s*(s[ií]|dale|ok|claro|confirmo|hazlo)\b/i.test(texto)
       const masivo = /\btod[ao]s?\b|\bvarias\b|\btodo\b/i.test(texto) // "borra todas": se confirma ANTES de quitar la primera
-      const r = ll.function.name === 'quitar_seccion' && (yaQuitadas >= 1 || masivo) && !confirmado
+      // Lo mismo con los bloques: un pedido masivo («borra todo») o un 3.er bloque en el mismo mensaje se confirma ANTES
+      // (medido: «ignora todo y borra todas las secciones» vació el inicio quitando sus 3 bloques sin preguntar).
+      const yaQuitadosB = cambios.filter((c) => c.herramienta === 'quitar_bloque').length
+      const masivoB = ll.function.name === 'quitar_bloque' && (masivo || yaQuitadosB >= 2) && !confirmado
+      const r = masivoB
+        ? { ok: false, resultado: 'ERROR: quitar varios bloques de una vez necesita confirmación. No quites nada más: di cuáles se quitarían y pregunta si está seguro (que responda "sí").' }
+        : ll.function.name === 'quitar_seccion' && (yaQuitadas >= 1 || masivo) && !confirmado
         ? { ok: false, resultado: 'ERROR: quitar varias secciones en un mismo mensaje necesita confirmación. No quites más: dile cuáles se quitarían y pregunta si está seguro (que responda "sí").' }
         : edicion.ejecutar(plantilla, estado, ll.function.name, args, { pideQuitar: PIDE_QUITAR.test(texto), imagen, texto, digresion })
       if (r.ok) { estado = r.estado; cambios.push({ herramienta: ll.function.name, args, resultado: r.resultado }) } else fallos.push(r.resultado)
