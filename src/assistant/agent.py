@@ -341,6 +341,10 @@ Rules:
 # larga: a "¿qué te pedí al inicio?" respondió con el primer mensaje conservado en vez de con el resumen.
 SUMMARY_HEADER = ("Summary of the OLDEST part of this conversation. It replaces the earliest messages; the messages "
                   "after it are more recent. Questions about how the conversation started refer to this summary.\n\n")
+# Con COMPACT_FIRST_MESSAGE: además pide decir que el dato viene del resumen (prueba real: citó el primer mensaje
+# exacto pero sin decir de dónde lo sacaba).
+SOURCED_SUMMARY_HEADER = (SUMMARY_HEADER.rstrip() + " When answering from this summary or from its FIRST USER MESSAGE "
+                          "line, say that the information comes from the summary.\n\n")
 _OLD_HEADER = "Here is a summary of the conversation to date:\n\n"  # SummarizationMiddleware nativo
 
 STRUCTURED_SUMMARY_PROMPT = """You maintain the running summary of the OLDEST part of a conversation between a user and \
@@ -375,7 +379,8 @@ NEW MESSAGES:
 # COMPACT_FIRST_MESSAGE: cita del primer mensaje del usuario, en una línea fija al inicio del resumen. La pone el
 # código, no el modelo: se toma del primer resumen o del primer mensaje del hilo y se arrastra una sola vez (al
 # resumidor le llega el resumen anterior sin esa línea, y si la copia se quita).
-FIRST_MESSAGE_PREFIX = "FIRST USER MESSAGE: "
+FIRST_MESSAGE_PREFIX = "FIRST USER MESSAGE (from the summary, verbatim): "
+_FIRST_MESSAGE_MARK = "FIRST USER MESSAGE"  # también quita la línea con el formato anterior
 FIRST_MESSAGE_CHARS = 200
 
 
@@ -385,7 +390,7 @@ def first_message_quote(text: str) -> str:
 
 
 def _without_first_message_line(text: str) -> str:
-    return "\n".join(line for line in text.splitlines() if not line.startswith(FIRST_MESSAGE_PREFIX)).strip()
+    return "\n".join(line for line in text.splitlines() if not line.startswith(_FIRST_MESSAGE_MARK)).strip()
 
 
 def _first_user_message(messages) -> str | None:
@@ -401,7 +406,7 @@ def _first_user_message(messages) -> str | None:
 
 def _summary_body(msg) -> str:
     text = _content_text(msg)
-    for header in (SUMMARY_HEADER, _OLD_HEADER):
+    for header in (SOURCED_SUMMARY_HEADER, SUMMARY_HEADER, _OLD_HEADER):
         if text.startswith(header):
             return text[len(header):]
     return text
@@ -492,7 +497,8 @@ class ResumenPorTurno(SummarizationMiddleware):
         if first:
             summary = f'{FIRST_MESSAGE_PREFIX}"{first}"\n\n' + _without_first_message_line(summary)
             extra["first_user_message"] = first
-        msg = HumanMessage(content=SUMMARY_HEADER + summary, additional_kwargs=extra)
+        header = SOURCED_SUMMARY_HEADER if self.settings.compact_first_message else SUMMARY_HEADER
+        msg = HumanMessage(content=header + summary, additional_kwargs=extra)
         overhead = (stats or {}).get("overhead") or self.base
         after = overhead + message_tokens(
             prune_tool_results([msg, *kept], self.prune_age) if self.prune_age else [msg, *kept])

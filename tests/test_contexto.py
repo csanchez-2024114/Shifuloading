@@ -357,13 +357,15 @@ def test_resumen_estructurado_incremental_conserva_anterior_y_respeta_el_tope(ma
 @pytest.mark.parametrize("estructurado", [False, True])
 def test_resumen_cita_el_primer_mensaje_una_sola_vez_tras_dos_compactaciones(make_settings, mongo_checkpointer,
                                                                            estructurado):
-    from assistant.agent import FIRST_MESSAGE_PREFIX, SUMMARY_HEADER
+    from assistant.agent import FIRST_MESSAGE_PREFIX, SOURCED_SUMMARY_HEADER
     from assistant.memory import user_texts
 
     s = make_settings(memory_summarize=True, compact_structured=estructurado, compact_first_message=True,
                       context_window_tokens=4000, compact_keep_pct=15)
     # el resumidor falso copia la línea fija en su respuesta: el código debe quitarla para no duplicarla
-    summ = summarizer(*[f"{FIRST_MESSAGE_PREFIX}\"inventado\"\n- resumen ronda {i}" for i in range(10)])
+    assert FIRST_MESSAGE_PREFIX == 'FIRST USER MESSAGE (from the summary, verbatim): '
+    assert "say that the information comes from the summary" in SOURCED_SUMMARY_HEADER
+    summ = summarizer(*[f"FIRST USER MESSAGE: \"inventado\"\n- resumen ronda {i}" for i in range(10)])
     llm = usage_chat(*[f"respuesta {i}" for i in range(31)], extra=1500)
     agent = _agent(s, llm, checkpointer=mongo_checkpointer, summ=summ)
     thread = uid()
@@ -375,14 +377,16 @@ def test_resumen_cita_el_primer_mensaje_una_sola_vez_tras_dos_compactaciones(mak
         run_turn(agent, s, f"Mensaje {i}. " + FILLER, thread)
     assert len(_values(agent, thread)["compaction_log"]) >= 2, "no hubo dos compactaciones"
     # el resumidor de la segunda ronda recibe el resumen anterior sin la línea fija
-    assert FIRST_MESSAGE_PREFIX not in summ.prompts[1] and "resumen ronda 0" in summ.prompts[1]
+    assert FIRST_MESSAGE_PREFIX not in summ.prompts[1] and "FIRST USER MESSAGE:" not in summ.prompts[1]
+    assert "resumen ronda 0" in summ.prompts[1]
 
     run_turn(agent, s, "¿Qué fue lo primero que te dije?", thread)
     msgs = _values(agent, thread)["messages"]
     resumen = msgs[0]
     cita = '"' + primero[:199].rstrip() + '…"'
-    assert resumen.content.startswith(SUMMARY_HEADER + FIRST_MESSAGE_PREFIX + cita)
-    assert resumen.content.count(FIRST_MESSAGE_PREFIX) == 1 and "inventado" not in resumen.content
+    assert resumen.content.startswith(SOURCED_SUMMARY_HEADER + FIRST_MESSAGE_PREFIX + cita)
+    assert resumen.content.count("FIRST USER MESSAGE") == 2  # la mención del encabezado y la línea, una vez
+    assert "inventado" not in resumen.content
     assert resumen.additional_kwargs["first_user_message"] == cita.strip('"')
     assert len(resumen.additional_kwargs["first_user_message"]) == 200
     assert not any("Canela" in t for t in user_texts(msgs))  # la cita no cuenta como algo que dijo el usuario
@@ -392,7 +396,7 @@ def test_resumen_cita_el_primer_mensaje_una_sola_vez_tras_dos_compactaciones(mak
 
 
 def test_sin_la_opcion_el_resumen_no_lleva_la_cita(make_settings):
-    from assistant.agent import FIRST_MESSAGE_PREFIX
+    from assistant.agent import FIRST_MESSAGE_PREFIX, SOURCED_SUMMARY_HEADER, SUMMARY_HEADER
 
     s = make_settings(memory_summarize=True, context_window_tokens=4000, compact_keep_pct=15)
     llm = usage_chat(*[f"respuesta {i}" for i in range(20)], extra=1500)
@@ -405,6 +409,7 @@ def test_sin_la_opcion_el_resumen_no_lleva_la_cita(make_settings):
     resumen = _values(agent, thread)["messages"][0]
     assert _values(agent, thread)["compaction_log"] and FIRST_MESSAGE_PREFIX not in resumen.content
     assert "first_user_message" not in resumen.additional_kwargs
+    assert resumen.content.startswith(SUMMARY_HEADER) and not resumen.content.startswith(SOURCED_SUMMARY_HEADER)
 
 
 # --------------------------------------------------------------------------- bloque 4: memoria global
@@ -461,3 +466,12 @@ def test_conversacion_nueva_no_ve_el_contenido_de_otra_solo_la_memoria_global(ma
     run_turn(agent, s, "¿Dónde vivo?", hilo2, user_id=user)
     resultado = next(m for m in _values(agent, hilo2)["messages"] if m.type == "tool")
     assert "Mérida" in resultado.content and "ZANAHORIA" not in resultado.content  # solo lo guardado en memoria global
+
+
+def test_variables_numericas_vacias_usan_su_default(monkeypatch):
+    from assistant.config import Settings
+
+    for name in ("CONTEXT_WINDOW_TOKENS", "MAX_TOKENS", "MEMORY_DEDUP_SCORE"):
+        monkeypatch.setenv(name, "")
+    s = Settings.from_env()
+    assert (s.context_window_tokens, s.max_tokens, s.memory_dedup_score) == (0, 8000, 0.85)

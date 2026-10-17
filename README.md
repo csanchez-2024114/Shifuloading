@@ -196,7 +196,7 @@ Cada conversación (`thread_id`) tiene su propio contexto, su propio contador y 
 | `COMPACT_PRUNE_TOOLS` | `0` | capa 1: poda de resultados viejos de herramientas |
 | `COMPACT_PRUNE_AGE` | `6` | antigüedad, en mensajes, desde la que se poda un resultado |
 | `COMPACT_STRUCTURED` | `0` | capa 2: resumen estructurado e incremental |
-| `COMPACT_FIRST_MESSAGE` | `0` | el resumen (en los dos modos) empieza con `FIRST USER MESSAGE: "…"`, una cita de hasta 200 caracteres del primer mensaje del usuario; la pone el código y se arrastra una sola vez entre resúmenes |
+| `COMPACT_FIRST_MESSAGE` | `0` | el resumen (en los dos modos) empieza con `FIRST USER MESSAGE (from the summary, verbatim): "…"`, una cita de hasta 200 caracteres del primer mensaje del usuario; la pone el código y se arrastra una sola vez entre resúmenes. El encabezado del resumen pide además decir que la respuesta viene del resumen |
 | `COMPACT_SUMMARY_MAX_TOKENS` | `1200` | tope del resumen estructurado (si el modelo se pasa, se recorta por el final: CONTEXT primero) |
 | `COMPACT_MODEL` | `LLM_MODEL` | modelo del resumen |
 
