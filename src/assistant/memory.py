@@ -512,6 +512,33 @@ def _keyword_search(store, user_id: str, query: str, limit: int = 10) -> tuple[l
     return [(i.key, i.value["text"]) for _, i in scored[:limit]], True
 
 
+def _without_credentials(uri: str) -> str:
+    return re.sub(r"//[^@/]*@", "//", (uri or "").strip()).rstrip("/").lower()
+
+
+def same_database(ai_uri: str, ai_db: str, app_uri: str, app_db: str) -> bool:
+    """Misma base si coinciden el servidor (sin usuario ni contraseña) y el nombre de la base."""
+    return _without_credentials(ai_uri) == _without_credentials(app_uri) and ai_db.strip() == app_db.strip()
+
+
+SAME_DB_MSG = ("APP_MONGODB_URI/APP_MONGODB_DB apuntan a la misma base que la IA (AI_MONGODB_*/MONGODB_*). Deben ser "
+               "bases distintas: la de la IA nunca guarda correos, contraseñas ni datos de login, y la de negocio "
+               "nunca guarda mensajes ni recuerdos. Usa otro nombre de base (y, en Atlas, otro usuario).")
+
+
+def app_startup(settings: Settings) -> pymongo.MongoClient | None:
+    """Base de negocio: obligatoria con AUTH_ENABLED=1. Nunca la misma que la de la IA. Devuelve su cliente."""
+    configured = bool(settings.app_mongodb_uri and settings.app_mongodb_db)
+    if not configured:
+        if settings.auth_enabled:
+            raise ConfigError("Con AUTH_ENABLED=1 hacen falta APP_MONGODB_URI y APP_MONGODB_DB (base de negocio: "
+                              "usuarios y sesiones), distintas de la base de la IA.")
+        return None
+    if same_database(settings.mongodb_uri, settings.mongodb_db, settings.app_mongodb_uri, settings.app_mongodb_db):
+        raise ConfigError(SAME_DB_MSG)
+    return ping_mongo(settings.app_mongodb_uri)
+
+
 def startup_checks(settings: Settings) -> pymongo.MongoClient:
     """Valida API key, MongoDB y modelo (en ese orden). Devuelve el cliente de Mongo."""
     settings.require_api_key()

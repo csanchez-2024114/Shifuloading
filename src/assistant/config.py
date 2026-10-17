@@ -67,14 +67,23 @@ class Settings:
     search_cost_estimate: int = 15000   # tokens que se reservan antes de cada búsqueda (medido: ~9k-13k con low y 1)
     turn_max_searches: int = 6          # búsquedas web por mensaje, sumando agente e investigador; 0 = sin tope
     turn_token_cap: int = 150000        # tokens (entrada+salida) de todas las llamadas de un mensaje; 0 = sin tope
+    # base de negocio (usuarios, sesiones, dueños de conversaciones): obligatoria solo con AUTH_ENABLED=1
+    app_mongodb_uri: str = ""
+    app_mongodb_db: str = ""
+    auth_enabled: bool = False          # cuentas de usuario: el user_id sale de la sesión, nunca del navegador
+    session_ttl_days: int = 14          # caducidad de la sesión (renovación deslizante)
+    cookie_secure: str = "auto"         # cookie Secure: auto (si la petición llega por https), 1 o 0
+    login_max_fails: int = 5            # fallos de login por correo o IP antes del bloqueo
+    login_lock_minutes: int = 10        # ventana de fallos y duración del bloqueo
 
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
             openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
             llm_model=os.getenv("LLM_MODEL", "gpt-6-luna").strip(),
-            mongodb_uri=os.getenv("MONGODB_URI", "mongodb://127.0.0.1:27017").strip(),
-            mongodb_db=os.getenv("MONGODB_DB", "assistant").strip(),
+            # base de la IA: AI_MONGODB_* o, por compatibilidad, MONGODB_*
+            mongodb_uri=(os.getenv("AI_MONGODB_URI") or os.getenv("MONGODB_URI") or "mongodb://127.0.0.1:27017").strip(),
+            mongodb_db=(os.getenv("AI_MONGODB_DB") or os.getenv("MONGODB_DB") or "assistant").strip(),
             max_tokens=int(os.getenv("MAX_TOKENS", "8000")),
             recursion_limit=int(os.getenv("RECURSION_LIMIT", "100")),
             model_call_limit=int(os.getenv("MODEL_CALL_LIMIT", "0")),
@@ -116,6 +125,13 @@ class Settings:
             search_cost_estimate=int(os.getenv("SEARCH_COST_ESTIMATE", "15000")),
             turn_max_searches=int(os.getenv("TURN_MAX_SEARCHES", "6")),
             turn_token_cap=int(os.getenv("TURN_TOKEN_CAP", "150000")),
+            app_mongodb_uri=os.getenv("APP_MONGODB_URI", "").strip(),
+            app_mongodb_db=os.getenv("APP_MONGODB_DB", "").strip(),
+            auth_enabled=_bool("AUTH_ENABLED"),
+            session_ttl_days=int(os.getenv("SESSION_TTL_DAYS", "14")),
+            cookie_secure=os.getenv("COOKIE_SECURE", "auto").strip().lower(),
+            login_max_fails=int(os.getenv("LOGIN_MAX_FAILS", "5")),
+            login_lock_minutes=int(os.getenv("LOGIN_LOCK_MINUTES", "10")),
         )
 
     def context_window(self) -> int:
