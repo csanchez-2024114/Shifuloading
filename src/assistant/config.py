@@ -46,6 +46,7 @@ class Settings:
     compact_prune_age: int = 6          # antigüedad (en mensajes) a partir de la cual se podan
     compact_structured: bool = False    # capa 2: resumen estructurado e incremental
     compact_summary_max_tokens: int = 1200
+    compact_first_message: bool = False  # el resumen cita el primer mensaje del usuario (línea fija, una sola vez)
     compact_model: str = ""             # modelo del resumen; "" = LLM_MODEL
     memory_save_policy: str = "strict"  # strict: solo datos puntuales del usuario; broad: política anterior
     memory_max_per_turn: int = 3        # recuerdos guardados por mensaje; 0 = sin tope
@@ -105,6 +106,7 @@ class Settings:
             compact_prune_age=int(os.getenv("COMPACT_PRUNE_AGE", "6")),
             compact_structured=_bool("COMPACT_STRUCTURED"),
             compact_summary_max_tokens=int(os.getenv("COMPACT_SUMMARY_MAX_TOKENS", "1200")),
+            compact_first_message=_bool("COMPACT_FIRST_MESSAGE"),
             compact_model=os.getenv("COMPACT_MODEL", "").strip(),
             memory_save_policy=os.getenv("MEMORY_SAVE_POLICY", "strict").strip().lower(),
             memory_max_per_turn=int(os.getenv("MEMORY_MAX_PER_TURN", "3")),

@@ -372,6 +372,33 @@ NEW MESSAGES:
 {messages}"""
 
 
+# COMPACT_FIRST_MESSAGE: cita del primer mensaje del usuario, en una línea fija al inicio del resumen. La pone el
+# código, no el modelo: se toma del primer resumen o del primer mensaje del hilo y se arrastra una sola vez (al
+# resumidor le llega el resumen anterior sin esa línea, y si la copia se quita).
+FIRST_MESSAGE_PREFIX = "FIRST USER MESSAGE: "
+FIRST_MESSAGE_CHARS = 200
+
+
+def first_message_quote(text: str) -> str:
+    text = " ".join((text or "").split())
+    return text if len(text) <= FIRST_MESSAGE_CHARS else text[:FIRST_MESSAGE_CHARS - 1].rstrip() + "…"
+
+
+def _without_first_message_line(text: str) -> str:
+    return "\n".join(line for line in text.splitlines() if not line.startswith(FIRST_MESSAGE_PREFIX)).strip()
+
+
+def _first_user_message(messages) -> str | None:
+    """Cita del primer mensaje del usuario: la que ya lleva el resumen anterior o la del primer mensaje humano."""
+    for m in messages:
+        if m.type != "human":
+            continue
+        if m.additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
+            return m.additional_kwargs.get("first_user_message")  # resumen anterior a esta opción: sin cita
+        return first_message_quote(_content_text(m)) or None
+    return None
+
+
 def _summary_body(msg) -> str:
     text = _content_text(msg)
     for header in (SUMMARY_HEADER, _OLD_HEADER):
@@ -453,11 +480,19 @@ class ResumenPorTurno(SummarizationMiddleware):
             return None
         to_summarize, kept = self._partition_messages(messages, cutoff)
         before = self.context_tokens(messages, stats)
+        first = _first_user_message(to_summarize) if self.settings.compact_first_message else None
+        if first and to_summarize[0].additional_kwargs.get("lc_source") == SUMMARY_SOURCE:
+            prev = to_summarize[0]  # el resumidor no ve la línea fija: así no la repite
+            to_summarize = [prev.model_copy(update={"content": _without_first_message_line(_content_text(prev))}),
+                            *to_summarize[1:]]
         with get_usage_metadata_callback() as usage:
             summary = self._create_summary(to_summarize)
         spent = sum(u.get("total_tokens", 0) or 0 for u in usage.usage_metadata.values())
-        msg = HumanMessage(content=SUMMARY_HEADER + summary,
-                           additional_kwargs={"lc_source": SUMMARY_SOURCE, "summary_turn": turn_id})
+        extra = {"lc_source": SUMMARY_SOURCE, "summary_turn": turn_id}
+        if first:
+            summary = f'{FIRST_MESSAGE_PREFIX}"{first}"\n\n' + _without_first_message_line(summary)
+            extra["first_user_message"] = first
+        msg = HumanMessage(content=SUMMARY_HEADER + summary, additional_kwargs=extra)
         overhead = (stats or {}).get("overhead") or self.base
         after = overhead + message_tokens(
             prune_tool_results([msg, *kept], self.prune_age) if self.prune_age else [msg, *kept])

@@ -3,6 +3,8 @@ política de memoria global. Sin tokens: modelos falsos; los que tocan estado de
 assistant_test."""
 import re
 
+import pytest
+
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
@@ -350,6 +352,59 @@ def test_resumen_estructurado_incremental_conserva_anterior_y_respeta_el_tope(ma
     assert count_tokens_approximately([HumanMessage(cuerpo)]) <= 120  # tope duro
     assert "Vive en Mérida" in cuerpo and "previously: café de olla" in cuerpo  # el recorte quita CONTEXT, no lo de arriba
     assert _values(agent, thread)["compaction_log"][-1]["layers"] == ["structured"]
+
+
+@pytest.mark.parametrize("estructurado", [False, True])
+def test_resumen_cita_el_primer_mensaje_una_sola_vez_tras_dos_compactaciones(make_settings, mongo_checkpointer,
+                                                                           estructurado):
+    from assistant.agent import FIRST_MESSAGE_PREFIX, SUMMARY_HEADER
+    from assistant.memory import user_texts
+
+    s = make_settings(memory_summarize=True, compact_structured=estructurado, compact_first_message=True,
+                      context_window_tokens=4000, compact_keep_pct=15)
+    # el resumidor falso copia la línea fija en su respuesta: el código debe quitarla para no duplicarla
+    summ = summarizer(*[f"{FIRST_MESSAGE_PREFIX}\"inventado\"\n- resumen ronda {i}" for i in range(10)])
+    llm = usage_chat(*[f"respuesta {i}" for i in range(31)], extra=1500)
+    agent = _agent(s, llm, checkpointer=mongo_checkpointer, summ=summ)
+    thread = uid()
+    primero = "Hola. Te cuento que vivo en Mérida y tengo una perrita que se llama Canela. " + FILLER
+    run_turn(agent, s, primero, thread)
+    for i in range(30):
+        if len(_values(agent, thread)["compaction_log"]) >= 2:
+            break
+        run_turn(agent, s, f"Mensaje {i}. " + FILLER, thread)
+    assert len(_values(agent, thread)["compaction_log"]) >= 2, "no hubo dos compactaciones"
+    # el resumidor de la segunda ronda recibe el resumen anterior sin la línea fija
+    assert FIRST_MESSAGE_PREFIX not in summ.prompts[1] and "resumen ronda 0" in summ.prompts[1]
+
+    run_turn(agent, s, "¿Qué fue lo primero que te dije?", thread)
+    msgs = _values(agent, thread)["messages"]
+    resumen = msgs[0]
+    cita = '"' + primero[:199].rstrip() + '…"'
+    assert resumen.content.startswith(SUMMARY_HEADER + FIRST_MESSAGE_PREFIX + cita)
+    assert resumen.content.count(FIRST_MESSAGE_PREFIX) == 1 and "inventado" not in resumen.content
+    assert resumen.additional_kwargs["first_user_message"] == cita.strip('"')
+    assert len(resumen.additional_kwargs["first_user_message"]) == 200
+    assert not any("Canela" in t for t in user_texts(msgs))  # la cita no cuenta como algo que dijo el usuario
+    # y llega al modelo cuando se hace la pregunta
+    vista = " ".join(str(m.content) for m in llm.seen[-1])
+    assert FIRST_MESSAGE_PREFIX + cita in vista
+
+
+def test_sin_la_opcion_el_resumen_no_lleva_la_cita(make_settings):
+    from assistant.agent import FIRST_MESSAGE_PREFIX
+
+    s = make_settings(memory_summarize=True, context_window_tokens=4000, compact_keep_pct=15)
+    llm = usage_chat(*[f"respuesta {i}" for i in range(20)], extra=1500)
+    agent = _agent(s, llm, summ=summarizer(*["- resumen"] * 10))
+    thread = uid()
+    for i in range(20):
+        run_turn(agent, s, f"Mensaje {i}. " + FILLER, thread)
+        if _values(agent, thread).get("compaction_log"):
+            break
+    resumen = _values(agent, thread)["messages"][0]
+    assert _values(agent, thread)["compaction_log"] and FIRST_MESSAGE_PREFIX not in resumen.content
+    assert "first_user_message" not in resumen.additional_kwargs
 
 
 # --------------------------------------------------------------------------- bloque 4: memoria global
