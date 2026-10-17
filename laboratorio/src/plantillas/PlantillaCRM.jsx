@@ -255,7 +255,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
       {barraSeleccion}
       {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} desdeOrigen={abierta.transicion} />}
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
-      <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} />
+      <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} abiertoInicial={!(recorrido && window.matchMedia?.('(max-width: 700px)').matches)} />
     </div>
     </FichaContext.Provider></VelContext.Provider></AnimarContext.Provider>
   )
