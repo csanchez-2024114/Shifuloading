@@ -321,7 +321,8 @@ def _provenance(text: str, quote: str, texts: list[str], verifier) -> tuple[str,
     return evidence, ("quoted" if evidence else "unverified")
 
 
-DUPLICATE_MSG = ("Not run: an equivalent memory already exists (id: {key}): \"{text}\". Do not save it again. If "
+DUPLICATE_PREFIX = "Not run: an equivalent memory already exists"  # la UI lo muestra como "Ya estaba guardado"
+DUPLICATE_MSG = (DUPLICATE_PREFIX + " (id: {key}): \"{text}\". Do not save it again. If "
                  "the fact changed, call update_memory with that id and the new value.")
 DEDUP_MIN_STEMS = 2         # un recuerdo con menos palabras con contenido no se compara por palabras
 DEDUP_CONTAINMENT = 0.8     # parte de las raíces del más corto que deben estar en el otro

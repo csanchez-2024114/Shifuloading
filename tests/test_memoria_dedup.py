@@ -91,3 +91,15 @@ def test_agente_no_duplica_y_la_ui_lo_marca_como_no_realizado(make_settings, sto
     fin = next(e for e in ev if e["type"] == "tool_end")
     assert fin["status"] == "skipped" and "update_memory" in fin["output"]
     assert len(memory.list_memories(store, user)) == 1
+
+
+def test_evento_e_historial_marcan_el_duplicado_con_reason():
+    from langchain_core.messages import ToolMessage
+
+    from assistant.agent import _skip_reason, _tool_status
+    from assistant.memory import DUPLICATE_MSG
+
+    out = DUPLICATE_MSG.format(key="k1", text="Vive en Mérida")
+    assert _tool_status(ToolMessage(content=out, tool_call_id="x"), out) == "skipped"
+    assert _skip_reason(out) == "duplicate"
+    assert _skip_reason("Not run: web_search limit reached") is None and _skip_reason("Saved (id: k1)") is None

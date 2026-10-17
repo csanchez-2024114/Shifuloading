@@ -128,7 +128,7 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 ```json
 {"type": "token", "text": "Hola"}
 {"type": "tool_start", "id": "call_1", "name": "web_search", "args": {"query": "..."}}
-{"type": "tool_end", "id": "call_1", "name": "web_search", "output": "primeros 500 chars", "status": "success"|"error"|"skipped", "engine": "duckduckgo"|"openai_web_search"|null}
+{"type": "tool_end", "id": "call_1", "name": "web_search", "output": "primeros 500 chars", "status": "success"|"error"|"skipped", "reason": "duplicate"|null, "engine": "duckduckgo"|"openai_web_search"|null}
 # "skipped": la herramienta NO se ejecutó (output "Not run: …", "Cancelled: …" o rechazo del usuario). La UI no pone "✓"
 {"type": "interrupt", "id": "<interrupt id>", "action_requests": [{"name": "send_simulated_email", "args": {...}, "description": "..."}]}
 {"type": "effort", "level": "bajo"|"medio"|"alto", "max_calls": 5, "reasoning": "low", "source": "auto"|"regla"|"manual"}
@@ -174,6 +174,8 @@ momento. El id del hilo actual se muestra siempre bajo el selector (`#threadid`)
 Keep-alive: durante silencios de `SSE_PING_SECONDS` (15 s por defecto) el servidor envía la línea de comentario SSE
 `: ping` seguida de una línea vacía. No es un evento (no tiene `data:`); los clientes deben ignorar las líneas que
 empiezan con `:`.
+`reason` en tool_end (y en las entradas `tool` de `/history`): `"duplicate"` cuando `save_memory` no guardó porque ya existía un recuerdo equivalente (`MEMORY_DEDUP`); la interfaz muestra "💾 Ya estaba guardado" en vez de "no realizada". `null` en los demás casos.
+
 `engine` en tool_end: se extrae de la primera línea `[engine: X]` del output (null si no aplica).
 
 ## Endpoints (server.py, principal)

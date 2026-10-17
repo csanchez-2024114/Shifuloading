@@ -36,7 +36,7 @@ from assistant import citations
 from assistant.config import Settings, read_system_prompt
 from assistant.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
                                prune_tool_results)
-from assistant.memory import SUMMARY_SOURCE, memory_policy
+from assistant.memory import DUPLICATE_PREFIX, SUMMARY_SOURCE, memory_policy
 
 logger = logging.getLogger(__name__)
 
@@ -803,6 +803,7 @@ def _update_events(update: dict) -> Iterator[dict]:
                     "name": msg.name or ("retrieve_tools" if node == "select_tools" else None),
                     "output": output[:OUTPUT_PREVIEW_CHARS],
                     "status": _tool_status(msg, output),
+                    "reason": _skip_reason(output),
                     "engine": _engine_from_output(output),
                 }
 
@@ -1082,6 +1083,11 @@ def _tool_status(msg: ToolMessage, output: str) -> str:
     return "error" if msg.status == "error" else "success"
 
 
+def _skip_reason(output: str) -> str | None:
+    """Por qué no se ejecutó, cuando la UI debe decirlo distinto de "no realizada"."""
+    return "duplicate" if output.lstrip().startswith(DUPLICATE_PREFIX) else None
+
+
 def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
     state = agent.get_state(run_config(thread_id, settings))
     out: list[dict] = []
@@ -1109,4 +1115,6 @@ def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
                 result = results.get(call.get("id"))
                 if result is not None and (status := _tool_status(result, _content_text(result))) != "success":
                     out[-1]["status"] = status  # "skipped" o "error": se ve igual al recargar
+                    if reason := _skip_reason(_content_text(result)):
+                        out[-1]["reason"] = reason
     return out

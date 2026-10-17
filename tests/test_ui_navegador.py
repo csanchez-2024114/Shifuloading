@@ -34,6 +34,12 @@ class Controlable(FakeChat):
             call = ({"name": "web_search", "args": '{"query": "vuelos"}'}, 45000)
         elif "estudio" in text and not answered:  # deep_research sin pedirlo explícitamente: tarjeta de confirmación
             call = ({"name": "deep_research", "args": '{"task": "leyes de IA"}'}, 0)
+        elif "repetido" in text and not answered:  # save_memory ("doble": dos veces el mismo dato en un mensaje)
+            args = '{"text": "Vive en Mérida", "evidence": "vivo en Mérida"}'
+            calls = [{"name": "save_memory", "args": args, "id": f"m{i}{time.time_ns()}", "index": i,
+                      "type": "tool_call_chunk"} for i in range(2 if "doble" in text else 1)]
+            yield ChatGenerationChunk(message=AIMessageChunk(content="", tool_call_chunks=calls, chunk_position="last"))
+            return
         elif "tres" in text and not answered:  # tres búsquedas en paralelo: solo se ejecuta la primera
             calls = [{"name": "web_search", "args": f'{{"query": "q{i}"}}', "id": f"w{i}{time.time_ns()}", "index": i,
                       "type": "tool_call_chunk"} for i in range(3)]
@@ -66,7 +72,7 @@ def base_url():
     from assistant.tools import build_tools
     from conftest import _settings
 
-    s = _settings(turn_token_cap=50000, model_call_limit=0, enable_hitl_demo=True)
+    s = _settings(turn_token_cap=50000, model_call_limit=0, enable_hitl_demo=True, memory_dedup=True)
     llm = Controlable(messages=iter([]))
     agent = build_agent(llm, build_tools(llm, s, search_fn=FakeSearch()), s, checkpointer=InMemorySaver(),
                         store=InMemoryStore())
@@ -215,6 +221,25 @@ def test_busqueda_no_realizada_no_se_marca_como_hecha_ni_al_recargar(page, base_
     linea = page.locator("#messages .toolline").first
     linea.wait_for(timeout=10000)
     assert linea.inner_text() == "🔎 Búsqueda no realizada" and "skipped" in linea.get_attribute("class")
+
+
+def test_recuerdo_duplicado_dice_ya_estaba_guardado_no_no_realizada(page, base_url):
+    _fresh(page, base_url, True)
+    _send(page, "repetido doble: vivo en Mérida")
+    _idle(page)
+    [chip] = [c for c in _chips(page) if "💾" in c["text"]]
+    assert "done" in chip["cls"] and "Recuerdo guardado" in chip["text"] and "1 ya estaba guardado" in chip["text"]
+    assert "no realizada" not in chip["text"]
+    thread = _tid(page)
+    _send(page, "repetido: vivo en Mérida")  # el mismo dato otra vez: ninguno se guarda
+    page.wait_for_function("() => document.querySelectorAll('#messages .row.assistant').length === 2")
+    _idle(page)
+    [chip] = [c for c in _chips(page) if "💾" in c["text"]]
+    assert "skipped" in chip["cls"] and "Ya estaba guardado" in chip["text"] and "✓" not in chip["text"]
+    assert "no realizada" not in chip["text"] and "Recuerdo guardado" not in chip["text"]
+    page.goto(f"{base_url}?thread={thread}")  # recargar: el historial dice lo mismo
+    page.locator("#messages .toolline.skipped").first.wait_for(timeout=10000)
+    assert page.locator("#messages .toolline.skipped").all_inner_texts()[-1] == "💾 Ya estaba guardado"
 
 
 def test_tres_busquedas_en_paralelo_muestran_las_no_realizadas(page, base_url):
