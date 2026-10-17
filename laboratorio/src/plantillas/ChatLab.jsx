@@ -82,10 +82,10 @@ function Sugerencias({ deshabilitado, onElegir, ideas = SUGERENCIAS }) {
   )
 }
 
-export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion, contexto, abiertoInicial = true }) {
+export default function ChatLab({ tema, plantilla, estadoActual, onEstado, seccionActual, onAbierto, guion, contexto, abiertoInicial = true, muestra }) {
   const [abierto, setAbierto] = useState(abiertoInicial)
   useEffect(() => { onAbierto?.(abierto) }, [abierto]) // eslint-disable-line react-hooks/exhaustive-deps
-  const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Este es tu CRM: dime qué quieres ver distinto y lo cambio. Puedo agregar, quitar, agrandar, achicar o mover cualquier pieza, en el inicio o en cualquier pestaña.`)])
+  const [mensajes, setMensajes] = useState(() => [mensaje('shifu', `Hola 👋 Soy Shifu. Este es tu CRM: dime qué quieres ver distinto y lo cambio. Puedo agregar, quitar, agrandar, achicar o mover cualquier pieza, en el inicio o en cualquier pestaña. Y llevo tus datos: dime «agrega a María López, plan mensual» o pregúntame «¿cuánto me pagaron este mes?».`)])
   const [escribiendo, setEscribiendo] = useState(false)
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null)
@@ -117,16 +117,23 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
       const historial = mensajes.slice(-12).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 500) }))
       const paleta = img?.url && !img?.piezas ? await paletaDe(img.url) : null // de una captura del propio CRM no se miden colores de marca
       const r = await fetch('/api/lab/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plantilla: plantilla.id, estado: estadoRef.current(), texto: t || (img?.pdf ? 'Te paso este PDF.' : 'Te paso esta imagen.'), historial, imagen: img?.url || undefined, archivo: img?.pdf, paleta, seleccion: img?.piezas, seccion: seccionActual }) })
+        body: JSON.stringify({ plantilla: plantilla.id, estado: estadoRef.current(), texto: t || (img?.pdf ? 'Te paso este PDF.' : 'Te paso esta imagen.'), historial, imagen: img?.url || undefined, archivo: img?.pdf, paleta, seleccion: img?.piezas, seccion: seccionActual, muestra }) })
       const d = await r.json()
-      if (!r.ok) throw new Error(d.error || r.status)
+      if (!r.ok) throw Object.assign(new Error(d.error || r.status), { motivo: d.motivo })
       if (d.estado) onEstado(d.estado)
       // Para revisar en el laboratorio: qué herramientas corrieron de verdad (lo que dice vs lo que hizo).
       console.info('[chat-lab]', { cambios: d.cambios, fallos: d.fallos })
       // Lo que de verdad cambió (lo arma el código, no la IA): se muestra siempre bajo la respuesta (nada se oculta).
       setMensajes((l) => [...l, mensaje('shifu', d.respuesta, null, (d.cambios || []).map(etiquetaCambio).filter(Boolean))])
-    } catch {
-      setMensajes((l) => [...l, mensaje('shifu', 'No pude conectarme. Revisa que el laboratorio esté corriendo e inténtalo de nuevo.')])
+    } catch (e) {
+      // Lo que pasó de verdad (lo clasifica el servidor) y que no cambió nada; el pedido vuelve al campo para reenviarlo.
+      const MOTIVO = {
+        sin_credito: 'No puedo responder ahora: la IA de Shifu se quedó sin saldo. (Laboratorio: hay que recargar la cuenta de OpenAI.)',
+        limite: 'Estoy recibiendo muchos pedidos a la vez. Espera unos segundos y vuelve a enviarlo.',
+        ia_caida: 'La IA no respondió a tiempo.',
+      }
+      setMensajes((l) => [...l, mensaje('shifu', `${MOTIVO[e?.motivo] || (e instanceof TypeError ? 'No pude conectarme con Shifu. Revisa tu conexión.' : 'Algo falló de mi lado.')} No cambié nada en tu CRM: tu mensaje quedó escrito abajo para enviarlo otra vez.`)])
+      if (t) setTxt(t)
     } finally { setEscribiendo(false) }
   }
   const elegida = async (region) => {
@@ -165,13 +172,18 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     window.addEventListener('lab-piezas', llegan); return () => window.removeEventListener('lab-piezas', llegan)
   }, [])
   const soltarPiezas = () => window.dispatchEvent(new Event('lab-piezas-usadas'))
+  // «Agregar» de una pestaña (D50: no hay formularios): abre el chat con el pedido empezado, listo para completar.
+  useEffect(() => {
+    const escribir = (e) => { setAbierto(true); setTxt(String(e.detail || '')); setTimeout(() => { const c = campo.current; if (c) { c.focus(); c.setSelectionRange(c.value.length, c.value.length) } }, 50) }
+    window.addEventListener('lab-escribir', escribir); return () => window.removeEventListener('lab-escribir', escribir)
+  }, [])
   const ficha = estadoActual()?.toma?.activa ? tarjetaToma(plantilla, estadoActual()) : null
 
   return createPortal(
     <div className="mc-chat" data-tema={tema}>
       {abierto && (
         <section className="mc-chat-panel" aria-label="Chat con Shifu" hidden={eligiendo || capturando}>
-          <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>{guion ? `Demo: pedido ${Math.min(paso, guion.length)} de ${guion.length}` : 'Edita el diseño de tu inicio'}</small></div>
+          <header><ShifuAvatar size={34} /><div><b>Shifu</b><small>{guion ? `Demo: pedido ${Math.min(paso, guion.length)} de ${guion.length}` : 'Diseño y datos de tu CRM'}</small></div>
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (

@@ -5,6 +5,9 @@
 import { VISTAS, revisarVista, camposDe, validarPlantilla, TIPOS_CAMPO, normalizarOpciones } from './validar.js'
 import { compatibles, GRAFICOS, opcionesPorDefecto } from './graficos.jsx'
 import { FUENTES, esHex, tokensDeMarca, revisarLogo } from './marca.js'
+import { HERRAMIENTAS_DATOS, HERR_DATOS, ejecutarDato, consultar, datosActuales } from './registros.js'
+import { registrosDe } from './datosEjemplo.js'
+export { datosActuales }
 
 /** Biblioteca de pestañas (D30, nivel 2): secciones listas (cobros, inventario…) que pasan servidor/calidad-pestanas.mjs. */
 export const PESTANAS = Object.fromEntries(Object.values(import.meta.glob('./biblioteca-pestanas/*.js', { eager: true })).map((m) => m.default).filter(Boolean).map((p) => [p.id, p]))
@@ -353,6 +356,8 @@ function validarValorFicha(plantilla, campo, valor) {
 }
 
 /** Lo que el modelo ve de la pantalla: bloques actuales y, por sección, sus campos y las vistas que admite. */
+// Sin el número de registros por sección: medido, sumaba a que «agrega una dona» reemplazara la gráfica (1 de 6). Los números
+// los da consultar_datos cuando la persona pregunta.
 export function describirPantalla(plantillaBase, estado) {
   const plantilla = plantillaEfectiva(plantillaBase, estado)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
@@ -379,7 +384,7 @@ export function describirPantalla(plantillaBase, estado) {
     bloques: estado.bloques.map((b, i) => ({ id: b.uid, posicion: i + 1, donde_se_ve: ubicacion(ubicar(estado.bloques)[b.uid]), vista: b.vista, seccion: b.seccion, titulo_seccion: porId[b.seccion]?.titulo, opciones: b.opciones, ancho: b.ancho, alto: b.alto,
       // Los grupos que la persona VE ahora (los por defecto no viven en opciones): sin esto el modelo no sabe qué conservar.
       ...(b.vista === 'vencimientos' ? { grupos_actuales: rangosDe(b.opciones).map((r) => (r.desde === null ? 'Vencidos {vencidos:true}' : `De ${r.desde} a ${r.hasta} días {desde:${r.desde},hasta:${r.hasta}}`)) } : {}) })),
-    secciones: plantilla.secciones.filter((s) => s.campos || s.fuente).map((s) => ({ id: s.id, titulo: s.titulo,
+    secciones: plantilla.secciones.filter((s) => s.campos || s.fuente).map((s) => ({ id: s.id, titulo: s.titulo, 
       campos: camposDe(s, porId).map((c) => ({ id: c.id, nombre: c.nombre, tipo: c.tipo, ...(c.opciones ? { opciones: c.opciones } : {}) })),
       ficha: fichaDe(s, camposDe(s, porId)), ...(s.tarjeta ? { tarjeta: s.tarjeta.campos } : {}),
       // Qué gráficos se pueden dibujar con ESTA sección (lo decide el código, no el modelo).
@@ -398,6 +403,7 @@ export function describirPantalla(plantillaBase, estado) {
 // se ve con su vista de siempre; al primer cambio, esa vista pasa a ser la primera pieza del lienzo.
 /** Cada cambio dicho en simple (lo usa el chat para mostrar SIEMPRE lo que de verdad cambió: nada se oculta). null = no se muestra. */
 export function etiquetaCambio(c) {
+  if (c.etiqueta !== undefined) return c.etiqueta // la herramienta ya lo dijo en simple (datos: a quién y qué)
   const a = c.args || {}, donde = a.pestana && a.pestana !== 'inicio' ? ` en «${a.pestana}»` : ''
   const v = NOMBRE_VISTA[a.vista] || (a.vista === 'grafico' ? 'gráfica' : 'pieza')
   switch (c.herramienta) {
@@ -442,7 +448,42 @@ export function ubicarTodo(estado) {
   return Object.assign({}, ubicar(estado.bloques || []), ...Object.values(estado.estructura?.paginas || {}).map((bs) => ubicar(bs)))
 }
 
+/** Lo que necesitan las herramientas de datos: la sección dueña de los registros, sus campos y los registros de AHORA. */
+function contextoDatos(plantillaBase, estado, args, muestra) {
+  const plantilla = plantillaEfectiva(plantillaBase, estado)
+  const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
+  const s = seccionDe(plantilla, args.seccion)
+  if (!s || !(s.campos || s.fuente)) return { error: `ERROR: «${args.seccion}» no es una sección con registros. Secciones con registros: ${plantilla.secciones.filter((x) => x.campos || x.fuente).map((x) => `${x.id} (${x.titulo})`).join(', ')}.` }
+  const f = s.fuente || s.id
+  return { sec: porId[f] || s, campos: camposDe(s, porId), regs: registrosDe(s, datosActuales(plantillaBase, estado, muestra)), f }
+}
+/** Estructura que se creó EN ESTE TURNO para poder guardar un dato (una opción de estado o un campo nuevo) y que la respuesta
+ * no menciona: el chat la agrega a la respuesta. Medido: «cambia a Ana a Congelada» creaba la opción y respondía solo
+ * «cambió a Congelada» (1 de 3). Devuelve frases («la opción «Congelada»»); vacío si no hubo o si ya lo dijo. */
+export function creadoSinDecir(plantillaBase, estadoAntes, cambios, respuesta = '') {
+  if (!cambios.some((c) => ['agregar_registro', 'editar_registro'].includes(c.herramienta))) return []
+  const antes = plantillaEfectiva(plantillaBase, estadoAntes)
+  const creado = cambios.flatMap((c) => {
+    if (c.herramienta === 'agregar_campo') return [['el campo', c.args.nombre]]
+    if (c.herramienta !== 'cambiar_opciones_estado') return []
+    const previas = seccionDe(antes, c.args.seccion)?.campos?.find((x) => x.id === c.args.campo)?.opciones || []
+    return (c.args.opciones || []).filter((o) => !previas.includes(o) && !Object.values(c.args.renombrar || {}).includes(o)).map((o) => ['la opción', o])
+  })
+  const dicho = (nombre) => respuesta.toLowerCase().includes(String(nombre).toLowerCase()) && /agregu|cre[eé]|nuev|añad/i.test(respuesta)
+  return creado.filter(([, nombre]) => !dicho(nombre)).map(([que, nombre]) => `${que} «${nombre}»`)
+}
+
+/** Pregunta sobre los datos (no cambia nada): el texto que lee el modelo. */
+export function consultarDatos(plantillaBase, estado, args = {}, muestra = {}) {
+  const c = contextoDatos(plantillaBase, estado, args, muestra); if (c.error) return c.error
+  return consultar({ ...c, args, muestra })
+}
+
 export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
+  if (HERR_DATOS.has(nombre)) {
+    const c = contextoDatos(plantilla, estado, args, contexto.muestra); if (c.error) return { estado, ok: false, resultado: c.error }
+    return ejecutarDato(nombre, { ...c, estado, args, muestra: contexto.muestra })
+  }
   if (HERR_BLOQUE.has(nombre)) {
     // Si la persona está MIRANDO una pestaña, las piezas van ahí por defecto; tocar el inicio desde ahí exige decirlo
     // (pestana="inicio"). Medido: «aquí pon un resumen» mirando Miembros cambiaba el inicio y decía «en la pestaña Miembros».
@@ -797,4 +838,5 @@ export const HERRAMIENTAS = [
     campo: { type: 'string' }, valor: { description: 'string u objeto según el campo' } }, ['campo', 'valor']],
   ['anotar_nota', 'Guarda una idea o duda que la persona mencionó pero que no es un dato firme de la ficha.', { texto: { type: 'string' } }, ['texto']],
   ['cerrar_toma', 'Cierra la toma si la persona abandona el diseño o ya no quiere seguir con la ficha.', {}, []],
+  ...HERRAMIENTAS_DATOS,
 ].map(([name, description, properties, required]) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } }))

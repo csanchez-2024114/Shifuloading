@@ -43,6 +43,9 @@ function crear(pais) {
   }
 }
 
+/** Formatos de un país sin cambiar la región activa (el servidor del chat escribe montos y fechas como los ve la persona). */
+export const regionDe = (pais) => crear(pais)
+
 let actual = crear('gt')
 /** El formato de la región activa. Lo fija PlantillaCRM con la configuración de la persona antes de dibujar. */
 export const region = () => actual

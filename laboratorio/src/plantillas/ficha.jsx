@@ -32,7 +32,9 @@ export function relacionadosDe(plantilla, datos, seccion, r) {
     const cs = camposDe(s, porId), textos = cs.filter(ES_TEXTO)
     const items = registrosDe(s, datos).filter((x) => textos.some((c) => mios.has(String(x.valores[c.id] ?? '').trim().toLowerCase())))
     // Su título dentro de la ficha: el primer texto que NO es el que los liga (si no, todos dirían el mismo nombre).
-    const tituloRel = (x) => { const c = textos.find((t) => x.valores[t.id] && !mios.has(String(x.valores[t.id]).trim().toLowerCase())); return c ? ver('texto', x.valores[c.id]) : tituloRegistro(s, cs, x) }
+    // Un teléfono o un correo no sirve de título (medido: la visita de Ana López se titulaba «+502 4320 9266»).
+    const contacto = (v) => /^[+\d\s()-]{6,}$/.test(String(v).trim()) || /@/.test(String(v))
+    const tituloRel = (x) => { const c = textos.find((t) => x.valores[t.id] && !mios.has(String(x.valores[t.id]).trim().toLowerCase()) && !contacto(x.valores[t.id])); return c ? ver('texto', x.valores[c.id]) : tituloRegistro(s, cs, x) }
     if (items.length) out.push({ seccion: s, campos: cs, items, tituloRel })
   }
   return out

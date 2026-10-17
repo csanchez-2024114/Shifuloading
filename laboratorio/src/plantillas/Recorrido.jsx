@@ -8,7 +8,7 @@ import { GRAFICOS } from './graficos'
 
 const QUE_ES = {
   kpis: (s) => `Arriba, el resumen de ${s}: los números se cuentan solos con lo que registras.`,
-  tablero: (s) => `${s} por etapa. Cuando algo avanza, arrastra su tarjeta a la siguiente columna.`,
+  tablero: (s) => `${s} por etapa. Cuando algo avanza, dímelo («pasa a Ana a Pagado») y muevo su tarjeta.`,
   vencimientos: (s) => `Lo que vence pronto en ${s}, ordenado por urgencia: así nada se te pasa.`,
   agenda: (s) => `Tu agenda de ${s} para los próximos días.`,
   tabla: (s) => `La lista de ${s}, con buscador y páginas.`,
@@ -24,7 +24,7 @@ export function pasosDe(plantilla, bloques, porId) {
   }
   const secciones = plantilla.secciones.filter((x) => x.campos).map((x) => x.titulo)
   pasos.push({ sel: '.mc-menu', texto: `En el menú están tus secciones: ${secciones.join(', ')}. Cada una se puede cambiar.` })
-  pasos.push({ sel: '.mc-chat-panel, .mc-chat-btn', texto: 'Y aquí estoy yo. Pídeme cualquier cambio con tus palabras: colores, logo, otra gráfica, quitar o agregar secciones.' })
+  pasos.push({ sel: '.mc-chat-panel, .mc-chat-btn', texto: 'Y aquí estoy yo. Todo se hace hablándome: tus datos («agrega a María López») y cualquier cambio de diseño (colores, logo, otra gráfica, secciones).' })
   pasos.push({ sel: null, final: true, texto: 'Eso es todo. ¿Borro los datos de ejemplo para que empieces con los tuyos? Las vistas quedarán en gris hasta tu primer registro.' })
   return pasos
 }
@@ -35,8 +35,13 @@ export default function Recorrido({ pasos, onTerminar, onSaltar }) {
   const paso = pasos[i]
   useLayoutEffect(() => {
     const medir = () => { const el = paso.sel && document.querySelector(paso.sel); setRect(el ? el.getBoundingClientRect() : null) }
+    // Lo que se señala tiene que verse: si está fuera de la pantalla (en el celular, casi todo), se lleva al centro primero.
+    // Medido en la prueba de cliente: en 390 px los pasos de la dona, la agenda y la línea quedaban en negro, sin globo.
+    const el = paso.sel && document.querySelector(paso.sel), r = el?.getBoundingClientRect()
+    if (r && (r.top < 0 || r.bottom > window.innerHeight)) el.scrollIntoView({ block: r.height > window.innerHeight * 0.6 ? 'start' : 'center' })
     medir(); const t = setTimeout(medir, 450) // después de que la pantalla se acomode
-    window.addEventListener('resize', medir); return () => { clearTimeout(t); window.removeEventListener('resize', medir) }
+    window.addEventListener('resize', medir); window.addEventListener('scroll', medir, true)
+    return () => { clearTimeout(t); window.removeEventListener('resize', medir); window.removeEventListener('scroll', medir, true) }
   }, [paso])
   useEffect(() => {
     const tecla = (e) => { if (e.key === 'ArrowRight' && !paso.final) setI((x) => Math.min(pasos.length - 1, x + 1)); if (e.key === 'ArrowLeft') setI((x) => Math.max(0, x - 1)); if (e.key === 'Escape') onSaltar() }
@@ -44,10 +49,15 @@ export default function Recorrido({ pasos, onTerminar, onSaltar }) {
   }, [paso, pasos.length, onSaltar])
   const m = 8
   const foco = rect && { top: rect.top - m, left: rect.left - m, width: rect.width + 2 * m, height: rect.height + 2 * m }
-  // La burbuja va debajo del foco si cabe; si no, arriba; si no hay foco, al centro.
-  const abajo = foco && foco.top + foco.height + 190 < window.innerHeight
+  // La burbuja va debajo del foco si cabe; si no, arriba; si tampoco (el menú ocupa todo el alto), al lado; sin foco, al centro.
+  // Medido en la prueba de cliente: con el menú, «arriba» la dejaba fuera de la pantalla.
+  const ALTO_B = 190, W = window.innerWidth, H = window.innerHeight
+  const abajo = foco && foco.top + foco.height + ALTO_B < H
+  const arriba = foco && !abajo && foco.top - ALTO_B > 0
+  const lado = foco && !abajo && !arriba && (foco.left + foco.width + 372 < W ? foco.left + foco.width + 12 : Math.max(12, foco.left - 372))
   const burbuja = !foco ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
-    : { top: abajo ? foco.top + foco.height + 12 : Math.max(12, foco.top - 12), left: Math.min(Math.max(12, foco.left), window.innerWidth - 372), transform: abajo ? 'none' : 'translateY(-100%)' }
+    : lado !== false && lado !== undefined && !abajo && !arriba ? { top: Math.min(Math.max(12, foco.top + 12), H - ALTO_B), left: Math.min(lado, W - 372), transform: 'none' }
+    : { top: abajo ? foco.top + foco.height + 12 : foco.top - 12, left: Math.min(Math.max(12, foco.left), W - 372), transform: abajo ? 'none' : 'translateY(-100%)' }
   const negritas = (t) => t.split('**').map((x, k) => (k % 2 ? <b key={k}>{x}</b> : x))
   return createPortal(
     <div className="rc" role="dialog" aria-modal="true" aria-label="Recorrido por tu CRM">

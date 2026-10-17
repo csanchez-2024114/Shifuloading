@@ -12,7 +12,7 @@ import { useSeleccion } from './seleccion'
 import { IconoSeccion } from './iconos'
 import { ESTILOS } from './estilos'
 import { validarPlantilla, camposDe } from './validar'
-import { registrosDe, datosEjemplo } from './datosEjemplo'
+import { registrosDe, datosEjemplo, extenderDatos, aplicarDatos } from './datosEjemplo'
 import ChatLab, { GUION, GUION_TOMA } from './ChatLab'
 import Recorrido, { pasosDe } from './Recorrido'
 import { fijarRegion } from './regional'
@@ -51,27 +51,6 @@ function conTamano(bloques) {
     ancho: b.ancho || (ANCHO_COMPLETO.includes(b.vista) || b.uid === solo ? 12 : 6),
     alto: b.alto || (b.vista === 'kpis' ? 1 : b.vista === 'tablero' || b.vista === 'agenda' ? 2 : 2) }))
 }
-/** Datos de ejemplo para lo que Shifu agregó: cada sección nueva y cada campo nuevo tiene su propia semilla, así los
- * datos que ya estaban no cambian al agregar algo (no "saltan" los números). Sin ejemplos (nivel vacío) no se inventa nada. */
-function extenderDatos(datos, base, est, nivel) {
-  if (!datos || (!est.secciones?.length && !Object.keys(est.campos || {}).length && !Object.keys(est.mapeoEstado || {}).length)) return datos
-  const registros = { ...datos.registros }
-  for (const sec of est.secciones || []) registros[sec.id] = datosEjemplo({ id: `${base.id}:${sec.id}`, secciones: [sec] }, nivel).registros[sec.id] || []
-  for (const [sid, extras] of Object.entries(est.campos || {})) {
-    const extra = datosEjemplo({ id: `${base.id}:${sid}:campos`, secciones: [{ id: sid, campos: extras }] }, nivel).registros[sid] || []
-    registros[sid] = (registros[sid] || []).map((r, i) => ({ ...r, valores: { ...r.valores, ...(extra[i]?.valores || {}) } }))
-  }
-  // Opciones de estado renombradas o quitadas: cada registro pasa a su nueva opción (nunca queda sin estado).
-  for (const [sid, porCampo] of Object.entries(est.mapeoEstado || {})) {
-    registros[sid] = (registros[sid] || []).map((r) => {
-      let valores = r.valores
-      for (const [cid, mapa] of Object.entries(porCampo)) { let v = valores[cid], n = 0; while (mapa[v] && n++ < 10) v = mapa[v]; if (v !== valores[cid]) valores = { ...valores, [cid]: v } }
-      return valores === r.valores ? r : { ...r, valores }
-    })
-  }
-  return { ...datos, registros }
-}
-
 /** Logo del negocio. Si es oscuro y el tema es oscuro (o claro sobre claro), muestra una versión de alto contraste automática. */
 function LogoMarca({ src, tema }) {
   const [luz, setLuz] = useState(null) // luminancia media de los píxeles visibles del logo (0 negro … 1 blanco)
@@ -104,7 +83,11 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   // Estructura que Shifu cambió (secciones nuevas, campos, ocultas, nombres). La plantilla efectiva = base + esto.
   const [estructura, setEstructura] = useState({})
   const plantilla = useMemo(() => plantillaEfectiva(plantillaBase, { estructura }), [plantillaBase, estructura])
-  const datos = useMemo(() => extenderDatos(datosBase, plantillaBase, estructura, nivel), [datosBase, plantillaBase, estructura, nivel])
+  // Lo que la persona agregó, cambió o borró por chat (D50): vive en el estado como el diseño y se deshace igual.
+  const [misDatos, setMisDatos] = useState({})
+  const datos = useMemo(() => aplicarDatos(extenderDatos(datosBase, plantillaBase, estructura, nivel), misDatos, estructura.mapeoEstado), [datosBase, plantillaBase, estructura, nivel, misDatos])
+  // Para que el servidor del chat arme los MISMOS registros que se ven aquí (ejemplos de qué tamaño, si ya se borraron).
+  const muestra = useMemo(() => ({ nivel, pais, ejemplos: Object.values(datosBase?.registros || {}).some((rs) => rs.some((r) => r.ejemplo)) }), [datosBase, nivel, pais])
   useEffect(() => { cargarFuentes(marca) }, [marca])
   const [chatAbierto, setChatAbierto] = useState(true)
   // Ficha abierta (D28): { seccion, registro } o null.
@@ -141,7 +124,8 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   /** Aplica el estado que devolvió Shifu: lo que se va sale primero (desenfoque), después el resto se reacomoda y lo nuevo nace. */
   const aplicarEstado = (nuevo) => {
     const bloquesBase = nuevo.bloques ?? ultimo.current?.bloques ?? bloques.map(({ nuevo: _n, ...b }) => b)
-    ultimo.current = { vista: nuevo.vista || vista, marca: nuevo.marca ?? marca, estructura: nuevo.estructura ?? estructura, bloques: bloquesBase.map(({ nuevo: _n, ...b }) => b), toma: nuevo.toma, puntos: nuevo.puntos }
+    ultimo.current = { vista: nuevo.vista || vista, marca: nuevo.marca ?? marca, estructura: nuevo.estructura ?? estructura, datos: nuevo.datos ?? misDatos, bloques: bloquesBase.map(({ nuevo: _n, ...b }) => b), toma: nuevo.toma, puntos: nuevo.puntos }
+    if (nuevo.datos) setMisDatos(nuevo.datos)
     if (!nuevo.bloques) return
     if (animado) setEntrada(false)
     if (nuevo.estructura) setEstructura(nuevo.estructura)
@@ -158,7 +142,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
     setSaliendo(fuera); setTimeout(final, 700 * vel)
   }
   const ultimo = useRef(null) // el último estado aplicado (puede no haberse dibujado todavía por la transición)
-  const estadoParaIA = () => ultimo.current || ({ vista, marca, estructura, bloques: bloques.map(({ nuevo: _n, ...b }) => b), toma: ultimo.current?.toma })
+  const estadoParaIA = () => ultimo.current || ({ vista, marca, estructura, datos: misDatos, bloques: bloques.map(({ nuevo: _n, ...b }) => b), toma: ultimo.current?.toma })
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
@@ -178,7 +162,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
     return (
       <div className="pl-sombra">
         <div className="pl-sombra-forma" aria-hidden="true" inert="">{dibujarCon(s, nombreVista, opciones, fantasma)}</div>
-        <p className="pl-sombra-msg"><b>Todavía no hay datos</b><span>Se llena con tu primer registro en {s.titulo}.</span></p>
+        <p className="pl-sombra-msg"><b>Todavía no hay datos</b><span>Dile a Shifu qué agregar en {s.titulo} y aparece aquí.</span></p>
       </div>
     )
   }
@@ -233,7 +217,8 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
             <>
               <div className="mc-cab">
                 <div><h1>{actual.titulo}</h1>{(actual.campos || actual.fuente) && <p>{registrosDe(actual, datos).length ? `${registrosDe(actual, datos).length.toLocaleString('es')} registros.` : 'Todavía no hay registros.'}</p>}</div>
-                {actual.campos && <button type="button" className="btn-pildora">Agregar</button>}
+                {/* No hay formularios (D50): «Agregar» abre el chat listo para decir qué agregar. */}
+                {actual.campos && <button type="button" className="btn-pildora" onClick={() => window.dispatchEvent(new CustomEvent('lab-escribir', { detail: `Agrega a ${actual.titulo}: ` }))}>Agregar</button>}
               </div>
               {/* Pestaña con lienzo propio (D49): varias piezas como el inicio; sin lienzo, su vista de siempre. */}
               {actual.pagina ? (
@@ -255,7 +240,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
       {barraSeleccion}
       {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} desdeOrigen={abierta.transicion} />}
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => setEnRecorrido(false)} onTerminar={() => { setEnRecorrido(false); onBorrarEjemplos?.() }} />}
-      <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} abiertoInicial={!(recorrido && window.matchMedia?.('(max-width: 700px)').matches)} />
+      <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} muestra={muestra} onEstado={aplicarEstado} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} abiertoInicial={!recorrido} /* durante el recorrido el chat espera cerrado: abierto tapaba las piezas que señala (prueba de cliente) */ />
     </div>
     </FichaContext.Provider></VelContext.Provider></AnimarContext.Provider>
   )

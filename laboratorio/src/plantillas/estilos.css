@@ -193,13 +193,10 @@
 [data-estilo="vivo"] .pl-col h3 i, [data-estilo="vivo"] .pl-venc-grupo h3 i { background: color-mix(in srgb, var(--c) 20%, transparent); color: var(--tx); font-weight: 700; }
 [data-estilo="vivo"] [data-animar] .pl-col h3 i, [data-estilo="vivo"] [data-animar] .pl-venc-grupo h3 i { animation: vv-salta calc(.35s * var(--vel, 1)) ease-out; }
 
-/* Tablero: tarjetas en cascada, se arrastran entre columnas */
-[data-estilo="vivo"] .pl-tarjeta { cursor: grab; transition: transform .18s, background .18s, box-shadow .2s, opacity .2s; }
+/* Tablero: tarjetas en cascada; se tocan para abrir su ficha (cambiar de etapa se pide por chat, D50) */
+[data-estilo="vivo"] .pl-tarjeta { cursor: pointer; transition: transform .18s, background .18s, box-shadow .2s, opacity .2s; }
 [data-estilo="vivo"] [data-animar] .pl-tarjeta { animation: vv-entra calc(.4s * var(--vel, 1)) ease-out both; animation-delay: calc((var(--i) * 50ms + 250ms) * var(--vel, 1)); }
 [data-estilo="vivo"] .pl-tarjeta:hover { transform: translateY(-2px) rotate(-.5deg); background: rgba(var(--ink), .09); box-shadow: 0 8px 18px rgba(var(--sombra), .18); }
-[data-estilo="vivo"] .pl-tarjeta.arrastrando { opacity: .4; transform: scale(.97); }
-[data-estilo="vivo"] .pl-tarjeta.movida { animation: vv-entra calc(.35s * var(--vel, 1)) ease-out both; box-shadow: inset 3px 0 0 var(--c); }
-[data-estilo="vivo"] .pl-col.sobre { background: color-mix(in srgb, var(--c) 14%, var(--card)); border-color: color-mix(in srgb, var(--c) 60%, transparent); }
 
 /* Tabla: filas en cascada, orden por columna, acento al pasar */
 [data-estilo="vivo"] .pl-tabla-fila:not(.pl-tabla-cab) { transition: background .15s, box-shadow .15s; }

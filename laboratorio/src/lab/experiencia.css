@@ -11,3 +11,5 @@
 .exp-reiniciar { position: fixed; left: 14px; bottom: 14px; z-index: 1200; /* debajo del chat a pantalla completa (1250) */ padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(127, 127, 127, .3); background: rgba(20, 20, 20, .72); color: #fff; font: 600 12.5px system-ui, sans-serif; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .exp .exp-pasos li { animation: none; opacity: 1; } }
 .exp .exp-ayuda { margin: 6px 0 0; font-size: 13px; color: #5b6b66; }
+/* En el celular el chat ocupa la pantalla: el botón del laboratorio tapaba la cámara y el clip (prueba de cliente). */
+@media (max-width: 700px) { body:has(.mc-chat-panel) .exp-reiniciar { display: none; } }

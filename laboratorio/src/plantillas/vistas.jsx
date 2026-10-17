@@ -1,11 +1,11 @@
 /* Catálogo cerrado de vistas de las plantillas (las mismas claves que `VISTAS` en validar.js).
  * Cada vista recibe { seccion, campos, registros, opciones, datos } y SOLO dibuja: nunca llama a la API y todo número
  * que muestra lo cuenta de los registros (nada escrito a mano). */
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { isoDia } from './datosEjemplo'
 import { region } from './regional'
 
-/** true cuando el estilo es animado ("vivo"): los números cuentan desde 0, las tablas se ordenan y el tablero se arrastra. */
+/** true cuando el estilo es animado ("vivo"): los números cuentan desde 0 y las tablas se ordenan tocando su columna. */
 export const AnimarContext = createContext(false)
 /** Multiplicador de duración de las animaciones (1 = normal, 2 = el doble de lento). Debe coincidir con --vel del CSS. */
 export const VelContext = createContext(1)
@@ -169,13 +169,9 @@ function Kpis({ campos, registros, opciones = {} }) {
 }
 
 function Tablero({ seccion, campos, registros, opciones }) {
-  const animar = useContext(AnimarContext)
   const abrir = useContext(FichaContext)
-  // Movimientos locales del laboratorio (arrastrar una tarjeta a otra columna). En el CRM real esto sería una operación validada.
-  const [movidos, setMovidos] = useState({})
-  const [sobre, setSobre] = useState(null)
-  const arrastrado = useRef(null)
-  const estadoDe = (r) => movidos[r.id] ?? r.valores[opciones.por]
+  // Sin arrastrar tarjetas (D50: no hay edición manual): para cambiar la etapa se le pide a Shifu. Tocar una tarjeta abre su ficha.
+  const estadoDe = (r) => r.valores[opciones.por]
   const c = campo(campos, opciones.por)
   // La tarjeta: la que definió la persona (seccion.tarjeta: 1.º campo = título) o la del bloque (titulo + detalle).
   const ct = seccion.tarjeta?.campos?.map((id) => campo(campos, id)).filter(Boolean)
@@ -185,18 +181,11 @@ function Tablero({ seccion, campos, registros, opciones }) {
     <div className="pl-tablero" role="list" aria-label={`${seccion.titulo} por ${c.nombre.toLowerCase()}`}>
       {c.opciones.map((op, i) => {
         const de = registros.filter((r) => estadoDe(r) === op)
-        const soltar = animar ? {
-          onDragOver: (e) => { e.preventDefault(); setSobre(op) },
-          onDragLeave: () => setSobre((s) => (s === op ? null : s)),
-          onDrop: (e) => { e.preventDefault(); setSobre(null); const id = arrastrado.current; if (id) setMovidos((m) => ({ ...m, [id]: op })) },
-        } : {}
         return (
-          <section key={op} className={`pl-col${sobre === op ? ' sobre' : ''}`} role="listitem" style={{ '--c': COLORES[i % COLORES.length], '--i': i }} {...soltar}>
+          <section key={op} className="pl-col" role="listitem" style={{ '--c': COLORES[i % COLORES.length], '--i': i }}>
             <h3><span>{op}</span><i key={de.length}>{de.length}</i></h3>
             {de.slice(0, MAX_TARJETAS).map((r, k) => (
-              <article key={r.id} className={`pl-tarjeta${movidos[r.id] ? ' movida' : ''}`} style={{ '--i': k }} draggable={animar}
-                onDragStart={animar ? (e) => { arrastrado.current = r.id; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('arrastrando') } : undefined}
-                onDragEnd={animar ? (e) => e.currentTarget.classList.remove('arrastrando') : undefined} {...abrible(abrir, seccion, r)}>
+              <article key={r.id} className="pl-tarjeta" style={{ '--i': k }} {...abrible(abrir, seccion, r)}>
                 <b>{tituloDe(r)}</b>{dets.map((d) => <small key={d.id}>{ver(d.tipo, r.valores[d.id])}</small>)}
               </article>
             ))}
@@ -355,16 +344,17 @@ const Equipo = ({ datos }) => (
     {datos.equipo.map((v, k) => (
       <div key={v} className="mc-persona"><span className="mc-av grande" style={{ background: COLORES[k % COLORES.length] }}>{v[0]}</span><b>{v}</b><small>{k === 0 ? 'Administración' : 'Ventas'}</small></div>
     ))}
-    {datos.equipo.length === 1 && <div className="mc-persona invita"><span aria-hidden="true">＋</span><b>Invita a tu equipo</b><small>Reparte el trabajo cuando crezcas</small></div>}
+    {datos.equipo.length === 1 && <div className="mc-persona invita"><span aria-hidden="true">＋</span><b>Invita a tu equipo</b><small>Próximamente: reparte el trabajo cuando crezcas</small></div>}
   </div>
 )
 
 const Interruptores = ({ datos }) => (
   <ul className="mc-autos">
     {datos.automatizaciones.map((a) => (
-      <li key={a.id} className={a.on ? 'on' : ''}>
+      // Las automatizaciones todavía no existen: un interruptor encendido decía que sí (prueba de cliente). Se muestran como lo que son.
+      <li key={a.id}>
         <div><span className="mc-pilar">{a.pilar}</span><b>{a.t}</b><small>{a.d}</small></div>
-        <span role="switch" aria-checked={a.on} aria-label={a.t} className="mc-switch"><i /></span>
+        <span className="mc-pronto">Próximamente</span>
       </li>
     ))}
   </ul>

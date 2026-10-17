@@ -254,8 +254,8 @@
   transform: translateY(-2px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 18px 40px rgba(0, 0, 0, .5), 0 0 30px color-mix(in srgb, var(--acento) 8%, transparent);
 }
-/* Mientras se arrastra o se anima la salida, no se eleva. */
-.pl-tarjeta.arrastrando:hover, .saliendo:hover { transform: none; box-shadow: none; }
+/* Mientras se anima la salida, no se eleva. */
+.saliendo:hover { transform: none; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .pl *:hover { transform: none !important; } }
 
 /* El chat de Shifu no tapa el CRM (error 7 del recorrido): en escritorio, con el panel abierto, el CRM se corre a la izquierda
@@ -277,6 +277,8 @@
 .pl-sombra-msg { position: absolute; inset: 0; margin: auto; width: fit-content; height: fit-content; display: grid; gap: 4px; text-align: center; padding: 10px 16px; border-radius: 14px; background: color-mix(in srgb, var(--card) 85%, transparent); border: 1px solid var(--linea); }
 .pl-sombra-msg b { font-size: 14px; color: var(--tx2); }
 .pl-sombra-msg span { font-size: 12px; color: var(--tx3); }
+/* En una pestaña entera (más alta que la pantalla) el aviso va arriba: centrado quedaba fuera de la vista en el celular. */
+.pl-seccion > .pl-sombra > .pl-sombra-msg { bottom: auto; top: 24px; }
 
 /* ── Recorrido de primera entrada (D24) ── foco sobre la parte que se explica, el resto oscurecido. */
 .rc { position: fixed; inset: 0; z-index: 80; }
@@ -424,3 +426,5 @@
 
 /* Lo que de verdad cambió en el turno (lo arma el código): bajo cada respuesta de Shifu. */
 .cb-cambios { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(127, 127, 127, .3); font-size: 11.5px; line-height: 1.4; opacity: .75; }
+
+.mc-pronto { flex: none; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; color: var(--tx3); border: 1px dashed var(--linea); white-space: nowrap; }
