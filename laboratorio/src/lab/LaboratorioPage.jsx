@@ -2,7 +2,7 @@
  * Todo lo elegido vive en la URL, así un caso exacto se comparte copiando el enlace. */
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { PLANTILLAS } from '../plantillas/semillas'
+import { PLANTILLAS, PESTANAS_VISTA } from '../plantillas/semillas'
 import { validarPlantilla } from '../plantillas/validar'
 import { ROTAS } from './rotas'
 import { ESTILOS } from '../plantillas/estilos'
@@ -74,7 +74,11 @@ export default function LaboratorioPage() {
     return () => ro.disconnect()
   }, [])
 
-  const todas = [...PLANTILLAS, ...ROTAS]
+  const todas = [...PLANTILLAS, ...PESTANAS_VISTA, ...ROTAS]
+  // Estructuras de partida agrupadas por sector (el primer rubro de su asignación); las 6 iniciales van aparte.
+  const RUBRO = { servicios: 'Servicios', agencia: 'Agencias', comercio: 'Comercio', salud: 'Salud', educacion: 'Educación', tecnologia: 'Tecnología', inmobiliaria: 'Inmobiliaria', otro: 'Otros' }
+  const porSector = Object.entries(PLANTILLAS.reduce((m, p) => { const k = p.asignacion ? RUBRO[p.asignacion.rubros[0]] || 'Otros' : 'Base (las 6 iniciales)'; (m[k] ||= []).push(p); return m }, {})).sort(([a], [b]) => (a.startsWith('Base') ? -1 : b.startsWith('Base') ? 1 : a.localeCompare(b, 'es')))
+  const boton = (p) => { const n = validarPlantilla(p).length; return <li key={p.id}><button type="button" title={p.para} className={plantilla === p.id ? 'on' : ''} onClick={() => fijar('plantilla', p.id)}>{p.nombre}{n > 0 && <em> · {n} errores</em>}</button></li> }
   const errores = validarPlantilla(todas.find((p) => p.id === plantilla))
 
   return (
@@ -106,13 +110,18 @@ export default function LaboratorioPage() {
 
         </details>
 
-        <h2>Plantilla</h2>
-        <ul className="lab-lista lab-compacta">
-          {PLANTILLAS.map((p) => {
-            const n = validarPlantilla(p).length
-            return <li key={p.id}><button type="button" title={p.para} className={plantilla === p.id ? 'on' : ''} onClick={() => fijar('plantilla', p.id)}>{p.nombre}{n > 0 && <em> · {n} errores</em>}</button></li>
-          })}
-        </ul>
+        <h2>Material de partida ({PLANTILLAS.length} estructuras · {PESTANAS_VISTA.length} pestañas)</h2>
+        <p className="lab-nota">Interno (D49): el usuario nunca elige esto. Con sus respuestas, Shifu arma su CRM básico desde aquí y después cada pestaña es un cuaderno en blanco.</p>
+        {porSector.map(([sector, lista]) => (
+          <details key={sector} className="lab-plegable" open={lista.some((p) => p.id === plantilla)}>
+            <summary>{sector} · {lista.length}</summary>
+            <ul className="lab-lista lab-compacta">{lista.map(boton)}</ul>
+          </details>
+        ))}
+        <details className="lab-plegable" open={plantilla.startsWith('pestana-')}>
+          <summary>Pestañas de la biblioteca · {PESTANAS_VISTA.length}</summary>
+          <ul className="lab-lista lab-compacta">{PESTANAS_VISTA.map(boton)}</ul>
+        </details>
         <details className="lab-rotas"><summary>Rotas a propósito (prueban el validador)</summary>
           <ul className="lab-lista">{ROTAS.map((p) => <li key={p.id}><button type="button" className={plantilla === p.id ? 'on' : ''} onClick={() => fijar('plantilla', p.id)}><b>{p.nombre}</b></button></li>)}</ul>
         </details>

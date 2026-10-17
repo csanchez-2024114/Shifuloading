@@ -136,4 +136,13 @@ export const PLANTILLAS = [
 const BIBLIO = Object.values(import.meta.glob('./biblioteca/*.js', { eager: true })).map((m) => m.default).filter(Boolean)
 PLANTILLAS.push(...BIBLIO.filter((b) => !PLANTILLAS.some((p) => p.id === b.id)))
 
-export const plantillaPorId = (id) => PLANTILLAS.find((p) => p.id === id)
+// Biblioteca de pestañas (D30 nivel 2): cada una se puede ver SOLA en el laboratorio, como un CRM mínimo con esa pestaña y
+// sus piezas sugeridas en el inicio. Material interno (D49): el usuario nunca las elige; la IA parte de ellas.
+const PEST = Object.values(import.meta.glob('./biblioteca-pestanas/*.js', { eager: true })).map((m) => m.default).filter(Boolean)
+export const PESTANAS_VISTA = PEST.map((p) => ({
+  id: `pestana-${p.id}`, nombre: p.seccion.titulo, para: p.para, interna: 'pestana',
+  inicio: p.piezas.map((w) => ({ ...w, seccion: p.id })),
+  secciones: [{ ...p.seccion, id: p.id, grupo: 0 }, ...fijas],
+}))
+
+export const plantillaPorId = (id) => PLANTILLAS.find((p) => p.id === id) || PESTANAS_VISTA.find((p) => p.id === id)

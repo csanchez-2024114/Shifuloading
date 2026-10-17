@@ -12,7 +12,10 @@ import { join } from 'node:path'
 
 const BASE = process.env.LAB_URL || 'http://localhost:5190'
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-const TODAS = ['embudo', 'agenda', 'pedidos', 'membresias', 'proyectos', 'simple']
+import { readdirSync } from 'node:fs'
+// Todo el material de partida: las 6 iniciales, las estructuras por sector y cada pestaña de la biblioteca.
+const deCarpeta = (d, pre = '') => readdirSync(`laboratorio/src/plantillas/${d}`).filter((f) => f.endsWith('.js')).map((f) => pre + f.replace(/\.js$/, ''))
+const TODAS = ['embudo', 'agenda', 'pedidos', 'membresias', 'proyectos', 'simple', ...deCarpeta('biblioteca'), ...deCarpeta('biblioteca-pestanas', 'pestana-')]
 const [pl = '', va = '', te = ''] = process.argv.slice(2)
 const plantillas = pl ? pl.split(',') : TODAS
 const variantes = va ? va.split(',') : ['vacio', 'uno', 'pocos', 'muchos', 'largos', 'cortos']

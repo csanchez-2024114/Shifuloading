@@ -16,7 +16,7 @@ import ChatLab, { GUION, GUION_TOMA } from './ChatLab'
 import Recorrido, { pasosDe } from './Recorrido'
 import { fijarRegion } from './regional'
 import { tokensDeMarca, cargarFuentes } from './marca'
-import { plantillaEfectiva } from './edicion'
+import { plantillaEfectiva, acomodar } from './edicion'
 import { Grafico, GRAFICOS } from './graficos'
 import '@base/crm.css'
 import '@base/crm-extra.css'
@@ -96,7 +96,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   const def = ESTILOS.find((e) => e.id === estilo) || ESTILOS[0]
   const animado = def.base === 'vivo'
   // El inicio SOLO lo cambia la IA (chat): recibe un estado nuevo y la pantalla se transforma animada.
-  const [bloques, setBloques] = useState(() => conTamano(plantillaBase.inicio.map((w, i) => ({ ...w, uid: `b${i}` }))))
+  const [bloques, setBloques] = useState(() => acomodar(conTamano(plantillaBase.inicio.map((w, i) => ({ ...w, uid: `b${i}` })))))
   const [saliendo, setSaliendo] = useState([])
   // Marca del negocio (D19): la cambia solo Shifu. Base = tokens actuales; la marca los reemplaza y el código cuida el contraste.
   const [marca, setMarca] = useState({})

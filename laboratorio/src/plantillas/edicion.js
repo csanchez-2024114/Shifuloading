@@ -157,7 +157,7 @@ export function construirDesdeFicha(plantillaBase, estado) {
   const m = f.marca || {}
   const marca = { ...(estado.marca || {}), ...(esHex(m.primario) ? { primario: m.primario } : {}), ...(esHex(m.secundario) ? { secundario: m.secundario } : {}),
     ...(m.tipografia && FUENTES[m.tipografia] ? { fuenteTitulos: m.tipografia, fuenteTexto: m.tipografia } : {}) }
-  const nuevo = { ...estado, bloques, marca, vista: 'inicio', toma: tomaVacia() }
+  const nuevo = { ...estado, bloques: acomodar(bloques), marca, vista: 'inicio', toma: tomaVacia() }
   const errores = validarPlantilla({ ...plantillaEfectiva(plantillaBase, nuevo), inicio: bloques })
   return { estado: errores.length ? estado : nuevo, errores }
 }
