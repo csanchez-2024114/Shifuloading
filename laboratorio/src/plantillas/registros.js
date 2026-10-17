@@ -45,7 +45,7 @@ function leerValores(sec, campos, regs, valores, { vaciar = false, hoy } = {}) {
     if (!c) { errores.push(`«${k}» no es un campo de ${sec.titulo} (sus campos: ${campos.map((x) => x.nombre).join(', ')}). Si quiere guardar ese dato, pregúntale si agregas el campo.`); continue }
     const v = typeof v0 === 'string' ? v0.trim() : v0
     if (v === '' || v === null || v === undefined) { if (vaciar) listos[c.id] = ''; continue }
-    if (c.tipo === 'fecha') { const f = parseFecha(v, hoy); if (f) listos[c.id] = f; else errores.push(`no entendí la fecha «${v}» para ${c.nombre}: pregúntale cuál es (por ejemplo «30 de octubre»).`) }
+    if (c.tipo === 'fecha') { const f = parseFecha(v, hoy); if (f) listos[c.id] = f; else errores.push(`no entendí la fecha «${v}» para ${c.nombre}: hoy es ${fechaLarga(isoDia(hoy))}; pregúntale cuál es (por ejemplo «30 de octubre» o «30 de octubre de ${hoy.getFullYear() + 1}»).`) }
     else if (c.tipo === 'numero' || c.tipo === 'dinero') { const n = parseNumero(v); if (n !== null) listos[c.id] = n; else errores.push(`«${v}» no es un número para ${c.nombre}.`) }
     else if (c.tipo === 'hora') { const h = parseHora(v); if (h) listos[c.id] = h; else errores.push(`no entendí la hora «${v}» para ${c.nombre} (por ejemplo «9:30» o «3 de la tarde»).`) }
     else if (c.tipo === 'estado') { const o = opcionDe(c, v); if (o) listos[c.id] = o; else errores.push(`«${v}» no es una opción de ${c.nombre} (opciones: ${c.opciones.join(', ')}). Pregúntale cuál, o si quiere agregar esa opción.`) }
@@ -59,9 +59,26 @@ function leerValores(sec, campos, regs, valores, { vaciar = false, hoy } = {}) {
 }
 
 /** ¿A qué registro se refiere? Si son varios o ninguno, el error dice qué preguntar (nunca adivina). */
-function encontrar(sec, campos, regs, consulta, fmt) {
+// Palabras (sin acentos, de 3+ letras) y si una aparece en lo que escribió la persona, por raíz (López/lopez, Pérez/perez).
+const palabrasDe = (t) => sinAcentos(t).split(/[^a-z0-9ñ]+/).filter((w) => w.length > 2)
+const dicha = (w, dichos) => { const r = w.slice(0, Math.max(3, w.length - 2)); return palabrasDe(dichos).some((d) => d.startsWith(r)) }
+
+/** dichos = todo lo que escribió la persona (este mensaje y los anteriores). Si se pasa, el registro debe ser uno que ELLA
+ * nombró (D54): medido, con dos «Ana» el modelo elegía «Ana López» por su cuenta en un mensaje sobre otra cosa. */
+function encontrar(sec, campos, regs, consulta, fmt, dichos) {
   const ct = campoTitulo(sec, campos)
   const b = buscarRegistro(regs, sec, campos, String(consulta ?? ''))
+  if (b.registro && dichos != null) {
+    const r = b.registro, tit = tituloDe(r, ct)
+    // Lo que la persona dijo del nombre (con id o con nombre) debe señalar a ese registro y solo a ese: «Ana» con una sola
+    // Ana basta; con dos, no.
+    const dijo = [...new Set([...palabrasDe(tit), ...(r.id === consulta ? [] : palabrasDe(consulta))].filter((w) => dicha(w, dichos)))]
+    const ok = dijo.length && buscarRegistro(regs, sec, campos, dijo.join(' ')).registro?.id === r.id
+    if (!ok) {
+      const c = dijo.length ? buscarRegistro(regs, sec, campos, dijo.join(' ')).candidatos : null
+      return { error: `la persona no nombró a «${tit}»${c ? ` (dijo «${dijo.join(' ')}» y coinciden: ${c.slice(0, 5).map((x) => tituloDe(x, ct)).join(', ')})` : ''}. No elijas por ella: pregúntale a quién se refiere.` }
+    }
+  }
   if (b.registro) return { r: b.registro }
   if (b.candidatos) return { error: `hay ${b.candidatos.length} registros en ${sec.titulo} que coinciden con «${consulta}»: ${b.candidatos.slice(0, 5).map((x) => describir(x, campos, fmt, ct)).join(' | ')}${b.candidatos.length > 5 ? ' | …' : ''}. No cambies nada: pregúntale cuál (por un dato que los distinga).` }
   const palabras = sinAcentos(consulta).split(/\s+/).filter((w) => w.length > 2)
@@ -73,7 +90,7 @@ export const HERR_DATOS = new Set(['agregar_registro', 'editar_registro', 'borra
 
 /** Agregar, editar o borrar UN registro. ctx = { sec (dueña de los datos), campos, regs (los que ve ahora), f, estado, args, muestra }.
  * Devuelve { estado, ok, resultado, etiqueta } — etiqueta = el cambio dicho en simple para la línea «Cambios:» del chat. */
-export function ejecutarDato(nombre, { sec, campos, regs, f, estado, args, muestra = {}, hoy = new Date() }) {
+export function ejecutarDato(nombre, { sec, campos, regs, f, estado, args, muestra = {}, hoy = new Date(), confirmado = false, dichos }) {
   const fmt = regionDe(muestra.pais)
   const ct = campoTitulo(sec, campos)
   const no = (t) => ({ estado, ok: false, resultado: `ERROR: ${t}` })
@@ -84,19 +101,29 @@ export function ejecutarDato(nombre, { sec, campos, regs, f, estado, args, muest
       const { listos, errores } = leerValores(sec, campos, regs, args.valores, { hoy })
       if (!listos[ct.id] && !errores.length) errores.push(`falta ${ct.nombre}: es lo que identifica al registro. Pregúntaselo.`)
       if (errores.length) return no(errores.join(' '))
+      const dichos = { ...listos } // lo que dio la persona (antes de los valores por defecto)
       // Un estado sin decir: la primera opción (sin estado no se vería en el tablero). Se dice.
       const porDefecto = campos.filter((c) => c.tipo === 'estado' && listos[c.id] === undefined && c.opciones?.length).map((c) => { listos[c.id] = c.opciones[0]; return `${c.nombre}: ${c.opciones[0]}` })
+      const mismos = regs.filter((r) => sinAcentos(r.valores[ct.id]) === sinAcentos(listos[ct.id])).length
+      // Duplicado exacto: mismo nombre y TODO lo que se dio igual a un registro que ya existe. Casi siempre es repetir el
+      // pedido (prueba de cliente: «Juan Pérez» quedó dos veces). Se agrega solo si la persona lo confirma. Un pago nuevo
+      // de la misma persona (otro monto u otra fecha) no es duplicado.
+      // Fechas con ±3 días: el modelo dice «en un mes» una vez y «en 30 días» la otra (medido: 17 y 16 de noviembre).
+      const tipoDe = Object.fromEntries(campos.map((c) => [c.id, c.tipo]))
+      const igual = (k, a, b) => tipoDe[k] === 'fecha' ? !!a && Math.abs(Date.parse(a) - Date.parse(b)) <= 3 * 864e5
+        : typeof a === 'number' || typeof b === 'number' ? Number(a) === Number(b) : sinAcentos(a) === sinAcentos(b)
+      const duplicado = regs.find((r) => Object.entries(dichos).every(([k, v]) => igual(k, r.valores[k], v)))
+      if (duplicado && !confirmado) return no(`ya existe «${listos[ct.id]}» en ${sec.titulo} con esos mismos datos. No lo agregué. Si quería cambiar ese, usa editar_registro; si de verdad es OTRO con los mismos datos, pregúntaselo y agrégalo cuando diga que sí.`)
       const n = (d.n || 0) + 1, reg = { id: `${f}-p${n}`, valores: listos }
       const vacios = campos.filter((c) => listos[c.id] === undefined).map((c) => c.nombre)
-      const mismos = regs.filter((r) => sinAcentos(r.valores[ct.id]) === sinAcentos(listos[ct.id])).length
       return si({ ...d, n, nuevos: { ...(d.nuevos || {}), [f]: [...propios, reg] } },
         `Agregado a ${sec.titulo}: ${describir(reg, campos, fmt, ct)}.${porDefecto.length ? ` ${porDefecto.join(', ')} por defecto (dilo).` : ''}`
         + `${vacios.length ? ` Sin llenar: ${vacios.join(', ')} (dilo y ofrece completarlo; no lo inventes).` : ''}`
-        + `${mismos ? ` AVISO: ya había ${mismos === 1 ? 'otro registro' : `${mismos} registros`} «${listos[ct.id]}» en ${sec.titulo}; díselo en una línea por si quería cambiar el que ya existe.` : ''} Ahora hay ${regs.length + 1} en ${sec.titulo}.`,
+        + `${mismos ? ` Ya había ${mismos === 1 ? 'otro registro' : `${mismos} registros`} «${listos[ct.id]}»${duplicado ? ' con los mismos datos (la persona confirmó que es otro)' : ' con otros datos'}; díselo en una línea.` : ''} Ahora hay ${regs.length + 1} en ${sec.titulo}.`,
         `agregó «${listos[ct.id]}» a ${sec.titulo}`)
     }
     case 'editar_registro': {
-      const e = encontrar(sec, campos, regs, args.registro, fmt); if (e.error) return no(e.error)
+      const e = encontrar(sec, campos, regs, args.registro, fmt, dichos); if (e.error) return no(e.error)
       if (!Object.keys(args.valores || {}).length) return no('falta qué cambiar (valores).')
       const { listos, errores } = leerValores(sec, campos, regs, args.valores, { vaciar: true, hoy })
       if (errores.length) return no(errores.join(' '))
@@ -113,7 +140,7 @@ export function ejecutarDato(nombre, { sec, campos, regs, f, estado, args, muest
         `cambió «${nombreAntes}»: ${cambiados.map((c) => `${c.nombre} → ${mostrar(c, listos[c.id], fmt)}`).join(', ')}`)
     }
     case 'borrar_registro': {
-      const e = encontrar(sec, campos, regs, args.registro, fmt); if (e.error) return no(e.error)
+      const e = encontrar(sec, campos, regs, args.registro, fmt, dichos); if (e.error) return no(e.error)
       const datos = propios.some((x) => x.id === e.r.id)
         ? { ...d, nuevos: { ...d.nuevos, [f]: propios.filter((x) => x.id !== e.r.id) } }
         : { ...d, borrados: { ...(d.borrados || {}), [f]: [...(d.borrados?.[f] || []), e.r.id] } }

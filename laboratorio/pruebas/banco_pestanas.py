@@ -24,9 +24,9 @@ CASOS = [  # (descripción, estado, texto, selección, verificación)
     ("quitar lo elegido dentro de una pestaña", E("miembros", PAG), "quita esto", [{"tipo": "bloque", "id": "pz1", "nombre": "Dona · Miembros"}], lambda e, d: [b["uid"] for b in pag(e, "miembros")] == ["p_miembros"] and inicio_v(e) == ["kpis", "vencimientos"]),
     ("cambiar la vista base de una pestaña", E("miembros"), "cambia esta lista por un tablero por estado", None, lambda e, d: any(b["vista"] == "tablero" for b in pag(e, "miembros"))),
     ("algo que no existe: no inventa", E(), "quiero un mapa de calor de mis miembros por ciudad", None, lambda e, d: inicio_v(e) == ["kpis", "vencimientos"] and not pag(e, "miembros")),
-    # Compuesto: lo que existe se hace y lo que no se dice (el cerco de sustitutos no debe deshacer la dona pedida).
-    ("compuesto: una existe y otra no", E(), "agrega una dona por estado y una gráfica de radar de los planes", None,
-     lambda e, d: any(b["vista"] == "grafico" and (b.get("opciones") or {}).get("tipo") == "dona" for b in e["bloques"]) and not any((b.get("opciones") or {}).get("tipo") == "radar" for b in e["bloques"]) and re.search(r"radar", d["respuesta"], re.I)),
+    # Compuesto: lo que existe se hace y lo que no se dice (D52: antes decía «radar», que SÍ existe) (el cerco de sustitutos no debe deshacer la dona pedida).
+    ("compuesto: una existe y otra no", E(), "agrega una dona por estado y una nube de palabras de los planes", None,
+     lambda e, d: any(b["vista"] == "grafico" and (b.get("opciones") or {}).get("tipo") == "dona" for b in e["bloques"]) and len(e["bloques"]) == 3 and re.search(r"nube", d["respuesta"], re.I)),
 ]
 ok = tot = 0; tiempos = []
 for _ in range(N):

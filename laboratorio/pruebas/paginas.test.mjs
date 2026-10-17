@@ -58,4 +58,12 @@ caso('mirando una pestaña: tocar un bloque del inicio sin decirlo se rechaza; c
   const r1 = ejecutar(p, { ...E, vista: 'miembros' }, 'cambiar_visual', { bloque: 'b0', vista: 'tabla' }); assert.equal(r1.ok, false); assert.match(r1.resultado, /INICIO/)
   const r2 = ejecutar(p, { ...E, vista: 'miembros' }, 'agregar_bloque', { pestana: 'inicio', vista: 'tabla', seccion: 'pagos' }); assert.ok(r2.ok, r2.resultado); assert.equal(r2.estado.bloques.length, 2)
 })
+caso('pieza igual a otra del mismo lienzo (D55): no se agrega sin «sí»; con otro tipo u otra pestaña, sí', () => {
+  const r1 = ejecutar(p, E, 'agregar_bloque', { vista: 'kpis', seccion: 'miembros', opciones: { por: 'estado' } }); assert.equal(r1.ok, false); assert.match(r1.resultado, /pieza igual.*b0/)
+  const a = ejecutar(p, E, 'agregar_bloque', { vista: 'grafico', seccion: 'miembros', opciones: { tipo: 'dona' } }); assert.ok(a.ok, a.resultado)
+  assert.equal(ejecutar(p, a.estado, 'agregar_bloque', { vista: 'grafico', seccion: 'miembros', opciones: { tipo: 'dona' } }).ok, false)
+  assert.ok(ejecutar(p, a.estado, 'agregar_bloque', { vista: 'grafico', seccion: 'miembros', opciones: { tipo: 'columnas' } }).ok, 'otro tipo de gráfica')
+  assert.ok(ejecutar(p, a.estado, 'agregar_bloque', { vista: 'grafico', seccion: 'miembros', opciones: { tipo: 'dona' } }, { confirmado: true }).ok, 'con «sí»')
+  assert.ok(ejecutar(p, E, 'agregar_bloque', { pestana: 'miembros', vista: 'kpis', opciones: { por: 'estado' } }).ok, 'en otra pestaña no es duplicado')
+})
 console.log(`\n${ok} pruebas bien`); await v.close()

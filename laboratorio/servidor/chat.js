@@ -5,6 +5,7 @@
  * - La clave se lee de backend/.env (no se versiona) y nunca sale al navegador. */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { afirmaCambio } from './afirma.js'
 
 const MODELO = process.env.CRM_AGENT_MODEL || 'gpt-4.1-mini'
 
@@ -87,8 +88,6 @@ Reglas:
 - Deshacer (pedidos_anteriores): cada pedido que cambió algo queda en la lista con lo que dijo la persona y qué cambió. Si quiere anular algo ("eso no", "como estaba antes", "deshaz lo del color", "deshaz también la dona"), usa deshacer con el número del PEDIDO que quiere anular (el código revierte solo lo que ese pedido cambió) y di qué deshiciste. Para deshacer SIEMPRE usa deshacer, no quites ni cambies bloques a mano. Si la lista está vacía, no hay nada que deshacer: dilo.
 - Toma de diseño (estado.toma): si la persona pide diseñar o rehacer el inicio o un CRM completo, abre abrir_toma (no para cambios puntuales). Durante juntando/confirmando anota cada cosa concreta que pidan con anotar_bloque (qué ver + de qué parte; sin preguntar detalles técnicos) y el resto (objetivo, colores, letra, restricciones) con anotar_ficha, solo lo dicho en ESE mensaje; para cambiar un bloque de la ficha usa quitar_de_ficha + anotar_bloque; una pregunta por turno según instruccion_turno/FALTA. En confirmando muestra el RESUMEN y pregunta «¿Lo armo así?». No uses herramientas de pantalla hasta que el código confirme la ficha. Si charlan de otra cosa (digresión), contesta sin anotar ni cambiar la pantalla. cerrar_toma si abandonan.`
 
-// Bordes de palabra con letras Unicode: el \\b de JS no ve la é ni la í, y "Agregué" se le escapaba al verificador.
-const LOGRO = /(?<!\p{L})(agregu[eé]|quit[eé]|cambi[eé]|mov[ií]|achiqu[eé]|agrand[eé]|puse|cre[eé]|hice|list[oa]|ajust[eé]|reemplac[eé]|renombr[eé])(?!\p{L})/iu
 const PROMESA = /(?<!\p{L})(voy a|vamos a|procedo|creo una|agrego un|pongo un|armo una?)(?!\p{L})/iu
 // ¿La persona pidió quitar/reemplazar algo? (o confirma con un sí lo que Shifu le preguntó). El código decide, no el modelo.
 // Tolerante a tipeo ("qutiar", "qitar", "borar"): se escribe rápido y con errores.
@@ -153,6 +152,8 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
   let verdadLado = null // si tras corregir sigue diciendo un lado que no es, el código agrega dónde quedó
   const soloToma = () => estado.toma?.activa && estado.toma.fase !== 'construida'
   let respuesta = '', correcciones = 0
+  const avisos = [] // correcciones del código en este turno: el aviso y la respuesta que descartó
+  const corregir = (ia, aviso) => { avisos.push({ aviso: aviso.slice(0, 300), descartada: (ia.content || '').slice(0, 300) }); mensajes.push(ia, { role: 'user', content: aviso }) }
   for (let v = 0; v < MAX_VUELTAS; v++) {
     // Tras un deshacer pedido solo (sin otra herramienta en esa vuelta) el turno se cierra: el modelo responde y no
     // puede «compensar» con más cambios (visto en 3 de 6 corridas reales: re-agregar, mover o quitar lo deshecho).
@@ -171,7 +172,7 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
         const tocados = ubicados.length ? ubicados : cambios.map(idDe).filter(Boolean)
         if (!tocados.some((id) => u[id]?.lado === lado)) {
           const donde = tocados.map((id) => `${id} → ${u[id] ? `fila ${u[id].fila}, ${u[id].lado}` : 'ya no está'}`).join('; ')
-          if (correcciones < MAX_CORRECCIONES) { correcciones++; mensajes.push(ia, { role: 'user', content: `[Aviso interno] Dices "${lado}", pero lo que cambiaste quedó así: ${donde}. Muévelo/ajusta anchos para que quede a la ${lado}, o di dónde quedó de verdad.` }); continue }
+          if (correcciones < MAX_CORRECCIONES) { correcciones++; corregir(ia, `[Aviso interno] Dices "${lado}", pero lo que cambiaste quedó así: ${donde}. Muévelo/ajusta anchos para que quede a la ${lado}, o di dónde quedó de verdad.`); continue }
           verdadLado = tocados.map((id) => (u[id] ? `la fila ${u[id].fila}, ${u[id].lado}` : null)).filter(Boolean).join('; ')
         }
       }
@@ -181,13 +182,13 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
         const negado = posibles.find(({ g }) => { const nombre = g.match(/\((.*)\)/)?.[1]?.toLowerCase(); return nombre && respuesta.toLowerCase().includes(nombre.replace(/ \d+ %/, '')) })
         if (negado) {
           const donde = posibles.filter((x) => x.g === negado.g).map((x) => x.seccion).join(', ')
-          correcciones++; mensajes.push(ia, { role: 'user', content: `[Aviso interno] Dices que no se puede, pero «${negado.g}» SÍ se puede dibujar con: ${donde}. Hazlo con agregar_bloque/cambiar_visual (vista "grafico"), o explica bien qué es lo que no se puede.` }); continue
+          correcciones++; corregir(ia, `[Aviso interno] Dices que no se puede, pero «${negado.g}» SÍ se puede dibujar con: ${donde}. Hazlo con agregar_bloque/cambiar_visual (vista "grafico"), o explica bien qué es lo que no se puede.`); continue
         }
       }
       // Si ofrece un sustituto ("lo más parecido") pero ya lo aplicó, el código deshace todo: un sustituto se OFRECE, no se impone.
       if (SUSTITUTO.test(respuesta) && cambios.some((c) => ['agregar_bloque', 'cambiar_visual'].includes(c.herramienta)) && correcciones < MAX_CORRECCIONES) {
         estado = estadoInicial; cambios.length = 0
-        correcciones++; mensajes.push(ia, { role: 'user', content: '[Aviso interno] Aplicaste un sustituto sin preguntar y ya lo deshice (la pantalla está como al principio). Di que eso no existe y PREGUNTA si quiere la alternativa; no llames herramientas.' }); continue
+        correcciones++; corregir(ia, '[Aviso interno] Aplicaste un sustituto sin preguntar y ya lo deshice (la pantalla está como al principio). Di que eso no existe y PREGUNTA si quiere la alternativa; no llames herramientas.'); continue
       }
       // Ficha: si pidió VARIAS cosas en este mensaje y anotó menos, el código le pide las que faltan (una vez).
       if (estado.toma?.activa && estado.toma.fase !== 'construida' && correcciones < MAX_CORRECCIONES) {
@@ -195,11 +196,11 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
         const anotadas = cambios.filter((c) => c.herramienta === 'anotar_bloque').length
         // También con 0 anotadas: si nombró piezas concretas y no anotó ninguna, se le pide (medido: «diséñame un inicio con una
         // lista, un tablero y lo que vence» quedaba con la ficha vacía). Solo cuenta lo que escribió: no empuja a inventar.
-        if (pedidas.size > 0 && anotadas < pedidas.size) { correcciones++; mensajes.push(ia, { role: 'user', content: `[Aviso del código] En este mensaje pidió ${pedidas.size} cosas (${[...pedidas].join(', ')}) y anotaste ${anotadas}. Anota con anotar_bloque las que faltan.` }); continue }
+        if (pedidas.size > 0 && anotadas < pedidas.size) { correcciones++; corregir(ia, `[Aviso del código] En este mensaje pidió ${pedidas.size} cosas (${[...pedidas].join(', ')}) y anotaste ${anotadas}. Anota con anotar_bloque las que faltan.`); continue }
       }
       if (!soloToma() && PROMESA.test(respuesta)) aviso = '[Aviso interno] No anuncies: hazlo ahora con las herramientas, o pregunta solo el dato que falta.'
-      else if (!soloToma() && LOGRO.test(respuesta) && !cambios.length) aviso = `[Aviso interno] Dices que hiciste un cambio, pero ninguna herramienta cambió la pantalla${fallos.length ? ` (fallaron: ${fallos.slice(-2).join(' | ')})` : ''}. Llama a la herramienta o di la verdad.`
-      if (aviso && correcciones < MAX_CORRECCIONES) { correcciones++; mensajes.push(ia, { role: 'user', content: aviso }); continue }
+      else if (!soloToma() && afirmaCambio(respuesta) && !cambios.length) aviso = `[Aviso interno] Dices que hiciste un cambio, pero ninguna herramienta cambió la pantalla${fallos.length ? ` (fallaron: ${fallos.slice(-2).join(' | ')})` : ''}. Llama a la herramienta o di la verdad.`
+      if (aviso && correcciones < MAX_CORRECCIONES) { correcciones++; corregir(ia, aviso); continue }
       break
     }
     mensajes.push(ia)
@@ -281,7 +282,7 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
         ? { ok: false, resultado: 'ERROR: borrar varios registros de una vez necesita confirmación. No borres nada más: di cuáles se borrarían y pregunta si está seguro (que responda "sí").' }
         : ll.function.name === 'quitar_seccion' && (yaQuitadas >= 1 || masivo) && !confirmado
         ? { ok: false, resultado: 'ERROR: quitar varias secciones en un mismo mensaje necesita confirmación. No quites más: dile cuáles se quitarían y pregunta si está seguro (que responda "sí").' }
-        : edicion.ejecutar(plantilla, estado, ll.function.name, args, { pideQuitar: PIDE_QUITAR.test(texto), imagen, texto, digresion, muestra })
+        : edicion.ejecutar(plantilla, estado, ll.function.name, args, { pideQuitar: PIDE_QUITAR.test(texto), imagen, texto, digresion, muestra, confirmado, dichos: [...historial.filter((h) => h.de === 'yo').map((h) => h.t), texto].join('\n') })
       // Trazabilidad: cada intento fallido queda con su herramienta y argumentos (para diagnosticar con casos reales).
       if (r.ok) { estado = r.estado; cambios.push({ herramienta: ll.function.name, args, resultado: r.resultado, ...(r.etiqueta !== undefined ? { etiqueta: r.etiqueta } : {}) }) } else {
         fallos.push(r.resultado); intentos.push({ herramienta: ll.function.name, args, resultado: r.resultado })
@@ -330,7 +331,7 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
   }
   // La ficha la puede abrir/cerrar el código aunque el modelo no use herramientas: se avisa para que el cliente guarde el estado.
   const estadoCambio = cambios.length > 0 || JSON.stringify(estado.toma || null) !== JSON.stringify(estadoEntrada.toma || null)
-  return { respuesta, estado, cambios, fallos, intentos, enlaces, consultas, estadoCambio }
+  return { respuesta, estado, cambios, fallos, intentos, enlaces, consultas, avisos, estadoCambio }
 }
 
 /** Plugin de Vite: POST /api/lab/chat. Carga las plantillas y el cerco con ssrLoadModule (la misma fuente que usa la pantalla). */

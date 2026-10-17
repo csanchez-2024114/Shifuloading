@@ -32,6 +32,33 @@ caso('agregar: entiende la fecha en palabras, normaliza «mensual» y pone el es
   assert.equal(miembros(e1).length, 9)
   assert.equal(etiquetaCambio({ herramienta: 'agregar_registro', args: {}, etiqueta: r.etiqueta }), 'agregó «María López» a Miembros')
 })
+caso('duplicado exacto (prueba de cliente: «Juan Pérez» quedó dos veces): no se agrega sin confirmación; otro pago de la misma persona sí', () => {
+  const a = ejecutar(p, E, 'agregar_registro', { seccion: 'miembros', valores: { nombre: 'Juan Pérez', plan: 'Mensual', alta: 'hoy' } }, ctx); assert.ok(a.ok, a.resultado)
+  const b = ejecutar(p, a.estado, 'agregar_registro', { seccion: 'miembros', valores: { nombre: 'Juan Pérez', plan: 'mensual' } }, ctx)
+  assert.ok(!b.ok); assert.match(b.resultado, /ya existe «Juan Pérez».*No lo agregué/)
+  const c = ejecutar(p, a.estado, 'agregar_registro', { seccion: 'miembros', valores: { nombre: 'Juan Pérez', plan: 'Anual' } }, ctx)
+  assert.ok(c.ok, 'mismo nombre con otro plan: es otro dato, se agrega'); assert.match(c.resultado, /Ya había otro registro «Juan Pérez»/)
+  const d = ejecutar(p, a.estado, 'agregar_registro', { seccion: 'miembros', valores: { nombre: 'Juan Pérez', plan: 'mensual' } }, { ...ctx, confirmado: true })
+  assert.ok(d.ok, 'con «sí» de la persona se agrega')
+  const v1 = ejecutar(p, E, 'agregar_registro', { seccion: 'miembros', valores: { nombre: 'Luis Mora', plan: 'Mensual', vence: 'en un mes' } }, ctx)
+  assert.ok(!ejecutar(p, v1.estado, 'agregar_registro', { seccion: 'miembros', valores: { nombre: 'Luis Mora', plan: 'mensual', vence: 'en 30 días' } }, ctx).ok, 'la misma fecha dicha de otra forma (±3 días) sigue siendo duplicado')
+  const p1 = ejecutar(p, E, 'agregar_registro', { seccion: 'pagos', valores: { miembro: 'Ana López', monto: '350', fecha: 'hoy' } }, ctx); assert.ok(p1.ok, p1.resultado)
+  const p2 = ejecutar(p, p1.estado, 'agregar_registro', { seccion: 'pagos', valores: { miembro: 'Ana López', monto: '400', fecha: 'hoy' } }, ctx); assert.ok(p2.ok, 'otro monto: otro pago')
+})
+caso('procedencia (D54): con dos «Ana», editar a «Ana López» si la persona solo dijo «Ana» no se hace; lo que sí nombró, sí', () => {
+  const dos = { bloques: [], datos: { n: 1, nuevos: { miembros: [{ id: 'miembros-p1', valores: { nombre: 'Ana Martínez', plan: 'Anual', estado: 'Activa' } }] } } }
+  const dichos = 'pasa a Ana a Pausada\nponle a Carlos Pérez el plan Anual'
+  const c2 = { ...ctx, dichos }
+  const a = ejecutar(p, dos, 'editar_registro', { seccion: 'miembros', registro: 'Ana López', valores: { estado: 'Pausada' } }, c2)
+  assert.ok(!a.ok); assert.match(a.resultado, /no nombró a «Ana López».*coinciden: .*Ana López.*Ana Martínez|no nombró a «Ana López».*coinciden: .*Ana Martínez.*Ana López/)
+  const b = ejecutar(p, dos, 'editar_registro', { seccion: 'miembros', registro: 'miembros-0', valores: { estado: 'Pausada' } }, c2)
+  assert.ok(!b.ok, 'por id tampoco: «Ana» no la señala solo a ella')
+  assert.ok(ejecutar(p, dos, 'editar_registro', { seccion: 'miembros', registro: 'Carlos Pérez', valores: { plan: 'Anual' } }, c2).ok)
+  assert.ok(ejecutar(p, dos, 'editar_registro', { seccion: 'miembros', registro: 'miembros-1', valores: { plan: 'Anual' } }, c2).ok, 'por id, si lo que dijo lo señala solo a él')
+  assert.ok(ejecutar(p, dos, 'borrar_registro', { seccion: 'miembros', registro: 'Ana López' }, { ...ctx, dichos: 'borra a ana lopez' }).ok, 'sin acentos ni mayúsculas')
+  assert.ok(!ejecutar(p, dos, 'borrar_registro', { seccion: 'miembros', registro: 'Ana López' }, { ...ctx, dichos: 'borra a Ana' }).ok)
+  assert.ok(ejecutar(p, E, 'editar_registro', { seccion: 'miembros', registro: 'Carlos Pérez', valores: { plan: 'Anual' } }, { ...ctx, dichos: 'a Carlos ponle plan anual' }).ok, 'una sola persona con ese nombre: basta el nombre de pila')
+})
 caso('agregar sin el nombre: no inventa, pide el dato', () => {
   const r = ejecutar(p, E, 'agregar_registro', { seccion: 'miembros', valores: { plan: 'Anual' } }, ctx)
   assert.ok(!r.ok); assert.match(r.resultado, /falta Nombre/)

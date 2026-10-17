@@ -10,8 +10,9 @@ B = [{"uid": "b0", "vista": "kpis", "seccion": "miembros", "opciones": {"por": "
      {"uid": "b1", "vista": "vencimientos", "seccion": "miembros", "opciones": {"fecha": "vence", "titulo": "nombre", "dias": 30}, "ancho": 12, "alto": 2}]
 def E(vista="inicio", datos=None):
     return {"vista": vista, "bloques": B, **({"datos": datos} if datos else {})}
+UN_JUAN = {"n": 1, "nuevos": {"miembros": [{"id": "miembros-p1", "valores": {"nombre": "Juan Pérez", "plan": "Mensual", "alta": HOY.isoformat(), "estado": "Activa"}}]}}
 DOS_ANAS = {"n": 1, "nuevos": {"miembros": [{"id": "miembros-p1", "valores": {"nombre": "Ana Martínez", "plan": "Trimestral", "estado": "Activa"}}]}}
-def pide(est, txt, hist=None):
+def pide(est, txt, hist=None):  # noqa
     a = time.time()
     d = json.load(urllib.request.urlopen(urllib.request.Request("http://localhost:5190/api/lab/chat", data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, "muestra": MUESTRA, **({"historial": hist} if hist else {})}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
     return d, time.time() - a
@@ -64,6 +65,13 @@ CASOS = [  # (descripción, estado, texto, verificación)
     ("fecha imposible: no inventa una", E(), "agrega a Rosa Gómez, vence el 31 de febrero",
      lambda d: all(not r["valores"].get("vence") for r in nuevos(d)) and re.search(r"\?|\bdime\b|ind[ií]came|\bcu[aá]l\b", d["respuesta"], re.I)),  # pide la fecha (con o sin «?»)
     ("mirando la pestaña: agrega ahí", E("miembros"), "agrega a Rosa Gómez, plan anual", lambda d: un_registro(d, nombre="Rosa Gómez") and nuevos(d)[0]["valores"].get("plan", "").lower() == "anual"),  # tal como lo dijo
+    # Prueba de cliente con IA (2026-10-17): cada falla, un caso fijo.
+    ("fecha relativa: «vence en un mes»", E(), "agrega a Juan Pérez, plan mensual, se inscribió hoy y vence en un mes",
+     lambda d: un_registro(d, nombre="Juan Pérez", alta=HOY.isoformat()) and nuevos(d)[0]["valores"].get("vence", "").startswith(f"{(HOY.replace(day=1) + datetime.timedelta(days=32)).strftime('%Y-%m')}")),
+    ("no duplica a quien ya está", E(datos=UN_JUAN), "agrega a Juan Pérez, plan mensual",
+     lambda d: len(nuevos(d)) == 1 and "?" in d["respuesta"]),
+    ("pregunta por el mes: responde, no cambia la pantalla", E(), "¿quiénes vencen este mes?",
+     lambda d: sin_cambios(d) and not d["cambios"] and d.get("consultas")),
     ("el diseño sigue igual: no toca registros", E(), "agrega una gráfica de dona por estado", lambda d: sin_cambios(d) and any(b["vista"] == "grafico" for b in d["estado"]["bloques"])),
 ]
 ok = tot = 0; tiempos = []
@@ -83,4 +91,13 @@ for _ in range(N):
     ok += b; tot += 1
     print(f"{'✓' if b else '✗'} {t:4.1f}s | deshacer un cambio de datos | «deshaz eso»")
     if not b: print(f"     hizo: {[c['herramienta'] for c in d2['cambios']]} datos={json.dumps(datos(d2), ensure_ascii=False)[:200]}\n     dijo: {d2['respuesta'][:200]}")
+# Un pedido viejo sin resolver no se ejecuta en un mensaje que pide otra cosa (prueba de cliente: «ponle a Ana el teléfono»
+# también creó una sección y agregó a otro; «borra a Ana» también intentó pausar a Juan).
+for _ in range(N):
+    h = [{"de": "yo", "t": "pasa a Ana a Pausada"}, {"de": "shifu", "t": "Hay dos registros que coinciden con Ana: Ana López y Ana Martínez. ¿Cuál quieres pasar a Pausada?"}]
+    d, t = pide(E(datos=DOS_ANAS), "ponle a Carlos Pérez el plan Anual", h); tiempos.append(t)
+    b = [c["herramienta"] for c in d["cambios"]] == ["editar_registro"] and cambio(d, "miembros-1").get("plan") == "Anual" and not cambio(d, "miembros-0")
+    ok += b; tot += 1
+    print(f"{'✓' if b else '✗'} {t:4.1f}s | no retoma un pedido viejo | «ponle a Carlos Pérez el plan Anual»")
+    if not b: print(f"     hizo: {[(c['herramienta'], c['args']) for c in d['cambios']]}\n     dijo: {d['respuesta'][:200]}")
 print(f"\n{ok}/{tot} correctos · tiempo medio {sum(tiempos)/len(tiempos):.1f}s · máx {max(tiempos):.1f}s")

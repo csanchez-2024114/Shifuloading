@@ -482,7 +482,7 @@ export function consultarDatos(plantillaBase, estado, args = {}, muestra = {}) {
 export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
   if (HERR_DATOS.has(nombre)) {
     const c = contextoDatos(plantilla, estado, args, contexto.muestra); if (c.error) return { estado, ok: false, resultado: c.error }
-    return ejecutarDato(nombre, { ...c, estado, args, muestra: contexto.muestra })
+    return ejecutarDato(nombre, { ...c, estado, args, muestra: contexto.muestra, confirmado: contexto.confirmado, dichos: contexto.dichos })
   }
   if (HERR_BLOQUE.has(nombre)) {
     // Si la persona está MIRANDO una pestaña, las piezas van ahí por defecto; tocar el inicio desde ahí exige decirlo
@@ -570,6 +570,13 @@ function ejecutarSin(plantillaBase, estado, nombre, args = {}, contexto = {}) {
         ancho: ajustarAncho(Number(args.ancho) || viejo?.ancho || (['kpis', 'tablero', 'agenda'].includes(args.vista) ? 12 : 6)),
         alto: Math.max(1, Math.min(ALTO_MAX, Number(args.alto) || viejo?.alto || (args.vista === 'kpis' ? 1 : 2))) }
       if (viejo) return si(conBloques(estado.bloques.map((x) => (x === viejo ? b : x))), `El bloque ${b.uid} ahora es ${b.vista} de ${s.titulo}.`)
+      // Una pieza igual a otra que ya está en este lienzo (D55): medido, «en el inicio quiero ver las clases» agregaba una
+      // 2.ª agenda idéntica. Igual = misma vista y sección; gráfica: mismo tipo y campos; lista: mismo filtro y orden.
+      const huella = (x) => JSON.stringify([x.vista === 'grafica' ? 'grafico' : x.vista, x.seccion,
+        ...(['grafico', 'grafica'].includes(x.vista) ? ['tipo', 'por', 'agrupar', 'valor', 'fecha', 'estado', 'x', 'y'].map((k) => x.opciones?.[k] ?? null) : []),
+        ...(x.vista === 'tabla' ? [x.opciones?.filtro ?? null, x.opciones?.orden ?? null] : [])])
+      const igual = estado.bloques.find((x) => huella(x) === huella(b))
+      if (igual && !contexto.confirmado) return no(`ya hay una pieza igual en este lienzo (${igual.uid}). No la dupliques: si quería verla más grande o en otro lugar, usa cambiar_tamano o mover_bloque; si de verdad quiere otra igual, pregúntale.`)
       const pos = Math.max(0, Math.min(estado.bloques.length, (Number(args.posicion) || estado.bloques.length + 1) - 1))
       const bs = [...estado.bloques]; bs.splice(pos, 0, b)
       return si(conBloques(bs), `Agregado el bloque ${b.uid}: ${b.vista} de ${s.titulo}, ancho ${b.ancho}, alto ${b.alto}, posición ${pos + 1}.`)

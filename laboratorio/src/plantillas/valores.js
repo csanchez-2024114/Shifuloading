@@ -12,8 +12,10 @@ const mes = (t) => { const k = sinAcentos(t).slice(0, 3); const i = MESES.findIn
 
 /** Fecha dicha por la persona → 'AAAA-MM-DD' (o null si no se entiende). `hoy` permite probar con una fecha fija. */
 export function parseFecha(texto, hoy = new Date()) {
-  const t = sinAcentos(texto).replace(/^el\s+|^la\s+/, ''); if (!t) return null
   const base = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
+  // «del próximo año», «del año que viene», «de este año», «del año pasado» → el año en número
+  const t = sinAcentos(texto).replace(/^el\s+|^la\s+/, '').replace(/\s*(?:de|del)\s+(?:(este|proximo|siguiente|pasado)\s+ano|ano\s+(que viene|entrante|proximo|siguiente|pasado))$/,
+    (_, a, b) => ` de ${base.getFullYear() + ({ este: 0, pasado: -1 }[a || b] ?? 1)}`); if (!t) return null
   const mas = (n) => { const d = new Date(base); d.setDate(d.getDate() + n); return iso(d) }
   let m
   if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) { const d = valida(+m[1], +m[2], +m[3]); return d ? iso(d) : null }
@@ -21,14 +23,17 @@ export function parseFecha(texto, hoy = new Date()) {
     const y = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : base.getFullYear(); const d = valida(y, +m[2], +m[1]); return d ? iso(d) : null
   }
   if (t === 'hoy') return mas(0)
+  // Lo relativo como lo reescribe el modelo (medido): «un mes desde hoy», «hoy + 1 mes», «30 días a partir de hoy»
+  if ((m = t.match(/^hoy\s*\+\s*(\d+)\s*(dia|dias|semana|semanas|mes|meses|ano|anos)$/))) return parseFecha(`en ${m[1]} ${m[2]}`, hoy)
+  if ((m = t.match(/^(?:(?:dentro de|en)\s+)?(\d+|un|una|dos|tres)\s+(dia|dias|semana|semanas|mes|meses|ano|anos)\s+(?:desde|a partir de|contando desde|despues de)\s+hoy$/))) return parseFecha(`en ${m[1]} ${m[2]}`, hoy)
   if (t === 'manana') return mas(1)
   if (t === 'pasado manana') return mas(2)
   if (t === 'ayer') return mas(-1)
-  if ((m = t.match(/^(?:dentro de |en )(\d+|un|una|dos|tres)\s+(dia|dias|semana|semanas|mes|meses)$/))) {
+  if ((m = t.match(/^(?:dentro de |en )(\d+|un|una|dos|tres)\s+(dia|dias|semana|semanas|mes|meses|ano|anos)$/))) {
     const n = { un: 1, una: 1, dos: 2, tres: 3 }[m[1]] ?? +m[1]
     if (m[2].startsWith('dia')) return mas(n)
     if (m[2].startsWith('semana')) return mas(7 * n)
-    const d = new Date(base); d.setMonth(d.getMonth() + n); return iso(d)
+    const d = new Date(base); d.setMonth(d.getMonth() + (m[2].startsWith('ano') ? 12 * n : n)); return iso(d)
   }
   if ((m = t.match(/^hace (\d+|un|una|dos|tres)\s+(dia|dias|semana|semanas)$/))) { const n = { un: 1, una: 1, dos: 2, tres: 3 }[m[1]] ?? +m[1]; return mas(-(m[2].startsWith('dia') ? n : 7 * n)) }
   // «30 de octubre», «30 octubre 2026», «oct 30»

@@ -18,13 +18,16 @@ const puerto = 9600 + Math.floor(Math.random() * 300)
 const ch = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [`--remote-debugging-port=${puerto}`, `--user-data-dir=/tmp/cliente-perfil-${puerto}`, '--headless=new', '--hide-scrollbars', `--window-size=${w},${h}`, 'about:blank'], { stdio: 'ignore' })
 let ws; for (let i = 0; i < 50 && !ws; i++) { try { const l = await (await fetch(`http://127.0.0.1:${puerto}/json/list`)).json(); const p = l.find((x) => x.type === 'page'); if (p) ws = new WebSocket(p.webSocketDebuggerUrl) } catch { await esp(200) } }
 await new Promise((r) => ws.addEventListener('open', r, { once: true }))
-let id = 0; const pend = new Map(); const t0 = Date.now(); const cuadros = []; const eventos = []
+let id = 0; const pend = new Map(); const t0 = Date.now(); const cuadros = []; const eventos = []; const llamadas = new Map()
 const ts = () => ((Date.now() - t0) / 1000).toFixed(1)
 ws.addEventListener('message', (e) => {
   const m = JSON.parse(e.data)
   if (m.id && pend.has(m.id)) { pend.get(m.id)(m.result); pend.delete(m.id) }
   if (m.method === 'Page.screencastFrame') { cuadros.push({ t: (Date.now() - t0) / 1000, data: m.params.data }); ws.send(JSON.stringify({ id: ++id, method: 'Page.screencastFrameAck', params: { sessionId: m.params.sessionId } })) }
   if (m.method === 'Runtime.exceptionThrown') eventos.push(`${ts()}s EXCEPCIÓN ${m.params.exceptionDetails.exception?.description?.slice(0, 220)}`)
+  // Cada llamada al chat (lo que se mandó y lo que volvió) para repetir el caso real exacto al diagnosticar.
+  if (m.method === 'Network.requestWillBeSent' && m.params.request.url.includes('/api/lab/chat')) llamadas.set(m.params.requestId, { cuerpo: JSON.parse(m.params.request.postData || 'null') })
+  if (m.method === 'Network.loadingFinished' && llamadas.has(m.params.requestId)) cmd('Network.getResponseBody', { requestId: m.params.requestId }).then((r) => { try { llamadas.get(m.params.requestId).respuesta = JSON.parse(r?.body || 'null') } catch { /* sin cuerpo */ } })
   if (m.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(m.params.type)) eventos.push(`${ts()}s CONSOLA ${m.params.type}: ${m.params.args.map((a) => a.value ?? a.description).join(' ').slice(0, 220)}`)
 })
 const cmd = (method, params = {}) => new Promise((ok) => { const i = ++id; pend.set(i, ok); ws.send(JSON.stringify({ id: i, method, params })) })
@@ -58,7 +61,7 @@ async function tocar(sel, { doble = false, largo = false } = {}) {
 }
 
 const RESP = { nombre: 'Gimnasio Fuerza Total', que_vendes: 'Membresías mensuales, clases grupales (spinning, yoga, funcional) y entrenamiento personal', rubro: 'Salud y bienestar', ciclo: 'Clientes recurrentes', objetivos: ['No perder ningún seguimiento', 'Ver mi pipeline y reportes'] }
-await cmd('Page.enable'); await cmd('Runtime.enable')
+await cmd('Page.enable'); await cmd('Runtime.enable'); await cmd('Network.enable', { maxPostDataSize: 2000000 })
 await cmd('Emulation.setDeviceMetricsOverride', { width: +w, height: +h, deviceScaleFactor: 1, mobile: movil })
 if (movil) await cmd('Emulation.setTouchEmulationEnabled', { enabled: true })
 await cmd('Page.startScreencast', { format: 'jpeg', quality: 70, maxWidth: +w, maxHeight: +h, everyNthFrame: 1 })
@@ -167,6 +170,7 @@ if (cuadros.length) {
   writeFileSync(join(dir, 'lista.txt'), lista.join('\n') + `\nfile '${join(dir, 'cuadros', `c${String(cuadros.length - 1).padStart(5, '0')}.jpg`)}'`)
   try { execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(dir, 'lista.txt'), '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=15', '-pix_fmt', 'yuv420p', join(dir, 'recorrido.mp4')]) } catch (e) { eventos.push(`video: ${e.message.slice(0, 120)}`) }
 }
+writeFileSync(join(dir, 'llamadas.json'), JSON.stringify([...llamadas.values()]))
 writeFileSync(join(dir, 'informe.json'), JSON.stringify({ tamano: `${w}x${h}`, conIA, pasos, conversacion, eventos }, null, 1))
 console.log(`\n${pasos.length} pasos · ${eventos.filter((e) => /EXCEPCIÓN|error/.test(e)).length} errores · ${pasos.filter((p) => p.desbordeX || p.fuera.length).length} pasos con algo fuera de pantalla · video: ${join(dir, 'recorrido.mp4')}`)
 for (const e of eventos.slice(0, 12)) console.log('  ', e)
