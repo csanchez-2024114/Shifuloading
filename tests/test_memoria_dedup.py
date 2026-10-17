@@ -7,6 +7,18 @@ from langgraph.store.memory import InMemoryStore
 from conftest import fake_llm, run_turn, tool_call, uid
 
 
+def test_regla_de_busqueda_economica_solo_con_interruptor(make_settings):
+    from assistant.agent import system_prompt_text
+    from assistant.memory import SEARCH_ECONOMY_RULE
+
+    regla = ("If the answer is already in the visible conversation or in its summary, answer directly; call "
+             "search_memories only when the information is not available in this conversation.")
+    assert regla in SEARCH_ECONOMY_RULE
+    assert regla in system_prompt_text(make_settings(memory_search_economy=True))
+    assert regla not in system_prompt_text(make_settings())
+    assert regla in system_prompt_text(make_settings(memory_search_economy=True, memory_save_policy="broad"))
+
+
 def _remember(store, user, text, quote, **kw):
     from assistant import memory
 

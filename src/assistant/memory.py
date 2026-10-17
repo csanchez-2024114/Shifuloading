@@ -234,11 +234,18 @@ MEMORY_POLICIES = {
 }
 
 
-def memory_policy(name: str = "strict", max_per_turn: int = 3) -> str:
+# MEMORY_SEARCH_ECONOMY: prueba A/B anterior, la configuración B llamó a search_memories en 6 preguntas seguidas
+# cuyas respuestas ya estaban en la conversación (~55k tokens extra).
+SEARCH_ECONOMY_RULE = """## Looking up memories
+- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation."""
+
+
+def memory_policy(name: str = "strict", max_per_turn: int = 3, search_economy: bool = False) -> str:
     text = MEMORY_POLICIES.get(name, MEMORY_POLICIES["strict"])
     if not max_per_turn:
         text = text.replace("\n- Save at most {max_per_turn} memories per message.", "")
-    return text.replace("{max_per_turn}", str(max_per_turn))
+    text = text.replace("{max_per_turn}", str(max_per_turn))
+    return f"{text}\n\n{SEARCH_ECONOMY_RULE}" if search_economy else text
 
 
 TURN_LIMIT_MSG = ("Not run: the limit of {limit} memories per message was reached, so this was not saved. Tell the "

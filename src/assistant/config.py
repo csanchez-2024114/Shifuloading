@@ -50,6 +50,7 @@ class Settings:
     memory_save_policy: str = "strict"  # strict: solo datos puntuales del usuario; broad: política anterior
     memory_max_per_turn: int = 3        # recuerdos guardados por mensaje; 0 = sin tope
     memory_dedup: bool = False          # save_memory rechaza un dato equivalente a uno existente
+    memory_search_economy: bool = False  # regla del prompt: no buscar en memoria lo que ya está en la conversación
     memory_dedup_score: float = 0.85    # con MEMORY_SEMANTIC: puntuación desde la que dos recuerdos son el mismo
     memory_verify: bool = False         # verifica con el LLM que un recuerdo lo dijo el usuario antes de guardarlo
     answer_verify: bool = False         # segundo paso que contrasta la respuesta con lo buscado en la web
@@ -98,6 +99,7 @@ class Settings:
             memory_save_policy=os.getenv("MEMORY_SAVE_POLICY", "strict").strip().lower(),
             memory_max_per_turn=int(os.getenv("MEMORY_MAX_PER_TURN", "3")),
             memory_dedup=_bool("MEMORY_DEDUP"),
+            memory_search_economy=_bool("MEMORY_SEARCH_ECONOMY"),
             memory_dedup_score=float(os.getenv("MEMORY_DEDUP_SCORE", "0.85")),
             memory_verify=_bool("MEMORY_VERIFY"),
             answer_verify=_bool("ANSWER_VERIFY"),

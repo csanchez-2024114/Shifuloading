@@ -531,7 +531,8 @@ def system_prompt_text(settings: Settings | None = None) -> str:
     # Fecha local en cada llamada: el modelo no la sabe y la búsqueda web va en UTC.
     now = datetime.now().astimezone()
     policy = memory_policy(settings.memory_save_policy if settings else "strict",
-                           settings.memory_max_per_turn if settings else 3)
+                           settings.memory_max_per_turn if settings else 3,
+                           settings.memory_search_economy if settings else False)
     return (
         f"{read_system_prompt()}\n\n{policy}\n\n"
         f"User's current local date and time: {now:%A %Y-%m-%d %H:%M} (UTC{now:%z}). "

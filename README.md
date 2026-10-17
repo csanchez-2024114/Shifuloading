@@ -153,6 +153,7 @@ Detalles:
 | `SUMMARY_KEEP_TOKENS` | sin definir | tokens recientes que se conservan sin resumir; si está definida manda sobre `COMPACT_KEEP_TOKENS`/`COMPACT_KEEP_PCT`. Se usa como máximo la mitad del umbral |
 | `MEMORY_SAVE_POLICY` | `strict` | qué va a la memoria global (ver abajo). `broad` = la política anterior |
 | `MEMORY_DEDUP` | `0` | `1` = `save_memory` no guarda un dato equivalente a uno existente (las raíces del más corto están en el otro, o con `MEMORY_SEMANTIC` puntuación ≥ `MEMORY_DEDUP_SCORE`, 0.85) y le pide al modelo `update_memory` con el id existente |
+| `MEMORY_SEARCH_ECONOMY` | `0` | `1` = regla del prompt: si la respuesta ya está en la conversación visible o en su resumen, contesta sin llamar a `search_memories` |
 | `MEMORY_MAX_PER_TURN` | `3` | recuerdos que se pueden guardar por mensaje (el resto se marca "no realizado"); `0` = sin tope |
 | `MEMORY_VERIFY` | `0` | `1` = antes de guardar un recuerdo, una llamada barata comprueba que el usuario lo dijo; si no, no se guarda y el agente lo avisa |
 | `ANSWER_VERIFY` | `0` | `1` = si el turno usó `web_search` o `deep_research`, una llamada barata contrasta la respuesta con lo recuperado y la corrige si hace falta |
