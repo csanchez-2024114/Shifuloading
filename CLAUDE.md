@@ -15,7 +15,7 @@ uv pip install --python .venv -e ".[dev]"
 .venv\Scripts\python -m pytest tests/test_ui_navegador.py -k investigacion -q   # por nombre
 ```
 
-- pytest **siempre** usa el Mongo local `mongodb://127.0.0.1:27017`, base `assistant_test` (lo fuerza `tests/conftest.py` aunque `.env` apunte a Atlas). Los tests con Mongo se saltan si no responde.
+- pytest **siempre** usa el Mongo local `mongodb://127.0.0.1:27017`, bases `assistant_test` (IA) y `app_test` (negocio) (lo fuerza `tests/conftest.py` aunque `.env` apunte a Atlas). Los tests con Mongo se saltan si no responde.
 - `tests/test_ui_navegador.py` usa Playwright con Edge/Chrome ya instalados (headless) contra la app real con un modelo falso controlable (`Controlable`: la palabra del mensaje decide qué herramienta pide). Se salta si no hay navegador.
 - `conftest.py` ofrece `FakeChat`, `FakeSearch` y `_settings(**overrides)` para construir agentes sin red.
 - No hay linter configurado.
@@ -56,6 +56,7 @@ Flujo de un mensaje: `static/index.html` → `POST /chat` (o `/resume` tras una 
 
   Cualquier cambio de comportamiento del agente normal suele necesitar su equivalente aquí.
 - **`tool_spec.py`** + `apps/`: decorador `@tool_spec` para herramientas de apps en bigtool. Genera la descripción corta para el modelo y el documento rico que se indexa, y resuelve pre-requisitos (`requires`/`auto`). Guía en `docs/PLANTILLA_HERRAMIENTA.md`; ejemplo en `apps/crm_demo.py`.
+- **Cuentas (`AUTH_ENABLED=1`)**: `auth.py` (argon2id, sesiones con hash en la base, CSRF derivado del token, bloqueo por intentos), `appdata/` (repositorios de la base de negocio: `repos.py` interfaces, `mongo.py`, `memory.py` para tests), `ai_data.py` (borrado de hilos y memoria en la base de la IA). En `server.py`, `_user`/`_changing`/`_owned`: el user_id sale de la sesión y un hilo ajeno da 404. Dos bases que nunca pueden ser la misma (`memory.app_startup`); la de la IA no guarda correos ni contraseñas. `scripts/assign_legacy_data.py` asigna datos anteriores (dry-run por defecto).
 - **`config.py`**: `Settings` desde variables de entorno. Todas las mejoras opcionales van detrás de un interruptor con default seguro (ver la tabla en README.md).
 - **`prompts/system.md`**: prompt del sistema en inglés. Se lee en cada mensaje, así que los cambios no requieren reiniciar.
 - **`static/index.html`**: toda la UI, sin build.

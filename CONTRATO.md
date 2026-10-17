@@ -187,7 +187,18 @@ empiezan con `:`.
 | DELETE | `/memories/{user_id}/{key}` | `{"deleted": key}`; 404 si no existe en el namespace de ese usuario |
 | GET | `/threads/{thread_id}/context` | medidor, desde el checkpoint y sin llamar al modelo: `{"thread_id","tokens","estimated","window","percent","warn_pct","trigger_pct","trigger_tokens","auto_compact","total_consumed","total_input","total_output","last_turn","compactions","last_compaction","can_compact"}`. Un hilo inexistente devuelve el contexto base (prompt + herramientas) estimado |
 | POST | `/threads/{thread_id}/compact` | compactación manual: `{"thread_id", "compacted": bool, "record": {…como el evento summarized…} \| null}`; `compacted: false` si no hay nada que resumir; 409 si el hilo espera una aprobación; 501 si el agente no compacta (bigtool) |
-| GET | `/health` | `{"ok": true, "model": str}` |
+| GET | `/health` | `{"ok": true, "model": str, "auth_enabled": bool}` |
+| GET | `/auth/me` | `{"auth_enabled": false}` sin cuentas; con cuentas `{"auth_enabled": true, "user": null}` o `{"auth_enabled": true, "user": {"display_name", "email"}, "csrf": str}` |
+| POST | `/auth/register` | body `{"email", "password", "display_name"?}` → crea la cuenta e inicia sesión: cookie `agente0_session` (HttpOnly, SameSite=Lax, Secure con https) y `{"user", "csrf"}`. 400 con mensaje genérico |
+| POST | `/auth/login` | body `{"email", "password"}` → cookie + `{"user", "csrf"}`; 401 "Correo o contraseña incorrectos." (igual exista o no el correo); 429 tras 5 fallos en 10 min por correo o IP |
+| POST | `/auth/logout` | borra la sesión y la cookie |
+| POST | `/auth/delete-account` | body `{"password"}` → borra usuario, sesiones, conversaciones (IA y negocio) y memoria global; 401 si la contraseña no es correcta |
+| GET | `/threads` | `{"threads": [{"thread_id", "title", "created_at", "last_activity"}]}` del usuario de la sesión |
+| POST | `/threads` | crea una conversación a su nombre: `{"thread_id", "title": ""}` |
+| DELETE | `/threads/{thread_id}` | borra sus checkpoints (IA) y su fila (negocio) |
+| GET / DELETE | `/me/memories`, `/me/memories/{key}` | recuerdos del usuario de la sesión |
+
+Con `AUTH_ENABLED=1`: sin sesión, 401. Las peticiones que cambian estado (POST/DELETE con sesión) exigen `Origin` o `Referer` de la misma página y la cabecera `X-CSRF-Token` (si no, 403). Un hilo ajeno o inexistente responde **404** en `/chat`, `/resume`, `/history`, `/threads/{id}/context`, `/threads/{id}/compact` y `DELETE /threads/{id}`. El `user_id` del body de `/chat` y `/resume` se ignora: sale de la sesión. Las rutas `/memories/{user_id}` solo existen con `AUTH_ENABLED=0`.
 
 `server.create_app(agent=None) -> FastAPI`: si recibe `agent`, NO hace chequeos de arranque (para tests).
 `server.app` se crea perezosamente (al pedirlo uvicorn); ahí corren `memory.startup_checks` y un `ConfigError` se imprime sin traceback y sale con código 1.

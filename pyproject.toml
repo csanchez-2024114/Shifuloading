@@ -15,6 +15,7 @@ dependencies = [
     "python-dotenv",
     "ddgs",
     "tzdata",
+    "argon2-cffi",  # contraseñas (AUTH_ENABLED)
     # ponytail: desde git y fijado: PyPI 0.0.3 (jun-2025) está roto con langgraph 1.x; el fix está en main sin publicar.
     "langgraph-bigtool @ git+https://github.com/langchain-ai/langgraph-bigtool@fede4439bad7e1b173d731d47728b6e7793a6bf7",
 ]

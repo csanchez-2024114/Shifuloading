@@ -305,6 +305,41 @@ Detalles:
   - La interfaz muestra la misma etiqueta en español para el nombre viejo y el nuevo.
 - **Keep-alive del stream:** durante silencios largos (el investigador puede tardar más de 40 s), el servidor envía cada `SSE_PING_SECONDS` un comentario SSE `: ping`. Los clientes SSE lo ignoran; sirve para que un proxy no corte la conexión.
 
+### Cuentas de usuario y dos bases de datos (opcional, `AUTH_ENABLED=0` por defecto)
+
+Con `AUTH_ENABLED=1` cada persona entra con correo y contraseña, y el `user_id` que ve la IA sale de la sesión, **nunca del navegador**. Los datos se separan en dos bases:
+
+| Base | Colección | Qué guarda |
+|---|---|---|
+| IA (`AI_MONGODB_*` o `MONGODB_*`) | `checkpoints`, `checkpoint_writes` | estado de cada conversación (MongoDBSaver): mensajes, resúmenes, métricas de contexto y compactaciones |
+| IA | `memories` | memoria global (MongoDBStore), namespace `("user", <UUID>, "memories")` |
+| Negocio (`APP_MONGODB_*`) | `users` | `user_id` (UUID), correo normalizado (índice único), nombre para mostrar, hash argon2id, fecha y estado |
+| Negocio | `sessions` | hash sha256 del token de sesión, `user_id`, caducidad (TTL) |
+| Negocio | `threads` | dueño de cada conversación: `thread_id`, `user_id`, título (primeras palabras del primer mensaje), fechas |
+| Negocio | `login_attempts`, `login_locks` | fallos de login por correo e IP y bloqueos temporales (TTL) |
+
+La base de la IA **nunca** guarda correos, contraseñas, nombres ni datos de login: solo el UUID opaco. La de negocio nunca guarda mensajes, resúmenes ni recuerdos. Al arrancar se comprueba que las dos responden y que no son la misma (mismo servidor sin credenciales y mismo nombre); si lo son, no arranca. Recomendación para Atlas (no lo hace la app): dos usuarios de base de datos con permisos mínimos, `readWrite` solo sobre su base (uno para la IA y otro para negocio), cada uno en su URI.
+
+| Variable | Default | Uso |
+|---|---|---|
+| `AUTH_ENABLED` | `0` | `1` = cuentas: pantalla de entrar/registrarse, conversaciones con dueño |
+| `AI_MONGODB_URI` / `AI_MONGODB_DB` | `MONGODB_URI` / `MONGODB_DB` | base de la IA (sin definir, se usan las variables de siempre) |
+| `APP_MONGODB_URI` / `APP_MONGODB_DB` | vacías | base de negocio; obligatorias con `AUTH_ENABLED=1` |
+| `SESSION_TTL_DAYS` | `14` | caducidad de la sesión, con renovación deslizante |
+| `COOKIE_SECURE` | `auto` | cookie `Secure`: `auto` (si llega por https), `1` o `0` |
+| `LOGIN_MAX_FAILS` / `LOGIN_LOCK_MINUTES` | `5` / `10` | 5 fallos en 10 minutos por correo o por IP bloquean 10 minutos |
+
+Seguridad:
+- Contraseñas con argon2id (`argon2-cffi`), al menos 10 caracteres; nunca en texto plano ni en logs.
+- Mensajes genéricos: un correo inexistente responde igual que una contraseña mala, y registrar un correo repetido no dice que existe.
+- Sesión del lado del servidor: token `secrets.token_urlsafe(32)` en una cookie `HttpOnly`, `SameSite=Lax` (y `Secure` con https); en la base solo su hash.
+- CSRF: las peticiones que cambian estado exigen un `Origin`/`Referer` de la misma página **y** la cabecera `X-CSRF-Token` (derivada del token de sesión, la entrega `/auth/me`).
+- Propiedad: chat, reanudar, historial, medidor, compactar y borrar comprueban que el hilo es del usuario de la sesión; si no, **404** (no 403, para no revelar que existe). Los recuerdos se leen y borran en `/me/memories`.
+- Borrar una conversación borra sus checkpoints en la IA y su fila en negocio. Borrar la cuenta (con la contraseña) borra el usuario, sus sesiones, sus conversaciones y toda su memoria global.
+- **Pendiente:** recuperación de contraseña por correo (no hay servicio de correo).
+
+Datos anteriores: `scripts/assign_legacy_data.py` lista (dry-run por defecto) los hilos y los recuerdos por `user_id` antiguo; con `--apply --email <cuenta> --legacy-user <id> --threads all|id1,id2` asigna los hilos a esa cuenta y **copia** sus recuerdos al UUID (no borra nada; repetirlo no duplica). Con `AUTH_ENABLED=0` la app funciona exactamente como antes, sin login.
+
 ### Observabilidad con LangSmith (opcional, desactivada por defecto)
 
 | Variable | Default | Uso |

@@ -96,6 +96,25 @@ select#thread {
   font-size: .92rem; text-overflow: ellipsis;
 }
 .tid { font-size: .7rem; color: var(--muted); margin-top: 2px; padding-left: 2px; font-variant-numeric: tabular-nums; }
+/* cuentas (AUTH_ENABLED=1) */
+#authview {
+  display: none; width: min(380px, calc(100% - 32px)); margin: 48px auto; padding: 20px 18px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+}
+#authview h2 { margin: 0 0 12px; font-size: 1.15rem; }
+body.needs-login #authview { display: block; }
+body.needs-login .app > :not(#authview) { display: none !important; }
+#authform { display: flex; flex-direction: column; gap: 6px; }
+#authform label { font-size: .88rem; color: var(--muted); }
+#authform input { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+#authform .btn { margin-top: 8px; }
+#autherr { color: var(--err); min-height: 1.3em; margin: 4px 0 0; font-size: .9rem; }
+#authview:not(.register) .reg-only { display: none; }
+.linkbtn { background: none; border: none; color: var(--link); cursor: pointer; padding: 4px 0; text-align: left; font-size: .9rem; }
+body:not(.auth-on) .auth-only { display: none !important; }
+body.auth-on .local-only { display: none !important; }
+.who { font-size: .85rem; color: var(--muted); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.acct { flex-basis: 100%; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 8px; }
 /* medidor de contexto de la conversación */
 .ctx {
   display: flex; align-items: center; gap: 8px; min-width: 0;
@@ -265,6 +284,21 @@ textarea#input:disabled { opacity: .6; }
 </head>
 <body>
 <div class="app">
+  <section id="authview" aria-label="Cuenta">
+    <h2 id="authtitle">Inicia sesión</h2>
+    <form id="authform">
+      <label class="reg-only" for="authname">Nombre</label>
+      <input class="reg-only" id="authname" type="text" autocomplete="name" maxlength="60">
+      <label for="authemail">Correo</label>
+      <input id="authemail" type="email" autocomplete="username" required maxlength="254">
+      <label for="authpass">Contraseña</label>
+      <input id="authpass" type="password" autocomplete="current-password" required>
+      <small class="reg-only">Al menos 10 caracteres.</small>
+      <button id="authsubmit" class="btn primary" type="submit">Entrar</button>
+      <p id="autherr" role="alert"></p>
+      <button id="authtoggle" class="linkbtn" type="button">¿No tienes cuenta? Regístrate</button>
+    </form>
+  </section>
   <header>
     <h1>Agente 0</h1>
     <div class="thread-wrap">
@@ -273,8 +307,11 @@ textarea#input:disabled { opacity: .6; }
       <div class="tid">hilo <span id="threadid"></span></div>
     </div>
     <button id="newbtn" class="btn" type="button" aria-label="Nueva conversación"><span class="long">Nueva conversación</span><span class="short" aria-hidden="true">+ Nueva</span></button>
+    <button id="delthreadbtn" class="btn auth-only" type="button" aria-label="Borrar conversación" title="Borrar esta conversación">🗑</button>
     <button id="membtn" class="btn" type="button" aria-expanded="false" aria-controls="memories" aria-label="Recuerdos" title="Recuerdos guardados">🧠</button>
     <button id="setbtn" class="btn" type="button" aria-expanded="false" aria-controls="settings" aria-label="Ajustes" title="Ajustes">&#9881;&#xFE0E;</button>
+    <span id="whoami" class="who auth-only"></span>
+    <button id="logoutbtn" class="btn auth-only" type="button">Salir</button>
   </header>
   <div id="ctxmeter" class="ctx ok" data-level="ok">
     <span class="ctx-bar" aria-hidden="true"><i id="ctxfill"></i></span>
@@ -282,9 +319,9 @@ textarea#input:disabled { opacity: .6; }
     <button id="compactbtn" class="btn small" type="button" hidden title="Resume la parte más antigua de esta conversación">Compactar ahora</button>
   </div>
   <section id="settings" aria-label="Ajustes">
-    <label for="userid">ID de usuario</label>
-    <input id="userid" type="text" autocomplete="off" spellcheck="false" maxlength="64">
-    <small>Se usa para separar los recuerdos de cada persona. Se guarda en este navegador.</small>
+    <label class="local-only" for="userid">ID de usuario</label>
+    <input class="local-only" id="userid" type="text" autocomplete="off" spellcheck="false" maxlength="64">
+    <small class="local-only">Se usa para separar los recuerdos de cada persona. Se guarda en este navegador.</small>
     <label class="switch"><input id="showtimes" type="checkbox" checked> Mostrar tiempos de respuesta</label>
     <label for="effortsel">Esfuerzo</label>
     <select id="effortsel">
@@ -294,6 +331,12 @@ textarea#input:disabled { opacity: .6; }
       <option value="alto">Alto</option>
     </select>
     <small>Automático: lo decide el asistente según el mensaje. Bajo/medio/alto lo fijan para cada mensaje.</small>
+    <div class="acct auth-only">
+      <label for="delpass">Borrar mi cuenta y todos mis datos</label>
+      <input id="delpass" type="password" autocomplete="current-password" placeholder="Tu contraseña">
+      <button id="delacctbtn" class="btn danger" type="button">Borrar cuenta</button>
+      <small id="delacctmsg" role="alert"></small>
+    </div>
   </section>
   <section id="memories" aria-label="Recuerdos guardados">
     <h2>Recuerdos de <span id="memuser"></span></h2>
@@ -493,7 +536,18 @@ textarea#input:disabled { opacity: .6; }
       ctxEl = $("ctxmeter"), ctxFill = $("ctxfill"), ctxText = $("ctxtext"), compactBtn = $("compactbtn");
 
   var state = { threadId: null, threads: [], userId: "usuario", streaming: false, pending: 0, loadSeq: 0, newQueued: false,
-                ctx: null, compacting: false };
+                ctx: null, compacting: false, auth: { enabled: false, user: null, csrf: "" } };
+
+  // fetch con la cabecera CSRF en las peticiones que cambian estado; un 401 con cuentas activas vuelve al login
+  async function apiFetch(url, opts) {
+    opts = opts || {};
+    var method = (opts.method || "GET").toUpperCase();
+    var headers = Object.assign({}, opts.headers || {});
+    if (state.auth.csrf && method !== "GET") headers["X-CSRF-Token"] = state.auth.csrf;
+    var r = await fetch(url, Object.assign({}, opts, { headers: headers, credentials: "same-origin" }));
+    if (r.status === 401 && state.auth.enabled && url.indexOf("/auth/") !== 0) showAuth("Tu sesión terminó. Vuelve a iniciar sesión.");
+    return r;
+  }
   var NEW_LABEL = "Nueva conversación", NEW_QUEUED_LABEL = "Nueva al terminar…";
   // lo lee el modelo (resultado de la herramienta rechazada): en inglés, como todo lo que lee el modelo
   var REJECT_MSG = "The user declined this action. Do not run it again; answer without it.";
@@ -515,7 +569,7 @@ textarea#input:disabled { opacity: .6; }
     } catch (e) { /* ignore */ }
     return arr;
   }
-  function saveThreads() { lsSet("threads", JSON.stringify(state.threads.slice(0, 100))); }
+  function saveThreads() { if (!state.auth.enabled) lsSet("threads", JSON.stringify(state.threads.slice(0, 100))); }
   function touchThread(id, title) {
     var idx = -1;
     state.threads.forEach(function (t, k) { if (t.id === id) idx = k; });
@@ -1001,7 +1055,7 @@ textarea#input:disabled { opacity: .6; }
   async function streamSSE(url, body, bubble, handlers) {
     var resp;
     try {
-      resp = await fetch(url, {
+      resp = await apiFetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
         body: JSON.stringify(body)
@@ -1110,8 +1164,9 @@ textarea#input:disabled { opacity: .6; }
     messagesEl.appendChild(loading);
     var data = null;
     try {
-      var r = await fetch("/history/" + encodeURIComponent(id));
+      var r = await apiFetch("/history/" + encodeURIComponent(id));
       if (r.ok) data = await r.json();
+      else if (r.status === 404 && state.auth.enabled) data = { messages: [], missing: true };
     } catch (e) { /* ignore */ }
     if (seq !== state.loadSeq) return;
     clearMessages();
@@ -1134,12 +1189,13 @@ textarea#input:disabled { opacity: .6; }
   var memSeq = 0;
   async function loadMemories() {
     var seq = ++memSeq, uid = userId();
-    $("memuser").textContent = uid;
+    var memUrl = state.auth.enabled ? "/me/memories" : "/memories/" + encodeURIComponent(uid);
+    $("memuser").textContent = state.auth.enabled && state.auth.user ? state.auth.user.display_name : uid;
     memListEl.textContent = "";
     memListEl.appendChild(el("p", "sys", "Cargando…"));
     var data = null;
     try {
-      var r = await fetch("/memories/" + encodeURIComponent(uid));
+      var r = await apiFetch(memUrl);
       if (r.ok) data = await r.json();
     } catch (e) { /* ignore */ }
     if (seq !== memSeq) return;
@@ -1170,7 +1226,7 @@ textarea#input:disabled { opacity: .6; }
       del.addEventListener("click", async function () {
         if (!confirm("¿Borrar este recuerdo?\n\n" + m.text)) return;
         del.disabled = true;
-        try { await fetch("/memories/" + encodeURIComponent(uid) + "/" + encodeURIComponent(m.key), { method: "DELETE" }); } catch (e) { /* ignore */ }
+        try { await apiFetch((state.auth.enabled ? "/me/memories/" : "/memories/" + encodeURIComponent(uid) + "/") + encodeURIComponent(m.key), { method: "DELETE" }); } catch (e) { /* ignore */ }
         loadMemories();
       });
       li.appendChild(txt); li.appendChild(del); ul.appendChild(li);
@@ -1223,7 +1279,7 @@ textarea#input:disabled { opacity: .6; }
   async function loadContext(id) {
     var seq = ++ctxSeq, data = null;
     try {
-      var r = await fetch("/threads/" + encodeURIComponent(id) + "/context");
+      var r = await apiFetch("/threads/" + encodeURIComponent(id) + "/context");
       if (r.ok) data = await r.json();
     } catch (e) { /* ignore */ }
     if (seq !== ctxSeq || id !== state.threadId) return;
@@ -1235,7 +1291,7 @@ textarea#input:disabled { opacity: .6; }
     var id = state.threadId, data = null, status = 0;
     state.compacting = true; compactBtn.textContent = "Compactando…"; updateControls();
     try {
-      var r = await fetch("/threads/" + encodeURIComponent(id) + "/compact", { method: "POST" });
+      var r = await apiFetch("/threads/" + encodeURIComponent(id) + "/compact", { method: "POST" });
       status = r.status; data = await r.json();
     } catch (e) { /* ignore */ }
     state.compacting = false; compactBtn.textContent = "Compactar ahora"; updateControls();
@@ -1246,9 +1302,22 @@ textarea#input:disabled { opacity: .6; }
     loadContext(id);
   }
 
+  // con cuentas, la conversación nueva la crea el servidor a nombre del usuario de la sesión
+  async function createServerThread() {
+    var r = null;
+    try { r = await apiFetch("/threads", { method: "POST" }); } catch (e) { /* ignore */ }
+    if (!r || !r.ok) return null;
+    var d = await r.json();
+    state.threads.unshift({ id: d.thread_id, title: "" });
+    return d.thread_id;
+  }
   function openNewThread() {
     // una aprobación pendiente se abandona (el hilo anterior queda en pausa); el turno en curso ya terminó
     state.newQueued = false; state.pending = 0;
+    if (state.auth.enabled) {
+      createServerThread().then(function (id) { if (id) switchThread(id, true); updateControls(); });
+      return;
+    }
     switchThread(newId(), true);
     updateControls();
   }
@@ -1302,6 +1371,90 @@ textarea#input:disabled { opacity: .6; }
   var savedEffort = lsGet("effort");
   if (["auto", "bajo", "medio", "alto"].indexOf(savedEffort) >= 0) effortEl.value = savedEffort;
   effortEl.addEventListener("change", function () { lsSet("effort", effortEl.value); });
+  /* ---------- cuentas (AUTH_ENABLED=1) ---------- */
+  var authView = $("authview"), authForm = $("authform");
+  function setAuthMode(register) {
+    authView.classList.toggle("register", register);
+    $("authtitle").textContent = register ? "Crea tu cuenta" : "Inicia sesión";
+    $("authsubmit").textContent = register ? "Crear cuenta" : "Entrar";
+    $("authtoggle").textContent = register ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate";
+    $("authpass").setAttribute("autocomplete", register ? "new-password" : "current-password");
+    $("autherr").textContent = "";
+  }
+  function showAuth(msg) {
+    state.auth.user = null; state.auth.csrf = "";
+    document.body.classList.add("needs-login");
+    $("autherr").textContent = msg || "";
+    $("authpass").value = "";
+    $("authemail").focus();
+  }
+  async function loadServerThreads() {
+    var data = null;
+    try { var r = await apiFetch("/threads"); if (r.ok) data = await r.json(); } catch (e) { /* ignore */ }
+    state.threads = data && Array.isArray(data.threads)
+      ? data.threads.map(function (t) { return { id: t.thread_id, title: t.title || "" }; }) : [];
+  }
+  async function startAuthed(user, csrf) {
+    state.auth.user = user; state.auth.csrf = csrf || "";
+    document.body.classList.remove("needs-login");
+    $("whoami").textContent = user.display_name; $("whoami").title = user.email || "";
+    await loadServerThreads();
+    var wanted = null;
+    try { wanted = new URL(location.href).searchParams.get("thread"); } catch (e) { /* ignore */ }
+    var known = state.threads.some(function (t) { return t.id === wanted; });
+    if (known) switchThread(wanted, false);
+    else if (state.threads.length) switchThread(state.threads[0].id, false);
+    else openNewThread();
+    updateControls();
+    autosize();
+  }
+  authForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var register = authView.classList.contains("register");
+    var body = { email: $("authemail").value, password: $("authpass").value };
+    if (register) body.display_name = $("authname").value;
+    $("authsubmit").disabled = true; $("autherr").textContent = "";
+    var data = null, status = 0;
+    try {
+      var r = await fetch(register ? "/auth/register" : "/auth/login", {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify(body)
+      });
+      status = r.status; data = await r.json();
+    } catch (err) { /* ignore */ }
+    $("authsubmit").disabled = false;
+    if (status === 200 && data && data.user) { $("authpass").value = ""; startAuthed(data.user, data.csrf); return; }
+    var detail = data && data.detail;
+    $("autherr").textContent = typeof detail === "string" ? detail : "No se pudo completar. Revisa los datos.";
+  });
+  $("authtoggle").addEventListener("click", function () { setAuthMode(!authView.classList.contains("register")); });
+  $("logoutbtn").addEventListener("click", async function () {
+    try { await apiFetch("/auth/logout", { method: "POST" }); } catch (e) { /* ignore */ }
+    location.href = location.pathname;  // sin ?thread: nada de la sesión anterior queda a la vista
+  });
+  $("delthreadbtn").addEventListener("click", async function () {
+    if (state.streaming || state.pending || !state.threadId) return;
+    if (!confirm("¿Borrar esta conversación?\n\nSe borran sus mensajes, su resumen y su contexto. No se puede deshacer.")) return;
+    var id = state.threadId, r = null;
+    try { r = await apiFetch("/threads/" + encodeURIComponent(id), { method: "DELETE" }); } catch (e) { /* ignore */ }
+    if (!r || !r.ok) { messagesEl.appendChild(el("div", "sys", "No pude borrar la conversación.")); return; }
+    state.threads = state.threads.filter(function (t) { return t.id !== id; });
+    if (state.threads.length) switchThread(state.threads[0].id, false); else openNewThread();
+  });
+  $("delacctbtn").addEventListener("click", async function () {
+    var pass = $("delpass").value, msg = $("delacctmsg");
+    if (!pass) { msg.textContent = "Escribe tu contraseña para confirmar."; return; }
+    if (!confirm("¿Borrar tu cuenta?\n\nSe borran tu usuario, tus sesiones, todas tus conversaciones y tus recuerdos. No se puede deshacer.")) return;
+    var r = null, data = null;
+    try {
+      r = await apiFetch("/auth/delete-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pass }) });
+      data = await r.json();
+    } catch (e) { /* ignore */ }
+    $("delpass").value = "";
+    if (r && r.ok) { location.href = location.pathname; return; }
+    msg.textContent = data && typeof data.detail === "string" ? data.detail : "No se pudo borrar la cuenta.";
+  });
+
+  function initLocal() {
   state.userId = lsGet("userId") || "usuario";
   userEl.value = state.userId;
   state.threads = loadThreads();
@@ -1322,6 +1475,18 @@ textarea#input:disabled { opacity: .6; }
   if (fresh) showEmpty(); else loadHistory(startId);
   loadContext(startId);
   autosize();
+  }
+
+  // con AUTH_ENABLED=0 (/auth/me lo dice) la app funciona como siempre, sin login
+  (async function boot() {
+    var me = null;
+    try { var r = await fetch("/auth/me", { credentials: "same-origin" }); if (r.ok) me = await r.json(); } catch (e) { /* ignore */ }
+    if (!me || !me.auth_enabled) { initLocal(); return; }
+    state.auth.enabled = true;
+    document.body.classList.add("auth-on");
+    setAuthMode(false);
+    if (me.user) startAuthed(me.user, me.csrf); else showAuth();
+  })();
 })();
 </script>
 </body>

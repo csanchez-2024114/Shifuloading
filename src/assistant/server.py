@@ -5,15 +5,20 @@ import logging
 import queue
 import sys
 import threading
+import uuid
+from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from langgraph.types import Command
 from pydantic import BaseModel
 
 from assistant import agent as agent_mod
+from assistant import ai_data
 from assistant import context as context_mod
 from assistant import memory
+from assistant.appdata import thread_title
+from assistant.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
 from assistant.config import ROOT, ConfigError, Settings
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -31,6 +36,21 @@ class ResumeIn(BaseModel):
     thread_id: str
     user_id: str = "anon"
     decisions: list[dict]
+
+
+class RegisterIn(BaseModel):
+    email: str
+    password: str
+    display_name: str = ""
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class PasswordIn(BaseModel):
+    password: str
 
 
 def _build_real_agent(settings: Settings):
@@ -102,7 +122,8 @@ def with_keepalive(events, interval: float):
         stop.set()
 
 
-def create_app(agent=None, settings: Settings | None = None, classify=None, store=None) -> FastAPI:
+def create_app(agent=None, settings: Settings | None = None, classify=None, store=None, appdata=None) -> FastAPI:
+    """`appdata`: base de negocio (AUTH_ENABLED); se inyecta en tests."""
     settings = settings or Settings.from_env()
     if classify is None:
         # agente inyectado (tests) → sin llamadas reales a OpenAI para clasificar
@@ -110,9 +131,64 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     if agent is None:
         agent, store = _build_real_agent(settings)
         host = settings.mongodb_uri.rsplit("@", 1)[-1]  # nunca loguear usuario/contraseña
-        log.info("Modelo: %s | MongoDB: %s (db %s)", settings.llm_model, host, settings.mongodb_db)
+        log.info("Modelo: %s | MongoDB IA: %s (db %s)", settings.llm_model, host, settings.mongodb_db)
+        if appdata is None and (app_client := memory.app_startup(settings)) is not None:
+            from assistant.appdata.mongo import MongoAppData
+
+            appdata = MongoAppData(app_client, settings.app_mongodb_db)
+            log.info("MongoDB negocio: %s (db %s)", settings.app_mongodb_uri.rsplit("@", 1)[-1],
+                     settings.app_mongodb_db)
+    if settings.auth_enabled and appdata is None:
+        raise ConfigError("AUTH_ENABLED=1 necesita la base de negocio (APP_MONGODB_URI y APP_MONGODB_DB).")
+    auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
+                       settings.login_lock_minutes) if settings.auth_enabled else None
 
     app = FastAPI(title="Agente 0")
+
+    # ---------------------------------------------------------------- sesión y propiedad (AUTH_ENABLED=1)
+    def _token(request: Request) -> str | None:
+        return request.cookies.get(SESSION_COOKIE)
+
+    def _user(request: Request) -> dict:
+        user = auth.session_user(_token(request))
+        if user is None:
+            raise HTTPException(401, "Inicia sesión para continuar.")
+        return user
+
+    def _same_origin(request: Request) -> None:
+        # CSRF (1/2): las peticiones que cambian estado deben venir de esta misma página
+        origin = request.headers.get("origin") or request.headers.get("referer") or ""
+        if urlparse(origin).netloc != request.headers.get("host"):
+            raise HTTPException(403, "Origen no permitido.")
+
+    def _changing(request: Request) -> dict:
+        """Usuario de una petición que cambia estado: mismo origen, sesión y cabecera CSRF (2/2)."""
+        _same_origin(request)
+        user = _user(request)
+        if not csrf_ok(_token(request), request.headers.get(CSRF_HEADER)):
+            raise HTTPException(403, "Falta el token CSRF o no es válido.")
+        return user
+
+    def _owned(user: dict, thread_id: str) -> dict:
+        # un hilo ajeno o inexistente responde igual: 404, para no revelar que existe
+        row = appdata.threads.get(thread_id)
+        if row is None or row["user_id"] != user["user_id"]:
+            raise HTTPException(404, "Conversación no encontrada.")
+        return row
+
+    def _cookie_secure(request: Request) -> bool:
+        return settings.cookie_secure in ("1", "true", "yes") or (
+            settings.cookie_secure == "auto" and request.url.scheme == "https")
+
+    def _session_response(request: Request, user: dict, token: str) -> JSONResponse:
+        resp = JSONResponse({"user": {"display_name": user["display_name"], "email": user["email"]},
+                             "csrf": csrf_for(token)})
+        resp.set_cookie(SESSION_COOKIE, token, max_age=settings.session_ttl_days * 86400, httponly=True,
+                        samesite="lax", secure=_cookie_secure(request), path="/")
+        return resp
+
+    def _auth_error(exc: AuthError) -> HTTPException:
+        return HTTPException(exc.status, exc.message)
 
     def sse(payload, thread_id: str, user_id: str, esfuerzo: str | None = None, origen: str = "auto"):
         events = (f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n" for event in
@@ -129,35 +205,144 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     @app.get("/health")
     def health():
-        return {"ok": True, "model": settings.llm_model}
+        return {"ok": True, "model": settings.llm_model, "auth_enabled": settings.auth_enabled}
 
     @app.post("/chat")
-    def chat(body: ChatIn):
+    def chat(body: ChatIn, request: Request):
+        user_id = body.user_id
+        if auth:  # el user_id sale de la sesión, nunca del navegador
+            user = _changing(request)
+            row = _owned(user, body.thread_id)
+            appdata.threads.touch(body.thread_id, None if row["title"] else thread_title(body.message))
+            user_id = user["user_id"]
         payload = {"messages": [{"role": "user", "content": body.message}]}
         esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify)
-        return sse_response(sse(payload, body.thread_id, body.user_id, esfuerzo, origen))
+        return sse_response(sse(payload, body.thread_id, user_id, esfuerzo, origen))
 
     @app.post("/resume")
-    def resume(body: ResumeIn):
-        return sse_response(sse(Command(resume={"decisions": body.decisions}), body.thread_id, body.user_id))
+    def resume(body: ResumeIn, request: Request):
+        user_id = body.user_id
+        if auth:
+            user = _changing(request)
+            _owned(user, body.thread_id)
+            appdata.threads.touch(body.thread_id)
+            user_id = user["user_id"]
+        return sse_response(sse(Command(resume={"decisions": body.decisions}), body.thread_id, user_id))
 
     @app.get("/history/{thread_id}")
-    def history(thread_id: str):
+    def history(thread_id: str, request: Request):
+        if auth:
+            _owned(_user(request), thread_id)
         return {"thread_id": thread_id, "messages": agent_mod.get_history(agent, thread_id, settings)}
+
+    # ---------------------------------------------------------------- cuentas (AUTH_ENABLED=1)
+    @app.get("/auth/me")
+    def auth_me(request: Request):
+        if not auth:
+            return {"auth_enabled": False}
+        user = auth.session_user(_token(request))
+        if user is None:
+            return {"auth_enabled": True, "user": None}
+        return {"auth_enabled": True, "user": {"display_name": user["display_name"], "email": user["email"]},
+                "csrf": csrf_for(_token(request))}
+
+    def _require_auth():
+        if not auth:
+            raise HTTPException(404, "Las cuentas no están activadas (AUTH_ENABLED=0).")
+
+    @app.post("/auth/register")
+    def auth_register(body: RegisterIn, request: Request):
+        _require_auth()
+        _same_origin(request)
+        try:
+            auth.register(body.email, body.password, body.display_name)
+            user, token = auth.login(body.email, body.password, request.client.host if request.client else "")
+        except AuthError as exc:
+            raise _auth_error(exc) from None
+        return _session_response(request, user, token)
+
+    @app.post("/auth/login")
+    def auth_login(body: LoginIn, request: Request):
+        _require_auth()
+        _same_origin(request)
+        try:
+            user, token = auth.login(body.email, body.password, request.client.host if request.client else "")
+        except AuthError as exc:
+            raise _auth_error(exc) from None
+        return _session_response(request, user, token)
+
+    @app.post("/auth/logout")
+    def auth_logout(request: Request):
+        _require_auth()
+        if auth.session_user(_token(request)) is not None:
+            _changing(request)
+            auth.logout(_token(request))
+        resp = JSONResponse({"ok": True})
+        resp.delete_cookie(SESSION_COOKIE, path="/")
+        return resp
+
+    @app.post("/auth/delete-account")
+    def auth_delete_account(body: PasswordIn, request: Request):
+        """Borra la cuenta y TODO lo suyo: primero la base de la IA (hilos y memoria global), luego la de negocio."""
+        _require_auth()
+        user = _changing(request)
+        if not auth.check_password(user, body.password):
+            raise HTTPException(401, "La contraseña no es correcta.")
+        uid = user["user_id"]
+        threads = [t["thread_id"] for t in appdata.threads.list_for_user(uid)]
+        ai_data.delete_user_ai_data(agent.checkpointer, store, uid, threads)
+        appdata.sessions.delete_for_user(uid)
+        appdata.threads.delete_for_user(uid)
+        appdata.attempts.clear(f"email:{user['email']}")
+        appdata.users.delete(uid)
+        resp = JSONResponse({"deleted": True, "threads": len(threads)})
+        resp.delete_cookie(SESSION_COOKIE, path="/")
+        return resp
+
+    # ---------------------------------------------------------------- conversaciones del usuario
+    @app.get("/threads")
+    def list_threads(request: Request):
+        _require_auth()
+        user = _user(request)
+        return {"threads": [{"thread_id": t["thread_id"], "title": t["title"],
+                             "created_at": t["created_at"].isoformat(),
+                             "last_activity": t["last_activity"].isoformat()}
+                            for t in appdata.threads.list_for_user(user["user_id"])]}
+
+    @app.post("/threads")
+    def new_thread(request: Request):
+        _require_auth()
+        user = _changing(request)
+        row = appdata.threads.create(uuid.uuid4().hex, user["user_id"])
+        return {"thread_id": row["thread_id"], "title": ""}
+
+    @app.delete("/threads/{thread_id}")
+    def delete_thread(thread_id: str, request: Request):
+        """Borra la conversación en la base de la IA (checkpoints, resumen, métricas) y su fila en la de negocio."""
+        _require_auth()
+        user = _changing(request)
+        _owned(user, thread_id)
+        ai_data.delete_thread(agent.checkpointer, thread_id)
+        appdata.threads.delete(thread_id)
+        return {"deleted": thread_id}
 
     base_tokens = (getattr(agent, "base_context_tokens", None)
                    or context_mod.prompt_tokens(agent_mod.system_prompt_text(settings)))
     can_compact = getattr(agent, "compactor", None) is not None
 
     @app.get("/threads/{thread_id}/context")
-    def thread_context(thread_id: str):
+    def thread_context(thread_id: str, request: Request):
         """Medidor de contexto del hilo, desde su checkpoint (sin llamar al modelo)."""
+        if auth:
+            _owned(_user(request), thread_id)
         values = agent.get_state(agent_mod.run_config(thread_id, settings)).values or {}
         return {"thread_id": thread_id, **context_mod.context_report(values, settings, base_tokens, can_compact)}
 
     @app.post("/threads/{thread_id}/compact")
-    def compact(thread_id: str):
+    def compact(thread_id: str, request: Request):
         """Compactación manual ("Compactar ahora"): resume la parte más antigua del hilo."""
+        if auth:
+            _owned(_changing(request), thread_id)
         try:
             record = agent_mod.compact_thread(agent, thread_id, settings)
         except ValueError as exc:
@@ -171,14 +356,29 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             raise HTTPException(503, "El almacén de recuerdos no está disponible")
         return store
 
-    # ponytail: sin autenticación; user_id es texto libre (app local). Cada endpoint solo toca su namespace.
+    # Con AUTH_ENABLED=1 los recuerdos son los del usuario de la sesión (/me/memories); las rutas con {user_id} (texto
+    # libre del navegador, app local sin cuentas) solo existen con AUTH_ENABLED=0.
+    @app.get("/me/memories")
+    def my_memories(request: Request):
+        _require_auth()
+        return {"memories": memory.list_memories(_store(), _user(request)["user_id"])}
+
+    @app.delete("/me/memories/{key}")
+    def delete_my_memory(key: str, request: Request):
+        _require_auth()
+        if not memory.delete_memory(_store(), _changing(request)["user_id"], key):
+            raise HTTPException(404, "Recuerdo no encontrado")
+        return {"deleted": key}
+
     @app.get("/memories/{user_id}")
     def list_memories(user_id: str):
+        if auth:
+            raise HTTPException(404, "Not Found")
         return {"user_id": user_id, "memories": memory.list_memories(_store(), user_id)}
 
     @app.delete("/memories/{user_id}/{key}")
     def delete_memory(user_id: str, key: str):
-        if not memory.delete_memory(_store(), user_id, key):
+        if auth or not memory.delete_memory(_store(), user_id, key):
             raise HTTPException(404, "Recuerdo no encontrado")
         return {"deleted": key}
 
