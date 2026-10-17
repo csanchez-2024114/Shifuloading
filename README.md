@@ -51,6 +51,29 @@ copy .env.example .env   # y pon tu OPENAI_API_KEY
 | `MEMORY_MIN_SCORE` | `0.68` | puntuación mínima (0–1) para que un recuerdo cuente como relevante en la búsqueda semántica; calibrado, ver "MongoDB Atlas" |
 | `ENABLE_HITL_DEMO` | `0` | activa la herramienta de ejemplo con aprobación humana |
 
+### Configuración recomendada (validada con el modelo real)
+
+En el código todas las opciones nuevas siguen apagadas por defecto. Esta es la combinación que se probó con el modelo real (instancia aparte y bases temporales) y que `.env.example` ya trae para la compactación:
+
+```
+MEMORY_SUMMARIZE=1          # compactación automática: sin esto, las COMPACT_* no hacen nada
+COMPACT_STRUCTURED=1        # resumen por secciones, en el idioma de la conversación
+COMPACT_FIRST_MESSAGE=1     # el resumen conserva el primer mensaje del usuario
+MEMORY_SEMANTIC=1           # recuerdos por significado (Atlas)
+MEMORY_VERIFY=1             # solo guarda recuerdos con cita literal del usuario
+MEMORY_DEDUP=1              # no guarda dos veces el mismo dato
+MEMORY_SEARCH_ECONOMY=1     # no busca en memoria lo que ya está en la conversación
+CONTEXT_WINDOW_TOKENS=      # vacío = ventana del modelo (~1M); compacta al 80%
+```
+
+Lo que se comprobó:
+- **Compactación y primer mensaje:** a "¿qué fue lo primero que te dije?", tras 2 y 3 compactaciones, respondió con el primer mensaje literal y "según el resumen de la conversación", también desde la interfaz. El último resumen estructurado no mezcló idiomas ni se contradijo.
+- **Memoria:** 0 duplicados en 4 corridas de 28 turnos. Una conversación nueva recordó los datos con la memoria global. El panel 🧠 muestra cada recuerdo como verificado y con su evidencia.
+- **Sin efecto medible:** `COMPACT_PRUNE_TOOLS` (poda) no mostró ahorro con estas herramientas, porque sus resultados son cortos; queda en `0`.
+- **Para ver la compactación sin escribir cientos de miles de tokens:** usa "Compactar ahora" o baja temporalmente `CONTEXT_WINDOW_TOKENS` (p. ej. `16000`; con `MAX_TOKENS=8000` dispara cerca de 8k). Con una ventana muy pequeña el resumen puede ocupar algo más que lo que reemplaza ("2.7k → 2.8k"); con la ventana normal sí reduce.
+- Una variable numérica vacía en `.env` (por ejemplo `CONTEXT_WINDOW_TOKENS=`) vale su default; no rompe el arranque.
+- La configuración solo se lee al arrancar: reinicia el servidor tras cambiar `.env`.
+
 ### MongoDB Atlas (opcional)
 
 Pon en `.env` la URI `mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/` (Atlas → Connect → Drivers) y `MEMORY_SEMANTIC=1`. Al arrancar se crea solo el índice vectorial `vector_index` en la colección `memories` (puede tardar hasta un minuto la primera vez). Tu IP debe estar en Network Access.
@@ -204,6 +227,7 @@ Cada conversación (`thread_id`) tiene su propio contexto, su propio contador y 
 - **Capa 1, poda (`COMPACT_PRUNE_TOOLS=1`):** antes de cada llamada, los resultados de herramientas con más de `COMPACT_PRUNE_AGE` mensajes de antigüedad se reemplazan por `[tool result pruned: <herramienta>, <N> tokens. Ask again or re-run the tool if needed.]`. Se conservan siempre la llamada (nombre y argumentos) y la respuesta del asistente que interpretó el resultado. Solo cambia la vista del modelo: el checkpoint y la interfaz siguen teniendo todo. **No se podan:** los resultados del turno en curso (ahí está toda la evidencia que usa `ANSWER_VERIFY`, que solo mira el turno actual), los de la memoria global (`save_memory`, `search_memories`, `update_memory`: sus ids hacen falta para actualizar) y los de menos de 60 tokens (el aviso pesaría casi lo mismo). Un resultado podado de `deep_research` hace que una pregunta de seguimiento muy detallada pueda pedir investigar otra vez; la respuesta del asistente que lo resumió sigue visible.
 - **Capa 2, resumen estructurado (`COMPACT_STRUCTURED=1`):** secciones fijas USER FACTS (con cita literal), DECISIONS AND PREFERENCES, TASKS DONE (cifras y URLs), OPEN ITEMS y CONTEXT, en el idioma de la conversación. Es incremental: el modelo recibe el resumen anterior aparte y solo los mensajes nuevos; conserva lo anterior salvo contradicción, y en una contradicción anota el valor nuevo y el anterior. Regla anti-invención: solo lo que aparece en los mensajes. Sin la capa se usa el resumen anterior (`SUMMARY_PROMPT`).
 - En los dos casos el resumen empieza con el encabezado "Summary of the OLDEST part of this conversation…" y el prompt del sistema dice que las preguntas sobre el inicio de la conversación se refieren a ese resumen.
+- **Primer mensaje (`COMPACT_FIRST_MESSAGE=1`):** tras el encabezado va `FIRST USER MESSAGE (from the summary, verbatim): "…"` (hasta 200 caracteres). La línea la pone el código, no el modelo: sale del primer mensaje del hilo en la primera compactación y luego se copia del resumen anterior (guardada en `first_user_message`). Al resumidor no le llega, y si la escribe se quita, así que nunca se repite. El encabezado añade: "When answering from this summary or from its FIRST USER MESSAGE line, say that the information comes from the summary." Como todo el resumen, no cuenta como algo que dijo el usuario (`memory.user_texts` lo excluye).
 - Con bigtool (`USE_BIGTOOL=1`) el medidor y el endpoint funcionan con el uso real guardado, sin evento en vivo; la compactación y la poda no aplican (sin middleware).
 
 ### Memoria global: solo información puntual (`MEMORY_SAVE_POLICY=strict`)
