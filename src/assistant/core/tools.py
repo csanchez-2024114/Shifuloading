@@ -19,7 +19,7 @@ from langchain_openai import ChatOpenAI
 from assistant.core import memory
 from assistant.core import citations
 from assistant.core.agent import Context
-from assistant.core.config import Settings
+from assistant.core.config import Settings, llm_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -277,6 +277,7 @@ def web_search(query: str, settings: Settings) -> tuple[str, str]:
             api_key=settings.openai_api_key or None,
             use_responses_api=True,
             tags=["nostream"],
+            **llm_kwargs(settings),
         ).bind_tools([{"type": "web_search", "search_context_size": settings.search_context_size}],
                      # max_tool_calls: tope de búsquedas internas en esta llamada (cada una suma páginas como entrada)
                      **({"max_tool_calls": settings.search_max_tool_calls} if settings.search_max_tool_calls else {}))

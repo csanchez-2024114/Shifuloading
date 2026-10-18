@@ -83,3 +83,9 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
 - **La UI compartida solo conoce las etiquetas de las herramientas del núcleo y de `default`:** una herramienta nueva (`word_count` en `tests/profiles/minimal`) sale con su nombre crudo. Un perfil que quiera etiquetas propias necesita su propio `static_dir`. Una opción futura es que la UI pida las etiquetas al servidor.
 - **`generic` repite** su política de memoria `strict` y la regla de economía de búsqueda, en una versión más corta. Las de `default` viven en `profiles/default/policies.py`. Si un tercer perfil las necesita, conviene moverlas a un pack.
 - **Los perfiles de `tests/profiles/` se cargan por ruta con puntos** (`profiles.minimal`). Funciona porque pytest pone `tests/` en `sys.path`. `available_profiles()` solo lista los de `assistant.profiles`.
+
+## Anotado en `feat/seguridad-core` (P2–P4 de la auditoría)
+
+- **DDGS se queda como está:** `DDGS()` ya trae un timeout de 5 s (ddgs 9.16). La auditoría proponía `DDGS(timeout=10)`, que lo aflojaría. Fijarlo explícito obligaba a tocar `caracterizacion::formato_de_duckduckgo`, cuyo DDGS falso no acepta argumentos.
+- **`Tool error (...)` es candidato a interruptor:** el texto de la excepción le llega al modelo (`core/agent.py:_on_tool_error`, `core/extensions/bigtool.py`). Puede llevar detalles internos (S7), pero el prompt le pide al modelo "leer el error y probar otra vía", así que quitarlo cambia lo que ve. Propuesta: `TOOL_ERROR_DETAIL=1` por defecto; con 0, solo el tipo de excepción.
+- **Clientes de OpenAI fuera de `ChatOpenAI`:** `openai.OpenAI` (en `verify_model`, al arrancar) y `OpenAIEmbeddings` (memoria semántica) no llevan `LLM_TIMEOUT_SECONDS`/`LLM_MAX_RETRIES`; usan los defaults de la librería.

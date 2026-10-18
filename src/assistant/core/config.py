@@ -83,6 +83,11 @@ class Settings:
     login_max_fails: int = 5            # fallos de login por correo antes del bloqueo
     login_max_fails_ip: int = 20        # fallos de login por IP antes del bloqueo (más alto: IP compartidas)
     login_lock_minutes: int = 10        # ventana de fallos y duración del bloqueo
+    # P4: tope de espera por llamada a OpenAI y reintentos, en todos los ChatOpenAI. 300 s y no 90: una llamada con
+    # razonamiento alto o del investigador puede pasar de 90 s y se cortaría (cambio de comportamiento); 300 solo
+    # corta llamadas colgadas (antes, el cliente de OpenAI esperaba hasta 600 s). 2 reintentos = lo de antes.
+    llm_timeout_seconds: float = 300.0  # 0 = sin tope propio (el del cliente de OpenAI)
+    llm_max_retries: int = 2
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -142,6 +147,8 @@ class Settings:
             login_max_fails=int(os.getenv("LOGIN_MAX_FAILS_PER_EMAIL") or os.getenv("LOGIN_MAX_FAILS") or "5"),
             login_max_fails_ip=int(os.getenv("LOGIN_MAX_FAILS_PER_IP") or "20"),
             login_lock_minutes=_num("LOGIN_LOCK_MINUTES", "10"),
+            llm_timeout_seconds=_num("LLM_TIMEOUT_SECONDS", "300", float),
+            llm_max_retries=_num("LLM_MAX_RETRIES", "2"),
         )
 
     def context_window(self) -> int:
@@ -177,6 +184,11 @@ class Settings:
             from assistant.core.i18n import tr  # perezoso: el catálogo es del perfil
 
             raise ConfigError(tr("startup.missing_api_key"))
+
+
+def llm_kwargs(settings: Settings) -> dict:
+    """timeout y max_retries de LLM_TIMEOUT_SECONDS/LLM_MAX_RETRIES para todo ChatOpenAI que hace llamadas."""
+    return {"timeout": settings.llm_timeout_seconds or None, "max_retries": settings.llm_max_retries}
 
 
 DEFAULT_CONTEXT_WINDOW = 128000  # modelos sin perfil conocido en langchain

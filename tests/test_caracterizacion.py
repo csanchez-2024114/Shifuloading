@@ -637,3 +637,26 @@ def test_cada_valor_de_05773c4_sigue_existiendo_sin_el_mapa():
     found[_canon(_ser(evidence_tools()))] += 1
     faltan = [k for k, v in _snapshot_constants().items() if found[_canon(v)] == 0]
     assert not faltan, f"valores de 05773c4 que ya no existen: {faltan}"
+
+
+# --------------------------------------------------------------------------- config: solo crece por lo declarado
+
+# Sección "config" de la huella en 8857b30 (fin del refactor), congelada; sha256 de su JSON canónico. Desde
+# feat/seguridad-core, un commit que agregue variables a Settings regenera SOLO esa sección y las declara aquí.
+CONFIG_8857B30 = Path(__file__).parent / "snapshots" / "config_8857b30.json"
+CONFIG_8857B30_SHA256 = "8d474b5b4b7e6c2be0da7d1615c4f9a8b2cc00d46f271593e96602564eb13bd0"
+NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la lista crece commit a commit
+    "LLM_TIMEOUT_SECONDS": ("llm_timeout_seconds", 300.0),
+    "LLM_MAX_RETRIES": ("llm_max_retries", 2),
+}
+
+
+def test_config_solo_cambia_por_las_variables_declaradas():
+    from hashlib import sha256
+
+    base = json.loads(CONFIG_8857B30.read_text(encoding="utf-8"))
+    assert sha256(_canon(base).encode()).hexdigest() == CONFIG_8857B30_SHA256, "la base congelada cambió"
+    actual = json.loads(SNAPSHOT.read_text(encoding="utf-8"))["config"]
+    assert actual["env_vars"] == sorted(base["env_vars"] + list(NEW_CONFIG_VARS)), "variable no declarada"
+    assert actual["defaults"] == {**base["defaults"], **dict(NEW_CONFIG_VARS.values())}, \
+        "default nuevo no declarado o default existente cambiado"

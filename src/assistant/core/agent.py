@@ -33,7 +33,7 @@ from langgraph.errors import GraphRecursionError
 from langgraph.runtime import Runtime
 
 from assistant.core import citations
-from assistant.core.config import Settings, read_system_prompt
+from assistant.core.config import Settings, llm_kwargs, read_system_prompt
 from assistant.core.i18n import tr
 from assistant.core.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
                                prune_tool_results)
@@ -114,7 +114,7 @@ def clasificar_esfuerzo(settings: Settings, mensaje: str) -> str:
     Ante cualquier fallo devuelve "medio"."""
     try:
         llm = ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None,
-                         use_responses_api=True, reasoning={"effort": "none"}, max_tokens=16)
+                         use_responses_api=True, reasoning={"effort": "none"}, max_tokens=16, **llm_kwargs(settings))
         palabra = llm.invoke(CLASSIFIER_PROMPT + mensaje[:2000]).text.strip().lower()
         return next((nivel for word, nivel in _CLASSIFIER_LEVELS.items() if word in palabra), "medio")
     except Exception as exc:  # noqa: BLE001
@@ -285,19 +285,20 @@ def make_model(settings: Settings) -> ChatOpenAI:
         use_responses_api=True,
         max_tokens=settings.max_tokens or None,  # 0 = sin tope (el modelo decide; máx. 128k)
         streaming=True,
+        **llm_kwargs(settings),
     )
 
 
 def make_checker_model(settings: Settings) -> ChatOpenAI:
     """Modelo barato para verificaciones (recuerdos, respuestas): sin razonamiento y fuera del stream."""
     return ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None, use_responses_api=True,
-                      reasoning={"effort": "none"}, tags=["nostream"])
+                      reasoning={"effort": "none"}, tags=["nostream"], **llm_kwargs(settings))
 
 
 def make_summary_model(settings: Settings) -> ChatOpenAI:
     # tags=["nostream"]: sin esto el texto del resumen llega a la UI como tokens (stream_mode="messages").
     return ChatOpenAI(model=settings.compact_model or settings.llm_model, api_key=settings.openai_api_key or None,
-                      use_responses_api=True, reasoning={"effort": "low"}, tags=["nostream"])
+                      use_responses_api=True, reasoning={"effort": "low"}, tags=["nostream"], **llm_kwargs(settings))
 
 
 SUMMARY_PROMPT = """Summarize the earlier part of a conversation between a user and an assistant so the assistant can \
