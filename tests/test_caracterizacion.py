@@ -571,3 +571,59 @@ def test_herramientas_por_defecto_y_con_demo_hitl():
     assert nombres == ["web_search", "calculator", "current_datetime", "check_python_syntax", "save_memory",
                        "search_memories", "update_memory", "deep_research"]
     assert [t.name for t in build_tools(fake_llm("x"), _settings(enable_hitl_demo=True))][-1] == "send_simulated_email"
+
+
+# --------------------------------------------------------------------------- multiconjunto de constantes contra 05773c4
+
+# sha256 del JSON canónico de la sección "constants" de la huella en 05773c4 (antes del refactor): prueba que la huella
+# no se regeneró. 136 constantes (el registro de estado en vivo _TURNS/_ACTIVE_TURNS/_PAUSED_SPEND queda fuera).
+CONSTANTS_05773C4_SHA256 = "d4715e5569f5f996ee4a30b3046b4725866e1e092a6dc2604c6e22210c2de423"
+CONSTANTS_05773C4_COUNT = 136
+# módulos nuevos del refactor donde pueden vivir las constantes movidas
+NEW_HOMES = ("assistant.packs.i18n.es", "assistant.packs.lang.es_en", "assistant.packs.tools.demo",
+             "assistant.packs.tools.utilities", "assistant.profiles.default.policies", "assistant.profiles.default.rules",
+             "assistant.profiles.default.tools")
+
+
+def _canon(value) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=False)
+
+
+def _snapshot_constants() -> dict:
+    return json.loads(SNAPSHOT.read_text(encoding="utf-8"))["constants"]
+
+
+def test_huella_de_constantes_es_la_de_05773c4():
+    from hashlib import sha256
+
+    constants = _snapshot_constants()
+    assert len(constants) == CONSTANTS_05773C4_COUNT
+    assert sha256(_canon(constants).encode()).hexdigest() == CONSTANTS_05773C4_SHA256, "la huella se regeneró"
+
+
+def test_multiconjunto_de_valores_igual_al_de_05773c4():
+    """Los mismos valores, ni uno más ni uno menos, aunque hayan cambiado de módulo (con el mapa de reubicación)."""
+    from collections import Counter
+
+    actual = _constants()
+    assert len(actual) == CONSTANTS_05773C4_COUNT
+    assert Counter(map(_canon, actual.values())) == Counter(map(_canon, _snapshot_constants().values()))
+
+
+def test_cada_valor_de_05773c4_sigue_existiendo_sin_el_mapa():
+    """Sin usar el mapa: cada valor de 05773c4 está en alguna constante de los módulos de antes o de los nuevos hogares
+    (o es un valor derivado del perfil, como prune_keep_tools())."""
+    import importlib
+    from collections import Counter
+
+    found = Counter()
+    for name in [f"assistant.{m}" for m in CONST_MODULES] + list(NEW_HOMES):
+        mod = importlib.import_module(name)
+        for attr, value in vars(mod).items():
+            if re.fullmatch(r"_?[A-Z][A-Z0-9_]*", attr) and not isinstance(value, pytypes.ModuleType):
+                if (s := _ser(value)) is not None:
+                    found[_canon(s)] += 1
+    from assistant.core.context import prune_keep_tools
+    found[_canon(_ser(prune_keep_tools()))] += 1
+    faltan = [k for k, v in _snapshot_constants().items() if found[_canon(v)] == 0]
+    assert not faltan, f"valores de 05773c4 que ya no existen: {faltan}"
