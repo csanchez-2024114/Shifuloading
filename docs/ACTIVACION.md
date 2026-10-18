@@ -4,8 +4,6 @@ Qué poner en tu `.env` tras la validación con el modelo real. Los defaults del
 
 La evidencia sale de [VALIDACION_E2E.md](VALIDACION_E2E.md) (2026-10-17, segunda tanda, `gpt-6-luna`, un interruptor por corrida y luego los tres juntos).
 
-> ⚠️ **No actives `URL_FILTER_ALWAYS` todavía.** La corrida real de evals del 2026-10-18 (`evals/resultados/20261018-142830_real.json`, caso `url-del-usuario`) encontró que el filtro borra un enlace respaldado cuando va pegado a un delimitador de cierre (por ejemplo, entre comillas invertidas: `` `https://…` ``). Esta advertencia se quita cuando la corrección esté hecha y validada con la repetición de las evals.
-
 ## Para tu `.env`
 
 ```dotenv
@@ -23,7 +21,7 @@ Los tres se activan juntos sin problema: en la corrida 4, con los tres a la vez,
 
 | Interruptor | Qué hace | Evidencia real | Lo que solo prueban los tests con modelos falsos |
 |---|---|---|---|
-| `URL_FILTER_ALWAYS=1` | Quita los enlaces de la respuesta que no salen de ninguna herramienta, aunque `ANSWER_VERIFY=0` | Escenario 2: el enlace respaldado sobrevivió (la comparación ignora `utm_*`) y no hubo falsos positivos. No añade tokens al modelo (el +27,9 % de esa corrida vino de la búsqueda hospedada) | El efecto protector: en la línea base no hubo enlaces inventados que quitar |
+| `URL_FILTER_ALWAYS=1` | Quita los enlaces de la respuesta que no salen de ninguna herramienta, aunque `ANSWER_VERIFY=0` | Escenario 2: el enlace respaldado sobrevivió (la comparación ignora `utm_*`) y no hubo falsos positivos. No añade tokens al modelo (el +27,9 % de esa corrida vino de la búsqueda hospedada) | El efecto protector: en la línea base no hubo enlaces inventados que quitar. Corregido el 2026-10-18: ya no borra un enlace respaldado pegado a un delimitador de cierre (comillas, paréntesis, corchetes, puntuación) y ve también las URL pegadas a un paréntesis de apertura. Validado en real con `url-del-usuario` (`evals/resultados/20261018-144911_real.json`) |
 | `MEMORY_REQUIRE_QUOTE=1` | `save_memory`/`update_memory` solo guardan si la evidencia cita literalmente al usuario | 4 de 4 datos guardados al primer intento (escenarios 5 y 5c), 0 % de costo. Lo que vino de la web (Museo Soumaya) no se guardó | El rechazo en código: en la prueba real lo frenó antes la política del prompt (`test_seguridad::memory_require_quote_*`, `inyeccion_*`) |
 | `UNTRUSTED_WRAP=1` | Envuelve los resultados web en `<untrusted_web_content>` y añade la regla al prompt | Escenario 5: +2,2 % (unos 115 tokens de la regla). Escenario 3: 7 fuentes, todas respaldadas, sin etiquetas en la respuesta y sin bloquear al investigador (−5,9 %, informe más corto) | El bloqueo de una inyección real |
 

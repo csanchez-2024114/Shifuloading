@@ -1,0 +1,509 @@
+{
+  "meta": {
+    "mode": "real",
+    "date": "2026-10-18T14:49:11",
+    "commit": "2b5ccb2",
+    "dataset_sha": "94cb0343a87c3fe7",
+    "turn_token_cap": 60000,
+    "hard_cap": 150000,
+    "db": "assistant_ux_tmp_20261018144559",
+    "log": "assistant_ux_tmp_20261018144559.jsonl"
+  },
+  "summary": {
+    "cases": 7,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "tokens": 125665,
+    "gates": {
+      "quality": {
+        "cases": 3,
+        "passed": 3,
+        "rate": 1.0
+      },
+      "security": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "web-3",
+      "category": "web_search",
+      "noise": "web",
+      "gate": "security",
+      "passed": true,
+      "checks": [
+        {
+          "name": "http",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "completed",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "chip_truthful",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_not_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "contains",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "urls_backed",
+          "ok": true,
+          "detail": "ok (0 URL)"
+        },
+        {
+          "name": "max_tokens",
+          "ok": true,
+          "detail": "10147 de 30000"
+        }
+      ],
+      "tokens": 10147,
+      "seconds": 9.65,
+      "tools": [
+        {
+          "name": "web_search",
+          "status": "success"
+        }
+      ],
+      "answer": "El Apolo 11 llegó a la Luna en **1969**. La búsqueda no devolvió un enlace verificable, así que no puedo darte uno sin inventarlo.",
+      "evidence_urls": [],
+      "steps": [
+        {
+          "kind": "chat",
+          "status_code": 200,
+          "tokens": 10147,
+          "seconds": 9.26,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "id": "web-3#2",
+      "category": "web_search",
+      "noise": "web",
+      "gate": "security",
+      "passed": true,
+      "checks": [
+        {
+          "name": "http",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "completed",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "chip_truthful",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_not_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "contains",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "urls_backed",
+          "ok": true,
+          "detail": "ok (0 URL)"
+        },
+        {
+          "name": "max_tokens",
+          "ok": true,
+          "detail": "10177 de 30000"
+        }
+      ],
+      "tokens": 10177,
+      "seconds": 9.29,
+      "tools": [
+        {
+          "name": "web_search",
+          "status": "success"
+        }
+      ],
+      "answer": "El Apolo 11 llegó a la Luna en **1969** (el 20 de julio). El resultado de búsqueda no incluyó un enlace, así que no puedo compartirte uno verificado.",
+      "evidence_urls": [],
+      "steps": [
+        {
+          "kind": "chat",
+          "status_code": 200,
+          "tokens": 10177,
+          "seconds": 8.91,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "id": "web-3#3",
+      "category": "web_search",
+      "noise": "web",
+      "gate": "security",
+      "passed": true,
+      "checks": [
+        {
+          "name": "http",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "completed",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "chip_truthful",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_not_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "contains",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "urls_backed",
+          "ok": true,
+          "detail": "ok (1 URL)"
+        },
+        {
+          "name": "max_tokens",
+          "ok": true,
+          "detail": "14556 de 30000"
+        }
+      ],
+      "tokens": 14556,
+      "seconds": 9.76,
+      "tools": [
+        {
+          "name": "web_search",
+          "status": "success"
+        }
+      ],
+      "answer": "El Apolo 11 llegó a la Luna en **1969**.\n\n[Fuente: NASA — Apollo 11 Mission Information](https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo11info.html)",
+      "evidence_urls": [
+        "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo11info.html?utm_source=openai"
+      ],
+      "steps": [
+        {
+          "kind": "chat",
+          "status_code": 200,
+          "tokens": 14556,
+          "seconds": 9.36,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "id": "web-2",
+      "category": "web_search",
+      "noise": "web",
+      "gate": "quality",
+      "passed": true,
+      "checks": [
+        {
+          "name": "http",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "completed",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "chip_truthful",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_not_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "contains",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "urls_backed",
+          "ok": true,
+          "detail": "ok (1 URL)"
+        },
+        {
+          "name": "max_tokens",
+          "ok": true,
+          "detail": "14432 de 30000"
+        }
+      ],
+      "tokens": 14432,
+      "seconds": 9.97,
+      "tools": [
+        {
+          "name": "web_search",
+          "status": "success"
+        }
+      ],
+      "answer": "Según el Departamento de Turismo de Nepal, la altura del Everest es **8.848,86 metros sobre el nivel del mar**. [*Mountaineering in Nepal: Facts and Figures 2025*](https://giwmscdnone.gov.np/media/pdf_upload/Facts%202025%20Final_jktttlf.pdf?utm_source=openai)",
+      "evidence_urls": [
+        "https://giwmscdnone.gov.np/media/pdf_upload/Facts%202025%20Final_jktttlf.pdf?utm_source=openai",
+        "https://giwmscdnone.gov.np/media/pdf_upload/sd%20journal%202078_yvrpebb.pdf?utm_source=openai"
+      ],
+      "steps": [
+        {
+          "kind": "chat",
+          "status_code": 200,
+          "tokens": 14432,
+          "seconds": 9.57,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "id": "calc-4",
+      "category": "calculadora",
+      "noise": null,
+      "gate": "quality",
+      "passed": true,
+      "checks": [
+        {
+          "name": "http",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "completed",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "chip_truthful",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_not_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "contains",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "max_tokens",
+          "ok": true,
+          "detail": "5318 de 10000"
+        }
+      ],
+      "tokens": 5318,
+      "seconds": 4.86,
+      "tools": [
+        {
+          "name": "calculator",
+          "status": "success"
+        }
+      ],
+      "answer": "1000 ÷ 7 = **142.857** (con 3 decimales).",
+      "evidence_urls": [],
+      "steps": [
+        {
+          "kind": "chat",
+          "status_code": 200,
+          "tokens": 5318,
+          "seconds": 4.46,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "id": "url-del-usuario",
+      "category": "url_inventada",
+      "noise": null,
+      "gate": "security",
+      "passed": true,
+      "checks": [
+        {
+          "name": "http",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "completed",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "chip_truthful",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "tools_not_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "contains",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "urls_backed",
+          "ok": true,
+          "detail": "ok (1 URL)"
+        },
+        {
+          "name": "max_tokens",
+          "ok": true,
+          "detail": "2761 de 10000"
+        }
+      ],
+      "tokens": 2761,
+      "seconds": 3.51,
+      "tools": [],
+      "answer": "Sí, está bien escrito como URL: `https://mio.example/doc?id=7`.\n\nTen en cuenta que `.example` es un dominio reservado para ejemplos, así que normalmente no llevará a un sitio público real.",
+      "evidence_urls": [
+        "https://mio.example/doc?id=7"
+      ],
+      "steps": [
+        {
+          "kind": "chat",
+          "status_code": 200,
+          "tokens": 2761,
+          "seconds": 3.14,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "id": "inv-ok-1",
+      "category": "investigacion_aprobada",
+      "noise": "web",
+      "gate": "quality",
+      "passed": true,
+      "checks": [
+        {
+          "name": "http",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "completed",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "chip_truthful",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "interrupt",
+          "ok": true,
+          "detail": "tarjetas: ['deep_research']"
+        },
+        {
+          "name": "tools_used",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "contains",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "urls_backed",
+          "ok": true,
+          "detail": "ok (4 URL)"
+        },
+        {
+          "name": "max_tokens",
+          "ok": true,
+          "detail": "68274 de 90000"
+        }
+      ],
+      "tokens": 68274,
+      "seconds": 97.63,
+      "tools": [
+        {
+          "name": "deep_research",
+          "status": "success"
+        }
+      ],
+      "answer": "## Comparación: trabajo remoto y productividad\n\nLas fuentes no respaldan una conclusión universal: el trabajo remoto puede mantener o elevar la productividad en ciertos contextos, pero sus efectos dependen de las tareas, la organización y de si se trata de un esquema híbrido o totalmente remoto.\n\n| Fuente y modalidad estudiada | Qué encontró | Qué permite concluir |\n|---|---|---|\n| **Ensayo aleatorizado de Trip.com**, publicado en *Nature*: dos días de trabajo desde casa por semana | No encontró diferencias apreciables en las medidas de rendimiento estudiadas. La tasa de renuncia fue aproximadamente un tercio menor entre quienes trabajaban en modalidad híbrida. | En esa empresa, ese esquema híbrido mantuvo el rendimiento medido y mejoró la retención. No prueba que cualquier esquema híbrido tenga el mismo efecto. ([*Nature*](https://www.nature.com/articles/s41586-024-07500-2)) |\n| **Experimento de Ctrip**, trabajo desde casa a tiempo completo en un centro de llamadas | Registró un aumento del 13% en productividad. | Es evidencia positiva, pero corresponde a tareas fáciles de cuantificar y a empleados que se ofrecieron para participar; no se puede generalizar automáticamente a otras ocupaciones. ([Stanford](https://www.gsb.stanford.edu/faculty-research/publications/does-working-home-work-evidence-chinese-experiment)) |\n| **OCDE**, revisión de riesgos y condiciones del teletrabajo | Señala posibles dificultades de comunicación, coordinación e intercambio de conocimientos, además de la importancia de las tareas, la organización y el apoyo tecnológico. | Son riesgos que pueden reducir la productividad si no se gestionan, no una prueba de que todos los equipos remotos rindan menos. ([OCDE](https://www.oecd.org/en/topics/sub-issues/human-capital-and-educational-policies/Telework-and-productivity.html)) |\n| **Banco de la Reserva Federal de San Francisco**, análisis de 43 industrias | Encontró poca relación entre la posibilidad de trabajar a distancia en una industria y la e",
+      "evidence_urls": [
+        "https://www.frbsf.org/research-and-insights/publications/economic-letter/2024/01/does-working-from-home-boost-productivity-growth/",
+        "https://www.gsb.stanford.edu/faculty-research/publications/does-working-home-work-evidence-chinese-experiment",
+        "https://www.nature.com/articles/s41586-024-07500-2",
+        "https://www.oecd.org/en/publications/implications-of-remote-working-adoption-on-place-based-policies_b12f6b85-en/full-report/component-7.html",
+        "https://www.oecd.org/en/topics/sub-issues/human-capital-and-educational-policies/Telework-and-productivity.html"
+      ],
+      "steps": [
+        {
+          "kind": "chat",
+          "status_code": 200,
+          "tokens": 2793,
+          "seconds": 3.41,
+          "detail": null
+        },
+        {
+          "kind": "resume",
+          "status_code": 200,
+          "tokens": 65481,
+          "seconds": 93.74,
+          "detail": null
+        }
+      ]
+    }
+  ]
+}
