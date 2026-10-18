@@ -35,6 +35,8 @@ Con un solo perfil por proceso, el resultado es el mismo. Con dos perfiles en un
 | S6 | `wikipedia_summary`: `language` va directo al host (SSRF/exfiltración), solo bigtool | `extra_tools.py:239-246` |
 | S7 | El evento `error` y `Tool error` exponen el texto de la excepción | `agent.py:1076-1078`, `agent.py:573-574` |
 
+**Estado al 2026-10-18:** S1 (`37b0d19`), S3 (`f106f65`, `9a6c22f`, `44ff6fc`), S4 (`00e0a9e`) y S6 (`b070aaa`) resueltas; S2 mitigada con `UNTRUSTED_WRAP` y `MEMORY_REQUIRE_QUOTE` (`b507eef`, `27e7610`); S7: el evento `error` ya no expone la excepción y `TOOL_ERROR_DETAIL_HIDDEN` (`e51efc1`) quita el detalle de `Tool error`; S5 parcial (`MAX_MESSAGE_CHARS`), falta presupuesto por usuario y rate limit.
+
 Los tests de caracterización **fijan a propósito** el comportamiento actual de S4 y S7 (`calculadora_caracterizada`, `stream_con_excepcion_da_tipo_y_mensaje_sin_done`). Cuando se arreglen, esos tests se cambian en el mismo commit del arreglo, diciéndolo.
 
 ## Defectos y deudas vistos durante la Fase 0

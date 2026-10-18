@@ -7,6 +7,10 @@ Asistente conversacional autónomo con LangGraph 1.2, el modelo `gpt-6-luna` de 
 - **Memoria**: corto plazo con `MongoDBSaver` (por `thread_id`) y largo plazo con `MongoDBStore` (por `user_id`, namespace `("user", user_id, "memories")`).
 - **Límites**: `recursion_limit` 100 (red de seguridad), tope de llamadas al modelo por turno, tope de tokens de salida y errores de herramientas devueltos al agente para que pruebe otra vía.
 - **Human-in-the-loop**: patrón listo con la herramienta de ejemplo `send_simulated_email` (no envía nada). Se activa con `ENABLE_HITL_DEMO=1`: la UI muestra Aprobar/Rechazar.
+- **Archivos** (`FILES_ENABLED=1`, apagado por defecto): adjuntar PDF, TXT, MD, CSV, XLSX, DOCX e imágenes; el agente los lee por fragmentos con `read_file` y `search_in_file`, siempre como contenido no confiable. Ver "Archivos".
+- **Trazas, métricas y feedback** (apagados por defecto): `run_id` por turno con metadatos en la traza, una fila de métricas por turno sin contenido de mensajes y 👍/👎. Ver "Trazas, métricas y feedback".
+- **Evals repetibles**: `scripts/run_evals.py`, en modo falso (0 tokens, en la suite) o real (con tope duro). Comandos en "Correr".
+- **Estado y alcance**: qué existe, qué está probado con el modelo real y qué solo con modelos falsos, en [docs/ESTADO.md](docs/ESTADO.md). Qué activar en tu `.env`: [docs/ACTIVACION.md](docs/ACTIVACION.md).
 - **Personalidad**: edita [profiles/default/prompts/system.md](src/assistant/profiles/default/prompts/system.md). No hace falta tocar código ni reiniciar; se lee en cada mensaje. Los prompts internos y las descripciones de herramientas están en inglés; el agente responde en el idioma del usuario.
 
 ## Estructura: núcleo, packs y perfiles
@@ -24,7 +28,8 @@ src/assistant/
 - **Perfil por defecto:** prompt en [`profiles/default/prompts/system.md`](src/assistant/profiles/default/prompts/system.md); la UI en [`packs/ui/index.html`](src/assistant/packs/ui/index.html); herramientas, aprobaciones, nombres antiguos y políticas de memoria en `profiles/default/`.
 - **Nombres viejos:** `assistant.agent`, `assistant.server`, `assistant.tools`… siguen funcionando como alias de `assistant.core.*`, con un `DeprecationWarning`. `uvicorn assistant.server:app` no cambia.
 - **Crear un perfil:** [docs/CREAR_PERFIL.md](docs/CREAR_PERFIL.md).
-- **Rama `refactor/core-profiles`:** mientras no se fusione con `main` (el merge lo decide el usuario), cada commit es un solo paso con la suite en verde, y un refactor nunca va junto con un cambio de comportamiento. La huella de caracterización (`tests/snapshots/perfil_por_defecto.json`) no se regenera. Plan, paridad y pendientes: [REFACTOR_PLAN.md](REFACTOR_PLAN.md), [PARIDAD.md](PARIDAD.md) y [REFACTOR_NOTAS.md](REFACTOR_NOTAS.md).
+- **Ramas:** `refactor/core-profiles` y la primera parte de `feat/seguridad-core` (interruptores S1–S5 y la validación E2E) ya están fusionadas en `main` (`cf0b624`); el estado anterior al refactor quedó en el tag `pre-refactor-core-profiles` (`0dce7d4`). `feat/seguridad-core` sigue por delante de `main` con evals, archivos, trazas/métricas/feedback y las deudas de la Fase 4; el merge lo decide el usuario.
+- **Huella de caracterización** (`tests/snapshots/perfil_por_defecto.json`): fija rutas, herramientas, prompt, grafo, SSE, bigtool y constantes del perfil por defecto. Solo cambia la sección `config` al agregar variables (declaradas en `NEW_CONFIG_VARS`) e `index_html_sha256` con cada cambio de UI aprobado. `tests/test_caracterizacion.py` además exige que, con `FILES_ENABLED=0`, todo lo demás siga igual que en `3b9b903`. Pendientes: [REFACTOR_NOTAS.md](REFACTOR_NOTAS.md).
 
 ## Instalación
 
@@ -35,6 +40,9 @@ uv venv .venv
 uv pip install --python .venv -e ".[dev]"
 copy .env.example .env   # y pon tu OPENAI_API_KEY
 ```
+
+- **Versiones exactas:** `uv.lock` fija las versiones con las que pasa la suite; `uv sync --extra dev` las reproduce. `pyproject.toml` lleva rangos (desde la versión probada hasta la siguiente mayor).
+- **Archivos:** con `FILES_ENABLED=1` hacen falta las dependencias del extra `[files]` (`uv pip install --python .venv -e ".[files]"`; `dev` ya las incluye).
 
 **Antes de actualizar langgraph**, corre la suite completa (`.venv\Scripts\python -m pytest`):
 - `pyproject.toml` fija `langgraph>=1.2.15,<1.3`, la versión con la que se probó.
@@ -76,6 +84,18 @@ copy .env.example .env   # y pon tu OPENAI_API_KEY
 | `MEMORY_REQUIRE_QUOTE` | `0` | `1` = save_memory/update_memory solo guardan con una cita literal de lo que escribió el usuario (sin LLM) |
 | `URL_FILTER_ALWAYS` | `0` | `1` = quita de la respuesta final los enlaces cuya URL (con su query) no está en los resultados de herramientas ni en lo que escribió el usuario, aunque `ANSWER_VERIFY=0` (0 tokens; solo agente normal) |
 | `EFFECT_APPROVAL` | `0` | `1` = las herramientas con efecto `write`/`send`/`delete` piden aprobación con la tarjeta, también en bigtool (p. ej. `crm_create_order`) |
+| `FILES_ENABLED` | `0` | `1` = adjuntar archivos (ver "Archivos"); con `0` no hay rutas, herramientas ni reglas nuevas |
+| `FILE_MAX_BYTES` | `10000000` | tamaño máximo por archivo (413 si se pasa) |
+| `FILE_MAX_PER_MESSAGE` | `5` | archivos por mensaje |
+| `FILE_MAX_PAGES` | `50` | páginas (u hojas) que se extraen por archivo |
+| `FILE_MAX_CHARS` | `200000` | caracteres que se extraen por archivo |
+| `FILE_EXTRACT_TIMEOUT` | `20` | segundos para extraer un archivo (el subproceso se mata al pasarlo) |
+| `FILE_IMAGE_MAX_PX` | `1568` | lado máximo al que se reduce una imagen antes de mandarla al modelo |
+| `TRACE_METADATA` | `0` | `1` = `run_id` por turno, metadatos en la traza (LangSmith) y evento SSE `run` |
+| `TURN_METRICS` | `0` | `1` = una fila por turno en `turn_metrics` (base de negocio) y `GET /metrics/summary` |
+| `FEEDBACK_ENABLED` | `0` | `1` = `POST /feedback` y 👍/👎 en la UI; exige `TRACE_METADATA=1`, `TURN_METRICS=1` y la base de negocio |
+| `METRICS_TTL_DAYS` | `90` | días que se conservan métricas y feedback; `0` = sin caducidad |
+| `TOOL_ERROR_DETAIL_HIDDEN` | `0` | `1` = el error de una herramienta le llega al modelo solo con el tipo de excepción; el detalle va al log |
 | `AGENT_PROFILE` | `default` | perfil del agente (ver "Estructura"): `default` (Agente 0), `generic`, o una ruta con puntos a un paquete propio. Vacía = `default`. Se lee al cargar el perfil, no en `Settings` |
 
 ### Configuración recomendada (validada con el modelo real)
@@ -393,6 +413,24 @@ Seguridad:
 
 Datos anteriores: `scripts/assign_legacy_data.py` lista (dry-run por defecto) los hilos y los recuerdos por `user_id` antiguo; con `--apply --email <cuenta> --legacy-user <id> --threads all|id1,id2` asigna los hilos a esa cuenta y **copia** sus recuerdos al UUID (no borra nada; repetirlo no duplica). Con `AUTH_ENABLED=0` la app funciona exactamente como antes, sin login.
 
+### Archivos (opcional, `FILES_ENABLED=0` por defecto)
+
+- **Subida:** botón 📎 en la UI (solo aparece con el interruptor) o `POST /threads/{id}/files`. El tipo se decide por el contenido, no solo por la extensión; se rechazan macros y zip bombs, y los nombres se sanean.
+- **Extracción:** en un subproceso `python -I` con tope de tiempo, de páginas y de caracteres; nada del archivo se ejecuta. Se guarda lo extraído (no el original) en el store del agente, por usuario y por hilo, y se borra con el hilo o la cuenta.
+- **Lectura:** `read_file` y `search_in_file` devuelven fragmentos (como mucho 4 000 caracteres por lectura), siempre entre `<untrusted_file_content>` aunque `UNTRUSTED_WRAP=0`. Si el hilo tiene adjuntos, el prompt suma una regla y la memoria exige una cita literal del usuario. Las imágenes van al modelo, reducidas y sin EXIF.
+- Funciona con el agente normal y con bigtool. El perfil `generic` no recibe las herramientas (ver [docs/CREAR_PERFIL.md](docs/CREAR_PERFIL.md)).
+
+### Trazas, métricas y feedback (opcional, apagados por defecto)
+
+- **`TRACE_METADATA=1`:** cada `/chat` y `/resume` tiene su `run_id` (raíz de la traza en LangSmith) con metadatos sin contenido de mensajes (hilo, usuario, esfuerzo, modelo, perfil, sha256 del prompt). La UI lo recibe en el evento SSE `run`.
+- **`TURN_METRICS=1`:** una fila por turno en la colección `turn_metrics` de la base de negocio (latencia, tokens, herramientas, aprobaciones y estado; nunca el mensaje ni la respuesta) y `GET /metrics/summary?days=7`.
+- **`FEEDBACK_ENABLED=1`:** 👍/👎 bajo cada respuesta; se guarda en `feedback` y, con LangSmith activo, se manda como `create_feedback` (esto último solo está probado con un cliente falso).
+- **Base de negocio:** `TURN_METRICS` y `FEEDBACK_ENABLED` necesitan `APP_MONGODB_URI` y `APP_MONGODB_DB` (ver "Cuentas de usuario y dos bases de datos"); sin ellas, el servidor no arranca.
+
+### Candado por hilo (siempre activo)
+
+Un segundo `/chat` o `/resume` en un hilo con un turno en curso responde 409. El candado vive en la memoria del proceso: **vale solo con un worker de uvicorn** (como se arranca abajo). Para varios workers o réplicas hay que moverlo antes a Mongo.
+
 ### Observabilidad con LangSmith (opcional, desactivada por defecto)
 
 | Variable | Default | Uso |
@@ -421,6 +459,15 @@ Tests (sin gastar tokens). **pytest siempre usa tu MongoDB local** (`mongodb://1
 
 ```powershell
 .venv\Scripts\python -m pytest
+```
+
+Evals (ver `evals/` y [docs/VALIDACION_E2E.md](docs/VALIDACION_E2E.md)):
+
+```powershell
+.venv\Scripts\python scripts\run_evals.py                 # modo falso: modelos falsos, 0 tokens
+.venv\Scripts\python scripts\run_evals.py --real          # solo muestra el plan y el costo; no gasta
+.venv\Scripts\python scripts\run_evals.py --real --hard-cap 550000 --confirm-cap 550000   # corre de verdad (:8001, base temporal)
+.venv\Scripts\python scripts\compare_evals.py A.json B.json   # regresiones caso por caso (ruido ±30 % con web_search)
 ```
 
 `tests/test_ui_navegador.py` prueba la interfaz en un navegador real con Playwright (`playwright` está en las dependencias
