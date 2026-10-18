@@ -10,28 +10,8 @@ export const fechaCorta = (d) => `${d.getDate()} ${E.MESES[d.getMonth()]}`
 export const fechaLarga = (d) => `${['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][d.getDay()]} ${d.getDate()} ${E.MESES[d.getMonth()]} ${d.getFullYear()}`
 
 // ── Campos y opciones ─────────────────────────────────────────────────────────────────────────────
-/** Clases de campo que puede pedir un gráfico en `requiere`. */
-export const CLASES = {
-  estado: (c) => c.tipo === 'estado',
-  estado3: (c) => c.tipo === 'estado' && (c.opciones?.length || 0) >= 3, // estado con 3 o más opciones (radar)
-  fecha: (c) => c.tipo === 'fecha',
-  hora: (c) => c.tipo === 'hora',
-  medida: (c) => c.tipo === 'numero' || c.tipo === 'dinero',
-  texto: (c) => c.tipo === 'texto',
-  categoria: (c) => c.tipo === 'estado' || c.tipo === 'texto',
-}
-/** `requiere` es un objeto { clase: cantidad } o una lista de alternativas (basta con cumplir una). */
-export const cumple = (requiere, campos) => [].concat(requiere).some((alt) => Object.entries(alt).every(([cl, n]) => campos.filter(CLASES[cl] || (() => false)).length >= n))
-
-/** Campos que se eligen solos: el primer estado, la primera (y segunda) fecha, la primera hora, la primera medida
- *  (dinero antes que número) y el primer texto. */
-export function base(campos) {
-  const de = (cl) => campos.filter(CLASES[cl])
-  const medidas = [...campos.filter((c) => c.tipo === 'dinero'), ...campos.filter((c) => c.tipo === 'numero')]
-  const estado = de('estado')[0]?.id
-  const texto = de('texto')[0]?.id
-  return { estado, fecha: de('fecha')[0]?.id, fecha2: de('fecha')[1]?.id, hora: de('hora')[0]?.id, valor: medidas[0]?.id, valor2: medidas[1]?.id, texto, agrupar: estado || texto }
-}
+// Clases de campo, cumple(), base() y sumaOConteo() viven en el catálogo puro (graficos-catalogo.js): se re-exportan.
+export { CLASES, cumple, base, sumaOConteo } from './graficos-catalogo'
 export const campoDe = (campos, id) => campos.find((c) => c.id === id)
 export const fnDe = (o) => (!o.valor || o.funcion === 'conteo' ? 'conteo' : o.funcion || 'suma')
 export const medirDe = (o) => (fnDe(o) === 'conteo' ? null : o.valor)
@@ -103,5 +83,4 @@ export function calcMatriz(regs, campos, o, hoy, filas = 'mes', topFilas = 6) {
 export const conTotal = (d, msg = SIN_DATOS) => (typeof d === 'string' ? d : d.total > 0 ? d : msg)
 export const conMeses = (d) => (typeof d === 'string' ? d : d.items.some((i) => i.valor) ? d : 'Sin datos en los últimos meses')
 export const conMatriz = (d) => (typeof d === 'string' ? d : d.m.some((f) => f.some((v) => v)) ? d : SIN_DATOS)
-export const sumaOConteo = (b) => (b.valor ? 'suma' : 'conteo')
 export { fmt }

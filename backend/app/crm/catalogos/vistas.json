@@ -1,0 +1,188 @@
+{
+  "tabla": {
+    "requiere": {},
+    "opcional": {
+      "filtro": null,
+      "orden": null,
+      "limite": null
+    }
+  },
+  "kpis": {
+    "requiere": {},
+    "opcional": {
+      "por": [
+        "estado"
+      ],
+      "suma": [
+        "dinero",
+        "numero"
+      ],
+      "vencen": [
+        "fecha"
+      ],
+      "hoy": [
+        "fecha"
+      ],
+      "estado": [
+        "estado"
+      ],
+      "excluir": null
+    }
+  },
+  "tablero": {
+    "requiere": {
+      "por": [
+        "estado"
+      ]
+    },
+    "opcional": {
+      "titulo": null,
+      "detalle": null
+    }
+  },
+  "agenda": {
+    "requiere": {
+      "fecha": [
+        "fecha"
+      ]
+    },
+    "opcional": {
+      "hora": [
+        "hora"
+      ],
+      "titulo": null,
+      "detalle": null
+    }
+  },
+  "vencimientos": {
+    "requiere": {
+      "fecha": [
+        "fecha"
+      ]
+    },
+    "opcional": {
+      "titulo": null,
+      "detalle": null,
+      "estado": [
+        "estado"
+      ],
+      "excluir": null
+    }
+  },
+  "grafica": {
+    "requiere": {},
+    "opcional": {
+      "por": [
+        "estado"
+      ],
+      "fecha": [
+        "fecha"
+      ],
+      "suma": [
+        "dinero",
+        "numero"
+      ]
+    }
+  },
+  "grafico": {
+    "requiere": {},
+    "libre": true
+  },
+  "calendario_mes": {
+    "requiere": {
+      "fecha": [
+        "fecha"
+      ]
+    },
+    "opcional": {
+      "titulo": null,
+      "estado": [
+        "estado"
+      ],
+      "mes": "libre"
+    }
+  },
+  "tablero_dinero": {
+    "requiere": {
+      "por": [
+        "estado"
+      ],
+      "suma": [
+        "dinero",
+        "numero"
+      ]
+    },
+    "opcional": {
+      "titulo": null,
+      "detalle": null,
+      "dias_en": [
+        "fecha"
+      ]
+    }
+  },
+  "cifra": {
+    "requiere": {},
+    "opcional": {
+      "funcion": "libre",
+      "valor": [
+        "dinero",
+        "numero"
+      ],
+      "filtro": "libre",
+      "meta": "libre",
+      "fecha": [
+        "fecha"
+      ],
+      "periodo": "libre",
+      "ayuda": "libre"
+    }
+  },
+  "atencion": {
+    "requiere": {
+      "fecha": [
+        "fecha"
+      ]
+    },
+    "opcional": {
+      "estado": [
+        "estado"
+      ],
+      "excluir": "libre"
+    }
+  },
+  "franjas": {
+    "requiere": {
+      "fecha": [
+        "fecha"
+      ]
+    },
+    "opcional": {
+      "estado": [
+        "estado"
+      ],
+      "titulo": null,
+      "detalle": null,
+      "urgentes": "libre"
+    }
+  },
+  "matriz": {
+    "requiere": {
+      "filas": [
+        "texto"
+      ],
+      "columnas": [
+        "estado"
+      ]
+    },
+    "opcional": {}
+  },
+  "feed": {
+    "datos": false
+  },
+  "equipo": {
+    "datos": false
+  },
+  "interruptores": {
+    "datos": false
+  }
+}
