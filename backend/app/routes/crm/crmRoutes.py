@@ -505,7 +505,11 @@ async def deshacer(request: Request, datos: Optional[Deshacer] = None, user: dic
 async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool,
                          imagen: str | None = None, seccion: str | None = None, persona: str | None = None):
     """Resuelve un mensaje del chat. Con IA si se puede (y no hay un borrado por confirmar); si no, con las reglas.
-    El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite)."""
+    El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite).
+    Si el turno cambió algo que se puede deshacer, deja un punto con `antes_de` = lo que escribió la persona (como lo hecho a mano):
+    sin él, deshacer un punto anterior podía pisar en silencio lo que el chat cambió después. Con CRM_DISENO=1 el agente recibe los
+    puntos (`deshacer`); si deshizo alguno, aquí se quitan de `crm_puntos` y el punto del turno se mide desde lo que quedó."""
+    diseno = agente.diseno_activo()
     for _ in range(3):
         doc = await repo.obtener(db, user_id)
         if doc is None:
@@ -514,6 +518,9 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
         if (texto or imagen) and not pendiente and agente.activo():
             # Con imagen se intenta verla; si el modelo no puede con ella (formato raro, demasiado grande) se reintenta solo con el texto.
             intentos = [{"imagen": imagen, "seccion": seccion, "persona": persona}, {"persona": persona}] if imagen else [{"persona": persona}]
+            if diseno:
+                puntos = await _puntos_con_foto(db, user_id)
+                intentos = [{**x, "puntos": puntos} for x in intentos]
             for extra in intentos:
                 try:
                     r = await agente.responder(doc, texto or TEXTO_SOLO_CAPTURA, historial, con_captura=con_captura, **extra)
@@ -528,10 +535,31 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
             r = {**(responder(doc, texto, pendiente) if texto else {"doc": doc, "respuesta": ""}), "modo": "reglas"}
         if r["doc"] is doc:
             return doc, r
-        guardado = await repo.guardar_version(db, user_id, r["doc"], doc["version"])
+        deshecho = r.get("deshacer")
+        nuevo, punto = pt.con_punto(deshecho["base"] if deshecho else doc, r["doc"], texto or "(adjuntó una imagen)")
+        guardado = await repo.guardar_version(db, user_id, nuevo, doc["version"])
         if guardado:
+            if deshecho:
+                await _reponer_puntos(db, user_id, deshecho)
+            if punto:
+                await _guardar_punto(db, user_id, punto)
             return guardado, r
     raise op.ErrorCrm(409, "Tu CRM cambió mientras guardábamos. Inténtalo de nuevo.")
+
+
+async def _puntos_con_foto(db, user_id: str) -> list[dict]:
+    try:
+        return await repo.puntos_listar(db, user_id, con_foto=True)
+    except Exception as e:  # sin puntos el chat igual contesta: solo no habrá qué deshacer
+        logger.warning("No se pudieron leer los puntos de deshacer: %s", type(e).__name__)
+        return []
+
+
+async def _reponer_puntos(db, user_id: str, deshecho: dict) -> None:
+    try:
+        await repo.puntos_reponer(db, user_id, min(deshecho["deshechos"]), deshecho["puntos"])
+    except Exception as e:
+        logger.warning("No se pudieron ajustar los puntos de deshacer: %s", type(e).__name__)
 
 
 @router.post("/chat")
@@ -571,10 +599,15 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
             segundo_plano.add_task(mem.actualizar_memoria, db, user["id"])  # se pone al día lo que Shifu recuerda sin hacer esperar a la persona
     except Exception as e:
         logger.warning("No se pudo guardar el historial con Shifu: %s", type(e).__name__)
-    salida = {"respuesta": respuesta, "crm": vista_crm(doc), "modo": resultado.get("modo", "reglas")}
+    diseno = agente.diseno_activo()
+    crm = await _vista(db, user["id"], doc) if diseno else vista_crm(doc)  # con el sistema de diseño, también los puntos de deshacer
+    salida = {"respuesta": respuesta, "crm": crm, "modo": resultado.get("modo", "reglas")}
     for clave in ("vista", "pendiente"):
         if resultado.get(clave):
             salida[clave] = resultado[clave]
+    if diseno:  # la traza del turno, con la forma del laboratorio (las reglas no llaman herramientas: listas vacías)
+        for clave in ("cambios", "fallos", "intentos", "consultas", "avisos"):
+            salida[clave] = resultado.get(clave) or []
     return salida
 
 
