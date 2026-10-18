@@ -97,3 +97,20 @@ def test_ajustar_ancho_y_rangos():
     assert [ajustar_ancho(a) for a in (1, 5, 7, 10, 20, float("nan"))] == [3, 6, 6, 8, 12, 6]  # 5: empate entre 4 y 6, gana 6
     assert rangos_de({}) == [{"desde": None, "hasta": -1}, {"desde": 0, "hasta": 7}, {"desde": 8, "hasta": 30}]
     assert rangos_de({"dias": 7}) == [{"desde": None, "hasta": -1}, {"desde": 0, "hasta": 7}]
+
+
+@pytest.mark.parametrize("pid", ["embudo", "agenda", "pedidos", "membresias", "proyectos", "simple"])
+def test_quitar_cada_bloque_de_una_plantilla_deja_0_huecos(pid):
+    """El acomodo automático corre dentro de ejecutar: quitar cualquier pieza del inicio de cada plantilla no deja huecos."""
+    from app.crm import plantillas
+    from app.crm.edicion import ejecutar
+    from lab_doc import doc_de_lab
+
+    p = plantillas.plantilla_por_id(pid)
+    bloques = [{**b, "uid": f"b{i + 1}", "ancho": b.get("ancho") or (12 if b["vista"] in ("kpis", "tablero", "agenda") else 6),
+                "alto": b.get("alto") or (1 if b["vista"] == "kpis" else 2)} for i, b in enumerate(p["inicio"])]
+    doc, _ = doc_de_lab(pid, {"bloques": bloques})
+    for b in doc["inicio"]:
+        r = ejecutar(doc, "quitar_bloque", {"bloque": b["uid"]})
+        assert r["ok"], r["resultado"]
+        assert huecos(r["doc"]["inicio"]) == 0, f"al quitar {b['uid']} ({b['vista']}): {[(x['uid'], x['ancho'], x['alto']) for x in r['doc']['inicio']]}"
