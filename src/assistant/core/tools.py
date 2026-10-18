@@ -47,6 +47,28 @@ _FUNCS.update({"abs": abs, "round": round, "min": min, "max": max})
 _MAX_POW = 10_000  # evita 9**9**9 y similares
 
 
+# Topes de tamaño (S4 de la auditoría): solo afectan entradas patológicas. Un entero de más de ~14 000 bits ya no se
+# podía mostrar (Python limita str(int) a 4300 dígitos), y ((10**10000)**10000)**10000 o factorial(10**6) colgaban el
+# hilo del servidor. Van como defaults de función, no como constantes del módulo: la huella no cambia.
+def _small_int(value, max_bits: int = 14_000):
+    """`value` si no es un entero gigante; si lo es, ValueError antes de seguir calculando con él."""
+    if isinstance(value, int) and value.bit_length() > max_bits:
+        raise ValueError("result too large")
+    return value
+
+
+def _check_pow(left, right, max_bits: int = 14_000) -> None:
+    """Estima el tamaño de left ** right (enteros) antes de calcularlo."""
+    if isinstance(left, int) and isinstance(right, int) and right > 0 and abs(left) > 1:
+        if right * math.log2(abs(left)) > max_bits:
+            raise ValueError("result too large")
+
+
+def _check_call(fn, args, max_factorial: int = 1000) -> None:
+    if fn is math.factorial and args and isinstance(args[0], int) and args[0] > max_factorial:
+        raise ValueError("factorial argument too large")
+
+
 def _eval_node(node: ast.AST):
     if isinstance(node, ast.Expression):
         return _eval_node(node.body)
@@ -54,11 +76,13 @@ def _eval_node(node: ast.AST):
         return node.value
     if isinstance(node, ast.BinOp) and type(node.op) in _BIN_OPS:
         left, right = _eval_node(node.left), _eval_node(node.right)
-        if isinstance(node.op, ast.Pow) and abs(right) > _MAX_POW:
-            raise ValueError("exponent too large")
-        return _BIN_OPS[type(node.op)](left, right)
+        if isinstance(node.op, ast.Pow):
+            if abs(right) > _MAX_POW:
+                raise ValueError("exponent too large")
+            _check_pow(left, right)
+        return _small_int(_BIN_OPS[type(node.op)](left, right))
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY_OPS:
-        return _UNARY_OPS[type(node.op)](_eval_node(node.operand))
+        return _small_int(_UNARY_OPS[type(node.op)](_eval_node(node.operand)))
     if isinstance(node, ast.Name) and node.id in _NAMES:
         return _NAMES[node.id]
     if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "math":
@@ -77,7 +101,9 @@ def _eval_node(node: ast.AST):
         ):
             fn = _FUNCS[node.func.attr]
         if fn is not None:
-            return fn(*[_eval_node(a) for a in node.args])
+            args = [_eval_node(a) for a in node.args]
+            _check_call(fn, args)
+            return _small_int(fn(*args))
     raise ValueError("expression not allowed")
 
 

@@ -39,3 +39,22 @@ def test_fecha_hora_incluye_anio_actual():
     from assistant.tools import fecha_hora
 
     assert str(datetime.now().year) in fecha_hora.invoke({})
+
+
+def test_calculadora_topes_de_tamano_solo_para_entradas_patologicas():
+    """S4: antes, ((10**10000)**10000)**10000 y factorial(10**6) colgaban el hilo del servidor. Ahora fallan rápido;
+    lo normal (incluido lo grande pero mostrable) sigue igual."""
+    import time
+
+    from assistant.core.tools import calculadora
+
+    inicio = time.monotonic()
+    assert calculadora.invoke({"expression": "((10**10000)**10000)**10000"}) == "Error: result too large"
+    assert calculadora.invoke({"expression": "factorial(10**6)"}) == "Error: factorial argument too large"
+    assert calculadora.invoke({"expression": "(2**9000)*(2**9000)"}) == "Error: result too large"
+    assert calculadora.invoke({"expression": "factorial(2000)"}) == "Error: factorial argument too large"
+    assert time.monotonic() - inicio < 2
+    assert calculadora.invoke({"expression": "2**10000"}) == str(2**10000)  # 3011 dígitos: se muestra
+    assert calculadora.invoke({"expression": "factorial(1000)"}).startswith("40238726007709377354")
+    assert calculadora.invoke({"expression": "2**-3"}) == "0.125"
+    assert calculadora.invoke({"expression": "1.5**1000"}).startswith("1.2338")
