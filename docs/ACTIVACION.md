@@ -38,7 +38,7 @@ Pendiente opcional: una segunda muestra del escenario 3 con `UNTRUSTED_WRAP=1`, 
 
 Validado con el modelo real el 2026-10-18 (tercera tanda de `VALIDACION_E2E.md`: evals 6/6 y 3 mensajes por la UI, con seguridad al 100 %). Si lo activas:
 - necesita las dependencias del extra `[files]`: `uv pip install --python .venv -e ".[files]"`;
-- **no se puede combinar con `USE_BIGTOOL=1`**: el servidor no arranca con los dos, porque bigtool aún no añade la regla de archivos al prompt (primera tarea de la Fase 4 en `REFACTOR_NOTAS.md`);
+- funciona también con `USE_BIGTOOL=1` (desde la Fase 4: bigtool tiene `read_file`, `search_in_file` y la regla de archivos). Esa combinación solo está probada con modelos falsos;
 - con el perfil `generic` se pueden subir archivos, pero el modelo no recibe `read_file` ni `search_in_file` (ver `docs/CREAR_PERFIL.md`).
 
 ## Trazas, métricas y feedback (`TRACE_METADATA`, `TURN_METRICS`, `FEEDBACK_ENABLED`)

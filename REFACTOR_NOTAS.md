@@ -2,12 +2,9 @@
 
 Este refactor solo reorganiza. Todo lo de aquí abajo es un **cambio de comportamiento** y va en commits o tareas aparte, después de terminar el refactor y con la suite en verde.
 
-## Fase 4, primera tarea: la regla de archivos en bigtool (y quitar el bloqueo)
+## Fase 4, primera tarea: hecha
 
-Con `FILES_ENABLED=1` y `USE_BIGTOOL=1` juntos, el servidor no arranca (`ConfigError` en `create_app`, test `test_files_enabled_con_bigtool_no_arranca`). El motivo: el registro de bigtool recibe `read_file` y `search_in_file` desde `base_tools`, pero su `PromptedModel` no añade `FILE_UNTRUSTED_RULE` cuando el hilo tiene adjuntos, como sí hace el `dynamic_prompt` del agente normal. Para quitar el bloqueo hay que:
-- hacer que `PromptedModel` sume `files.prompt_addition(messages)` con el interruptor;
-- un test equivalente a `test_subir_leer_por_fragmentos_y_todo_va_envuelto` con `USE_BIGTOOL=1`;
-- borrar el `ConfigError` y su nota en `docs/ACTIVACION.md`.
+bigtool ya tiene `read_file` y `search_in_file`, la regla de archivos en `PromptedModel` y la cita literal obligatoria en hilos con adjuntos (`test_archivos_bigtool.py`). Se quitó el bloqueo `FILES_ENABLED`+`USE_BIGTOOL`. Corrección de lo anotado en la Fase 2: bigtool no "recibía las herramientas de archivos sin la regla"; no las recibía en absoluto, porque su registro no parte de `base_tools`.
 
 ## Tarea siguiente: que todo lea el perfil pasado a `build_agent`, no solo `AGENT_PROFILE`
 
@@ -107,7 +104,7 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
 
 ## Anotado en la Fase 2 de `feat/seguridad-core` (análisis de archivos, `FILES_ENABLED`)
 
-- **bigtool recibe las herramientas de archivos sin la regla del prompt de archivos** (primera deuda de la Fase 4). `base_tools` agrega `read_file` y `search_in_file` con el interruptor, y el registro de bigtool parte de `base_tools`. Pero `PromptedModel` no añade `FILE_UNTRUSTED_RULE` cuando el hilo tiene adjuntos, como sí hace el `dynamic_prompt` del agente normal. La salida va envuelta en `<untrusted_file_content>` igual y la memoria exige cita literal en hilos con adjuntos; lo que falta es la regla. Sin arreglar.
+- ~~**bigtool recibe las herramientas de archivos sin la regla del prompt de archivos**~~ (resuelto en la Fase 4; en realidad no las recibía). `base_tools` agrega `read_file` y `search_in_file` con el interruptor, y el registro de bigtool parte de `base_tools`. Pero `PromptedModel` no añade `FILE_UNTRUSTED_RULE` cuando el hilo tiene adjuntos, como sí hace el `dynamic_prompt` del agente normal. La salida va envuelta en `<untrusted_file_content>` igual y la memoria exige cita literal en hilos con adjuntos; lo que falta es la regla. Sin arreglar.
 - **`generic` no recibe las herramientas de archivos aunque `FILES_ENABLED=1`**: su `build_tools` filtra `base` por la lista `TOOLS`, que no las incluye. Las rutas de subida sí existen, así que el usuario puede adjuntar un archivo que el modelo no puede leer (las imágenes sí llegan). Documentado en `docs/CREAR_PERFIL.md`. Sin arreglar.
 - **La memoria semántica y `put(index=False)`**: `langgraph-store-mongodb` lanza `IndexError` con `put(..., index=False)` en un store con índice vectorial. Se evitó guardando los archivos en un store sin índice (colección `file_store`). Si se actualiza la librería, conviene revisar si se corrigió.
 

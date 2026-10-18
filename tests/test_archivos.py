@@ -396,13 +396,10 @@ def test_con_memoria_semantica_los_archivos_van_a_un_store_sin_indice(mongo_clie
     assert fstore.delete_thread(Semantico(), "ana", "h1") == 1
 
 
-def test_files_enabled_con_bigtool_no_arranca():
-    """bigtool todavía no añade la regla de archivos al prompt: el servidor se niega a arrancar con los dos."""
-    from assistant.core.config import ConfigError
+def test_files_enabled_con_bigtool_arranca_y_registra_las_rutas():
+    """El bloqueo se quitó cuando bigtool tuvo las herramientas de archivos y la regla del prompt
+    (test_archivos_bigtool.py)."""
     from assistant.core.server import create_app
 
-    s = _settings(files_enabled=True, use_bigtool=True)
-    with pytest.raises(ConfigError, match="USE_BIGTOOL=1"):
-        create_app(agent=object(), settings=s, store=InMemoryStore())
-    with pytest.raises(ConfigError, match="USE_BIGTOOL=1"):  # también en el arranque real, antes de conectar
-        create_app(settings=s)
+    app = create_app(agent=object(), settings=_settings(files_enabled=True, use_bigtool=True), store=InMemoryStore())
+    assert "/threads/{thread_id}/files" in {r.path for r in app.routes}

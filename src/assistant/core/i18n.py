@@ -46,7 +46,6 @@ FILE_TEXTS = (
     "files.empty", "files.too_large", "files.type_not_allowed", "files.content_mismatch", "files.macro",
     "files.zip_bomb", "files.not_text", "files.encrypted", "files.image_too_big", "files.extract_failed",
     "files.extract_timeout", "files.too_many", "files.not_found", "startup.files_missing_deps",
-    "startup.files_bigtool",
 )
 
 
