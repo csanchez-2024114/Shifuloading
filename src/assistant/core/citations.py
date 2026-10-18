@@ -50,6 +50,15 @@ def _bare_urls(text: str) -> list[str]:
     return [u for u in (_trim_url(m) for m in _BARE_URL.findall(text)) if "://" in u]
 
 
+# _BARE_URL salta la URL pegada a "(" (para no contar dos veces el destino de un enlace markdown), así que una
+# "(https://…)" suelta no la veía nadie. El modo estricto (URL_FILTER_ALWAYS) también mira esas: sin "](" delante.
+_after_paren = re.compile(r"(?<=\()(?<!\]\()https?://[^\s)\]\"'>]+")
+
+
+def _parenthesized_urls(text: str) -> list[str]:
+    return [u for u in (_trim_url(m) for m in _after_paren.findall(text)) if "://" in u]
+
+
 def urls(text: str) -> list[str]:
     return [_trim_url(u) for _, u in _MD_LINK.findall(text)] + _bare_urls(text)
 
@@ -82,8 +91,12 @@ def keep_supported(text: str, evidence: str, strict_query: bool = False) -> tupl
     exfiltración de URL_FILTER_ALWAYS); sin él, como siempre, solo dominio y ruta."""
     key = _with_query if strict_query else normalize_url
     supported = {key(u) for u in urls(evidence)}
+    links = _links(text)
+    if strict_query:
+        supported |= {key(u) for u in _parenthesized_urls(evidence)}
+        links += [(u, "", u) for u in _parenthesized_urls(text)]
     removed = []
-    for whole, title, url in _links(text):
+    for whole, title, url in links:
         if key(url) not in supported:
             text = text.replace(whole, title, 1)
             removed.append(url)

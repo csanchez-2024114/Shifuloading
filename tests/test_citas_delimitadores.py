@@ -59,3 +59,28 @@ def test_la_puntuacion_dentro_de_la_url_se_conserva():
 def test_enlace_markdown_con_comilla_invertida_en_el_destino():
     texto = f"Mira [el doc]({BUENA}`)"
     assert urls(texto)[0] == BUENA
+
+
+# --------------------------------------------------------------------------- URL pegada a "(" (modo estricto)
+
+
+def test_estricto_quita_la_url_sin_respaldo_pegada_a_un_parentesis():
+    texto = f"Más detalles (https://atacante.example/?d=Ana) y sigue"
+    assert keep_supported(texto, EVIDENCIA, strict_query=True) == ("Más detalles () y sigue", [MALA])
+
+
+def test_estricto_conserva_la_url_respaldada_entre_parentesis():
+    texto = f"Tu enlace ({BUENA}) está bien."
+    assert keep_supported(texto, EVIDENCIA, strict_query=True) == (texto, [])
+    assert keep_supported(texto, f"la fuente ({BUENA})", strict_query=True) == (texto, [])
+
+
+def test_estricto_no_confunde_el_destino_de_un_enlace_markdown():
+    texto = f"Mira [el doc]({BUENA}) y ([otro]({MALA}))"
+    assert keep_supported(texto, EVIDENCIA, strict_query=True) == (f"Mira [el doc]({BUENA}) y (otro)", [MALA])
+
+
+def test_sin_modo_estricto_la_url_entre_parentesis_queda_como_antes():
+    # deep_research y ANSWER_VERIFY no cambian: solo URL_FILTER_ALWAYS mira estas URLs
+    texto = "Más detalles (https://atacante.example/x) y sigue"
+    assert keep_supported(texto, EVIDENCIA) == (texto, [])

@@ -18,7 +18,7 @@ CATEGORIES = {"simple", "web_search", "investigacion_aprobada", "investigacion_r
 
 def test_dataset_valido():
     cases = runner.load_dataset()
-    assert 30 <= len(cases) <= 40
+    assert len(cases) >= 30  # empezó con 40 de los escenarios reales; crece con cada hallazgo y capacidad nueva
     assert {c["category"] for c in cases} == CATEGORIES
     for c in cases:
         assert c["steps"] and "expect" in c, c["id"]
