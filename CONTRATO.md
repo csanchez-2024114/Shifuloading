@@ -221,6 +221,13 @@ empiezan con `:`.
 | DELETE | `/threads/{thread_id}` | borra sus checkpoints (IA) y su fila (negocio) |
 | GET / DELETE | `/me/memories`, `/me/memories/{key}` | recuerdos del usuario de la sesión |
 
+Antes de cualquier ruta (`feat/seguridad-core`):
+- una cabecera `Host` fuera de `TRUSTED_HOSTS` responde **400**;
+- con `AUTH_ENABLED=0`, una conexión que no llegó a una dirección de loopback responde **403** `{"detail": …}`;
+- `/chat` con un `message` de más de `MAX_MESSAGE_CHARS` caracteres responde **413** `{"detail": …}` sin abrir el stream.
+
+Los eventos SSE no cambian. El evento `error` de una excepción inesperada lleva un aviso genérico, y el detalle va solo al log.
+
 Con `AUTH_ENABLED=1`: sin sesión, 401. Las peticiones que cambian estado (POST/PATCH/DELETE con sesión) exigen `Origin` o `Referer` de la misma página y la cabecera `X-CSRF-Token` (si no, 403). Un hilo ajeno o inexistente responde **404** en `/chat`, `/resume`, `/history`, `/threads/{id}/context`, `/threads/{id}/compact`, `PATCH /threads/{id}` y `DELETE /threads/{id}`. El `user_id` del body de `/chat` y `/resume` se ignora: sale de la sesión. Las rutas `/memories/{user_id}` solo existen con `AUTH_ENABLED=0`.
 
 `server.create_app(agent=None) -> FastAPI`: si recibe `agent`, NO hace chequeos de arranque (para tests).
