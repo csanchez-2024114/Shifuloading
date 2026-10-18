@@ -7,7 +7,24 @@ Asistente conversacional autónomo con LangGraph 1.2, el modelo `gpt-6-luna` de 
 - **Memoria**: corto plazo con `MongoDBSaver` (por `thread_id`) y largo plazo con `MongoDBStore` (por `user_id`, namespace `("user", user_id, "memories")`).
 - **Límites**: `recursion_limit` 100 (red de seguridad), tope de llamadas al modelo por turno, tope de tokens de salida y errores de herramientas devueltos al agente para que pruebe otra vía.
 - **Human-in-the-loop**: patrón listo con la herramienta de ejemplo `send_simulated_email` (no envía nada). Se activa con `ENABLE_HITL_DEMO=1`: la UI muestra Aprobar/Rechazar.
-- **Personalidad**: edita [prompts/system.md](prompts/system.md). No hace falta tocar código ni reiniciar; se lee en cada mensaje. Los prompts internos y las descripciones de herramientas están en inglés; el agente responde en el idioma del usuario.
+- **Personalidad**: edita [profiles/default/prompts/system.md](src/assistant/profiles/default/prompts/system.md). No hace falta tocar código ni reiniciar; se lee en cada mensaje. Los prompts internos y las descripciones de herramientas están en inglés; el agente responde en el idioma del usuario.
+
+## Estructura: núcleo, packs y perfiles
+
+```
+src/assistant/
+  core/       núcleo reutilizable: agente y middleware, herramientas base, memoria, contexto, citas, servidor,
+              cuentas, bigtool (extensions/bigtool.py), carga de perfiles (profile.py) y catálogo de textos (i18n.py)
+  packs/      piezas compartibles: i18n/es.py (textos al usuario), lang/es_en.py (reglas de intención y léxico
+              de la memoria), tools/ (utilidades y demos de bigtool), ui/index.html (la interfaz)
+  profiles/   casos de uso: default (Agente 0, el comportamiento de siempre) y generic (prueba de pivote)
+```
+
+- **Dependencias:** `core` no importa `packs` ni `profiles`; `packs` no importa `profiles`; un perfil no importa otro. Lo comprueba `tests/test_dependencias.py`. El núcleo carga el perfil por nombre (`AGENT_PROFILE`), al usarlo y no al importar.
+- **Perfil por defecto:** prompt en [`profiles/default/prompts/system.md`](src/assistant/profiles/default/prompts/system.md); la UI en [`packs/ui/index.html`](src/assistant/packs/ui/index.html); herramientas, aprobaciones, nombres antiguos y políticas de memoria en `profiles/default/`.
+- **Nombres viejos:** `assistant.agent`, `assistant.server`, `assistant.tools`… siguen funcionando como alias de `assistant.core.*`, con un `DeprecationWarning`. `uvicorn assistant.server:app` no cambia.
+- **Crear un perfil:** [docs/CREAR_PERFIL.md](docs/CREAR_PERFIL.md).
+- **Rama `refactor/core-profiles`:** mientras no se fusione con `main` (el merge lo decide el usuario), cada commit es un solo paso con la suite en verde, y un refactor nunca va junto con un cambio de comportamiento. La huella de caracterización (`tests/snapshots/perfil_por_defecto.json`) no se regenera. Plan, paridad y pendientes: [REFACTOR_PLAN.md](REFACTOR_PLAN.md), [PARIDAD.md](PARIDAD.md) y [REFACTOR_NOTAS.md](REFACTOR_NOTAS.md).
 
 ## Instalación
 
@@ -50,6 +67,7 @@ copy .env.example .env   # y pon tu OPENAI_API_KEY
 | `MEMORY_SEMANTIC` | `0` | `1` = búsqueda semántica de recuerdos con Atlas Vector Search y embeddings `text-embedding-3-small`; con MongoDB local se ignora (log de aviso) y usa búsqueda por palabras |
 | `MEMORY_MIN_SCORE` | `0.68` | puntuación mínima (0–1) para que un recuerdo cuente como relevante en la búsqueda semántica; calibrado, ver "MongoDB Atlas" |
 | `ENABLE_HITL_DEMO` | `0` | activa la herramienta de ejemplo con aprobación humana |
+| `AGENT_PROFILE` | `default` | perfil del agente (ver "Estructura"): `default` (Agente 0), `generic`, o una ruta con puntos a un paquete propio. Vacía = `default`. Se lee al cargar el perfil, no en `Settings` |
 
 ### Configuración recomendada (validada con el modelo real)
 
@@ -126,13 +144,13 @@ Pon en `.env` la URI `mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/
 
 | Variable | Default | Uso |
 |---|---|---|
-| `USE_BIGTOOL` | `0` | `1` = usa el agente alterno de [`bigtool_agent.py`](src/assistant/bigtool_agent.py) en vez de `agent.py` |
+| `USE_BIGTOOL` | `0` | `1` = usa el agente alterno de [`core/extensions/bigtool.py`](src/assistant/core/extensions/bigtool.py) en vez de `core/agent.py` |
 | `BIGTOOL_DEMO_TOOLS` | `0` | `1` = agrega ~58 herramientas inofensivas de demostración (funciones de `math` y de texto); 95 en total |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | modelo de embeddings de OpenAI para el índice de herramientas |
 
 Con [langgraph-bigtool](https://github.com/langchain-ai/langgraph-bigtool) el modelo no recibe todas las herramientas: solo ve `retrieve_tools`, la llama con una descripción de lo que necesita y recibe las 3 más parecidas de un índice semántico. **Conviene a partir de unas decenas de herramientas**; con las 6–7 actuales no aporta y suma una llamada extra.
 
-Con bigtool el registro incluye siempre las 6 herramientas del agente más **31 herramientas extra** ([`extra_tools.py`](src/assistant/extra_tools.py)), todas sin efectos reales:
+Con bigtool el registro incluye siempre las 6 herramientas del agente más **31 herramientas extra** ([`packs/tools/utilities.py`](src/assistant/packs/tools/utilities.py)), todas sin efectos reales:
 
 | Grupo | Herramientas |
 |---|---|
@@ -164,7 +182,7 @@ Detalles:
   - sin aprobación humana, por eso el registro no incluye herramientas con efectos reales;
   - sin tope de llamadas por esfuerzo, el límite es `RECURSION_LIMIT` (el esfuerzo sí ajusta el razonamiento);
   - no hay herramientas siempre visibles: hasta la calculator se busca primero.
-- **Para agregar herramientas de una app:** usa la plantilla `@tool_spec` (guía en [docs/PLANTILLA_HERRAMIENTA.md](docs/PLANTILLA_HERRAMIENTA.md), ejemplo en [apps/crm_demo.py](src/assistant/apps/crm_demo.py)). Así se indexa una descripción rica y se declaran las pre-funciones (`requires`, con alternativas, y `auto` para encadenar solo). Súmalas a `build_registry` en `bigtool_agent.py`, sin argumentos inyectados (`ToolRuntime`); el usuario se lee con `get_runtime().context`.
+- **Para agregar herramientas de una app:** usa la plantilla `@tool_spec` (guía en [docs/PLANTILLA_HERRAMIENTA.md](docs/PLANTILLA_HERRAMIENTA.md), ejemplo en [profiles/default/apps/crm_demo.py](src/assistant/profiles/default/apps/crm_demo.py)). Así se indexa una descripción rica y se declaran las pre-funciones (`requires`, con alternativas, y `auto` para encadenar solo). Súmalas en `bigtool_tools(settings)` del perfil (en el perfil por defecto, `profiles/default/tools.py`), sin argumentos inyectados (`ToolRuntime`); el usuario se lee con `get_runtime().context`.
 - **CRM de ejemplo:** con `BIGTOOL_DEMO_TOOLS=1` se carga un CRM simulado en memoria (clientes y pedidos) para probar las pre-funciones, por ejemplo "crea un pedido de 2 monitores para ana@example.com".
 
 ### Memoria larga y control de alucinaciones (opcional, todo desactivado por defecto)
@@ -182,7 +200,7 @@ Detalles:
 | `ANSWER_VERIFY` | `0` | `1` = si el turno usó `web_search` o `deep_research`, una llamada barata contrasta la respuesta con lo recuperado y la corrige si hace falta |
 
 Siempre activo, sin costo extra de llamadas:
-- **Prompt anti-alucinación** ([prompts/system.md](prompts/system.md)):
+- **Prompt anti-alucinación** ([profiles/default/prompts/system.md](src/assistant/profiles/default/prompts/system.md)):
   - separa lo que viene de herramientas, de recuerdos y del conocimiento propio;
   - dice "no lo sé" antes que inventar;
   - no afirma datos de actualidad sin buscar;
@@ -241,13 +259,13 @@ No guarda contenido de la conversación: explicaciones, tareas, cálculos, resul
 
 Detalles:
 - **Qué toma el resumen:** pide conservar literal nombres, cifras, fechas, decisiones y preferencias, fusionar el resumen anterior y cerrar con una lista "Problems solved so far" (cada problema resuelto con su resultado, sin perder los del resumen anterior; "-" si aún no hay ninguno). Todo va en el idioma de la conversación salvo ese encabezado, sin mezclar idiomas en una frase ("El usuario dijo…", no "The user said…"), y el resumen no puede contradecirse (por ejemplo, decir que no hay tareas resueltas junto a una resuelta). Se desactivó el recorte previo de la librería (`trim_tokens_to_summarize`), que con su valor por defecto descartaba el resumen anterior en el segundo resumen. El texto del resumen no llega a la UI como tokens; se ve el aviso "🗜️ Conversación anterior resumida".
-- **Un resumen por mensaje como máximo** (`ResumenPorTurno` en `agent.py`). En la prueba larga hubo hasta 3 resúmenes en un turno, por dos causas:
+- **Un resumen por mensaje como máximo** (`ResumenPorTurno` en `core/agent.py`). En la prueba larga hubo hasta 3 resúmenes en un turno, por dos causas:
   - lo conservado (20 mensajes) seguía cerca del umbral;
   - el middleware nativo también dispara con el uso de tokens que reporta el último mensaje del modelo, que incluye el system prompt, las herramientas y la salida. Tras resumir, seguía por encima.
 
   Ahora se conserva por tokens, el disparo nunca usa el uso reportado tras compactar (en el modo anterior mira solo los tokens de los mensajes, igual que `keep`) y el resumen guarda el id del mensaje del usuario del turno: si ya se resumió en este turno, no se vuelve a resumir. En la repetición real de H6, H7, G1 y H8 hubo 1 resumen (13.4 s), frente a 8 resúmenes en H6–H8 en la prueba larga.
 - **Qué cuenta como evidencia:** la verificación de recuerdos solo usa mensajes que escribió el usuario. **Nunca usa el resumen**, que es texto generado por el modelo.
-- **Citas revisadas en código** ([citations.py](src/assistant/citations.py)), no solo con el prompt del verificador. Dos URLs son la misma si coinciden dominio y ruta: no cuentan `?utm_source=openai` y otros parámetros, `www.`, el fragmento ni la barra final. Reglas:
+- **Citas revisadas en código** ([core/citations.py](src/assistant/core/citations.py)), no solo con el prompt del verificador. Dos URLs son la misma si coinciden dominio y ruta: no cuentan `?utm_source=openai` y otros parámetros, `www.`, el fragmento ni la barra final. Reglas:
   - una cita respaldada nunca se pierde: si la corrección la quita, se vuelve a poner en una línea "Fuentes:" al final;
   - una cita cuya URL no está en lo que devolvió la búsqueda se quita (queda su texto);
   - una corrección que trae cifras que no están ni en la respuesta ni en la evidencia se descarta y se conserva el original, con un aviso;
@@ -375,7 +393,7 @@ Datos anteriores: `scripts/assign_legacy_data.py` lista (dry-run por defecto) lo
 | `LANGSMITH_PROJECT` | `agente-0` | proyecto donde se agrupan las trazas (si no se define, LangSmith usa `default`) |
 | `LANGSMITH_ENDPOINT` | (US) | solo cuentas EU: `https://eu.api.smith.langchain.com`, sin `/` al final |
 
-No requiere código: `config.py` carga `.env` en el entorno y LangChain/LangGraph activan el tracer solos. Reinicia el servidor después de cambiarlas.
+No requiere código: `core/config.py` carga `.env` en el entorno y LangChain/LangGraph activan el tracer solos. Reinicia el servidor después de cambiarlas.
 
 > **Importante:** con `LANGSMITH_TRACING=true`, cada conversación se **envía a la nube de LangSmith**: tus mensajes, las respuestas, los argumentos y resultados de las herramientas (búsquedas, cálculos) y los recuerdos guardados o consultados. No lo actives con datos que no quieras compartir con ese servicio.
 
