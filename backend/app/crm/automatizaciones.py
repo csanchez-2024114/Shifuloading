@@ -96,7 +96,7 @@ def _recordatorios(doc: dict, ahora: datetime) -> list[str]:
         if len(nombres) >= MAX_RECORDATORIOS_POR_VEZ:
             break
         ultimo = _utc(c["ultimo_contacto"])
-        if c["etapa"] == final or ultimo > limite or c.get("recordado") == ultimo.isoformat():
+        if c.get("ejemplo") or c["etapa"] == final or ultimo > limite or c.get("recordado") == ultimo.isoformat():  # a un ejemplo sembrado no se le da seguimiento
             continue
         c["recordado"] = ultimo.isoformat()  # ya se le recordó por este tramo sin avance: no se repite hasta que cambie de etapa
         doc["tareas"]["porHacer"].append({"id": op.nuevo_id(), "t": f"Dar seguimiento a {c['n']}"[:60], "vence": hoy, "contacto_id": c["id"], "auto": "recordatorios"})

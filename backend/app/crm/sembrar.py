@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
 from datetime import date, datetime
 from typing import Any
 
@@ -344,21 +345,56 @@ def elegir(brief: dict) -> dict:
 # ───────── Ejemplos para lo que se agregue después de sembrar ─────────
 
 def ejemplos_para_campos(doc: dict, sec_id: str, campos: list[dict], nivel: str = NIVEL, hoy: date | None = None) -> dict:
-    """Llena con valores de ejemplo los campos NUEVOS de una lista sembrada, solo en sus registros de ejemplo (los reales no se
-    tocan). Cada campo nuevo tiene su propia semilla (como `extenderDatos`), así lo que ya estaba no cambia. Devuelve un doc nuevo."""
+    """Llena con valores de ejemplo los campos NUEVOS de una sección sembrada (una lista o los contactos), solo en sus registros de
+    ejemplo (los reales no se tocan). Cada sección tiene su propia semilla para sus campos nuevos (como `extenderDatos`), así lo que
+    ya estaba no cambia. Devuelve un doc nuevo."""
     out = copy.deepcopy(doc)
-    lista = next((l for l in out["listas"] if l["id"] == sec_id), None)
-    if lista is None or not campos:
+    if sec_id == "contactos":
+        filas = [c.setdefault("extra", {}) for c in out["contactos"] if c.get("ejemplo")]
+    else:
+        lista = next((l for l in out["listas"] if l["id"] == sec_id), None)
+        filas = [r["valores"] for r in lista["registros"] if r.get("ejemplo")] if lista else []
+    if not filas or not campos:
         return out
     base = (out.get("plantilla") or {}).get("id") or "crm"
     propios = [{**c, "tipo": "estado" if c.get("tipo") == "lista" else c.get("tipo")} for c in campos]
     sid = sec_id[len(PREFIJO):] if sec_id.startswith(PREFIJO) else sec_id
-    extra = ejemplos.registros_ejemplo({"id": f"{base}:{sid}:campos", "secciones": [{"id": sid, "campos": propios}]}, nivel, hoy).get(sid) or []
-    i = 0
-    for r in lista["registros"]:
-        if not r.get("ejemplo"):
-            continue
-        if i < len(extra):
-            r["valores"].update({k: v for k, v in extra[i]["valores"].items() if v is not None})
-        i += 1
+    semilla = {"id": f"{base}:{sid}:campos", "secciones": [{"id": sid, "campos": propios}]}
+    extra = ejemplos.registros_ejemplo(semilla, nivel, hoy).get(sid) or []
+    for valores, r in zip(filas, extra):
+        valores.update({k: v for k, v in r["valores"].items() if v is not None})
     return out
+
+
+# ───────── Crear el CRM desde el cuestionario (POST /crm con CRM_DISENO=1) ─────────
+
+def activo() -> bool:
+    """¿Se crea el CRM desde las plantillas? Solo con CRM_DISENO=1; si no, `crear_crm` hace exactamente lo de siempre."""
+    return os.getenv("CRM_DISENO", "0").strip() == "1"
+
+
+async def crear_desde_cuestionario(user_id: str, brief: dict, *, modelo: Any = None, ahora: datetime | None = None) -> dict:
+    """El CRM nuevo: `asignar` elige la plantilla con las respuestas; si hay una ganadora clara, se siembra sobre el CRM base de
+    `generador` y la IA solo le ajusta nombres y campos dentro del cerco (`diseno.ajustar_sembrado`; sin IA queda la plantilla).
+    Si es ambiguo (o la siembra falla), es lo de Carlos de siempre (`generador` + `diseno.disenar`) con plantilla.origen = "generador"."""
+    from app.crm import diseno
+    from app.crm.generador import generar
+
+    ahora = ahora or op.ahora_utc()
+    base = generar(user_id, brief, ahora)
+    asig = elegir(brief)
+    rec = asig.get("recomendada")
+    doc = None
+    if rec and not asig.get("ambiguo"):
+        try:
+            doc = sembrar(base, rec["id"], ahora=ahora, pais=(brief.get("ubicacion") or {}).get("pais"), porque=rec.get("porque"))
+        except Exception as e:  # una plantilla rota no deja a la persona sin CRM: sigue lo de siempre
+            logger.warning("No se pudo sembrar la plantilla %s: %s", rec.get("id"), type(e).__name__)
+    if doc is None:
+        doc = est.normalizar(await diseno.disenar(base, brief, modelo=modelo, ahora=ahora))
+        doc["plantilla"] = {"id": None, "origen": "generador", "porque": []}
+        return doc
+    doc, aplicado = await diseno.ajustar_sembrado(doc, brief, modelo=modelo, ahora=ahora)
+    for sid, campos in aplicado["nuevos"].items():
+        doc = ejemplos_para_campos(doc, sid, campos, hoy=_hoy(ahora))
+    return doc

@@ -8,7 +8,8 @@ Lo que se cambia a mano (estas rutas) deja un punto de deshacer, con `antes_de` 
 
 Endpoints (relativos al prefijo):
   GET    ""                       — El CRM (404 si todavía no tiene uno)
-  POST   ""                       — Crea el CRM a partir del cuestionario; la IA diseña etapas, campos y secciones (reemplaza el anterior)
+  POST   ""                       — Crea el CRM a partir del cuestionario; la IA diseña etapas, campos y secciones (reemplaza el anterior).
+                                    Con CRM_DISENO=1 se siembra la plantilla del laboratorio que elige `asignar` (ver app/crm/sembrar.py)
   POST   /seguimiento             — (antiguo) Preguntas de seguimiento que la IA hace según el negocio (sin sesión, con límite)
   POST   /siguiente-pregunta      — La siguiente pregunta del cuestionario, escrita por la IA según lo contestado (sin sesión, con límite)
   DELETE ""                       — Lo borra (para repetir el cuestionario)
@@ -44,6 +45,7 @@ from app.crm import memoria as mem
 from app.crm import operaciones as op
 from app.crm import puntos as pt
 from app.crm import repositorio as repo
+from app.crm import sembrar
 from app.crm.chat import responder, sanear_pendiente
 from app.crm.generador import generar
 from app.crm.vista import vista_crm
@@ -286,9 +288,11 @@ async def obtener_crm(request: Request, user: dict = Depends(get_current_user)):
 
 
 def _tiene_datos(doc: dict) -> bool:
-    """¿La persona ya trabajó en este CRM? Contactos, registros o tareas suyas (las que crean las automatizaciones no cuentan)."""
-    return bool(doc.get("total_contactos") or any(l["registros"] for l in doc.get("listas", []))
-                or any(not t.get("auto") for col in doc.get("tareas", {}).values() for t in col))
+    """¿La persona ya trabajó en este CRM? Contactos, registros o tareas suyas (las que crean las automatizaciones y los ejemplos
+    que sembró una plantilla no cuentan)."""
+    return bool((doc.get("total_contactos") or 0) > sum(1 for c in doc.get("contactos", []) if c.get("ejemplo"))
+                or any(not r.get("ejemplo") for l in doc.get("listas", []) for r in l["registros"])
+                or any(not t.get("auto") and not t.get("ejemplo") for col in doc.get("tareas", {}).values() for t in col))
 
 
 @router.post("", status_code=201)
@@ -298,7 +302,11 @@ async def crear_crm(request: Request, datos: CrearCrm, user: dict = Depends(get_
         # Crear reemplaza el CRM: con datos de la persona adentro no se permite (un cuestionario viejo no debe borrarle su trabajo).
         return JSONResponse({"mensaje": "Ya tienes un CRM con información. Para rehacerlo usa «Repetir cuestionario» (eso borra el actual)."}, status_code=409)
     brief = datos.brief.model_dump(exclude_none=True)
-    doc = await diseno.disenar(generar(user["id"], brief), brief)  # la IA arma la estructura a la medida; sin IA queda la plantilla base
+    if sembrar.activo():
+        # CRM_DISENO=1: la plantilla del laboratorio que elige `asignar`, sembrada con sus ejemplos; la IA solo ajusta nombres y campos.
+        doc = await sembrar.crear_desde_cuestionario(user["id"], brief)
+    else:
+        doc = await diseno.disenar(generar(user["id"], brief), brief)  # la IA arma la estructura a la medida; sin IA queda la plantilla base
     doc = est.normalizar(doc)  # nace en el esquema 2 (inicio, marca, toma…), igual que lo verá la próxima lectura
     await repo.reemplazar(request.app.state.db, user["id"], doc)
     await _olvidar_puntos(request.app.state.db, user["id"])  # los del CRM anterior no sirven para este
