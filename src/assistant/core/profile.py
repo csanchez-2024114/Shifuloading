@@ -4,6 +4,7 @@ nombres antiguos de herramientas, UI). El núcleo lo recibe de aquí y nunca imp
 import importlib
 import os
 import pkgutil
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal, Mapping
@@ -15,6 +16,21 @@ PROFILES_PACKAGE = "assistant.profiles"  # única referencia del núcleo a los p
 DEFAULT_PROFILE = "default"
 
 Effect = Literal["read", "write", "send", "delete"]
+NEVER = re.compile(r"(?!)")  # patrón que no reconoce nada: default de las reglas (el núcleo no asume idioma)
+
+
+@dataclass(frozen=True)
+class IntentRules:
+    """Reglas de intención del perfil (antes regex fijos del núcleo). Los textos se comparan en minúsculas y sin
+    tildes, salvo continue_request (texto tal cual, con match al inicio) y sources_heading (la respuesta)."""
+    continue_request: re.Pattern = NEVER          # "continúa" tras una respuesta cortada por MAX_TOKENS
+    classifier_signal: re.Pattern = NEVER         # un mensaje corto con esto sí pasa por el clasificador de esfuerzo
+    classifier_signal_words: tuple[str, ...] = ()  # ...o con una palabra que empiece por alguno de estos prefijos
+    short_message_chars: int = 60                 # más largo que esto: siempre al clasificador
+    explicit_research: re.Pattern = NEVER         # pide investigar en este mensaje: deep_research sin tarjeta
+    research_again: re.Pattern = NEVER            # en un seguimiento breve, pide investigar de nuevo
+    follow_up_max_chars: int = 200                # más largo que esto no es un seguimiento breve
+    sources_heading: re.Pattern = NEVER           # encabezado de una sección de fuentes (se quita si no hubo web)
 
 
 @dataclass(frozen=True)
@@ -40,6 +56,7 @@ class AgentProfile:
     search_economy_rule: str = ""
     legacy_tool_names: Mapping[str, str] = field(default_factory=dict)  # nombre antiguo -> actual (hilos viejos)
     texts: TextCatalog = field(default_factory=TextCatalog)  # textos al usuario: base de un pack + sobreescrituras
+    intents: IntentRules = field(default_factory=IntentRules)  # reglas de intención (idioma del caso de uso)
 
 
 _CACHE: dict[str, AgentProfile] = {}
@@ -81,3 +98,9 @@ def load_profile(name: str | None = None) -> AgentProfile:
 
 def active_profile() -> AgentProfile:
     return load_profile()
+
+
+def tool_aliases(names, profile=None) -> tuple[str, ...]:
+    """`names` (nombres actuales de herramientas) más sus nombres antiguos según el perfil, en el orden de su mapa."""
+    legacy = (profile or active_profile()).legacy_tool_names
+    return (*names, *(old for old, new in legacy.items() if new in names))

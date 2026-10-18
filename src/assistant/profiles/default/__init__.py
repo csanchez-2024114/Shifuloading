@@ -5,6 +5,7 @@ from assistant.core.i18n import TextCatalog
 from assistant.core.profile import AgentProfile
 from assistant.packs.i18n import es
 from assistant.profiles.default.policies import MEMORY_POLICIES, OLD_TOOL_NAMES, SEARCH_ECONOMY_RULE, TOOL_POLICIES
+from assistant.profiles.default.rules import INTENTS
 from assistant.profiles.default.tools import bigtool_tools, build_tools
 
 HERE = Path(__file__).parent
@@ -21,4 +22,5 @@ PROFILE = AgentProfile(
     search_economy_rule=SEARCH_ECONOMY_RULE,
     legacy_tool_names=OLD_TOOL_NAMES,
     texts=TextCatalog(es.TEXTS),  # español, sin sobreescrituras
+    intents=INTENTS,
 )

@@ -58,8 +58,6 @@ CONTINUE_NOTE = ("Your previous answer was cut by the output limit (the system r
                  "you to continue: continue exactly where it stopped. Do not repeat, summarize or rewrite anything "
                  "already written. If it stopped inside a code block, open a new code block with the same language and "
                  "continue from the next line.")
-# "continúa", "sigue", "continue"... como mensaje corto tras una respuesta cortada
-_CONTINUE_RE = re.compile(r"^\W*(contin[uú]a|continuar|sigue|segu[ií]|seguir|dale|continue|go on|keep going)\b", re.I)
 
 
 @dataclass
@@ -70,23 +68,14 @@ class Context:
     max_tokens: int | None = None    # tope de salida de este mensaje (esfuerzo alto); None = MAX_TOKENS
 
 
-# Señales de que un mensaje corto aún necesita clasificarse: dígitos, operadores, código o verbos de trabajo.
-_SIGNAL_RE = re.compile(r"\d|[+*/=^%×÷√<>]|```")
-_SIGNAL_WORDS = ("calcul", "resuelv", "resolv", "optimi", "demuestr", "demostr", "plan", "disen", "codigo",
-                 "program", "investig", "compar", "analiz", "calculate", "solve", "optimiz", "prove", "design",
-                 "code", "research", "compare",
-                 # actualidad: "¿quién ganó el último partido?" es corto pero necesita buscar (sin tildes: ya normalizado)
-                 "ultim", "hoy", "ayer", "gano", "ganador", "precio", "noticia", "cotiza",
-                 "latest", "last", "today", "yesterday", "won", "winner", "price", "news")
-SHORT_MESSAGE_CHARS = 60
-
-
-def necesita_clasificador(mensaje: str) -> bool:
-    """False solo para mensajes cortos sin dígitos, operadores, código ni palabras de trabajo ("hola", "gracias")."""
+def necesita_clasificador(mensaje: str, intents=None) -> bool:
+    """False solo para mensajes cortos sin señales de trabajo ("hola", "gracias"). Las señales (dígitos, operadores,
+    código, verbos de trabajo) son reglas del perfil (`intents`; None = las del perfil activo)."""
+    rules = intents or active_profile().intents
     texto = _strip_accents(mensaje.strip().lower())
-    if len(texto) > SHORT_MESSAGE_CHARS or _SIGNAL_RE.search(texto):
+    if len(texto) > rules.short_message_chars or rules.classifier_signal.search(texto):
         return True
-    return any(w.startswith(sig) for w in re.findall(r"\w+", texto) for sig in _SIGNAL_WORDS)
+    return any(w.startswith(sig) for w in re.findall(r"\w+", texto) for sig in rules.classifier_signal_words)
 
 
 def _strip_accents(text: str) -> str:
@@ -235,7 +224,8 @@ def _continue_cut(request):
     """Tras una respuesta cortada, un "continúa" debe seguir donde quedó, no rehacerla: el modelo ve la respuesta sin el
     aviso (en español, para el usuario) y CONTINUE_NOTE. Prueba real: rehízo el script entero en vez de continuarlo."""
     msgs = request.messages
-    if len(msgs) < 2 or msgs[-1].type != "human" or not _CONTINUE_RE.match(_content_text(msgs[-1])):
+    if (len(msgs) < 2 or msgs[-1].type != "human"
+            or not active_profile().intents.continue_request.match(_content_text(msgs[-1]))):
         return request
     i = next((k for k in range(len(msgs) - 2, -1, -1) if isinstance(msgs[k], AIMessage)), None)
     if i is None or not msgs[i].additional_kwargs.get("cut"):

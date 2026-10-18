@@ -76,6 +76,16 @@ MOVED_CONSTANTS = {
     "auth.LOCKED_ERROR": "assistant.packs.i18n.es",
     "auth.PASSWORD_RULE": "assistant.packs.i18n.es",
     "memory.SAME_DB_MSG": "assistant.packs.i18n.es",
+    "agent._CONTINUE_RE": "assistant.profiles.default.rules:CONTINUE_RE",
+    "agent._SIGNAL_RE": "assistant.profiles.default.rules:SIGNAL_RE",
+    "agent._SIGNAL_WORDS": "assistant.profiles.default.rules:SIGNAL_WORDS",
+    "agent.SHORT_MESSAGE_CHARS": "assistant.profiles.default.rules:SHORT_MESSAGE_CHARS",
+    "tools._RESEARCH_AGAIN": "assistant.profiles.default.rules:RESEARCH_AGAIN_RE",
+    "tools.FOLLOW_UP_MAX_CHARS": "assistant.profiles.default.rules:FOLLOW_UP_MAX_CHARS",
+    "tools._EXPLICIT_RESEARCH": "assistant.profiles.default.rules:EXPLICIT_RESEARCH_RE",
+    "citations._SOURCES_HEADING": "assistant.profiles.default.rules:SOURCES_HEADING_RE",
+    # derivada: las de memoria global con sus nombres antiguos según el perfil activo (el por defecto)
+    "context.PRUNE_KEEP_TOOLS": "assistant.core.context:prune_keep_tools()",
 }
 
 CONST_MODULES = ("agent", "tools", "memory", "context", "citations", "auth", "bigtool_agent", "extra_tools",
@@ -97,9 +107,12 @@ def _constants() -> dict:
             s = _ser(value)
             if s is not None:
                 out[f"{name}.{attr}"] = s
-    for key, module in MOVED_CONSTANTS.items():
+    for key, home in MOVED_CONSTANTS.items():
         assert key not in out, f"{key} sigue en su módulo viejo: quítalo de MOVED_CONSTANTS"
-        out[key] = _ser(getattr(importlib.import_module(module), key.split(".", 1)[1]))
+        module, _, attr = home.partition(":")
+        attr = attr or key.split(".", 1)[1]  # sin ":" = mismo nombre en el módulo nuevo
+        value = getattr(importlib.import_module(module), attr.removesuffix("()"))
+        out[key] = _ser(value() if attr.endswith("()") else value)
     return out
 
 
@@ -473,7 +486,7 @@ def test_presupuesto_de_busqueda_olvida_los_turnos_mas_viejos(monkeypatch):
     ("hola", False), ("¿y luego qué?", False), ("puedes continuar", False),
 ])
 def test_regex_de_continuar(texto, continua):
-    from assistant.agent import _CONTINUE_RE
+    from assistant.profiles.default.rules import CONTINUE_RE as _CONTINUE_RE
 
     assert bool(_CONTINUE_RE.match(texto)) is continua
 

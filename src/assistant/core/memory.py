@@ -230,12 +230,15 @@ def turn_saves(messages, call_id: str | None = None) -> int:
     start = max((i for i, m in enumerate(messages) if getattr(m, "type", None) == "human"
                  and (getattr(m, "additional_kwargs", None) or {}).get("lc_source") != SUMMARY_SOURCE), default=-1)
     turn = messages[start + 1:]
+    from assistant.core.profile import tool_aliases
+
+    names = tool_aliases(("save_memory",))  # con sus nombres antiguos (hilos viejos)
     if call_id:
         calls = [c.get("id") for m in turn for c in (getattr(m, "tool_calls", None) or [])
-                 if c.get("name") in ("save_memory", "guardar_recuerdo")]
+                 if c.get("name") in names]
         return calls.index(call_id) if call_id in calls else len(calls)
     return sum(1 for m in turn if getattr(m, "type", None) == "tool"
-               and getattr(m, "name", None) in ("save_memory", "guardar_recuerdo"))
+               and getattr(m, "name", None) in names)
 
 
 def user_texts(messages) -> list[str]:

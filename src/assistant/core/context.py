@@ -78,11 +78,16 @@ def prompt_tokens(system_text: str, tools=()) -> int:
 
 # Excepciones de la poda: la memoria global (lo que dijo el usuario y sus ids para update_memory) y, por ser del turno
 # en curso, la evidencia que ANSWER_VERIFY contrasta (solo usa herramientas del turno actual).
-PRUNE_KEEP_TOOLS = ("save_memory", "search_memories", "update_memory",
-                    "guardar_recuerdo", "buscar_recuerdos", "actualizar_recuerdo")  # nombres antiguos incluidos
 PRUNE_MIN_TOKENS = 60  # un resultado más corto que esto pesa casi lo mismo que el aviso: no se poda
 PRUNED_MSG = "[tool result pruned: {name}, {tokens} tokens. Ask again or re-run the tool if needed.]"
 _PRUNED_PREFIX = "[tool result pruned:"
+
+
+def prune_keep_tools(profile=None) -> tuple[str, ...]:
+    """Herramientas cuyo resultado nunca se poda: las de memoria global, con sus nombres antiguos según el perfil."""
+    from assistant.core.profile import tool_aliases
+
+    return tool_aliases(("save_memory", "search_memories", "update_memory"), profile)
 
 
 def turn_start(messages) -> int:
@@ -101,14 +106,15 @@ def _text(msg) -> str:
 def prune_tool_results(messages, age: int) -> list:
     """Copia de `messages` con el contenido de los resultados de herramientas de más de `age` mensajes de antigüedad
     reemplazado por PRUNED_MSG. Conserva la llamada (nombre y argumentos, en el AIMessage) y la respuesta del asistente
-    que interpretó el resultado. No toca el turno en curso ni las herramientas de PRUNE_KEEP_TOOLS. No modifica el
+    que interpretó el resultado. No toca el turno en curso ni las herramientas de prune_keep_tools(). No modifica el
     historial guardado: es solo la vista que recibe el modelo."""
     if age <= 0:
         return list(messages)
     start, last = turn_start(messages), len(messages) - 1
+    keep = prune_keep_tools()
     out = []
     for i, m in enumerate(messages):
-        if (isinstance(m, ToolMessage) and i < start and last - i > age and m.name not in PRUNE_KEEP_TOOLS
+        if (isinstance(m, ToolMessage) and i < start and last - i > age and m.name not in keep
                 and not _text(m).startswith(_PRUNED_PREFIX)):
             tokens = message_tokens([m])
             if tokens >= PRUNE_MIN_TOKENS:

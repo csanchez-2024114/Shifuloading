@@ -3,7 +3,6 @@ import ast
 import logging
 import math
 import operator
-import re
 import threading
 from collections import OrderedDict
 from datetime import datetime, timezone
@@ -339,8 +338,11 @@ def extra_search(messages, tool_call_id: str | None = None, query: str | None = 
     """True si esta llamada no es la primera web_search de la respuesta del modelo que la pidió. Como máximo una
     búsqueda por llamada al modelo: en la prueba real, un seguimiento breve lanzó 3 en paralelo (35k tokens).
     Se identifica por el id de la llamada o, en bigtool (sin id inyectado), por la consulta."""
+    from assistant.core.profile import tool_aliases
+
+    names = tool_aliases(("web_search",))  # con sus nombres antiguos (hilos viejos)
     for m in reversed(messages or []):
-        searches = [c for c in getattr(m, "tool_calls", None) or [] if c.get("name") in ("web_search", "buscar_web")]
+        searches = [c for c in getattr(m, "tool_calls", None) or [] if c.get("name") in names]
         if not searches:
             continue
         if tool_call_id is not None and any(c.get("id") == tool_call_id for c in searches):
@@ -401,10 +403,6 @@ FOLLOW_UP_MSG = ("Not run: this conversation already has research on this. This 
                  "from the earlier research results below; use web_search only for one specific missing fact.\n\n"
                  "Earlier research results:\n{previous}")
 _RAW_FINDINGS_CHARS = 8000
-# palabras con las que el usuario pide investigar de nuevo (sin acentos)
-_RESEARCH_AGAIN = re.compile(r"\b(investiga\w*|busca\w*|de nuevo|otra vez|nuevamente|actualiza\w*|research\w*|"
-                             r"search\w*|look (it )?up|again)\b")
-FOLLOW_UP_MAX_CHARS = 200
 
 
 class _TokenCounter(BaseCallbackHandler):
@@ -527,14 +525,16 @@ def earlier_research(messages, tool_name: str = "deep_research") -> str | None:
     investigar de nuevo; None en otro caso. Evita relanzar la investigación (en la prueba larga, H13 gastó 240k)."""
     from assistant.core.profile import active_profile
 
-    legacy = active_profile().legacy_tool_names  # hilos viejos: nombres antiguos de las herramientas
+    profile = active_profile()
+    legacy = profile.legacy_tool_names  # hilos viejos: nombres antiguos de las herramientas
+    rules = profile.intents  # qué es un seguimiento breve y qué pide investigar de nuevo
     messages = messages or []
     idx = max((i for i, m in enumerate(messages) if getattr(m, "type", None) == "human"
                and (m.additional_kwargs or {}).get("lc_source") != memory.SUMMARY_SOURCE), default=None)
     if idx is None:
         return None
     text = memory._normalize(messages[idx].text if isinstance(messages[idx].content, str) else str(messages[idx].content))
-    if len(text) > FOLLOW_UP_MAX_CHARS or _RESEARCH_AGAIN.search(text):
+    if len(text) > rules.follow_up_max_chars or rules.research_again.search(text):
         return None
     previous = [m for m in messages[:idx] if getattr(m, "type", None) == "tool"
                 and legacy.get(m.name, m.name) == tool_name
@@ -544,9 +544,6 @@ def earlier_research(messages, tool_name: str = "deep_research") -> str | None:
 
 RESEARCH_DECLINED_MSG = ("Not run: the user declined the in-depth research. Answer with what you already know, without "
                          "searching, and say in one line that it was not researched in depth.")
-# el usuario pide investigar en ESTE mensaje: no hace falta confirmar (texto ya normalizado: sin tildes)
-_EXPLICIT_RESEARCH = re.compile(r"\b(investig\w*|research\w*|a fondo|en profundidad|exhaustiv\w*|in[- ]depth|"
-                                r"thorough\w*|deep dive)\b")
 
 
 def research_needs_confirmation(messages) -> bool:
@@ -558,7 +555,10 @@ def research_needs_confirmation(messages) -> bool:
                   and (m.additional_kwargs or {}).get("lc_source") != memory.SUMMARY_SOURCE), None)
     text = memory._normalize(human.text if human is not None and isinstance(human.content, str) else str(
         getattr(human, "content", "")))
-    return not _EXPLICIT_RESEARCH.search(text) and earlier_research(messages) is None
+    from assistant.core.profile import active_profile
+
+    explicit = active_profile().intents.explicit_research  # el usuario pide investigar en ESTE mensaje
+    return not explicit.search(text) and earlier_research(messages) is None
 
 
 def _research_when(request) -> bool:

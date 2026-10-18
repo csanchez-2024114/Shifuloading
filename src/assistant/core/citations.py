@@ -37,9 +37,6 @@ def _links(text: str) -> list[tuple[str, str, str]]:
     return out
 
 
-# encabezado de una sección de fuentes ("## Fuentes", "**Sources:**", "Referencias:"...), sin acentos ni mayúsculas
-_SOURCES_HEADING = re.compile(r"^\s*(#{1,6}\s*)?(\*\*|__)?\s*(fuentes|sources|referencias|references|bibliograf\w*)"
-                              r"\b[^\n]*$", re.I | re.M)
 _HEADING = re.compile(r"^\s*#{1,6}\s", re.M)
 
 
@@ -57,7 +54,10 @@ def keep_supported(text: str, evidence: str) -> tuple[str, list[str]]:
 
 def drop_sources_section(text: str) -> str:
     """Quita las secciones de fuentes: desde su encabezado hasta el siguiente encabezado markdown o el final."""
-    while m := _SOURCES_HEADING.search(text):
+    from assistant.core.profile import active_profile
+
+    heading = active_profile().intents.sources_heading  # "## Fuentes", "**Sources:**"... (regla del perfil)
+    while m := heading.search(text):
         nxt = _HEADING.search(text, m.end())
         text = text[:m.start()] + (text[nxt.start():] if nxt else "")
     return text.rstrip()
