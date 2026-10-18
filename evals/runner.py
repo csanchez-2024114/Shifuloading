@@ -80,6 +80,8 @@ def run_case(client, case: dict, run_tag: str, real: bool = False, file_ids: lis
             steps.append({"kind": "upload", "status_code": resp.status_code, "expect_status": st.get("status", 200),
                           "decision": None, "prev_interrupts": [], "events": [], "seconds": 0, "tokens": 0,
                           "detail": None if resp.status_code == 200 else resp.text[:300]})
+            if resp.status_code != st.get("status", 200):
+                break  # sin el archivo, preguntarle al modelo solo gasta tokens: el caso ya falló
             continue
         if real:  # margen del paso: lo que le queda al caso (así el /resume de una tarjeta aprobada sí cabe)
             client.post("/_eval/margin", params={"n": max(case.get("margin", 30000) - case_spent, 5000)})

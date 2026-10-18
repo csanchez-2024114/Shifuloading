@@ -376,3 +376,21 @@ def test_con_cuentas_los_archivos_son_del_dueno_del_hilo_y_se_borran_con_el():
     assert uid != "beto"  # el user_id sale de la sesión, no del formulario
     assert ana.delete(f"/threads/{tid}").status_code == 200
     assert fstore.list_files(store, uid, tid) == [] and fstore.pages(store, uid, tid, fid) == []
+
+
+# --------------------------------------------------------------------------- store con índice vectorial
+def test_con_memoria_semantica_los_archivos_van_a_un_store_sin_indice(mongo_client):
+    """langgraph-store-mongodb falla con put(index=False) si el store tiene índice vectorial (IndexError en la
+    validación real con Atlas): los archivos van a la colección file_store, sin índice."""
+    from conftest import TEST_DB
+
+    class Semantico:  # lo único que mira _plain: que tenga índice y colección
+        index_config = {"dims": 1536, "fields": ["text"]}
+        collection = mongo_client[TEST_DB]["store"]
+
+    meta = fstore.save(Semantico(), "ana", "h1", "a.txt", "txt", "text/plain", 4, "x",
+                       {"pages": ["hola"], "chars": 4, "truncated": False, "image": None})
+    assert fstore.pages(Semantico(), "ana", "h1", meta["file_id"]) == ["hola"]
+    assert mongo_client[TEST_DB][fstore.FILE_COLLECTION].count_documents({}) >= 2
+    assert mongo_client[TEST_DB]["store"].count_documents({"namespace": {"$in": ["files"]}}) == 0
+    assert fstore.delete_thread(Semantico(), "ana", "h1") == 1

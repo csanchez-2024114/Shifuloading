@@ -30,6 +30,7 @@ def main(argv=None) -> int:
     p.add_argument("--hard-cap", type=int, default=0, help="tope duro acumulado del modo real")
     p.add_argument("--confirm-cap", type=int, default=0, help="debe ser igual a --hard-cap para correr")
     p.add_argument("--out", default=str(runner.RESULTS_DIR))
+    p.add_argument("--log", default="", help="registro de gasto a continuar: el tope duro cuenta lo ya gastado ahí")
     p.add_argument("--repeat", action="append", default=[], help="id=N: corre ese caso N veces")
     p.add_argument("--langsmith", action="store_true")
     a = p.parse_args(argv)
@@ -56,7 +57,7 @@ def main(argv=None) -> int:
             print("No se corrió: pasa --hard-cap N y --confirm-cap N (el mismo número) para confirmar el gasto.")
             return 2
         db = f"assistant_ux_tmp_{time.strftime('%Y%m%d%H%M%S')}"
-        log = Path(a.out) / f"{db}.jsonl"
+        log = Path(a.log) if a.log else Path(a.out) / f"{db}.jsonl"
         log.parent.mkdir(parents=True, exist_ok=True)
         print(f"Base temporal {db}; tope duro {a.hard_cap:,}.", flush=True)
         try:
