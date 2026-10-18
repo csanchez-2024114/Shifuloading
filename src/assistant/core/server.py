@@ -66,7 +66,7 @@ def _build_real_agent(settings: Settings):
     checkpointer = memory.build_checkpointer(client, settings.mongodb_db)
     store = memory.build_store(client, settings.mongodb_db, settings.memory_semantic, settings.openai_api_key)
     if settings.use_bigtool:
-        from assistant.bigtool_agent import BIGTOOL_PROMPT, build_bigtool_agent
+        from assistant.core.extensions.bigtool import BIGTOOL_PROMPT, build_bigtool_agent
 
         log.info("Agente: langgraph-bigtool (demo tools: %s)", settings.bigtool_demo_tools)
         # antes de buscar solo ve retrieve_tools

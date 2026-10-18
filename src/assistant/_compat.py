@@ -23,6 +23,7 @@ ALIASES: dict[str, str] = {
     "assistant.agent": "assistant.core.agent",
     "assistant.tools": "assistant.core.tools",
     "assistant.server": "assistant.core.server",
+    "assistant.bigtool_agent": "assistant.core.extensions.bigtool",
 }
 
 
