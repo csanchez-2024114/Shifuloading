@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import pymongo
 from pymongo.errors import DuplicateKeyError
 
-from assistant.appdata.repos import DuplicateEmail
+from assistant.core.appdata.repos import DuplicateEmail
 
 
 def _utc(dt):

@@ -14,11 +14,11 @@ from langgraph.types import Command
 from pydantic import BaseModel
 
 from assistant import agent as agent_mod
-from assistant import ai_data
+from assistant.core import ai_data
 from assistant.core import context as context_mod
-from assistant import memory
-from assistant.appdata import MAX_TITLE_CHARS, clean_title, thread_title
-from assistant.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
+from assistant.core import memory
+from assistant.core.appdata import MAX_TITLE_CHARS, clean_title, thread_title
+from assistant.core.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
 from assistant.core.config import ROOT, ConfigError, Settings
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -137,7 +137,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         host = settings.mongodb_uri.rsplit("@", 1)[-1]  # nunca loguear usuario/contraseña
         log.info("Modelo: %s | MongoDB IA: %s (db %s)", settings.llm_model, host, settings.mongodb_db)
         if appdata is None and (app_client := memory.app_startup(settings)) is not None:
-            from assistant.appdata.mongo import MongoAppData
+            from assistant.core.appdata.mongo import MongoAppData
 
             appdata = MongoAppData(app_client, settings.app_mongodb_db)
             log.info("MongoDB negocio: %s (db %s)", settings.app_mongodb_uri.rsplit("@", 1)[-1],

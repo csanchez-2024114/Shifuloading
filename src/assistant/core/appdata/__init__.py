@@ -1,5 +1,5 @@
 """Base de negocio: usuarios, sesiones, propiedad de conversaciones e intentos de login (AUTH_ENABLED)."""
-from assistant.appdata.repos import AppData, DuplicateEmail
+from assistant.core.appdata.repos import AppData, DuplicateEmail
 
 __all__ = ["AppData", "DuplicateEmail", "thread_title"]
 

@@ -11,7 +11,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.messages.utils import count_tokens_approximately
 from typing_extensions import NotRequired
 
-from assistant.memory import SUMMARY_SOURCE
+from assistant.core.memory import SUMMARY_SOURCE
 
 logger = logging.getLogger(__name__)
 

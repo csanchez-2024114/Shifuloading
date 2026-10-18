@@ -2,7 +2,7 @@
 import threading
 from datetime import datetime, timezone
 
-from assistant.appdata.repos import DuplicateEmail
+from assistant.core.appdata.repos import DuplicateEmail
 
 
 class _Users:

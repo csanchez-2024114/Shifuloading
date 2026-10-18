@@ -34,7 +34,7 @@ from langgraph.store.memory import InMemoryStore
 from langgraph_bigtool import create_agent as create_bigtool_agent
 from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 
-from assistant import memory
+from assistant.core import memory
 from assistant.agent import (OLD_TOOL_NAMES, history_landing, landing_due, landing_note, mark_no_tools,
                              rename_old_tools, system_prompt_text)
 from assistant.apps.crm_demo import crm_tools

@@ -16,6 +16,10 @@ ALIASES: dict[str, str] = {
     "assistant.context": "assistant.core.context",
     "assistant.citations": "assistant.core.citations",
     "assistant.tool_spec": "assistant.core.tool_spec",
+    "assistant.memory": "assistant.core.memory",
+    "assistant.ai_data": "assistant.core.ai_data",
+    "assistant.appdata": "assistant.core.appdata",
+    "assistant.auth": "assistant.core.auth",
 }
 
 

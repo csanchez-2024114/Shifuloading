@@ -17,7 +17,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 
-from assistant import memory
+from assistant.core import memory
 from assistant.core import citations
 from assistant.agent import OLD_TOOL_NAMES, Context
 from assistant.core.config import Settings

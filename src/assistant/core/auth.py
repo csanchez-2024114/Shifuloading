@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
-from assistant.appdata.repos import AppData, DuplicateEmail
+from assistant.core.appdata.repos import AppData, DuplicateEmail
 
 MIN_PASSWORD_LEN = 10
 MAX_PASSWORD_LEN = 256

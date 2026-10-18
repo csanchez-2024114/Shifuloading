@@ -1,6 +1,6 @@
 """Borrado en la base de la IA: checkpoints de un hilo (mensajes, resúmenes, métricas de contexto, herramientas
 elegidas por bigtool) y la memoria global de un usuario. Solo conoce user_id opacos y thread_id."""
-from assistant import memory
+from assistant.core import memory
 
 _BATCH = 100
 
