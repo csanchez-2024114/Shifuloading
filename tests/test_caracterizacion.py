@@ -674,3 +674,25 @@ def test_config_solo_cambia_por_las_variables_declaradas():
     assert actual["env_vars"] == sorted(base["env_vars"] + list(NEW_CONFIG_VARS)), "variable no declarada"
     assert actual["defaults"] == {**base["defaults"], **dict(NEW_CONFIG_VARS.values())}, \
         "default nuevo no declarado o default existente cambiado"
+
+
+# --------------------------------------------------------------------------- FILES_ENABLED=0: nada cambia
+
+# Huella completa en 3b9b903 (fin de la Fase 2, análisis de archivos), congelada. Con FILES_ENABLED=0 (y cualquier
+# interruptor nuevo en su default) la huella de hoy debe ser idéntica salvo "config" (variables nuevas, declaradas
+# arriba) e "index_html_sha256" (cambios de UI aprobados uno por uno).
+HUELLA_3B9B903 = Path(__file__).parent / "snapshots" / "huella_3b9b903.json"
+HUELLA_3B9B903_SHA256 = "b122da888bc4923f8b4a567df642ab3827b826090eeb2a1b782dfd3824aa3c8e"
+FREE_SECTIONS = ("config", "index_html_sha256")
+
+
+def test_con_files_enabled_en_0_la_huella_es_la_de_3b9b903(monkeypatch):
+    from hashlib import sha256
+
+    base = json.loads(HUELLA_3B9B903.read_text(encoding="utf-8"))
+    assert sha256(_canon(base).encode()).hexdigest() == HUELLA_3B9B903_SHA256, "la huella congelada cambió"
+    actual = _huella(monkeypatch)
+    assert _settings().files_enabled is False
+    assert set(actual) == set(base)
+    distintas = [k for k in base if k not in FREE_SECTIONS and actual[k] != base[k]]
+    assert distintas == [], f"con FILES_ENABLED=0 cambiaron secciones fijas: {distintas}"
