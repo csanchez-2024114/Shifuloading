@@ -130,6 +130,8 @@ TEXTS = {
     "files.extract_timeout": "Leer el archivo tardó demasiado (FILE_EXTRACT_TIMEOUT).",
     "files.too_many": "Puedes adjuntar como máximo {max} archivos por mensaje (FILE_MAX_PER_MESSAGE).",
     "files.not_found": "No encontré ese archivo en esta conversación.",
+    "startup.files_bigtool": "FILES_ENABLED=1 no funciona todavía con USE_BIGTOOL=1: bigtool no añade la regla de "
+                             "archivos al prompt. Apaga una de las dos.",
     "startup.files_missing_deps": "FILES_ENABLED=1 necesita las dependencias de archivos (falta {module}). "
                                   "Instálalas con: uv pip install --python .venv -e \".[files]\"",
 }

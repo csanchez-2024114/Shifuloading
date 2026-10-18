@@ -138,6 +138,10 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     herramientas, UI); None = el de AGENT_PROFILE."""
     settings = settings or Settings.from_env()
     profile = profile or active_profile()
+    if settings.files_enabled and settings.use_bigtool:
+        # bigtool aún no añade la regla de archivos al prompt (REFACTOR_NOTAS.md, Fase 4): no se combinan
+        raise ConfigError(profile.texts.get("startup.files_bigtool") or
+                          "FILES_ENABLED=1 no funciona todavía con USE_BIGTOOL=1: apaga una de las dos.")
     if classify is None:
         # agente inyectado (tests) → sin llamadas reales a OpenAI para clasificar
         classify = agent_mod.clasificar_esfuerzo if agent is None else (lambda s, m: "medio")

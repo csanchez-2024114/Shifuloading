@@ -394,3 +394,15 @@ def test_con_memoria_semantica_los_archivos_van_a_un_store_sin_indice(mongo_clie
     assert mongo_client[TEST_DB][fstore.FILE_COLLECTION].count_documents({}) >= 2
     assert mongo_client[TEST_DB]["store"].count_documents({"namespace": {"$in": ["files"]}}) == 0
     assert fstore.delete_thread(Semantico(), "ana", "h1") == 1
+
+
+def test_files_enabled_con_bigtool_no_arranca():
+    """bigtool todavía no añade la regla de archivos al prompt: el servidor se niega a arrancar con los dos."""
+    from assistant.core.config import ConfigError
+    from assistant.core.server import create_app
+
+    s = _settings(files_enabled=True, use_bigtool=True)
+    with pytest.raises(ConfigError, match="USE_BIGTOOL=1"):
+        create_app(agent=object(), settings=s, store=InMemoryStore())
+    with pytest.raises(ConfigError, match="USE_BIGTOOL=1"):  # también en el arranque real, antes de conectar
+        create_app(settings=s)

@@ -34,6 +34,13 @@ Pendiente opcional: una segunda muestra del escenario 3 con `UNTRUSTED_WRAP=1`, 
 | `TURN_MAX_SECONDS` | Con 6 s no cortó: el plazo venció durante la respuesta final, que se deja terminar. El camino del corte no se vio en una prueba real. 6 s tampoco sirve como valor real, porque la investigación tarda 70–90 s | Una prueba de corte con unos 3 s (unos 5k tokens) y elegir un valor real, por ejemplo 180 s |
 | `EFFECT_APPROVAL` | No se corrió. Con el perfil por defecto no cambia nada: las herramientas son de lectura y el email ya pedía aprobación. Solo actuaría en bigtool con el CRM de demo | Probarlo aparte con `USE_BIGTOOL=1` y `BIGTOOL_DEMO_TOOLS=1` cuando haya herramientas con efecto en uso |
 
+## Archivos (`FILES_ENABLED`)
+
+Validado con el modelo real el 2026-10-18 (tercera tanda de `VALIDACION_E2E.md`: evals 6/6 y 3 mensajes por la UI, con seguridad al 100 %). Si lo activas:
+- necesita las dependencias del extra `[files]`: `uv pip install --python .venv -e ".[files]"`;
+- **no se puede combinar con `USE_BIGTOOL=1`**: el servidor no arranca con los dos, porque bigtool aún no añade la regla de archivos al prompt (primera tarea de la Fase 4 en `REFACTOR_NOTAS.md`);
+- con el perfil `generic` se pueden subir archivos, pero el modelo no recibe `read_file` ni `search_in_file` (ver `docs/CREAR_PERFIL.md`).
+
 ## Cómo comparar después
 
 Con `web_search`, el costo del mismo mensaje varió hasta ±30 % (14,4k a 18,9k), por la búsqueda hospedada. En esos escenarios no se compara con un umbral de 5 %; ese umbral vale solo para los escenarios sin búsqueda.

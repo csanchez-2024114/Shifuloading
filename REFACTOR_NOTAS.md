@@ -2,7 +2,14 @@
 
 Este refactor solo reorganiza. Todo lo de aquí abajo es un **cambio de comportamiento** y va en commits o tareas aparte, después de terminar el refactor y con la suite en verde.
 
-## Primera tarea posterior: que todo lea el perfil pasado a `build_agent`, no solo `AGENT_PROFILE`
+## Fase 4, primera tarea: la regla de archivos en bigtool (y quitar el bloqueo)
+
+Con `FILES_ENABLED=1` y `USE_BIGTOOL=1` juntos, el servidor no arranca (`ConfigError` en `create_app`, test `test_files_enabled_con_bigtool_no_arranca`). El motivo: el registro de bigtool recibe `read_file` y `search_in_file` desde `base_tools`, pero su `PromptedModel` no añade `FILE_UNTRUSTED_RULE` cuando el hilo tiene adjuntos, como sí hace el `dynamic_prompt` del agente normal. Para quitar el bloqueo hay que:
+- hacer que `PromptedModel` sume `files.prompt_addition(messages)` con el interruptor;
+- un test equivalente a `test_subir_leer_por_fragmentos_y_todo_va_envuelto` con `USE_BIGTOOL=1`;
+- borrar el `ConfigError` y su nota en `docs/ACTIVACION.md`.
+
+## Tarea siguiente: que todo lea el perfil pasado a `build_agent`, no solo `AGENT_PROFILE`
 
 Hoy, pasar `profile=` a `build_agent`, `build_tools`, `create_app` o `system_prompt_text` decide el prompt, las herramientas, las aprobaciones, las herramientas-evidencia y los nombres antiguos del middleware. Pero hay piezas que leen siempre el perfil **activo** (`active_profile()`, es decir, `AGENT_PROFILE`), aunque se haya pasado otro:
 - **reglas de intención:**
