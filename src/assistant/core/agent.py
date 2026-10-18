@@ -1060,9 +1060,10 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
     except GraphRecursionError:
         yield {"type": "error", "message": tr("agent.recursion_limit", limit=settings.recursion_limit)}
         return
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Error durante el stream del agente")
-        yield {"type": "error", "message": f"{type(exc).__name__}: {exc}"}
+    except Exception:  # noqa: BLE001
+        # S7: el detalle (tipo, mensaje de Mongo u OpenAI, rutas) solo va al log; al cliente, un aviso genérico
+        logger.exception("Error durante el stream del agente (hilo %s)", thread_id)
+        yield {"type": "error", "message": tr("agent.stream_error")}
         return
     finally:
         _ACTIVE_TURNS.pop(thread_id, None)

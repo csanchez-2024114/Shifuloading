@@ -10,6 +10,7 @@ UNVERIFIED_NOTE = "No verificada: este mensaje llegó a su tope de tokens (TURN_
 # avisos al usuario: texto plano (la interfaz no interpreta _cursiva_ y mostraba los guiones bajos)
 TURN_CAP_MSG = ("\n\n⚠️ Detuve este mensaje: superó el tope de {cap} tokens por mensaje (TURN_TOKEN_CAP). Lo que "
                 "alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.")
+STREAM_ERROR_MSG = "Algo falló al generar la respuesta. Inténtalo de nuevo."
 RECURSION_MSG = ("Me detuve: la tarea superó {limit} pasos internos. "
                  "Pídeme que continúe o sube RECURSION_LIMIT en .env.")
 COMPACT_UNSUPPORTED_MSG = "Este agente no admite compactación"
@@ -68,6 +69,7 @@ TEXTS = {
     "agent.unverified_note": UNVERIFIED_NOTE,
     "agent.turn_cap": TURN_CAP_MSG,
     "agent.recursion_limit": RECURSION_MSG,
+    "agent.stream_error": STREAM_ERROR_MSG,
     "agent.compact_unsupported": COMPACT_UNSUPPORTED_MSG,
     "agent.compact_pending": COMPACT_PENDING_MSG,
     "format.thousands_sep": THOUSANDS_SEP,

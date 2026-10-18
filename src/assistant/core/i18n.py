@@ -11,6 +11,7 @@ REQUIRED_TEXTS = (
     "agent.unverified_note",      # ANSWER_VERIFY no corrió por TURN_TOKEN_CAP
     "agent.turn_cap",             # mensaje abortado por TURN_TOKEN_CAP; {cap}
     "agent.recursion_limit",      # RECURSION_LIMIT; {limit}
+    "agent.stream_error",         # error inesperado del stream (el detalle va solo al log)
     "agent.compact_unsupported",  # compactación manual en un agente sin compactador
     "agent.compact_pending",      # compactación manual con una aprobación pendiente
     "format.thousands_sep",       # separador de miles de las cifras en los avisos

@@ -364,11 +364,17 @@ def test_stream_con_recursion_excedida_da_error_legible_sin_done():
                                               "sube RECURSION_LIMIT en .env."}]
 
 
-def test_stream_con_excepcion_da_tipo_y_mensaje_sin_done():
+def test_stream_con_excepcion_da_aviso_generico_sin_done(caplog):
+    """S7: antes el evento llevaba "RuntimeError: boom" (tipo y texto de la excepción). Ahora el cliente recibe un
+    aviso genérico y el detalle queda solo en el log."""
     from assistant import agent as agent_mod
+    from assistant.packs.i18n.es import STREAM_ERROR_MSG
 
-    ev = list(agent_mod.stream_events(_AgenteQueFalla(RuntimeError("boom")), {"messages": []}, "t", "u", _settings()))
-    assert ev == [{"type": "error", "message": "RuntimeError: boom"}]
+    with caplog.at_level("ERROR"):
+        ev = list(agent_mod.stream_events(_AgenteQueFalla(RuntimeError("boom mongodb://u:p@h")), {"messages": []},
+                                          "t", "u", _settings()))
+    assert ev == [{"type": "error", "message": STREAM_ERROR_MSG}]
+    assert "boom" not in ev[0]["message"] and "boom mongodb://u:p@h" in caplog.text
     assert "t" not in agent_mod._ACTIVE_TURNS  # el contador del turno se limpia
 
 
