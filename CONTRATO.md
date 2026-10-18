@@ -198,6 +198,8 @@ empiezan con `:`.
 
 `engine` en tool_end: se extrae de la primera línea `[engine: X]` del output (null si no aplica).
 
+`run` (solo con `TRACE_METADATA=1`; con 0 no se emite): `{"type": "run", "run_id": "<uuid>"}`. Es el **primer** evento de cada `/chat` y de cada `/resume`, y cada uno tiene su propio `run_id`. Es el `run_id` de la raíz de la traza (LangSmith, si está activo), con `run_name` `"agent_turn"` y metadatos sin contenido de mensajes: `thread_id`, `user_id`, `turn_kind` (`chat`/`resume`), `effort`, `effort_source`, `model`, `profile` y `prompt_sha256` (16 hex, sin la línea de la fecha). Es el que lleva `POST /feedback`.
+
 ## Endpoints (server.py, principal)
 | Método | Ruta | Body / respuesta |
 |---|---|---|

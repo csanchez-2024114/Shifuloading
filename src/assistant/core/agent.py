@@ -773,6 +773,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     )
     agent.compactor = compactor
     agent.base_context_tokens = base
+    agent.profile = profile  # TRACE_METADATA: nombre y sha del prompt del perfil con el que se construyó
     return agent
 
 
@@ -1056,6 +1057,17 @@ def _close_aborted_turn(agent, config, note: str) -> None:
 def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settings,
                   esfuerzo: str | None = None, origen: str = "auto") -> Iterator[dict]:
     ctx = contexto_para(user_id, settings, esfuerzo)
+    run_meta = None
+    if settings.trace_metadata:  # run_id y metadatos del turno; el evento "run" va primero
+        from assistant.core import tracing
+
+        profile = getattr(agent, "profile", None) or active_profile()
+        run_id = tracing.new_run_id()
+        run_meta = (run_id, dict(thread_id=thread_id, user_id=user_id,
+                                 kind="chat" if isinstance(payload, dict) else "resume", effort=esfuerzo,
+                                 effort_source=origen, model=settings.llm_model, profile_name=profile.name,
+                                 prompt_sha=tracing.prompt_sha256(system_prompt_text(settings, profile))))
+        yield {"type": "run", "run_id": str(run_id)}
     if esfuerzo in ESFUERZOS and settings.model_call_limit == 0:
         yield {"type": "effort", "level": esfuerzo, "max_calls": ctx.max_llamadas, "reasoning": ctx.razonamiento,
                "source": origen}
@@ -1064,6 +1076,8 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
     config["recursion_limit"] = max(config["recursion_limit"], ctx.max_llamadas * 8)
     counter = TurnTokens(_PAUSED_SPEND.pop(thread_id, (0, 0, 0)))
     config["callbacks"] = [counter]  # cuenta todas las llamadas del mensaje (agente, investigador, búsquedas...)
+    if run_meta:
+        tracing.apply(config, run_meta[0], **run_meta[1])
     _ACTIVE_TURNS[thread_id] = counter
     cap = settings.turn_token_cap
     # TURN_MAX_SECONDS: mismo cierre que el tope de tokens. El reloj empieza en cada /chat o /resume.
