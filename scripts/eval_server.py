@@ -17,7 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 ALLOWED = {"TURN_TOKEN_CAP", "MAX_MESSAGE_CHARS", "UNTRUSTED_WRAP", "MEMORY_REQUIRE_QUOTE", "URL_FILTER_ALWAYS",
-           "TURN_MAX_SECONDS", "EFFECT_APPROVAL", "ANSWER_VERIFY", "MODEL_CALL_LIMIT", "FILES_ENABLED"}
+           "TURN_MAX_SECONDS", "EFFECT_APPROVAL", "ANSWER_VERIFY", "MODEL_CALL_LIMIT", "FILES_ENABLED",
+           "TRACE_METADATA", "TURN_METRICS", "FEEDBACK_ENABLED"}
 
 p = argparse.ArgumentParser()
 p.add_argument("--db", required=True)
@@ -25,8 +26,10 @@ p.add_argument("--log", required=True)
 p.add_argument("--cap", type=int, default=60000)
 p.add_argument("--hard-cap", type=int, required=True)
 p.add_argument("--set", action="append", default=[], help="VARIABLE=valor")
+p.add_argument("--app-db", default="", help="base de negocio temporal (TURN_METRICS/FEEDBACK_ENABLED), mismo clúster")
 a = p.parse_args()
 assert a.db.startswith("assistant_ux_tmp_"), "solo bases temporales"
+assert not a.app_db or (a.app_db.startswith("assistant_ux_tmp_") and a.app_db != a.db), "solo bases temporales"
 
 os.environ.update({
     "AI_MONGODB_DB": a.db, "MONGODB_DB": a.db, "TURN_TOKEN_CAP": str(a.cap), "AUTH_ENABLED": "0",
@@ -40,6 +43,10 @@ for kv in a.set:
 
 from assistant.core import server  # noqa: E402
 from assistant.core.config import Settings  # noqa: E402
+
+if a.app_db:  # la URI sale de .env (ya cargado al importar config) y nunca se imprime
+    os.environ["APP_MONGODB_URI"] = os.environ["MONGODB_URI"]
+    os.environ["APP_MONGODB_DB"] = a.app_db
 from evals.harness import Meter, install  # noqa: E402
 
 settings = Settings.from_env()
