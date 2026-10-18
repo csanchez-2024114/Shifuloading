@@ -42,6 +42,7 @@ from app.crm import estructura as est
 from app.crm import operaciones as op
 from app.crm import plantillas as catalogo
 from app.crm.asignar import asignar
+from app.crm.lienzo import acomodar
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,6 @@ _NO_SON_CAMPO = ("tipo", "funcion")  # opciones de una pieza cuyo valor no es un
 # ───────── Tamaños del lienzo (port de lienzo.jsx → conTamano y edicion.js → colocar/acomodar) ─────────
 
 ANCHO_COMPLETO = ("kpis", "tablero", "agenda")
-ALTO_MAX = 4
 
 
 def con_tamano(bloques: list[dict]) -> list[dict]:
@@ -69,83 +69,7 @@ def con_tamano(bloques: list[dict]) -> list[dict]:
              "alto": b.get("alto") or (1 if b.get("vista") == "kpis" else 2)} for b in bloques]
 
 
-def _colocar(bloques: list[dict]) -> tuple[dict, dict]:
-    """El acomodo «dense» del CSS: ({uid: {f, c, w, h}}, celdas[fila][col] = uid)."""
-    celdas: dict[int, dict[int, str]] = {}
-
-    def libre(f: int, c: int, w: int, h: int) -> bool:
-        for y in range(f, f + h):
-            for x in range(c, c + w):
-                if celdas.get(y, {}).get(x):
-                    return False
-        return c + w <= 12
-
-    pos: dict[str, dict] = {}
-    for b in bloques:
-        w = max(1, min(12, b.get("ancho") or 6))
-        h = 1 if b.get("vista") == "kpis" else (b.get("alto") or 1)
-        f = 0
-        while True:
-            c = next((x for x in range(13 - w) if libre(f, x, w, h)), None)
-            if c is not None:
-                break
-            f += 1
-        for y in range(f, f + h):
-            fila = celdas.setdefault(y, {})
-            for x in range(c, c + w):
-                fila[x] = b.get("uid")
-        pos[b.get("uid")] = {"f": f, "c": c, "w": w, "h": h}
-    return pos, celdas
-
-
-def acomodar(bloques: list[dict], fijos0: Any = ()) -> list[dict]:
-    """Acomodo automático (D38): tapa los huecos. El vecino de la IZQUIERDA se ensancha o, si no, el de ARRIBA crece una fila; si
-    nadie puede, el primer bloque que viene después y no cabe se angosta al ancho del hueco (mínimo 3). Los `fijos` no se tocan.
-    Port literal de `acomodar` de edicion.js (cuando exista `edicion.acomodar` en Python, esta debe ser la misma)."""
-    fijos = set(fijos0) | {b.get("uid") for b in bloques if b.get("fijo")}
-    bs = [dict(b) for b in bloques]
-    imposibles: set[tuple[int, int]] = set()
-    for _vuelta in range(40):
-        pos, celdas = _colocar(bs)
-        filas = (max(celdas) + 1) if celdas else 0
-        hueco = next(((f, c) for f in range(filas) for c in range(12) if not celdas.get(f, {}).get(c) and (f, c) not in imposibles), None)
-        if hueco is None:
-            break
-        f, c = hueco
-        largo = 0
-        while c + largo < 12 and not celdas.get(f, {}).get(c + largo):
-            largo += 1
-        izq = celdas.get(f, {}).get(c - 1) if c > 0 else None
-        arriba = celdas.get(f - 1, {}).get(c) if f > 0 else None
-
-        def libre_en(y: int, x0: int, n: int) -> bool:
-            return all(not celdas.get(y, {}).get(x) for x in range(x0, x0 + n))
-
-        hecho = False
-        if izq and izq not in fijos:
-            p = pos[izq]
-            if all(libre_en(p["f"] + dy, c, largo) for dy in range(p["h"])):
-                bs = [{**b, "ancho": p["w"] + largo} if b.get("uid") == izq else b for b in bs]
-                hecho = True
-        if not hecho and arriba and arriba not in fijos:
-            p = pos[arriba]
-            b = next(x for x in bs if x.get("uid") == arriba)
-            if b.get("vista") != "kpis" and p["h"] < ALTO_MAX and p["f"] + p["h"] == f and libre_en(f, p["c"], p["w"]):
-                bs = [{**x, "alto": p["h"] + 1} if x.get("uid") == arriba else x for x in bs]
-                hecho = True
-        if not hecho and largo >= 3:
-            despues = next((b for b in bs if b.get("uid") not in fijos and b.get("vista") != "kpis"
-                            and (pos[b.get("uid")]["f"] > f or (pos[b.get("uid")]["f"] == f and pos[b.get("uid")]["c"] > c))
-                            and pos[b.get("uid")]["w"] > largo), None)
-            if despues is not None:
-                bs = [{**b, "ancho": largo} if b is despues else b for b in bs]
-                hecho = True
-        if not hecho:
-            imposibles.add((f, c))
-    return bs
-
-
-# ───────── Personas → contactos ─────────
+# El acomodo automático es el de lienzo.py (una sola versión; las dos pasaban los mismos 788 casos del laboratorio).
 
 def seccion_personas(plantilla: dict) -> tuple[dict, dict] | None:
     """(sección, campo de etapa) si la primera sección con campos de la plantilla son sus clientes o prospectos con un estado que
