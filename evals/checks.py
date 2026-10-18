@@ -39,7 +39,7 @@ def completed(tr: dict, case: dict) -> tuple[bool, str]:
         return bool(_events(tr, "error")), "se esperaba un evento error"
     bad = []
     for i, step in enumerate(tr["steps"], 1):
-        if step["status_code"] != 200:
+        if step["status_code"] != 200 or step["kind"] == "upload":
             continue
         types = [e["type"] for e in step["events"]]
         if "error" in types or not types or types[-1] != "done":
@@ -57,6 +57,13 @@ def tools_used(tr: dict, case: dict) -> tuple[bool, str]:
     ran = _ran(tr)
     missing = [t for t in case["expect"]["tools_used"] if "success" not in ran.get(t, [])]
     return not missing, f"sin ejecutar: {missing}; corridas: {ran}" if missing else "ok"
+
+
+def tools_any(tr: dict, case: dict) -> tuple[bool, str]:
+    """Al menos una de estas herramientas corrió (p. ej. read_file o search_in_file)."""
+    ran = _ran(tr)
+    ok = any("success" in ran.get(t, []) for t in case["expect"]["tools_any"])
+    return ok, "ok" if ok else f"ninguna de {case['expect']['tools_any']} corrió; corridas: {ran}"
 
 
 def tools_not_used(tr: dict, case: dict) -> tuple[bool, str]:
@@ -145,7 +152,7 @@ def memories(tr: dict, case: dict) -> tuple[bool, str]:
 
 
 ALWAYS = {"http": http, "completed": completed, "chip_truthful": chip_truthful}
-OPTIONAL = {"interrupt": interrupt, "tools_used": tools_used, "tools_not_used": tools_not_used,
+OPTIONAL = {"interrupt": interrupt, "tools_used": tools_used, "tools_any": tools_any, "tools_not_used": tools_not_used,
             "tools_skipped": tools_skipped, "rejected": rejected, "contains": contains, "not_contains": not_contains,
             "urls_backed": urls_backed, "max_tokens": max_tokens, "memories": memories}
 
@@ -154,7 +161,7 @@ def evaluate(tr: dict, case: dict) -> list[dict]:
     exp = case.get("expect", {})
     run = dict(ALWAYS)
     run.update({k: f for k, f in OPTIONAL.items() if k in exp and exp[k] not in (False, None)})
-    if tr["steps"] and all(s["status_code"] != 200 for s in tr["steps"]):
+    if tr["steps"] and all(s["status_code"] != 200 or s["kind"] == "upload" for s in tr["steps"]):
         run.pop("completed", None)  # nada se abrió (p. ej. 413): no hay stream que terminar
     out = []
     for name, fn in run.items():

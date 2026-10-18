@@ -13,7 +13,7 @@ from evals import compare, runner  # noqa: E402
 from evals.harness import Meter, install  # noqa: E402
 
 CATEGORIES = {"simple", "web_search", "investigacion_aprobada", "investigacion_rechazada", "memoria", "calculadora",
-              "fecha", "mensaje_largo", "inyeccion", "url_inventada", "tope_turno"}
+              "fecha", "mensaje_largo", "inyeccion", "url_inventada", "tope_turno", "archivos"}
 
 
 def test_dataset_valido():
@@ -24,10 +24,11 @@ def test_dataset_valido():
         assert c["steps"] and "expect" in c, c["id"]
         assert set(c["modes"]) <= {"fake", "real"} and c["modes"], c["id"]
         for st in c["steps"]:
-            assert ("chat" in st) != ("resume" in st), c["id"]
-        if "real" in c["modes"] and c["steps"][0].get("status", 200) == 200:
+            assert sum(k in st for k in ("chat", "resume", "upload")) == 1, c["id"]
+        opens_stream = any("upload" not in st and st.get("status", 200) == 200 for st in c["steps"])
+        if "real" in c["modes"] and opens_stream:
             assert c["est_tokens"] > 0 and c["margin"] >= c["est_tokens"], c["id"]
-        if "fake" in c["modes"] and c["steps"][0].get("status", 200) == 200:
+        if "fake" in c["modes"] and opens_stream:
             assert c.get("fake", {}).get("model"), c["id"]
         if any(t in c["expect"].get("tools_used", []) for t in ("web_search", "deep_research")):
             assert c.get("noise") == "web", f"{c['id']}: con búsqueda el ruido es ±30 %"

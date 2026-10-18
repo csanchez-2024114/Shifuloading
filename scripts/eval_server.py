@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 ALLOWED = {"TURN_TOKEN_CAP", "MAX_MESSAGE_CHARS", "UNTRUSTED_WRAP", "MEMORY_REQUIRE_QUOTE", "URL_FILTER_ALWAYS",
-           "TURN_MAX_SECONDS", "EFFECT_APPROVAL", "ANSWER_VERIFY", "MODEL_CALL_LIMIT"}
+           "TURN_MAX_SECONDS", "EFFECT_APPROVAL", "ANSWER_VERIFY", "MODEL_CALL_LIMIT", "FILES_ENABLED"}
 
 p = argparse.ArgumentParser()
 p.add_argument("--db", required=True)

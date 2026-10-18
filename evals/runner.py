@@ -55,23 +55,39 @@ def parse_sse(body: str) -> list[dict]:
 
 
 # ------------------------------------------------------------------ un caso
-def run_case(client, case: dict, run_tag: str, real: bool = False) -> dict:
+def run_case(client, case: dict, run_tag: str, real: bool = False, file_ids: list | None = None) -> dict:
     user = f"eval-{run_tag}-{case['id']}"
     thread = f"eval-{uuid.uuid4().hex[:10]}"
     threads = [thread]
     steps: list[dict] = []
     last_interrupts: list[dict] = []
+    uploaded: list[str] = []  # file_id de los pasos "upload" que aún no se adjuntaron a un mensaje
     started = time.monotonic()
     case_spent = 0
     for st in case["steps"]:
         if st.get("new_thread"):
             thread = f"eval-{uuid.uuid4().hex[:10]}"
             threads.append(thread)
+        if "upload" in st:  # FILES_ENABLED: sube un archivo al hilo (no llama al modelo)
+            from evals.filegen import build
+
+            name, data = build(st["upload"])
+            resp = client.post(f"/threads/{thread}/files", files={"file": (name, data)}, data={"user_id": user})
+            if resp.status_code == 200:
+                uploaded.append(resp.json()["file_id"])
+                if file_ids is not None:
+                    file_ids.append(resp.json()["file_id"])
+            steps.append({"kind": "upload", "status_code": resp.status_code, "expect_status": st.get("status", 200),
+                          "decision": None, "prev_interrupts": [], "events": [], "seconds": 0, "tokens": 0,
+                          "detail": None if resp.status_code == 200 else resp.text[:300]})
+            continue
         if real:  # margen del paso: lo que le queda al caso (así el /resume de una tarjeta aprobada sí cabe)
             client.post("/_eval/margin", params={"n": max(case.get("margin", 30000) - case_spent, 5000)})
         if "chat" in st:
             path, body, decision = "/chat", {"message": message_text(st), "thread_id": thread, "user_id": user,
                                              "effort": st.get("effort")}, None
+            if st.get("files") and uploaded:
+                body["file_ids"], uploaded = uploaded, []
         else:
             decision = st["resume"]
             dec = {"type": "approve"} if decision == "approve" else {"type": "reject", "message": REJECT_MSG}
@@ -145,7 +161,7 @@ def _fake_settings(case: dict):
     return replace(base, **over)
 
 
-def _scripted_model(items: list):
+def _scripted_model(items: list, file_ids: list):
     from langchain_core.messages import AIMessageChunk
     from langchain_core.outputs import ChatGenerationChunk
 
@@ -163,8 +179,11 @@ def _scripted_model(items: list):
                 if run_manager:
                     run_manager.on_llm_new_token(piece, chunk=chunk)
                 yield chunk
-            calls = [{"name": t["name"], "args": json.dumps(t.get("args", {})), "id": f"c{i}-{uuid.uuid4().hex[:6]}",
-                      "index": i, "type": "tool_call_chunk"} for i, t in enumerate(item.get("tools", []))]
+            # "__FILE__" en los argumentos = el último archivo subido en el caso (su id no se conoce de antemano)
+            last = file_ids[-1] if file_ids else ""
+            calls = [{"name": t["name"], "args": json.dumps(t.get("args", {})).replace("__FILE__", last),
+                      "id": f"c{i}-{uuid.uuid4().hex[:6]}", "index": i, "type": "tool_call_chunk"}
+                     for i, t in enumerate(item.get("tools", []))]
             n = item.get("tokens", 0)
             usage = {"input_tokens": n, "output_tokens": 0, "total_tokens": n}
             yield ChatGenerationChunk(message=AIMessageChunk(content="", tool_call_chunks=calls, usage_metadata=usage,
@@ -173,7 +192,7 @@ def _scripted_model(items: list):
     return Scripted(messages=iter(list(items)))
 
 
-def _fake_client(case: dict, meter):
+def _fake_client(case: dict, meter, file_ids: list):
     from fastapi.testclient import TestClient
     from langgraph.checkpoint.memory import InMemorySaver
     from langgraph.store.memory import InMemoryStore
@@ -192,7 +211,7 @@ def _fake_client(case: dict, meter):
             return (fake["search"] if "search" in fake else f"Resultado falso para {query}"), self.engine
 
     s = _fake_settings(case)
-    llm = _scripted_model(fake.get("model", []))
+    llm = _scripted_model(fake.get("model", []), file_ids)
     store = InMemoryStore()
     agent = build_agent(llm, build_tools(llm, s, search_fn=Search()), s, checkpointer=InMemorySaver(), store=store)
     app = create_app(agent=agent, settings=s, store=store)
@@ -209,8 +228,9 @@ def run_fake(cases: list[dict]) -> list[dict]:
     out = []
     with Meter() as meter:
         for case in cases:
-            with _fake_client(case, meter) as client:
-                out.append(summarize_case(case, run_case(client, case, "fake")))
+            file_ids: list[str] = []
+            with _fake_client(case, meter, file_ids) as client:
+                out.append(summarize_case(case, run_case(client, case, "fake", file_ids=file_ids)))
     return out
 
 
