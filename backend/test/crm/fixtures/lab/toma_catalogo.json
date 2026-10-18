@@ -1,0 +1,706 @@
+{
+ "vistas": {
+  "tabla": {
+   "requiere": {},
+   "opcional": {
+    "filtro": null,
+    "orden": null,
+    "limite": null
+   }
+  },
+  "kpis": {
+   "requiere": {},
+   "opcional": {
+    "por": [
+     "estado"
+    ],
+    "suma": [
+     "dinero",
+     "numero"
+    ],
+    "vencen": [
+     "fecha"
+    ],
+    "hoy": [
+     "fecha"
+    ],
+    "estado": [
+     "estado"
+    ],
+    "excluir": null
+   }
+  },
+  "tablero": {
+   "requiere": {
+    "por": [
+     "estado"
+    ]
+   },
+   "opcional": {
+    "titulo": null,
+    "detalle": null
+   }
+  },
+  "agenda": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "hora": [
+     "hora"
+    ],
+    "titulo": null,
+    "detalle": null
+   }
+  },
+  "vencimientos": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "titulo": null,
+    "detalle": null,
+    "estado": [
+     "estado"
+    ],
+    "excluir": null
+   }
+  },
+  "grafica": {
+   "requiere": {},
+   "opcional": {
+    "por": [
+     "estado"
+    ],
+    "fecha": [
+     "fecha"
+    ],
+    "suma": [
+     "dinero",
+     "numero"
+    ]
+   }
+  },
+  "grafico": {
+   "requiere": {},
+   "libre": true
+  },
+  "calendario_mes": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "titulo": null,
+    "estado": [
+     "estado"
+    ],
+    "mes": "libre"
+   }
+  },
+  "tablero_dinero": {
+   "requiere": {
+    "por": [
+     "estado"
+    ],
+    "suma": [
+     "dinero",
+     "numero"
+    ]
+   },
+   "opcional": {
+    "titulo": null,
+    "detalle": null,
+    "dias_en": [
+     "fecha"
+    ]
+   }
+  },
+  "cifra": {
+   "requiere": {},
+   "opcional": {
+    "funcion": "libre",
+    "valor": [
+     "dinero",
+     "numero"
+    ],
+    "filtro": "libre",
+    "meta": "libre",
+    "fecha": [
+     "fecha"
+    ],
+    "periodo": "libre",
+    "ayuda": "libre"
+   }
+  },
+  "atencion": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "estado": [
+     "estado"
+    ],
+    "excluir": "libre"
+   }
+  },
+  "franjas": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "estado": [
+     "estado"
+    ],
+    "titulo": null,
+    "detalle": null,
+    "urgentes": "libre"
+   }
+  },
+  "matriz": {
+   "requiere": {
+    "filas": [
+     "texto"
+    ],
+    "columnas": [
+     "estado"
+    ]
+   },
+   "opcional": {}
+  },
+  "feed": {
+   "datos": false
+  },
+  "equipo": {
+   "datos": false
+  },
+  "interruptores": {
+   "datos": false
+  }
+ },
+ "fuentes": [
+  "Inter",
+  "Poppins",
+  "Nunito",
+  "Montserrat",
+  "DM Sans",
+  "Rubik",
+  "Work Sans",
+  "Lato",
+  "Playfair Display",
+  "Lora",
+  "Merriweather",
+  "Outfit"
+ ],
+ "inicio_inicial": [
+  {
+   "uid": "b0",
+   "vista": "kpis",
+   "seccion": "miembros",
+   "opciones": {
+    "por": "estado"
+   },
+   "ancho": 12,
+   "alto": 1
+  }
+ ],
+ "herramientas": [
+  {
+   "type": "function",
+   "function": {
+    "name": "abrir_toma",
+    "description": "Abre la toma de requerimientos cuando la persona pide DISEÑAR o REHACER la pantalla de inicio o un CRM completo. NO uses esto para cambios puntuales (mover, achicar, un solo bloque): esos van directo con las herramientas de pantalla.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "objetivo": {
+       "type": "string",
+       "description": "solo si lo dijo en este mensaje"
+      }
+     },
+     "required": []
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_bloque",
+    "description": "FICHA DE DISEÑO: anota UN bloque que la persona pidió en ESTE mensaje, dicho en simple. que = resumen | grafica | lista | tablero | por_vencer | agenda; seccion = la parte del menú (nombre). grafico = tipo opcional SOLO si lo nombró (dona, barras, columnas, linea…). Llama una vez por cada cosa que pidió. No preguntes detalles técnicos: el código elige lo razonable.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "que": {
+       "type": "string",
+       "enum": [
+        "resumen",
+        "grafica",
+        "lista",
+        "tablero",
+        "por_vencer",
+        "agenda"
+       ]
+      },
+      "seccion": {
+       "type": "string"
+      },
+      "grafico": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "que",
+      "seccion"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "quitar_de_ficha",
+    "description": "Quita de la ficha el bloque número N (como aparece en el resumen) cuando la persona lo pide.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "numero": {
+       "type": "integer",
+       "minimum": 1
+      }
+     },
+     "required": [
+      "numero"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_ficha",
+    "description": "Anota en la ficha de diseño UN dato que la persona dijo explícitamente en ESTE mensaje (nunca inventes ni completes). Si dudas, usa anotar_nota. Campos: objetivo, seccion, bloque {vista, seccion, opciones?, tamano?}, marca_primario, marca_secundario, tipografia, restriccion.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "campo": {
+       "type": "string"
+      },
+      "valor": {
+       "description": "string u objeto según el campo"
+      }
+     },
+     "required": [
+      "campo",
+      "valor"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_nota",
+    "description": "Guarda una idea o duda que la persona mencionó pero que no es un dato firme de la ficha.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "texto": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "texto"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cerrar_toma",
+    "description": "Cierra la toma si la persona abandona el diseño o ya no quiere seguir con la ficha.",
+    "parameters": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   }
+  }
+ ],
+ "bloqueadas": [
+  "agregar_bloque",
+  "cambiar_visual",
+  "cambiar_tamano",
+  "mover_bloque",
+  "quitar_bloque",
+  "cambiar_rangos",
+  "cambiar_marca",
+  "usar_logo",
+  "restablecer_marca",
+  "crear_seccion",
+  "agregar_campo",
+  "renombrar_seccion",
+  "quitar_seccion",
+  "cambiar_ficha",
+  "cambiar_tarjeta",
+  "quitar_campo",
+  "renombrar_campo",
+  "cambiar_opciones_estado"
+ ],
+ "uid_base": "mvb9w000",
+ "plantillas": {
+  "membresias": {
+   "secciones": [
+    {
+     "id": "miembros",
+     "titulo": "Miembros",
+     "grupo": 0,
+     "icono": "usuarios",
+     "vista": "tabla",
+     "campos": [
+      {
+       "id": "nombre",
+       "nombre": "Nombre",
+       "tipo": "texto"
+      },
+      {
+       "id": "plan",
+       "nombre": "Plan",
+       "tipo": "texto"
+      },
+      {
+       "id": "alta",
+       "nombre": "Alta",
+       "tipo": "fecha"
+      },
+      {
+       "id": "vence",
+       "nombre": "Vence",
+       "tipo": "fecha"
+      },
+      {
+       "id": "estado",
+       "nombre": "Estado",
+       "tipo": "estado",
+       "opciones": [
+        "Activa",
+        "Pausada",
+        "Cancelada"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "vencimientos",
+     "titulo": "Vencimientos",
+     "grupo": 0,
+     "icono": "reloj",
+     "vista": "vencimientos",
+     "fuente": "miembros",
+     "opciones": {
+      "fecha": "vence",
+      "titulo": "nombre",
+      "detalle": "plan",
+      "dias": 30,
+      "estado": "estado",
+      "excluir": [
+       "Cancelada"
+      ]
+     }
+    },
+    {
+     "id": "pagos",
+     "titulo": "Pagos",
+     "grupo": 1,
+     "icono": "tarjeta",
+     "vista": "tabla",
+     "campos": [
+      {
+       "id": "miembro",
+       "nombre": "Miembro",
+       "tipo": "texto"
+      },
+      {
+       "id": "monto",
+       "nombre": "Monto",
+       "tipo": "dinero"
+      },
+      {
+       "id": "fecha",
+       "nombre": "Fecha",
+       "tipo": "fecha"
+      }
+     ]
+    },
+    {
+     "id": "actividad",
+     "titulo": "Historial",
+     "grupo": 1,
+     "icono": "actividad",
+     "vista": "feed"
+    },
+    {
+     "id": "equipo",
+     "titulo": "Equipo",
+     "grupo": 1,
+     "icono": "equipo",
+     "vista": "equipo"
+    },
+    {
+     "id": "automatizaciones",
+     "titulo": "Automatizaciones",
+     "grupo": 2,
+     "icono": "rayo",
+     "vista": "interruptores"
+    }
+   ]
+  },
+  "gimnasio": {
+   "secciones": [
+    {
+     "id": "membresias",
+     "titulo": "Membresías",
+     "grupo": 0,
+     "icono": "tarjeta",
+     "vista": "tabla",
+     "campos": [
+      {
+       "id": "nombre",
+       "nombre": "Nombre",
+       "tipo": "texto"
+      },
+      {
+       "id": "telefono",
+       "nombre": "Teléfono",
+       "tipo": "texto"
+      },
+      {
+       "id": "plan",
+       "nombre": "Plan",
+       "tipo": "texto",
+       "ejemplos": [
+        "Mensual básico",
+        "Mensual plus",
+        "Trimestral",
+        "Anual",
+        "Pareja",
+        "Estudiante"
+       ]
+      },
+      {
+       "id": "estado",
+       "nombre": "Estado",
+       "tipo": "estado",
+       "opciones": [
+        "Activa",
+        "Pausada",
+        "Por vencer",
+        "Cancelada"
+       ]
+      },
+      {
+       "id": "alta",
+       "nombre": "Alta",
+       "tipo": "fecha",
+       "rango": [
+        -400,
+        0
+       ]
+      },
+      {
+       "id": "vence",
+       "nombre": "Vence",
+       "tipo": "fecha",
+       "rango": [
+        -5,
+        45
+       ]
+      },
+      {
+       "id": "monto",
+       "nombre": "Monto",
+       "tipo": "dinero",
+       "rango": [
+        250,
+        4500
+       ]
+      }
+     ]
+    },
+    {
+     "id": "clases",
+     "titulo": "Clases",
+     "grupo": 0,
+     "icono": "calendario",
+     "vista": "agenda",
+     "opciones": {
+      "fecha": "fecha",
+      "hora": "hora",
+      "titulo": "clase",
+      "detalle": "entrenador",
+      "dias": 14
+     },
+     "campos": [
+      {
+       "id": "clase",
+       "nombre": "Clase",
+       "tipo": "texto",
+       "ejemplos": [
+        "Spinning",
+        "Funcional",
+        "Yoga",
+        "Zumba",
+        "CrossFit WOD",
+        "Box"
+       ]
+      },
+      {
+       "id": "entrenador",
+       "nombre": "Entrenador",
+       "tipo": "texto",
+       "ejemplos": [
+        "Carlos M.",
+        "Ana R.",
+        "Luis P.",
+        "María G.",
+        "Diego S.",
+        "Paola V."
+       ]
+      },
+      {
+       "id": "fecha",
+       "nombre": "Fecha",
+       "tipo": "fecha",
+       "rango": [
+        -7,
+        14
+       ]
+      },
+      {
+       "id": "hora",
+       "nombre": "Hora",
+       "tipo": "hora"
+      },
+      {
+       "id": "cupo",
+       "nombre": "Cupo",
+       "tipo": "numero",
+       "rango": [
+        8,
+        30
+       ]
+      },
+      {
+       "id": "inscritos",
+       "nombre": "Inscritos",
+       "tipo": "numero",
+       "rango": [
+        0,
+        30
+       ]
+      },
+      {
+       "id": "estado",
+       "nombre": "Estado",
+       "tipo": "estado",
+       "opciones": [
+        "Programada",
+        "En curso",
+        "Completa",
+        "Cancelada"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "visitas",
+     "titulo": "Visitas y prueba",
+     "grupo": 0,
+     "icono": "usuarios",
+     "vista": "tablero",
+     "opciones": {
+      "por": "estado",
+      "titulo": "nombre",
+      "detalle": "interes"
+     },
+     "campos": [
+      {
+       "id": "nombre",
+       "nombre": "Nombre",
+       "tipo": "texto"
+      },
+      {
+       "id": "telefono",
+       "nombre": "Teléfono",
+       "tipo": "texto"
+      },
+      {
+       "id": "interes",
+       "nombre": "Interés",
+       "tipo": "texto",
+       "ejemplos": [
+        "Pérdida de peso",
+        "Ganar masa",
+        "Rehabilitación",
+        "Clases grupales",
+        "Entrenador personal",
+        "Plan familiar"
+       ]
+      },
+      {
+       "id": "fecha",
+       "nombre": "Visita",
+       "tipo": "fecha",
+       "rango": [
+        -14,
+        7
+       ]
+      },
+      {
+       "id": "estado",
+       "nombre": "Estado",
+       "tipo": "estado",
+       "opciones": [
+        "Agendada",
+        "Asistió",
+        "Interesado",
+        "Inscrito",
+        "No interesado"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "actividad",
+     "titulo": "Historial",
+     "grupo": 1,
+     "icono": "actividad",
+     "vista": "feed"
+    },
+    {
+     "id": "equipo",
+     "titulo": "Equipo",
+     "grupo": 1,
+     "icono": "equipo",
+     "vista": "equipo"
+    },
+    {
+     "id": "automatizaciones",
+     "titulo": "Automatizaciones",
+     "grupo": 2,
+     "icono": "rayo",
+     "vista": "interruptores"
+    }
+   ]
+  }
+ }
+}
