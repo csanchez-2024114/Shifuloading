@@ -18,17 +18,6 @@ from test_ui_navegador import Controlable, _idle, _send  # noqa: E402
 PW = "contraseña-larga-1"
 
 
-class FakeMailer:
-    def __init__(self):
-        self.sent = []
-
-    def send(self, to, subject, body):
-        self.sent.append({"to": to, "subject": subject, "body": body})
-
-
-MAILER = FakeMailer()  # correos de recuperación enviados por la app de este módulo
-
-
 @pytest.fixture(scope="module")
 def base_url():
     import uvicorn
@@ -39,15 +28,14 @@ def base_url():
     from assistant.tools import build_tools
     from conftest import _settings
 
-    s = _settings(model_call_limit=0, auth_enabled=True, password_reset_enabled=True)
+    s = _settings(model_call_limit=0, auth_enabled=True)
     llm = Controlable(messages=iter([]))
     store = InMemoryStore()
     agent = build_agent(llm, build_tools(llm, s, search_fn=FakeSearch()), s, checkpointer=InMemorySaver(), store=store)
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
-    server = uvicorn.Server(uvicorn.Config(create_app(agent=agent, settings=s, store=store, appdata=MemoryAppData(),
-                                                     mailer=MAILER),
+    server = uvicorn.Server(uvicorn.Config(create_app(agent=agent, settings=s, store=store, appdata=MemoryAppData()),
                                           host="127.0.0.1", port=port, log_level="warning"))
     threading.Thread(target=server.run, daemon=True).start()
     for _ in range(100):
@@ -149,49 +137,3 @@ def test_registro_chat_salir_entrar_y_aislamiento(base_url, browser):
     assert a.request.get(base_url + f"history/{hilo_a}").status == 404
     ctx_a.close()
     ctx_b.close()
-
-
-def test_recuperar_contraseña_por_correo(base_url, browser):
-    import re
-
-    ctx = browser.new_context()
-    p = ctx.new_page()
-    p.goto(base_url)
-    _register(p, "Caro", "caro@ejemplo.com")
-    p.click("#logoutbtn")
-    p.wait_for_selector("#authview", state="visible")
-
-    # pedir el enlace: respuesta genérica
-    p.fill("#authemail", "caro@ejemplo.com")
-    p.click("#forgotbtn")
-    assert p.is_visible("#recoverform") and not p.is_visible("#authform")
-    assert p.input_value("#recoveremail") == "caro@ejemplo.com"
-    p.click("#recoversubmit")
-    p.wait_for_function("() => document.querySelector('#recovermsg').textContent.length > 0")
-    assert p.inner_text("#recovermsg").startswith("Si el correo está registrado")
-    [mail] = [m for m in MAILER.sent if m["to"] == "caro@ejemplo.com"]
-    token = re.search(r"#reset=([A-Za-z0-9_-]+)", mail["body"]).group(1)
-
-    # abrir el enlace: pide la contraseña nueva y quita el token de la barra
-    q = ctx.new_page()
-    q.goto(f"{base_url}#reset={token}")
-    q.wait_for_selector("#recoverpass", state="visible")
-    assert "reset" not in q.url and q.inner_text("#authtitle") == "Elige una contraseña nueva"
-    q.fill("#recoverpass", "corta")
-    q.click("#recoversubmit")
-    q.wait_for_function("() => document.querySelector('#recovererr').textContent.length > 0")
-    q.fill("#recoverpass", "contraseña-nueva-123")
-    q.click("#recoversubmit")
-    q.wait_for_function("() => document.querySelector('#authinfo').textContent.includes('Contraseña cambiada')")
-    assert q.is_visible("#authform")
-
-    # entra con la nueva; la vieja ya no sirve
-    q.fill("#authemail", "caro@ejemplo.com")
-    q.fill("#authpass", PW)
-    q.click("#authsubmit")
-    q.wait_for_function("() => document.querySelector('#autherr').textContent.length > 0")
-    q.fill("#authpass", "contraseña-nueva-123")
-    q.click("#authsubmit")
-    q.wait_for_selector("#authview", state="hidden")
-    assert q.inner_text("#whoami") == "Caro"
-    ctx.close()

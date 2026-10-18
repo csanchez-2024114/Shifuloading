@@ -1,4 +1,4 @@
-"""Base de negocio en MongoDB. Colecciones: users, sessions, threads, login_attempts, login_locks, password_resets."""
+"""Base de negocio en MongoDB. Colecciones: users, sessions, threads, login_attempts, login_locks."""
 from datetime import datetime, timezone
 
 import pymongo
@@ -39,9 +39,6 @@ class MongoUsers:
 
     def get_by_email(self, email):
         return _doc(self.col.find_one({"email": email}))
-
-    def set_password(self, user_id, password_hash):
-        self.col.update_one({"user_id": user_id}, {"$set": {"password_hash": password_hash}})
 
     def delete(self, user_id):
         self.col.delete_one({"user_id": user_id})
@@ -134,24 +131,6 @@ class MongoAttempts:
         self.locks.delete_many({"key": key})
 
 
-class MongoResets:
-    def __init__(self, db):
-        self.col = db["password_resets"]
-        self.col.create_index("token_hash", unique=True)
-        self.col.create_index("user_id")
-        self.col.create_index("expires_at", expireAfterSeconds=0)  # Mongo borra los caducados
-
-    def create(self, token_hash, user_id, expires_at):
-        self.col.insert_one({"token_hash": token_hash, "user_id": user_id, "expires_at": expires_at,
-                             "created_at": datetime.now(timezone.utc)})
-
-    def consume(self, token_hash):
-        return _doc(self.col.find_one_and_delete({"token_hash": token_hash}))  # atómico: un solo uso
-
-    def delete_for_user(self, user_id):
-        self.col.delete_many({"user_id": user_id})
-
-
 class MongoAppData:
     def __init__(self, client: pymongo.MongoClient, db_name: str):
         db = client[db_name]
@@ -160,4 +139,3 @@ class MongoAppData:
         self.sessions = MongoSessions(db)
         self.threads = MongoThreads(db)
         self.attempts = MongoAttempts(db)
-        self.resets = MongoResets(db)

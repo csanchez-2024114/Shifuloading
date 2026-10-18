@@ -23,10 +23,6 @@ class _Users:
     def get_by_email(self, email):
         return next((dict(u) for u in self.rows.values() if u["email"] == email), None)
 
-    def set_password(self, user_id, password_hash):
-        if user_id in self.rows:
-            self.rows[user_id]["password_hash"] = password_hash
-
     def delete(self, user_id):
         self.rows.pop(user_id, None)
 
@@ -116,25 +112,9 @@ class _Attempts:
         self.locks.pop(key, None)
 
 
-class _Resets:
-    def __init__(self):
-        self.rows: dict[str, dict] = {}
-
-    def create(self, token_hash, user_id, expires_at):
-        self.rows[token_hash] = {"token_hash": token_hash, "user_id": user_id, "expires_at": expires_at}
-
-    def consume(self, token_hash):
-        return self.rows.pop(token_hash, None)
-
-    def delete_for_user(self, user_id):
-        for k in [k for k, r in self.rows.items() if r["user_id"] == user_id]:
-            del self.rows[k]
-
-
 class MemoryAppData:
     def __init__(self):
         self.users = _Users()
         self.sessions = _Sessions()
         self.threads = _Threads()
         self.attempts = _Attempts()
-        self.resets = _Resets()

@@ -104,13 +104,10 @@ select#thread {
 #authview h2 { margin: 0 0 12px; font-size: 1.15rem; }
 body.needs-login #authview { display: block; }
 body.needs-login .app > :not(#authview) { display: none !important; }
-#authform, #recoverform { display: flex; flex-direction: column; gap: 6px; }
-#authview label { font-size: .88rem; color: var(--muted); }
-#authview input { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
-#authview .btn { margin-top: 8px; }
-#authview [hidden] { display: none !important; }
-#authinfo, #recovermsg { color: var(--muted); margin: 4px 0 0; font-size: .9rem; }
-#authinfo:empty, #recovermsg:empty { display: none; }
+#authform { display: flex; flex-direction: column; gap: 6px; }
+#authform label { font-size: .88rem; color: var(--muted); }
+#authform input { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+#authform .btn { margin-top: 8px; }
 #autherr { color: var(--err); min-height: 1.3em; margin: 4px 0 0; font-size: .9rem; }
 #authview:not(.register) .reg-only { display: none; }
 .linkbtn { background: none; border: none; color: var(--link); cursor: pointer; padding: 4px 0; text-align: left; font-size: .9rem; }
@@ -299,20 +296,7 @@ textarea#input:disabled { opacity: .6; }
       <small class="reg-only">Al menos 10 caracteres.</small>
       <button id="authsubmit" class="btn primary" type="submit">Entrar</button>
       <p id="autherr" role="alert"></p>
-      <p id="authinfo" role="status"></p>
       <button id="authtoggle" class="linkbtn" type="button">¿No tienes cuenta? Regístrate</button>
-      <button id="forgotbtn" class="linkbtn" type="button" hidden>¿Olvidaste tu contraseña?</button>
-    </form>
-    <form id="recoverform" hidden>
-      <label id="recoveremaillbl" for="recoveremail">Correo</label>
-      <input id="recoveremail" type="email" autocomplete="username" maxlength="254">
-      <label id="recoverpasslbl" for="recoverpass">Nueva contraseña</label>
-      <input id="recoverpass" type="password" autocomplete="new-password">
-      <small id="recoverrule">Al menos 10 caracteres.</small>
-      <button id="recoversubmit" class="btn primary" type="submit">Enviar enlace</button>
-      <p id="recovererr" role="alert"></p>
-      <p id="recovermsg" role="status"></p>
-      <button id="recoverback" class="linkbtn" type="button">Volver a iniciar sesión</button>
     </form>
   </section>
   <header>
@@ -1398,20 +1382,6 @@ textarea#input:disabled { opacity: .6; }
   effortEl.addEventListener("change", function () { lsSet("effort", effortEl.value); });
   /* ---------- cuentas (AUTH_ENABLED=1) ---------- */
   var authView = $("authview"), authForm = $("authform");
-  // recuperación de contraseña: "forgot" (pedir el enlace), "reset" (elegir la nueva con el token del enlace) o null
-  var recoverToken = "";
-  function setRecover(mode) {
-    var on = !!mode, reset = mode === "reset";
-    $("authform").hidden = on; $("recoverform").hidden = !on;
-    ["recoveremaillbl", "recoveremail"].forEach(function (id) { $(id).hidden = reset; });
-    ["recoverpasslbl", "recoverpass", "recoverrule"].forEach(function (id) { $(id).hidden = !reset; });
-    $("recoveremail").required = on && !reset; $("recoverpass").required = reset;
-    $("authtitle").textContent = !on ? (authView.classList.contains("register") ? "Crea tu cuenta" : "Inicia sesión")
-      : reset ? "Elige una contraseña nueva" : "Recupera tu contraseña";
-    $("recoversubmit").textContent = reset ? "Cambiar contraseña" : "Enviar enlace";
-    $("recoversubmit").hidden = false; $("recovererr").textContent = ""; $("recovermsg").textContent = "";
-    if (on) (reset ? $("recoverpass") : $("recoveremail")).focus();
-  }
   function setAuthMode(register) {
     authView.classList.toggle("register", register);
     $("authtitle").textContent = register ? "Crea tu cuenta" : "Inicia sesión";
@@ -1466,31 +1436,6 @@ textarea#input:disabled { opacity: .6; }
     $("autherr").textContent = typeof detail === "string" ? detail : "No se pudo completar. Revisa los datos.";
   });
   $("authtoggle").addEventListener("click", function () { setAuthMode(!authView.classList.contains("register")); });
-  $("forgotbtn").addEventListener("click", function () {
-    $("recoveremail").value = $("authemail").value; $("authinfo").textContent = ""; setRecover("forgot");
-  });
-  $("recoverback").addEventListener("click", function () { recoverToken = ""; setRecover(null); });
-  $("recoverform").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    var reset = !!recoverToken, data = null, status = 0;
-    var body = reset ? { token: recoverToken, password: $("recoverpass").value } : { email: $("recoveremail").value };
-    $("recoversubmit").disabled = true; $("recovererr").textContent = ""; $("recovermsg").textContent = "";
-    try {
-      var r = await fetch(reset ? "/auth/reset" : "/auth/forgot", {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify(body)
-      });
-      status = r.status; data = await r.json();
-    } catch (err) { /* ignore */ }
-    $("recoversubmit").disabled = false;
-    var detail = data && (data.message || data.detail);
-    if (status !== 200) { $("recovererr").textContent = typeof detail === "string" ? detail : "No se pudo completar. Inténtalo de nuevo."; return; }
-    if (reset) {  // listo: vuelve a "Inicia sesión" con el aviso
-      recoverToken = ""; $("recoverpass").value = ""; setRecover(null);
-      $("authinfo").textContent = detail; $("authpass").focus();
-      return;
-    }
-    $("recovermsg").textContent = detail; $("recoversubmit").hidden = true;
-  });
   $("logoutbtn").addEventListener("click", async function () {
     try { await apiFetch("/auth/logout", { method: "POST" }); } catch (e) { /* ignore */ }
     location.href = location.pathname;  // sin ?thread: nada de la sesión anterior queda a la vista
@@ -1567,15 +1512,6 @@ textarea#input:disabled { opacity: .6; }
     state.auth.enabled = true;
     document.body.classList.add("auth-on");
     setAuthMode(false);
-    $("forgotbtn").hidden = !me.password_reset;
-    // enlace del correo: /#reset=<token>. El fragmento no llega al servidor; se quita de la barra en cuanto se lee
-    var m = /^#reset=([A-Za-z0-9_-]+)$/.exec(location.hash || "");
-    if (m && me.password_reset) {
-      recoverToken = m[1];
-      try { history.replaceState(null, "", location.pathname); } catch (e) { /* ignore */ }
-      showAuth(); setRecover("reset");
-      return;
-    }
     if (me.user) startAuthed(me.user, me.csrf); else showAuth();
   })();
 })();

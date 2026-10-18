@@ -8,7 +8,7 @@ import threading
 import uuid
 from urllib.parse import urlparse
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from langgraph.types import Command
 from pydantic import BaseModel
@@ -18,8 +18,7 @@ from assistant import ai_data
 from assistant import context as context_mod
 from assistant import memory
 from assistant.appdata import MAX_TITLE_CHARS, clean_title, thread_title
-from assistant.auth import (CSRF_HEADER, RESET_BODY, RESET_DONE, RESET_SENT, RESET_SUBJECT, SESSION_COOKIE, AuthError,
-                            AuthService, csrf_for, csrf_ok)
+from assistant.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
 from assistant.config import ROOT, ConfigError, Settings
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -56,15 +55,6 @@ class PasswordIn(BaseModel):
 
 class RenameIn(BaseModel):
     title: str
-
-
-class ForgotIn(BaseModel):
-    email: str
-
-
-class ResetIn(BaseModel):
-    token: str
-    password: str
 
 
 def _build_real_agent(settings: Settings):
@@ -136,10 +126,8 @@ def with_keepalive(events, interval: float):
         stop.set()
 
 
-def create_app(agent=None, settings: Settings | None = None, classify=None, store=None, appdata=None,
-               mailer=None) -> FastAPI:
-    """`appdata`: base de negocio (AUTH_ENABLED); `mailer`: envío de correo (PASSWORD_RESET_ENABLED). Se inyectan en
-    tests."""
+def create_app(agent=None, settings: Settings | None = None, classify=None, store=None, appdata=None) -> FastAPI:
+    """`appdata`: base de negocio (AUTH_ENABLED); se inyecta en tests."""
     settings = settings or Settings.from_env()
     if classify is None:
         # agente inyectado (tests) → sin llamadas reales a OpenAI para clasificar
@@ -158,13 +146,6 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         raise ConfigError("AUTH_ENABLED=1 necesita la base de negocio (APP_MONGODB_URI y APP_MONGODB_DB).")
     auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
                        settings.login_lock_minutes, settings.login_max_fails_ip) if settings.auth_enabled else None
-    reset_on = settings.auth_enabled and settings.password_reset_enabled
-    if reset_on and mailer is None:
-        if not (settings.smtp_host and settings.smtp_from):
-            raise ConfigError("PASSWORD_RESET_ENABLED=1 necesita SMTP_HOST y SMTP_FROM para enviar el enlace.")
-        from assistant.mailer import SmtpMailer
-
-        mailer = SmtpMailer(settings)
 
     app = FastAPI(title="Agente 0")
 
@@ -265,9 +246,8 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             return {"auth_enabled": False}
         user = auth.session_user(_token(request))
         if user is None:
-            return {"auth_enabled": True, "password_reset": reset_on, "user": None}
-        return {"auth_enabled": True, "password_reset": reset_on,
-                "user": {"display_name": user["display_name"], "email": user["email"]},
+            return {"auth_enabled": True, "user": None}
+        return {"auth_enabled": True, "user": {"display_name": user["display_name"], "email": user["email"]},
                 "csrf": csrf_for(_token(request))}
 
     def _require_auth():
@@ -295,42 +275,6 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             raise _auth_error(exc) from None
         return _session_response(request, user, token)
 
-    def _send_reset(to: str, name: str, link: str):
-        try:
-            mailer.send(to, RESET_SUBJECT, RESET_BODY.format(name=name, link=link))
-        except Exception as exc:  # noqa: BLE001 - el usuario ya recibió la respuesta genérica
-            log.warning("No se pudo enviar el correo de recuperación (%s)", type(exc).__name__)
-
-    @app.post("/auth/forgot")
-    def auth_forgot(body: ForgotIn, request: Request, tasks: BackgroundTasks):
-        """Pide un enlace para cambiar la contraseña. Responde siempre lo mismo; el correo sale después de responder
-        (en segundo plano), así el tiempo de respuesta tampoco revela si el correo existe."""
-        _require_auth()
-        if not reset_on:
-            raise HTTPException(404, "La recuperación de contraseña no está activada.")
-        _same_origin(request)
-        found = auth.request_reset(body.email, request.client.host if request.client else "")
-        if found:
-            user, token = found
-            base = (settings.app_base_url or str(request.base_url)).rstrip("/")
-            # el token va en el fragmento (#): el navegador no lo manda al servidor, no queda en ningún log
-            tasks.add_task(_send_reset, user["email"], user["display_name"], f"{base}/#reset={token}")
-        return {"ok": True, "message": RESET_SENT}
-
-    @app.post("/auth/reset")
-    def auth_reset(body: ResetIn, request: Request):
-        _require_auth()
-        if not reset_on:
-            raise HTTPException(404, "La recuperación de contraseña no está activada.")
-        _same_origin(request)
-        try:
-            auth.reset_password(body.token, body.password)
-        except AuthError as exc:
-            raise _auth_error(exc) from None
-        resp = JSONResponse({"ok": True, "message": RESET_DONE})
-        resp.delete_cookie(SESSION_COOKIE, path="/")
-        return resp
-
     @app.post("/auth/logout")
     def auth_logout(request: Request):
         _require_auth()
@@ -352,7 +296,6 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         threads = [t["thread_id"] for t in appdata.threads.list_for_user(uid)]
         ai_data.delete_user_ai_data(agent.checkpointer, store, uid, threads)
         appdata.sessions.delete_for_user(uid)
-        appdata.resets.delete_for_user(uid)
         appdata.threads.delete_for_user(uid)
         appdata.attempts.clear(f"email:{user['email']}")
         appdata.users.delete(uid)

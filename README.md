@@ -342,7 +342,6 @@ Con `AUTH_ENABLED=1` cada persona entra con correo y contraseña, y el `user_id`
 | Negocio | `sessions` | hash sha256 del token de sesión, `user_id`, caducidad (TTL) |
 | Negocio | `threads` | dueño de cada conversación: `thread_id`, `user_id`, título (primeras palabras del primer mensaje), fechas |
 | Negocio | `login_attempts`, `login_locks` | fallos de login por correo e IP y bloqueos temporales (TTL) |
-| Negocio | `password_resets` | enlaces de recuperación de contraseña: solo el hash del token, de un solo uso, caducan en 30 minutos (TTL) |
 
 La base de la IA **nunca** guarda correos, contraseñas, nombres ni datos de login: solo el UUID opaco. La de negocio nunca guarda mensajes, resúmenes ni recuerdos. Al arrancar se comprueba que las dos responden y que no son la misma (mismo servidor sin credenciales y mismo nombre); si lo son, no arranca. Recomendación para Atlas (no lo hace la app): dos usuarios de base de datos con permisos mínimos, `readWrite` solo sobre su base (uno para la IA y otro para negocio), cada uno en su URI.
 
@@ -354,12 +353,6 @@ La base de la IA **nunca** guarda correos, contraseñas, nombres ni datos de log
 | `SESSION_TTL_DAYS` | `14` | caducidad de la sesión, con renovación deslizante |
 | `COOKIE_SECURE` | `auto` | cookie `Secure`: `auto` (si llega por https), `1` o `0` |
 | `LOGIN_MAX_FAILS_PER_EMAIL` / `LOGIN_MAX_FAILS_PER_IP` / `LOGIN_LOCK_MINUTES` | `5` / `20` / `10` | 5 fallos en 10 minutos por correo, o 20 por IP (más alto: varios usuarios pueden compartir IP), bloquean 10 minutos. `LOGIN_MAX_FAILS` sigue valiendo como respaldo del umbral por correo |
-| `PASSWORD_RESET_ENABLED` | `0` | `1` = "¿Olvidaste tu contraseña?" con enlace por correo (necesita `SMTP_HOST` y `SMTP_FROM`; si faltan, no arranca y lo dice) |
-| `SMTP_HOST` / `SMTP_PORT` | vacía / `587` | servidor de correo; con `465` usa SMTPS, en otro puerto STARTTLS si `SMTP_STARTTLS=1` |
-| `SMTP_USER` / `SMTP_PASSWORD` | vacías | credenciales SMTP (sin usuario, no inicia sesión) |
-| `SMTP_FROM` | vacía | remitente, p. ej. `Agente 0 <no-responder@tu-dominio.com>` |
-| `SMTP_STARTTLS` | `1` | STARTTLS en puertos distintos de 465 |
-| `APP_BASE_URL` | vacía | base del enlace del correo (p. ej. `https://agente.tu-dominio.com`); vacía = la dirección con la que se pidió |
 
 Seguridad:
 - Contraseñas con argon2id (`argon2-cffi`), al menos 10 caracteres; nunca en texto plano ni en logs.
@@ -369,7 +362,7 @@ Seguridad:
 - Propiedad: chat, reanudar, historial, medidor, compactar y borrar comprueban que el hilo es del usuario de la sesión; si no, **404** (no 403, para no revelar que existe). Los recuerdos se leen y borran en `/me/memories`.
 - Renombrar una conversación (botón ✎ junto a la lista) cambia solo su título en negocio: máximo 80 caracteres, solo el dueño (404 si no es suya), sin llamar al modelo. El título automático (primeras palabras del primer mensaje) ya no lo pisa.
 - Borrar una conversación borra sus checkpoints en la IA y su fila en negocio. Borrar la cuenta (con la contraseña) borra el usuario, sus sesiones, sus conversaciones y toda su memoria global.
-- **Recuperación de contraseña** (`PASSWORD_RESET_ENABLED=1`): "¿Olvidaste tu contraseña?" pide el correo y responde siempre lo mismo, exista o no ("Si el correo está registrado, te enviamos un enlace…"). El correo sale en segundo plano, después de responder, para que el tiempo de respuesta tampoco lo revele. El enlace es `APP_BASE_URL/#reset=<token>`: el token va en el fragmento, que el navegador no manda al servidor, así que no queda en ningún log; la página lo quita de la barra al leerlo. En la base solo se guarda su hash (`password_resets`). Sirve una vez, caduca en 30 minutos y solo vale el último pedido. Al cambiar la contraseña se cierran todas las sesiones. Límite: 3 solicitudes por correo y 10 por IP cada `LOGIN_LOCK_MINUTES`; las demás se ignoran en silencio. Borrar la cuenta borra también sus enlaces.
+- **Fuera de alcance:** recuperación de contraseña por correo. Es lógica de negocio, no una capacidad del agente; se implementó y se descartó (revert del commit b2694c1).
 
 Datos anteriores: `scripts/assign_legacy_data.py` lista (dry-run por defecto) los hilos y los recuerdos por `user_id` antiguo; con `--apply --email <cuenta> --legacy-user <id> --threads all|id1,id2` asigna los hilos a esa cuenta y **copia** sus recuerdos al UUID (no borra nada; repetirlo no duplica). Con `AUTH_ENABLED=0` la app funciona exactamente como antes, sin login.
 

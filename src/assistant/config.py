@@ -82,15 +82,6 @@ class Settings:
     cookie_secure: str = "auto"         # cookie Secure: auto (si la petición llega por https), 1 o 0
     login_max_fails: int = 5            # fallos de login por correo antes del bloqueo
     login_max_fails_ip: int = 20        # fallos de login por IP antes del bloqueo (más alto: IP compartidas)
-    # recuperación de contraseña por correo (solo con AUTH_ENABLED=1)
-    password_reset_enabled: bool = False
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-    smtp_from: str = ""
-    smtp_starttls: bool = True
-    app_base_url: str = ""              # base del enlace del correo; "" = la de la petición
     login_lock_minutes: int = 10        # ventana de fallos y duración del bloqueo
 
     @classmethod
@@ -150,14 +141,6 @@ class Settings:
             cookie_secure=os.getenv("COOKIE_SECURE", "auto").strip().lower(),
             login_max_fails=int(os.getenv("LOGIN_MAX_FAILS_PER_EMAIL") or os.getenv("LOGIN_MAX_FAILS") or "5"),
             login_max_fails_ip=int(os.getenv("LOGIN_MAX_FAILS_PER_IP") or "20"),
-            password_reset_enabled=_bool("PASSWORD_RESET_ENABLED"),
-            smtp_host=os.getenv("SMTP_HOST", "").strip(),
-            smtp_port=_num("SMTP_PORT", "587"),
-            smtp_user=os.getenv("SMTP_USER", "").strip(),
-            smtp_password=os.getenv("SMTP_PASSWORD", ""),
-            smtp_from=os.getenv("SMTP_FROM", "").strip(),
-            smtp_starttls=_bool("SMTP_STARTTLS", "1"),
-            app_base_url=os.getenv("APP_BASE_URL", "").strip(),
             login_lock_minutes=_num("LOGIN_LOCK_MINUTES", "10"),
         )
 
