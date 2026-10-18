@@ -80,10 +80,11 @@ function registrosDe(crm, secciones) {
 
 /**
  * El CRM de la API → lo que dibujan las piezas del laboratorio.
+ * `acomodar(bloques)` = cómo se tapan los huecos de la rejilla (la pantalla pasa el de edicion.js).
  * Devuelve { plantilla: {id, nombre, para, inicio, secciones}, datos: {registros, eventos, equipo, automatizaciones},
  *            bloques (del inicio), paginas ({secId: [Bloque]}), marca, porId, avisos: [texto] }.
  */
-export function desdeCrm(crm, { titulos = {} } = {}) {
+export function desdeCrm(crm, { titulos = {}, acomodar = (bs) => bs } = {}) {
   const avisos = []
   const secciones = seccionesDe(crm || {}, titulos)
   const porId = Object.fromEntries(secciones.map((s) => [s.id, s]))
@@ -100,11 +101,12 @@ export function desdeCrm(crm, { titulos = {} } = {}) {
     if (err.length) { avisos.push(...err); return false }
     return true
   })
-  const bloques = validos(crm?.inicio, 'b', 'Inicio')
+  // `acomodar` (el de edicion.js en la pantalla) tapa los huecos de la rejilla; aquí, por defecto, se dejan como vienen.
+  const bloques = acomodar(validos(crm?.inicio, 'b', 'Inicio'))
   const paginas = {}
   for (const [sid, lista] of Object.entries(crm?.paginas || {})) {
     if (!porId[sid]) { avisos.push(`Página «${sid}»: la sección no existe.`); continue }
-    paginas[sid] = validos(lista, `p_${sid}_`, `Pestaña «${porId[sid].titulo}»`)
+    paginas[sid] = acomodar(validos(lista, `p_${sid}_`, `Pestaña «${porId[sid].titulo}»`))
     porId[sid].pagina = paginas[sid] // como plantillaEfectiva del laboratorio: la pestaña con lienzo propio
   }
   const plantilla = { id: crm?.plantilla?.id || 'crm', nombre: crm?.brief?.nombre || 'Mi CRM', para: '', inicio: bloques, secciones }
