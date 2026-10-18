@@ -662,6 +662,10 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "FILE_MAX_CHARS": ("file_max_chars", 200000),
     "FILE_EXTRACT_TIMEOUT": ("file_extract_timeout", 20.0),
     "FILE_IMAGE_MAX_PX": ("file_image_max_px", 1568),
+    "TRACE_METADATA": ("trace_metadata", False),
+    "TURN_METRICS": ("turn_metrics", False),
+    "FEEDBACK_ENABLED": ("feedback_enabled", False),
+    "METRICS_TTL_DAYS": ("metrics_ttl_days", 90),
 }
 
 

@@ -120,6 +120,12 @@ class Settings:
     file_max_chars: int = 200_000
     file_extract_timeout: float = 20.0
     file_image_max_px: int = 1568
+    # Trazas, métricas y feedback (Fase 3). Apagados por defecto: sin ellos no hay evento "run", ni colecciones nuevas,
+    # ni rutas. TURN_METRICS y FEEDBACK_ENABLED necesitan la base de negocio; FEEDBACK_ENABLED, además, los otros dos.
+    trace_metadata: bool = False      # run_id por turno y metadatos en la traza (LangSmith) + evento SSE "run"
+    turn_metrics: bool = False        # métricas por turno en turn_metrics (sin contenido de mensajes) y /metrics/summary
+    feedback_enabled: bool = False    # POST /feedback (👍/👎) y create_feedback en LangSmith si está activo
+    metrics_ttl_days: int = 90        # días que se conservan turn_metrics y feedback; 0 = sin caducidad
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -194,6 +200,10 @@ class Settings:
             file_max_chars=_num("FILE_MAX_CHARS", "200000"),
             file_extract_timeout=_num("FILE_EXTRACT_TIMEOUT", "20", float),
             file_image_max_px=_num("FILE_IMAGE_MAX_PX", "1568"),
+            trace_metadata=_bool("TRACE_METADATA"),
+            turn_metrics=_bool("TURN_METRICS"),
+            feedback_enabled=_bool("FEEDBACK_ENABLED"),
+            metrics_ttl_days=_num("METRICS_TTL_DAYS", "90"),
             trusted_hosts=tuple(h.strip().lower() for h in (os.getenv("TRUSTED_HOSTS") or "localhost,127.0.0.1")
                                 .split(",") if h.strip()),
         )
