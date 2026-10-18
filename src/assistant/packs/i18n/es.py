@@ -114,6 +114,7 @@ TEXTS = {
     "startup.non_local_hosts": NON_LOCAL_HOSTS_MSG,
     "http.not_loopback": NOT_LOOPBACK_MSG,
     "http.message_too_long": MESSAGE_TOO_LONG_MSG,
+    "http.thread_busy": "Esta conversación ya tiene una respuesta en curso. Espera a que termine.",
     "startup.app_db_required": APP_DB_REQUIRED_MSG,
     # FILES_ENABLED (opcionales: core.i18n.FILE_TEXTS; el servidor las exige solo con el interruptor)
     "files.empty": "El archivo está vacío.",

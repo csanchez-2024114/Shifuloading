@@ -227,11 +227,35 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     # TURN_METRICS: cada turno deja su fila (sin contenido de mensajes) en la base de negocio
     observer = appdata.turn_metrics.add if settings.turn_metrics else None
 
+    # Candado por hilo: un turno a la vez en cada conversación. Un segundo /chat o /resume en un hilo con un turno en
+    # curso responde 409. Vale por proceso (un solo worker de uvicorn, como se usa la app).
+    busy: set[str] = set()
+    busy_lock = threading.Lock()
+
+    def _claim(thread_id: str) -> None:
+        with busy_lock:
+            if thread_id in busy:
+                raise HTTPException(409, profile.texts.get("http.thread_busy") or
+                                    "Esta conversación ya tiene una respuesta en curso.")
+            busy.add(thread_id)
+
+    def _release(thread_id: str) -> None:
+        with busy_lock:
+            busy.discard(thread_id)
+
+    def _held(events, thread_id: str):
+        """Libera el candado cuando el turno termina de verdad: with_keepalive cierra este iterador en su hilo al
+        acabar o cuando el cliente se va, después del último evento del agente."""
+        try:
+            yield from events
+        finally:
+            _release(thread_id)
+
     def sse(payload, thread_id: str, user_id: str, esfuerzo: str | None = None, origen: str = "auto"):
         extra = {"observer": observer} if observer else {}
         events = (f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n" for event in
                   agent_mod.stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen, **extra))
-        return with_keepalive(events, settings.sse_ping_seconds)
+        return with_keepalive(_held(events, thread_id), settings.sse_ping_seconds)
 
     def sse_response(gen):
         return StreamingResponse(gen, media_type="text/event-stream",
@@ -259,9 +283,14 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         payload = {"messages": [{"role": "user", "content": body.message}]}
         if settings.files_enabled and body.file_ids:
             payload = {"messages": [_message_with_files(body, user_id)]}
-        esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify,
-                                                     (getattr(agent, "profile", None) or profile).intents)
-        return sse_response(sse(payload, body.thread_id, user_id, esfuerzo, origen))
+        _claim(body.thread_id)  # antes del clasificador: un doble envío no llega a gastar
+        try:
+            esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify,
+                                                         (getattr(agent, "profile", None) or profile).intents)
+            return sse_response(sse(payload, body.thread_id, user_id, esfuerzo, origen))
+        except BaseException:
+            _release(body.thread_id)
+            raise
 
     @app.post("/resume")
     def resume(body: ResumeIn, request: Request):
@@ -271,7 +300,12 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             _owned(user, body.thread_id)
             appdata.threads.touch(body.thread_id)
             user_id = user["user_id"]
-        return sse_response(sse(Command(resume={"decisions": body.decisions}), body.thread_id, user_id))
+        _claim(body.thread_id)
+        try:
+            return sse_response(sse(Command(resume={"decisions": body.decisions}), body.thread_id, user_id))
+        except BaseException:
+            _release(body.thread_id)
+            raise
 
     @app.get("/history/{thread_id}")
     def history(thread_id: str, request: Request):

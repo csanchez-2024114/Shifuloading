@@ -227,6 +227,7 @@ Antes de cualquier ruta (`feat/seguridad-core`):
 - una cabecera `Host` fuera de `TRUSTED_HOSTS` responde **400**;
 - con `AUTH_ENABLED=0`, una conexión que no llegó a una dirección de loopback responde **403** `{"detail": …}`;
 - `/chat` con un `message` de más de `MAX_MESSAGE_CHARS` caracteres responde **413** `{"detail": …}` sin abrir el stream.
+- **Candado por hilo** (Fase 4): mientras un turno corre en un hilo, otro `/chat` o `/resume` en ese mismo hilo responde **409** `{"detail": "Esta conversación ya tiene una respuesta en curso…"}` sin tocar el hilo ni el modelo. Otros hilos no esperan. El candado se toma antes del clasificador de esfuerzo y se suelta cuando el turno termina de verdad (también si falla o el cliente se va). Vale por proceso: la app corre con un solo worker de uvicorn.
 
 Los eventos SSE no cambian. El evento `error` de una excepción inesperada lleva un aviso genérico, y el detalle va solo al log.
 
