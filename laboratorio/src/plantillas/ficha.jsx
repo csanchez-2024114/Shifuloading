@@ -86,15 +86,16 @@ export default function Ficha({ plantilla, datos, seccionId, registroId, onCerra
         </header>
         {borrando && (
           <ConfirmaBorrar que={tituloRegistro(sec, campos, r)} onNo={() => setBorrando(false)}
-            onSi={() => { if (!onDato('borrar_registro', { seccion: sec.id, registro: r.id }, `borró «${tituloRegistro(sec, campos, r)}» de ${sec.titulo}`)) onCerrar() }} />
+            onSi={async () => { if (!(await onDato('borrar_registro', { seccion: sec.id, registro: r.id }, `borró «${tituloRegistro(sec, campos, r)}» de ${sec.titulo}`))) onCerrar() }} />
         )}
         {editando && (
           <FormRegistro titulo={`Editar ${tituloRegistro(sec, campos, r)}`} campos={campos} inicial={r.valores} obligatorio={campoTitulo(sec, campos)} onCancelar={() => setEditando(false)}
-            onGuardar={(vals) => {
+            onGuardar={async (vals) => {
               // Solo lo que cambió: así el punto de deshacer y la línea de cambios dicen exactamente eso.
               const cambios = Object.fromEntries(Object.entries(vals).filter(([k, v]) => String(v) !== String(r.valores[k] ?? '')))
               if (!Object.keys(cambios).length) { setEditando(false); return null }
-              const err = onDato('editar_registro', { seccion: sec.id, registro: r.id, valores: cambios }, `editó «${tituloRegistro(sec, campos, r)}» en ${sec.titulo}`)
+              // onDato puede ser asíncrono (en el CRM real el cambio va al servidor): se espera su respuesta.
+              const err = await onDato('editar_registro', { seccion: sec.id, registro: r.id, valores: cambios }, `editó «${tituloRegistro(sec, campos, r)}» en ${sec.titulo}`)
               if (!err) setEditando(false)
               return err
             }} />
