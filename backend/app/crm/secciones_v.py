@@ -30,7 +30,9 @@ _CLAVE_TAREA = {"tarea": "t", "vence": "vence", "hora": "hora"}
 
 
 def _campo(c: dict) -> dict:
-    return {"id": c["id"], "nombre": c["nombre"], "tipo": c["tipo"], **({"opciones": c["opciones"]} if c.get("opciones") else {})}
+    """El campo con el vocabulario del laboratorio: "lista" (Carlos) sale como "estado" (son lo mismo; lo guardado no cambia)."""
+    tipo = "estado" if c["tipo"] == "lista" else c["tipo"]
+    return {"id": c["id"], "nombre": c["nombre"], "tipo": tipo, **({"opciones": c["opciones"]} if c.get("opciones") else {})}
 
 
 def _campos_contactos(doc: dict) -> list[dict]:
@@ -117,6 +119,12 @@ def _uno(doc: dict, sec_id: str, rid: str) -> dict:
 
 
 # ───────── Conversión de valores ─────────
+# En una edición, "" (o None) es «dejar el campo vacío»: se guarda el vacío de Carlos (None, o la clave fuera). Los campos sin los
+# que el registro no existe (nombre, canal, etapa, responsable de un contacto; texto y estado de una tarea) no pueden quedar vacíos.
+
+def _vacio(v: Any) -> bool:
+    return v is None or (isinstance(v, str) and not v.strip())
+
 
 def _desconocidos(campos: list[dict], valores: dict) -> None:
     ids = {c["id"] for c in campos}
@@ -141,7 +149,7 @@ def _cambios_contacto(doc: dict, valores: dict) -> dict:
             raise ErrorCrm(422, "Falta el nombre.")
         cambios["n"] = n
     if "detalle" in valores:
-        cambios["det"] = _texto(valores["detalle"], LARGO_DETALLE, "Detalle")
+        cambios["det"] = None if _vacio(valores["detalle"]) else _texto(valores["detalle"], LARGO_DETALLE, "Detalle")
     if "canal" in valores:
         canal = _texto(valores["canal"], LARGO_CANAL, "Canal")
         if not canal:
@@ -173,9 +181,9 @@ def _cambios_tarea(valores: dict) -> tuple[dict, str | None]:
             raise ErrorCrm(422, "Falta el texto de la tarea.")
         cambios["t"] = t
     if "vence" in valores:
-        cambios["vence"] = valores["vence"] if valores["vence"] not in (None, "") else ""
+        cambios["vence"] = "" if _vacio(valores["vence"]) else valores["vence"]  # "" = sin fecha para `tareas_actualizar`
     if "hora" in valores:
-        cambios["hora"] = est.valor_de_tipo("hora", valores["hora"], "Hora")
+        cambios["hora"] = None if _vacio(valores["hora"]) else est.valor_de_tipo("hora", valores["hora"], "Hora")
     columna = None
     if "estado" in valores:
         estado = est.valor_de_tipo("estado", valores["estado"], "Estado", ESTADOS_TAREA)
@@ -187,10 +195,25 @@ def _cambios_tarea(valores: dict) -> tuple[dict, str | None]:
 
 # ───────── Escritura ─────────
 
-def registro_agregar(doc: dict, sec_id: str, valores: dict[str, Any], ahora: datetime | None = None, canal: str = "Chat") -> tuple[dict, dict]:
-    """Agrega un registro a la sección. Devuelve (CRM nuevo, registro con la forma uniforme)."""
+def _con_id(lista: list[dict], viejo: str, nuevo: str | None) -> str:
+    """Le pone al registro recién creado el id que ya se nombró (el que vio el modelo en el texto del resultado)."""
+    if nuevo:
+        next(r for r in lista if r["id"] == viejo)["id"] = nuevo
+    return nuevo or viejo
+
+
+def registro_agregar(doc: dict, sec_id: str, valores: dict[str, Any], ahora: datetime | None = None, canal: str = "Chat",
+                     id: str | None = None) -> tuple[dict, dict]:
+    """Agrega un registro a la sección. Devuelve (CRM nuevo, registro con la forma uniforme).
+    `id`: el id ya generado por quien llama (por ejemplo `registros.ejecutar_dato`); sin él se genera como siempre."""
     s = _seccion(doc, sec_id)
     valores = dict(valores or {})
+    if id is not None:
+        id = str(id).strip()
+        if not id or len(id) > 80:
+            raise ErrorCrm(422, "El id del registro no sirve.")
+        if any(r["id"] == id for r in registros_de(doc, sec_id)):
+            raise ErrorCrm(409, "Ya existe un registro con ese id.")
     if s["virtual"] == "contactos":
         cambios = _cambios_contacto(doc, valores)
         if not cambios.get("n"):
@@ -199,18 +222,21 @@ def registro_agregar(doc: dict, sec_id: str, valores: dict[str, Any], ahora: dat
         out = op.contactos_crear(doc, [fila], canal, None, ahora)
         if "dueno" in cambios:  # `contactos_crear` pone al primero del equipo (o reparte); si la persona dijo quién, se respeta
             out["contactos"][0]["dueno"] = cambios["dueno"]
+        _con_id(out["contactos"], out["contactos"][0]["id"], id)
         return out, _registro_contacto(out["contactos"][0])
     if s["virtual"] == "tareas":
         cambios, columna = _cambios_tarea(valores)
         if not cambios.get("t"):
             raise ErrorCrm(422, "Falta el texto de la tarea.")
         out = op.tareas_crear(doc, cambios["t"], ahora, cambios.get("vence") or None, cambios.get("hora"))
-        tarea = out["tareas"]["porHacer"][-1]
+        tid = _con_id(out["tareas"]["porHacer"], out["tareas"]["porHacer"][-1]["id"], id)
         if columna and columna != "porHacer":
-            out = op.tareas_mover(out, tarea["id"], columna)
-        return out, _uno(out, sec_id, tarea["id"])
+            out = op.tareas_mover(out, tid, columna)
+        return out, _uno(out, sec_id, tid)
     out = est.registro_agregar(doc, sec_id, valores, ahora)
-    return out, _registro_lista(est._lista(out, sec_id)["registros"][0])
+    registros = est._lista(out, sec_id)["registros"]
+    _con_id(registros, registros[0]["id"], id)
+    return out, _registro_lista(registros[0])
 
 
 def registro_actualizar(doc: dict, sec_id: str, rid: str, cambios: dict[str, Any], ahora: datetime | None = None) -> tuple[dict, dict]:

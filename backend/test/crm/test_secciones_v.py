@@ -122,3 +122,47 @@ def test_el_ejemplo_se_ve_en_la_forma_uniforme(doc):
     lid, c = _ids(doc)
     doc["listas"][0]["registros"] = [{"id": "e1", "valores": {c["Nombre"]: "Ejemplo"}, "creado": AHORA, "ejemplo": True}]
     assert sv.registros_de(doc, lid) == [{"id": "e1", "valores": {c["Nombre"]: "Ejemplo"}, "ejemplo": True}]
+
+
+# ───────── Lo que pide registros.py (C1) ─────────
+
+def test_agregar_con_un_id_ya_generado(doc):
+    lid, c = _ids(doc)
+    out, r = sv.registro_agregar(doc, lid, {c["Nombre"]: "Ferretería Díaz"}, AHORA, id=f"{lid}-p1")
+    assert r["id"] == f"{lid}-p1" and out["listas"][0]["registros"][0]["id"] == f"{lid}-p1"
+    out, r = sv.registro_agregar(out, "contactos", {"nombre": "Rosa"}, AHORA, id="contactos-p1")
+    assert r["id"] == "contactos-p1" and out["contactos"][0]["id"] == "contactos-p1"
+    out, r = sv.registro_agregar(out, "desarrollo", {"tarea": "Llamar", "estado": "Hecho"}, AHORA, id="desarrollo-p1")
+    assert r["id"] == "desarrollo-p1" and out["tareas"]["hecho"][0]["id"] == "desarrollo-p1"
+    with pytest.raises(ErrorCrm) as e:
+        sv.registro_agregar(out, lid, {c["Nombre"]: "Otra"}, AHORA, id=f"{lid}-p1")
+    assert e.value.estado == 409
+    _, r = sv.registro_agregar(out, lid, {c["Nombre"]: "Sin id"}, AHORA)
+    assert len(r["id"]) == 32  # sin id, como siempre
+
+
+def test_vacio_en_una_edicion_guarda_el_vacio_de_carlos(doc):
+    lid, c = _ids(doc)
+    out, r = sv.registro_agregar(doc, lid, {c["Nombre"]: "Ferretería", c["Deuda"]: 100}, AHORA)
+    out, r = sv.registro_actualizar(out, lid, r["id"], {c["Deuda"]: ""}, AHORA)
+    assert r["valores"] == {c["Nombre"]: "Ferretería"} and c["Deuda"] not in out["listas"][0]["registros"][0]["valores"]
+    cid, tel = doc["contactos"][0]["id"], doc["campos_contacto"][0]["id"]
+    out, _ = sv.registro_actualizar(out, "contactos", cid, {tel: "5555"}, AHORA)
+    out, r = sv.registro_actualizar(out, "contactos", cid, {"detalle": "", tel: ""}, AHORA)
+    contacto = next(x for x in out["contactos"] if x["id"] == cid)
+    assert contacto["det"] is None and contacto["extra"] == {} and "detalle" not in r["valores"]
+    tid = out["tareas"]["porHacer"][0]["id"]
+    out, r = sv.registro_actualizar(out, "desarrollo", tid, {"vence": "", "hora": ""}, AHORA)
+    assert r["valores"] == {"tarea": "Llamar a Ana", "estado": "Por hacer"}
+    for sec, rid, campo in (("contactos", cid, "nombre"), ("contactos", cid, "etapa"), ("desarrollo", tid, "tarea"), ("desarrollo", tid, "estado")):
+        with pytest.raises(ErrorCrm):
+            sv.registro_actualizar(out, sec, rid, {campo: ""}, AHORA)
+
+
+def test_lista_es_estado_en_las_secciones(doc):
+    d = est.lista_crear(doc, "Pedidos", [{"nombre": "Estado", "tipo": "lista", "opciones": ["Nuevo", "Listo"]}], AHORA)
+    sec = next(x for x in sv.secciones_de(d) if x["titulo"] == "Pedidos")
+    assert sec["campos"][0]["tipo"] == "estado" and sec["campos"][0]["opciones"] == ["Nuevo", "Listo"]
+    assert next(l for l in d["listas"] if l["nombre"] == "Pedidos")["campos"][0]["tipo"] == "lista"  # lo guardado no cambia
+    out, r = sv.registro_agregar(d, sec["id"], {sec["campos"][0]["id"]: "listo"}, AHORA)
+    assert r["valores"][sec["campos"][0]["id"]] == "Listo"
