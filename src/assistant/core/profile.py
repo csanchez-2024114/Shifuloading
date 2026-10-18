@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable, Literal, Mapping
 
 from assistant.core.config import ConfigError
+from assistant.core.i18n import REQUIRED_TEXTS, TextCatalog
 
 PROFILES_PACKAGE = "assistant.profiles"  # única referencia del núcleo a los perfiles: un nombre, no un import
 DEFAULT_PROFILE = "default"
@@ -22,6 +23,7 @@ class ToolPolicy:
     # lo que recibe HumanInTheLoopMiddleware(interrupt_on={nombre: approval}): False (sin aprobación), True o un dict
     # con allowed_decisions/description/when
     approval: bool | dict = False
+    description_key: str | None = None  # clave del catálogo con el texto de la tarjeta (se resuelve al construir)
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,7 @@ class AgentProfile:
     memory_policies: Mapping[str, str] = field(default_factory=dict)  # "strict" obligatoria; "broad"...
     search_economy_rule: str = ""
     legacy_tool_names: Mapping[str, str] = field(default_factory=dict)  # nombre antiguo -> actual (hilos viejos)
+    texts: TextCatalog = field(default_factory=TextCatalog)  # textos al usuario: base de un pack + sobreescrituras
 
 
 _CACHE: dict[str, AgentProfile] = {}
@@ -70,6 +73,8 @@ def load_profile(name: str | None = None) -> AgentProfile:
         raise ConfigError(f"El perfil '{name}' no define PROFILE (un AgentProfile de assistant.core.profile).")
     if "strict" not in profile.memory_policies:
         raise ConfigError(f"El perfil '{name}' no define la política de memoria 'strict' (memory_policies).")
+    if missing := [key for key in REQUIRED_TEXTS if key not in profile.texts]:
+        raise ConfigError(f"Al catálogo de textos del perfil '{name}' le faltan estas claves: {', '.join(missing)}.")
     _CACHE[name] = profile
     return profile
 

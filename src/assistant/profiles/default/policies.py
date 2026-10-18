@@ -6,7 +6,8 @@ from assistant.core.tools import research_approval
 TOOL_POLICIES = {
     "send_simulated_email": ToolPolicy(effect="send", approval=True),
     # pausa con la tarjeta de aprobación, salvo que el usuario haya pedido investigar en ese mensaje
-    "deep_research": ToolPolicy(effect="read", approval=research_approval()),
+    "deep_research": ToolPolicy(effect="read", approval=research_approval(),
+                                description_key="tools.deep_research_confirm"),
 }
 
 # Nombres anteriores (en español) de las herramientas. Los hilos guardados antes del cambio los tienen en su

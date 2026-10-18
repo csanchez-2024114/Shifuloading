@@ -9,6 +9,8 @@
 import re
 from urllib.parse import urlsplit
 
+from assistant.core.i18n import tr
+
 _MD_LINK = re.compile(r"\[([^\]]*)\]\((https?://[^\s)]+)\)")
 _BARE_URL = re.compile(r"(?<![(\[])https?://[^\s)\]\"'>]+")
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
@@ -77,15 +79,14 @@ def enforce(original: str, correction: str | None, evidence: str) -> tuple[str, 
     if correction is not None:
         nuevas = _numbers(correction) - _numbers(original) - _numbers(evidence)
         if nuevas:
-            notes.append(f"no se pudo corregir sin agregar datos no respaldados ({', '.join(sorted(nuevas))}); "
-                         "se conserva la respuesta original")
+            notes.append(tr("citations.correction_discarded", numbers=", ".join(sorted(nuevas))))
             candidate, descartada = original, True
 
     # citas inventadas (URL fuera de la evidencia): se quita el enlace y queda su título
     for whole, title, url in _links(candidate):
         if normalize_url(url) not in supported:
             candidate = candidate.replace(whole, title, 1)
-            notes.append(f"se eliminó una cita sin respaldo en la búsqueda: {url}")
+            notes.append(tr("citations.citation_removed", url=url))
 
     # citas respaldadas del original que la corrección perdió: se reinsertan
     present = {normalize_url(u) for u in urls(candidate)}
@@ -96,8 +97,8 @@ def enforce(original: str, correction: str | None, evidence: str) -> tuple[str, 
             perdidas.append(f"[{title or key}]({url})")
             present.add(key)
     if perdidas:
-        candidate = candidate.rstrip() + "\n\nFuentes: " + ", ".join(perdidas)
-        notes.append("se restauraron fuentes que la corrección había quitado")
+        candidate = candidate.rstrip() + "\n\n" + tr("citations.sources_label") + ", ".join(perdidas)
+        notes.append(tr("citations.sources_restored"))
 
     if descartada:
         return candidate, "kept_original", notes

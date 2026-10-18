@@ -65,6 +65,12 @@ MOVED_CONSTANTS = {
     "memory.MEMORY_POLICIES": "assistant.profiles.default.policies",
     "memory.SEARCH_ECONOMY_RULE": "assistant.profiles.default.policies",
     "bigtool_agent._EXCLUIR_MATH": "assistant.packs.tools.demo",
+    "agent.LIMIT_MSG": "assistant.packs.i18n.es",
+    "agent.CUT_NOTE": "assistant.packs.i18n.es",
+    "agent.UNVERIFIED_NOTE": "assistant.packs.i18n.es",
+    "agent.TURN_CAP_MSG": "assistant.packs.i18n.es",
+    "tools.DEEP_RESEARCH_CONFIRM": "assistant.packs.i18n.es",
+    "bigtool_agent.DEEP_RESEARCH_CONFIRM": "assistant.packs.i18n.es",
 }
 
 CONST_MODULES = ("agent", "tools", "memory", "context", "citations", "auth", "bigtool_agent", "extra_tools",

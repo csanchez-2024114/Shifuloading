@@ -402,7 +402,8 @@ class Cortado(FakeChat):
 
 
 def test_respuesta_cortada_por_max_tokens_lo_dice_y_ofrece_seguir(settings):
-    from assistant.agent import CUT_NOTE, get_history
+    from assistant.agent import get_history
+    from assistant.packs.i18n.es import CUT_NOTE
 
     agent = _agent(settings, Cortado(messages=iter(["Semana 1: rodaje suave de"])))
     thread = uid()
@@ -427,7 +428,7 @@ class CortadoPrimero(FakeChat):
 
 
 def test_respuesta_vacia_por_max_tokens_se_reintenta_una_vez_con_razonamiento_bajo(settings):
-    from assistant.agent import CUT_NOTE
+    from assistant.packs.i18n.es import CUT_NOTE
 
     llm = CortadoPrimero(messages=iter(["Resumen con lo investigado."]), settings_seen=[])
     texto = "".join(e["text"] for e in run_turn(_agent(settings, llm), settings, "investiga", uid())

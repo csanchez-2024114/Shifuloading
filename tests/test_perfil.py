@@ -44,3 +44,36 @@ def test_modulo_sin_profile_valido_da_error_claro(monkeypatch):
     monkeypatch.setitem(sys.modules, "perfil.sin_strict", sin_strict)
     with pytest.raises(ConfigError, match="'strict'"):
         load_profile("perfil.sin_strict")
+
+
+def test_catalogo_base_mas_sobreescrituras_y_claves_que_faltan(monkeypatch):
+    from assistant.core.config import ConfigError
+    from assistant.core.i18n import REQUIRED_TEXTS, TextCatalog
+    from assistant.core.profile import AgentProfile, load_profile
+    from assistant.packs.i18n import es
+
+    fusionado = TextCatalog(es.TEXTS, {"agent.cut_note": "corte"})
+    assert fusionado["agent.cut_note"] == "corte" and fusionado["agent.limit_reached"] == es.LIMIT_MSG
+    assert not fusionado.missing() and set(REQUIRED_TEXTS) <= set(fusionado)
+
+    incompleto = {k: v for k, v in es.TEXTS.items() if k not in ("agent.cut_note", "format.thousands_sep")}
+    modulo = types.ModuleType("perfil.textos_incompletos")
+    modulo.PROFILE = AgentProfile(name="x", display_name="x", system_prompt_path=None, static_dir=None,
+                                  build_tools=lambda m, s, base: base, memory_policies={"strict": "..."},
+                                  texts=TextCatalog(incompleto))
+    monkeypatch.setitem(sys.modules, "perfil.textos_incompletos", modulo)
+    with pytest.raises(ConfigError) as exc:
+        load_profile("perfil.textos_incompletos")
+    assert "le faltan estas claves: agent.cut_note, format.thousands_sep." in str(exc.value)
+
+
+def test_importar_el_nucleo_no_carga_ningun_perfil():
+    import subprocess
+
+    codigo = ("import sys, assistant.core.server, assistant.core.agent, assistant.core.tools, assistant.core.memory, "
+              "assistant.core.citations, assistant.core.extensions.bigtool, assistant.server\n"
+              "cargados = [m for m in sys.modules if m.startswith(('assistant.profiles', 'assistant.packs'))]\n"
+              "assert not cargados, cargados\n"
+              "assert 'app' not in vars(sys.modules['assistant.core.server'])\n")
+    r = subprocess.run([sys.executable, "-W", "ignore", "-c", codigo], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr

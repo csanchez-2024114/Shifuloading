@@ -542,7 +542,6 @@ def earlier_research(messages, tool_name: str = "deep_research") -> str | None:
     return str(previous[-1].content)[:_RAW_FINDINGS_CHARS] if previous else None
 
 
-DEEP_RESEARCH_CONFIRM = "Esto tardará unos 1-2 minutos y consume bastante más; ¿sigo?"  # al usuario (tarjeta)
 RESEARCH_DECLINED_MSG = ("Not run: the user declined the in-depth research. Answer with what you already know, without "
                          "searching, and say in one line that it was not researched in depth.")
 # el usuario pide investigar en ESTE mensaje: no hace falta confirmar (texto ya normalizado: sin tildes)
@@ -568,8 +567,9 @@ def _research_when(request) -> bool:
 
 def research_approval() -> dict:
     """Aprobación de deep_research para HumanInTheLoopMiddleware (ToolPolicy.approval): tarjeta con aprobar/rechazar,
-    salvo que el usuario haya pedido investigar en ese mensaje."""
-    return {"allowed_decisions": ["approve", "reject"], "description": DEEP_RESEARCH_CONFIRM, "when": _research_when}
+    salvo que el usuario haya pedido investigar en ese mensaje. El texto de la tarjeta lo pone build_agent desde el
+    catálogo del perfil (ToolPolicy.description_key = "tools.deep_research_confirm")."""
+    return {"allowed_decisions": ["approve", "reject"], "when": _research_when}
 
 
 def investigator_model(model: BaseChatModel, settings: Settings) -> BaseChatModel:

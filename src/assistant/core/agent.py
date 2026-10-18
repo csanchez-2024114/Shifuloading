@@ -34,6 +34,7 @@ from langgraph.runtime import Runtime
 
 from assistant.core import citations
 from assistant.core.config import Settings, read_system_prompt
+from assistant.core.i18n import tr
 from assistant.core.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
                                prune_tool_results)
 from assistant.core.memory import DUPLICATE_PREFIX, SUMMARY_SOURCE, memory_policy
@@ -48,14 +49,11 @@ MODEL_NODES = ("model", "agent")  # "agent" = nodo del modelo en langgraph-bigto
 # El tope de "alto" sale de EFFORT_HIGH_MAX_CALLS (ver contexto_para).
 ESFUERZOS = {"bajo": (5, "low"), "medio": (15, "medium"), "alto": (15, "high")}
 ESFUERZO_SIN_CLASIFICAR = "bajo"  # mensajes cortos y triviales: no se llama al clasificador
-LIMIT_MSG = "Se alcanzó el límite de llamadas al modelo para este mensaje; detuve el proceso. Escribe «continúa» para seguir."
 LAST_STEP_NOTE = ("This is your last step for this message: do not call tools. Answer now with what you already have and "
                   "say in one short line, in the user's language, that you stopped at the step limit and they can ask "
                   "you to continue.")
 REPEAT_LIMIT_MSG = ("Not run: {name} was already used {limit} times for this message (limit). Do not call it again: "
                     "answer with what you already have and tell the user the work was cut at the tool limit.")
-CUT_NOTE = ("\n\n⚠️ La respuesta se cortó por el límite de longitud (MAX_TOKENS). Escribe «continúa» y sigo justo "
-            "donde me quedé, sin repetir lo anterior.")
 CONTINUE_NOTE = ("Your previous answer was cut by the output limit (the system removed its cut notice). The user asked "
                  "you to continue: continue exactly where it stopped. Do not repeat, summarize or rewrite anything "
                  "already written. If it stopped inside a code block, open a new code block with the same language and "
@@ -161,7 +159,7 @@ class LimiteLlamadas(ModelCallLimitMiddleware):
     def before_model(self, state, runtime):
         limite = getattr(runtime.context, "max_llamadas", 0)
         if limite and state.get("run_model_call_count", 0) >= limite:
-            return {"jump_to": "end", "messages": [AIMessage(content=LIMIT_MSG)]}
+            return {"jump_to": "end", "messages": [AIMessage(content=tr("agent.limit_reached"))]}
         return None
 
     def wrap_model_call(self, request, handler):
@@ -228,7 +226,8 @@ class AvisoCorte(AgentMiddleware):
         if not isinstance(last, AIMessage) or last.tool_calls or reason != "max_output_tokens":
             return None
         runtime.stream_writer({"tipo": "corte"})
-        return {"messages": [AIMessage(id=last.id, content=_content_text(last) + CUT_NOTE, additional_kwargs={"cut": True},
+        return {"messages": [AIMessage(id=last.id, content=_content_text(last) + tr("agent.cut_note"),
+                                       additional_kwargs={"cut": True},
                                        response_metadata=meta, usage_metadata=last.usage_metadata)]}
 
 
@@ -242,7 +241,8 @@ def _continue_cut(request):
     if i is None or not msgs[i].additional_kwargs.get("cut"):
         return request
     text = _content_text(msgs[i])
-    cut = msgs[i].model_copy(update={"content": text[:-len(CUT_NOTE)] if text.endswith(CUT_NOTE) else text})
+    note = tr("agent.cut_note")
+    cut = msgs[i].model_copy(update={"content": text[:-len(note)] if text.endswith(note) else text})
     system = request.system_message.text if request.system_message else ""
     return request.override(messages=[*msgs[:i], cut, *msgs[i + 1:]],
                             system_message=SystemMessage(content=f"{system}\n\n{CONTINUE_NOTE}".strip()))
@@ -538,11 +538,11 @@ def compact_thread(agent, thread_id: str, settings: Settings) -> dict | None:
     ValueError: el agente no compacta (bigtool). RuntimeError: el hilo tiene un turno en pausa (aprobación)."""
     compactor = getattr(agent, "compactor", None)
     if compactor is None:
-        raise ValueError("Este agente no admite compactación")
+        raise ValueError(tr("agent.compact_unsupported"))
     config = run_config(thread_id, settings)
     state = agent.get_state(config)
     if state.interrupts:
-        raise RuntimeError("La conversación espera una aprobación")
+        raise RuntimeError(tr("agent.compact_pending"))
     values = state.values or {}
     messages = values.get("messages") or []
     human = next((m for m in reversed(messages) if m.type == "human"
@@ -620,9 +620,6 @@ def is_evidence(output: str) -> bool:
     return tool_ran(output) or output.lstrip().startswith(_REUSED_RESEARCH)
 
 
-UNVERIFIED_NOTE = "No verificada: este mensaje llegó a su tope de tokens (TURN_TOKEN_CAP)"  # al usuario
-
-
 class AnswerVerifier(AgentMiddleware):
     """ANSWER_VERIFY: al terminar el turno, si se usó web_search/deep_research, una llamada barata
     contrasta la respuesta con lo recuperado. Si corrige, reemplaza el mensaje (mismo id) y avisa a la UI con el
@@ -646,7 +643,7 @@ class AnswerVerifier(AgentMiddleware):
         counter = _turn_counter()
         if self.cap and counter and (counter.landing or counter.total >= self.cap):
             # la respuesta se queda sin verificar, y se dice (en vivo y al recargar): nunca pasa por verificada
-            notes = [UNVERIFIED_NOTE]
+            notes = [tr("agent.unverified_note")]
             runtime.stream_writer({"tipo": "verificacion", "status": "unverified", "notes": notes, "tokens": 0})
             return {"messages": [last.model_copy(update={"additional_kwargs": {
                 **last.additional_kwargs, "answer_verify": {"status": "unverified", "notes": notes}}})]}
@@ -673,6 +670,13 @@ class AnswerVerifier(AgentMiddleware):
             "answer_verify": {"original": original, "status": status, "notes": notes}})]}
 
 
+def _approval(policy, profile):
+    """Config de HumanInTheLoopMiddleware de una herramienta; el texto de la tarjeta sale del catálogo del perfil."""
+    if isinstance(policy.approval, dict) and policy.description_key:
+        return {**policy.approval, "description": tr(policy.description_key, profile)}
+    return policy.approval
+
+
 def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None,
                 profile=None):
     """`summarizer`/`checker`: modelos para la compactación/ANSWER_VERIFY (se inyectan en tests). `profile`: el
@@ -690,8 +694,8 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         ToolErrorMiddleware(on_error=_on_tool_error),
         LimiteRepeticiones(settings.tool_repeat_limit),
         # aprobaciones del perfil (tarjeta de la UI): las herramientas con ToolPolicy.approval
-        HumanInTheLoopMiddleware(interrupt_on={name: policy.approval for name, policy in profile.tool_policies.items()
-                                               if policy.approval}),
+        HumanInTheLoopMiddleware(interrupt_on={name: _approval(policy, profile)
+                                               for name, policy in profile.tool_policies.items() if policy.approval}),
         AvisoCorte(),
     ]
     if prune_age:
@@ -775,7 +779,7 @@ def _update_events(update: dict) -> Iterator[dict]:
             continue  # la corrección ya llegó como evento "verify"
         if node.startswith("LimiteLlamadas") and node_update.get("messages"):
             # el middleware corta el turno con un AIMessage que no se streamea.
-            yield {"type": "token", "text": f"\n\n_{LIMIT_MSG}_"}
+            yield {"type": "token", "text": f"\n\n_{tr('agent.limit_reached')}_"}
             continue
         for msg in node_update.get("messages", []) or []:
             # nodos de create_agent ("model"/"tools") y de langgraph-bigtool ("agent"/"tools"/"select_tools");
@@ -803,14 +807,12 @@ def _update_events(update: dict) -> Iterator[dict]:
                 }
 
 
-# avisos al usuario: texto plano (la interfaz no interpreta _cursiva_ y mostraba los guiones bajos)
-TURN_CAP_MSG = ("\n\n⚠️ Detuve este mensaje: superó el tope de {cap} tokens por mensaje (TURN_TOKEN_CAP). Lo que "
-                "alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.")
 SOFT_CAP_RATIO = 0.8  # al llegar a este % de TURN_TOKEN_CAP, última llamada sin herramientas
 
 
 def turn_cap_msg(cap: int) -> str:
-    return TURN_CAP_MSG.format(cap=f"{cap:,}".replace(",", "."))  # 45.000, como se escribe en español
+    # avisos al usuario: texto plano (la interfaz no interpreta _cursiva_); cifras con el separador del catálogo
+    return tr("agent.turn_cap", cap=f"{cap:,}".replace(",", tr("format.thousands_sep")))
 
 
 def _step_kind(chunk) -> str | None:
@@ -1053,14 +1055,11 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "sin_herramientas":
                 yield {"type": "no_tools"}  # el historial ya pesa más que TURN_TOKEN_CAP: turno sin herramientas
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "corte":
-                yield {"type": "token", "text": CUT_NOTE}  # la respuesta se cortó por MAX_TOKENS
+                yield {"type": "token", "text": tr("agent.cut_note")}  # la respuesta se cortó por MAX_TOKENS
             elif kind == "custom" and isinstance(data, dict) and data.get("tipo") == "verificacion":
                 yield {"type": "verify", **{k: v for k, v in data.items() if k != "tipo"}}
     except GraphRecursionError:
-        yield {"type": "error", "message": (
-            f"Me detuve: la tarea superó {settings.recursion_limit} pasos internos. "
-            "Pídeme que continúe o sube RECURSION_LIMIT en .env."
-        )}
+        yield {"type": "error", "message": tr("agent.recursion_limit", limit=settings.recursion_limit)}
         return
     except Exception as exc:  # noqa: BLE001
         logger.exception("Error durante el stream del agente")

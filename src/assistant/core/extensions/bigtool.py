@@ -31,12 +31,13 @@ from assistant.core import memory
 from assistant.core.agent import (history_landing, landing_due, landing_note, mark_no_tools, rename_old_tools,
                                   system_prompt_text)
 from assistant.core.config import Settings
+from assistant.core.i18n import tr
 from assistant.core.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.core.tools import (
     ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, INVESTIGADOR_DOC, calculadora, save_memory_doc,
     check_python_syntax,
     earlier_research, fecha_hora, investigar, investigator_model, make_buscar_web, memory_verifier_for, turn_key,
-    web_search, DEEP_RESEARCH_CONFIRM, FOLLOW_UP_MSG, RESEARCH_DECLINED_MSG, research_needs_confirmation,
+    web_search, FOLLOW_UP_MSG, RESEARCH_DECLINED_MSG, research_needs_confirmation,
 )
 
 logger = logging.getLogger(__name__)
@@ -134,7 +135,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
             return FOLLOW_UP_MSG.format(previous=previous)
         if research_needs_confirmation(messages):  # bigtool no tiene middleware: misma tarjeta, vía interrupt()
             answer = interrupt({"action_requests": [{"name": "deep_research", "args": {"task": task},
-                                                     "description": DEEP_RESEARCH_CONFIRM}],
+                                                     "description": tr("tools.deep_research_confirm")}],
                                 "review_configs": [{"action_name": "deep_research",
                                                     "allowed_decisions": ["approve", "reject"]}]})
             decision = ((answer or {}).get("decisions") or [{}])[0] if isinstance(answer, dict) else {}

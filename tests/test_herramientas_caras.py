@@ -59,7 +59,7 @@ def _resume(agent, s, thread, decision):
 
 
 def test_deep_research_pide_confirmacion_y_sigue_al_aprobar(settings, mongo_checkpointer):
-    from assistant.tools import DEEP_RESEARCH_CONFIRM
+    from assistant.packs.i18n.es import DEEP_RESEARCH_CONFIRM
 
     search = FakeSearch()
     llm = fake_llm(tool_call("deep_research", {"task": "viaje a Lisboa"}, "inv"),
@@ -103,7 +103,8 @@ def test_deep_research_pedida_explicitamente_no_pregunta(settings, mongo_checkpo
 
 def test_deep_research_en_bigtool_pide_confirmacion(make_settings, mongo_checkpointer):
     from assistant.bigtool_agent import build_bigtool_agent
-    from assistant.tools import DEEP_RESEARCH_CONFIRM, RESEARCH_DECLINED_MSG
+    from assistant.packs.i18n.es import DEEP_RESEARCH_CONFIRM
+    from assistant.tools import RESEARCH_DECLINED_MSG
 
     s = make_settings(use_bigtool=True)
     search = FakeSearch()
@@ -139,7 +140,8 @@ class CortadoYLuegoSigue(Cortado):
 
 
 def test_continua_sigue_donde_quedo_sin_rehacer(settings):
-    from assistant.agent import CONTINUE_NOTE, CUT_NOTE
+    from assistant.agent import CONTINUE_NOTE
+    from assistant.packs.i18n.es import CUT_NOTE
 
     llm = CortadoYLuegoSigue(messages=iter(["def total(filas):\n    suma = 0", "    for f in filas:", "otra cosa"]),
                              vistos=[])

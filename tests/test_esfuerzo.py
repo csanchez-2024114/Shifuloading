@@ -17,7 +17,7 @@ def _run(agent, settings, esfuerzo):
 
 
 def test_esfuerzo_bajo_corta_en_5_llamadas(make_settings):
-    from assistant.agent import LIMIT_MSG
+    from assistant.packs.i18n.es import LIMIT_MSG
 
     s = make_settings(model_call_limit=0)
     agent = build_test_agent(_bucle(20), s, checkpointer=InMemorySaver())
