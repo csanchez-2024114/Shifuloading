@@ -20,7 +20,7 @@ from langgraph.store.memory import InMemoryStore
 from conftest import FakeChat, FakeSearch, fake_llm, run_turn, tool_call, uid
 from test_memoria_avanzada import FILLER, _agent, recorder
 
-HTML = Path(__file__).resolve().parents[1] / "src" / "assistant" / "profiles" / "default" / "static" / "index.html"
+HTML = Path(__file__).resolve().parents[1] / "src" / "assistant" / "packs" / "ui" / "index.html"
 
 
 # --------------------------------------------------------------------------- 1. resumen
