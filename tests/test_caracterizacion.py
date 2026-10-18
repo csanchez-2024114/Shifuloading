@@ -653,6 +653,7 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "MEMORY_REQUIRE_QUOTE": ("memory_require_quote", False),
     "URL_FILTER_ALWAYS": ("url_filter_always", False),
     "EFFECT_APPROVAL": ("effect_approval", False),
+    "TRUSTED_HOSTS": ("trusted_hosts", ["localhost", "127.0.0.1"]),
 }
 
 

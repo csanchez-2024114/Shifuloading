@@ -106,6 +106,8 @@ class Settings:
     # aprobación con la tarjeta, en el agente normal y en bigtool. Apagado por defecto: cambia el flujo
     # (crm_create_order, por ejemplo, hoy corre sin preguntar).
     effect_approval: bool = False
+    # S1: cabeceras Host aceptadas (TrustedHostMiddleware). Con AUTH_ENABLED=0 solo pueden ser locales.
+    trusted_hosts: tuple[str, ...] = ("localhost", "127.0.0.1")
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -172,6 +174,8 @@ class Settings:
             memory_require_quote=_bool("MEMORY_REQUIRE_QUOTE"),
             url_filter_always=_bool("URL_FILTER_ALWAYS"),
             effect_approval=_bool("EFFECT_APPROVAL"),
+            trusted_hosts=tuple(h.strip().lower() for h in (os.getenv("TRUSTED_HOSTS") or "localhost,127.0.0.1")
+                                .split(",") if h.strip()),
         )
 
     def context_window(self) -> int:

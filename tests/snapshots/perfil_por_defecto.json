@@ -306,6 +306,10 @@
    "summary_keep_tokens": 0,
    "summary_trigger_tokens": 0,
    "tool_repeat_limit": 8,
+   "trusted_hosts": [
+    "localhost",
+    "127.0.0.1"
+   ],
    "turn_max_searches": 6,
    "turn_max_seconds": 0.0,
    "turn_token_cap": 150000,
@@ -372,6 +376,7 @@
    "SUMMARY_KEEP_TOKENS",
    "SUMMARY_TRIGGER_TOKENS",
    "TOOL_REPEAT_LIMIT",
+   "TRUSTED_HOSTS",
    "TURN_MAX_SEARCHES",
    "TURN_MAX_SECONDS",
    "TURN_TOKEN_CAP",

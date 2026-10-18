@@ -323,3 +323,74 @@ def test_effect_approval_en_bigtool_usa_interrupt_como_deep_research():
     rechazo = app.invoke(Command(resume={"decisions": [{"type": "reject"}]}), cfg)
     assert rechazo["out"] == "User rejected the tool call: crm_create_order was not run."
     assert registry["calculator"].invoke({"expression": "1+1"}) == "2"  # read: sin tarjeta
+
+
+# --------------------------------------------------------------------------- S1: TRUSTED_HOSTS y loopback
+
+
+def _app(**overrides):
+    from assistant.core import server
+    from conftest import build_test_agent
+
+    s = _settings(**overrides)
+    extra = {}
+    if s.auth_enabled:
+        from assistant.core.appdata.memory import MemoryAppData
+
+        extra["appdata"] = MemoryAppData()
+    return server.create_app(agent=build_test_agent(["hola"], s, checkpointer=InMemorySaver()), settings=s, **extra)
+
+
+def test_trusted_hosts_por_defecto_solo_locales(monkeypatch):
+    from assistant.core.config import Settings
+
+    monkeypatch.delenv("TRUSTED_HOSTS", raising=False)
+    assert Settings.from_env().trusted_hosts == ("localhost", "127.0.0.1")
+    monkeypatch.setenv("TRUSTED_HOSTS", " Localhost , mi.dominio.mx ,")
+    assert Settings.from_env().trusted_hosts == ("localhost", "mi.dominio.mx")
+
+
+def test_sin_cuentas_no_arranca_con_hosts_no_locales():
+    import pytest
+
+    from assistant.core.config import ConfigError
+
+    for lejanos in (("localhost", "mi.dominio.mx"), ("*",)):
+        with pytest.raises(ConfigError, match="TRUSTED_HOSTS incluye hosts no locales"):
+            _app(trusted_hosts=lejanos)
+    assert _app(trusted_hosts=("localhost", "mi.dominio.mx"), auth_enabled=True)  # con cuentas sí arranca
+
+
+def test_cabecera_host_ajena_se_rechaza():
+    from fastapi.testclient import TestClient
+
+    app = _app()
+    assert TestClient(app).get("/health").status_code == 200  # testserver (TestClient) pasa
+    assert TestClient(app, base_url="http://localhost:8000").get("/health").status_code == 200
+    assert TestClient(app, base_url="http://atacante.example").get("/health").status_code == 400  # DNS rebinding
+
+
+def test_sin_cuentas_403_si_la_conexion_no_llego_por_loopback():
+    """scope["server"] es la dirección local del socket (TestClient la toma del base_url): con --host 0.0.0.0, una
+    conexión por la IP de la red llega a 192.168.x.x y se rechaza aunque mande Host: localhost."""
+    from fastapi.testclient import TestClient
+
+    from assistant.packs.i18n.es import NOT_LOOPBACK_MSG
+
+    app = _app(trusted_hosts=("localhost", "127.0.0.1", "testserver"))
+    r = TestClient(app, base_url="http://192.168.1.5:8000").get("/health", headers={"host": "localhost"})
+    assert r.status_code == 403 and r.json() == {"detail": NOT_LOOPBACK_MSG}
+    assert TestClient(app, base_url="http://127.0.0.1:8000").get("/health").status_code == 200
+    # con cuentas no aplica: decide la sesión (y TRUSTED_HOSTS)
+    con_cuentas = _app(auth_enabled=True, trusted_hosts=("localhost", "192.168.1.5"))
+    assert TestClient(con_cuentas, base_url="http://192.168.1.5:8000").get("/health").status_code == 200
+
+
+def test_direcciones_de_loopback():
+    from assistant.core.hosts import is_loopback_server
+
+    for local in (("127.0.0.1", 8000), ("127.0.0.2", 1), ("::1", 8000), ("[::1]", 8000), ("localhost", 80),
+                  ("testserver", 80), ("/tmp/app.sock", None)):
+        assert is_loopback_server(local), local
+    for lejano in (("192.168.1.5", 8000), ("0.0.0.0", 8000), ("10.0.0.1", 80), ("2001:db8::1", 80), None):
+        assert not is_loopback_server(lejano), lejano
