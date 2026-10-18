@@ -12,6 +12,8 @@ import math
 from datetime import date, timedelta
 from typing import Any, Callable
 
+from app.crm import plantillas as catalogo
+
 NIVELES = {"vacio": 0, "pocos": 8, "muchos": 220}
 
 _M32 = 0xFFFFFFFF
@@ -125,13 +127,19 @@ def _valor(campo: dict, r: Callable[[], float], hoy: date, i: int = 0, n: int = 
     return NOMBRES[math.floor(r() * min(max(n, 1), len(NOMBRES)))]
 
 
-def datos_ejemplo(plantilla: dict, nivel: str = "pocos", hoy: date | None = None, pais: str | None = None) -> dict:
+def datos_ejemplo(plantilla: dict | str, nivel: str = "pocos", hoy: date | None = None, pais: str | None = None) -> dict:
     """Datos para una plantilla y un nivel: {registros: {seccion_id: [{id, ejemplo, valores}]}, eventos, equipo, automatizaciones}.
 
-    `plantilla` necesita `id` y `secciones` (cada una con `id`, `campos` y, si muestra los registros de otra, `fuente`).
+    `plantilla` es el id de una plantilla del catálogo (`plantillas.plantilla_por_id`) o un dict con `id` y `secciones` (cada una con
+    `id`, `campos` y, si muestra los registros de otra, `fuente`).
     `hoy` fija las fechas relativas (por defecto, la fecha de hoy). `pais` no cambia nada, igual que en el laboratorio (el teléfono es de
     Guatemala); queda para cuando los ejemplos se escriban según el país.
     """
+    if isinstance(plantilla, str):
+        p = catalogo.plantilla_por_id(plantilla)
+        if p is None:
+            raise KeyError(f"no existe la plantilla «{plantilla}»")
+        plantilla = p
     hoy = hoy or date.today()
     n = NIVELES.get(nivel, NIVELES["pocos"])
     r = azar(hash_texto(f"{plantilla['id']}:{nivel}"))
@@ -167,7 +175,7 @@ def datos_ejemplo(plantilla: dict, nivel: str = "pocos", hoy: date | None = None
     return {"registros": registros, "eventos": eventos, "equipo": equipo, "automatizaciones": automatizaciones}
 
 
-def registros_ejemplo(plantilla: dict, nivel: str = "pocos", hoy: date | None = None, pais: str | None = None) -> dict[str, list[dict]]:
+def registros_ejemplo(plantilla: dict | str, nivel: str = "pocos", hoy: date | None = None, pais: str | None = None) -> dict[str, list[dict]]:
     """Solo los registros: {seccion_id: [{id, ejemplo: True, valores}]}."""
     return datos_ejemplo(plantilla, nivel, hoy, pais)["registros"]
 

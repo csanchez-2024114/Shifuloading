@@ -5,14 +5,16 @@ La decide el CÓDIGO (rápida, predecible y explicable); la IA solo la cambia si
 metadatos `asignacion`: rubro +3, ciclo +2, cada objetivo +1, y las palabras de «qué vendes» que aparecen en su nombre, su «para» o sus
 ejemplos de negocio +2 cada una (hasta 2). Devuelve las 3 mejores con el porqué en palabras.
 
-El catálogo de plantillas entra como argumento (`plantillas`: la lista de `catalogos/plantillas.json`, semillas + biblioteca, en ese
-orden: el orden decide los empates).
+El catálogo de plantillas es el de `plantillas.py` (semillas + biblioteca, en ese orden, como `PLANTILLAS` de semillas.js: el orden
+decide los empates); se puede pasar otro en `plantillas`.
 """
 from __future__ import annotations
 
 import re
 import unicodedata
 from typing import Any
+
+from app.crm import plantillas as catalogo
 
 _COMBINANTES = re.compile("[̀-ͯ]")
 _NO_LETRA = re.compile(r"[^a-zñ]+")
@@ -26,12 +28,25 @@ def _palabras(t: Any) -> list[str]:
     return [w for w in _NO_LETRA.split(_norm(t)) if len(w) > 3]
 
 
-def asignar(respuestas: dict | None, plantillas: list[dict]) -> dict:
+def catalogo_plantillas() -> list[dict]:
+    """Semillas y después biblioteca, sin repetir id (si se repite, gana la semilla), como `PLANTILLAS` del laboratorio."""
+    vistos: set[str] = set()
+    out = []
+    for p in [*catalogo.semillas(), *catalogo.biblioteca()]:
+        if p["id"] not in vistos:
+            vistos.add(p["id"])
+            out.append(p)
+    return out
+
+
+def asignar(respuestas: dict | None, plantillas: list[dict] | None = None) -> dict:
     """respuestas = {rubro, ciclo, objetivos: [str], que_vendes (o queVendes): str}.
 
     Devuelve {recomendada: opción | None, opciones: [hasta 3 opciones], ambiguo: bool}; cada opción = {id, nombre, puntos, porque: [str]}.
     `ambiguo` (D6): sin una ganadora clara (empate arriba o menos de 3 puntos) se muestran opciones en vez de adivinar.
     """
+    if plantillas is None:
+        plantillas = catalogo_plantillas()
     r = respuestas or {}
     rubro, ciclo = r.get("rubro"), r.get("ciclo")
     objetivos = r.get("objetivos") or []

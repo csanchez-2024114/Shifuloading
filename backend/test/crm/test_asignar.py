@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from app.crm.asignar import asignar
+from app.crm.asignar import asignar, catalogo_plantillas
 
 LAB = Path(__file__).parent / "fixtures" / "lab"
-PLANTILLAS = json.loads((LAB / "asignar_plantillas.json").read_text(encoding="utf-8"))
+PLANTILLAS = catalogo_plantillas()  # el catálogo compartido (plantillas.py), en el orden de PLANTILLAS del laboratorio
 CASOS = json.loads((LAB / "asignar_casos.json").read_text(encoding="utf-8"))
 
 
@@ -29,6 +29,12 @@ def test_acepta_que_vendes_con_guion_bajo():
     a = asignar({"rubro": "servicios", "queVendes": "Membresías de gimnasio"}, PLANTILLAS)
     b = asignar({"rubro": "servicios", "que_vendes": "Membresías de gimnasio"}, PLANTILLAS)
     assert a == b and a["recomendada"]["puntos"] >= 5
+
+
+def test_por_defecto_usa_el_catalogo():
+    caso = CASOS[5]
+    assert asignar(caso["entrada"]) == asignar(caso["entrada"], PLANTILLAS)
+    assert len(PLANTILLAS) == 27 and sum(1 for p in PLANTILLAS if p.get("asignacion")) == 21
 
 
 def test_sin_catalogo_no_hay_recomendada():

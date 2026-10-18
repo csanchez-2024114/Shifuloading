@@ -8,9 +8,11 @@ from pathlib import Path
 import pytest
 
 from app.crm import ejemplos as ej
+from app.crm import plantillas as catalogo
 
 LAB = Path(__file__).parent / "fixtures" / "lab"
-PLANTILLAS = {p["id"]: p for p in json.loads((LAB / "ejemplos_plantillas.json").read_text(encoding="utf-8"))}
+IDS = sorted({c["entrada"]["plantilla"] for c in json.loads((LAB / "ejemplos_datos.json").read_text(encoding="utf-8"))["casos"]})
+PLANTILLAS = {i: catalogo.plantilla_por_id(i) for i in IDS}  # el catálogo compartido (plantillas.py)
 DATOS = json.loads((LAB / "ejemplos_datos.json").read_text(encoding="utf-8"))
 EXTENDER = json.loads((LAB / "ejemplos_extender.json").read_text(encoding="utf-8"))
 HOY = date.fromisoformat(DATOS["hoy"])
@@ -42,6 +44,12 @@ def test_extender_y_sin_ejemplos(caso):
     datos = ej.datos_ejemplo(base, e["nivel"], hoy=HOY)
     out = ej.extender_datos(datos, base, e["est"], e["nivel"], hoy=HOY) if "est" in e else ej.sin_ejemplos(datos)
     assert out == caso["salida"]
+
+
+def test_acepta_el_id_de_la_plantilla():
+    assert ej.datos_ejemplo("membresias", "pocos", hoy=HOY) == ej.datos_ejemplo(PLANTILLAS["membresias"], "pocos", hoy=HOY)
+    with pytest.raises(KeyError):
+        ej.datos_ejemplo("no-existe", hoy=HOY)
 
 
 def test_todo_registro_va_marcado_como_ejemplo_y_el_nombre_es_unico():

@@ -17,7 +17,7 @@ const v = await createServer({ configFile: 'laboratorio/vite.config.js', server:
 const { datosEjemplo, extenderDatos, sinEjemplos } = await v.ssrLoadModule('/src/plantillas/datosEjemplo.js')
 const { PLANTILLAS } = await v.ssrLoadModule('/src/plantillas/semillas.js')
 
-// Solo lo que usa la generación: id y, por sección, id, fuente y campos.
+// Solo lo que usa la generación: id y, por sección, id, fuente y campos (las plantillas mismas las lee el CRM de catalogos/plantillas.json).
 const compacta = (p) => ({ id: p.id, secciones: p.secciones.map((s) => ({ id: s.id, ...(s.fuente ? { fuente: s.fuente } : {}), ...(s.campos ? { campos: s.campos } : {}) })) })
 const ordenar = (x) => (Array.isArray(x) ? x.map(ordenar) : x && typeof x === 'object' ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, ordenar(x[k])])) : x)
 const huella = (x) => createHash('sha256').update(JSON.stringify(ordenar(x))).digest('hex')
@@ -45,7 +45,6 @@ if (cEstado) est.mapeoEstado = { miembros: { [cEstado.id]: { [cEstado.opciones[0
 const extender = ['pocos', 'muchos'].map((nivel) => ({ caso: `membresias+extras:${nivel}`, entrada: { plantilla: 'membresias', nivel, est }, salida: extenderDatos(datosEjemplo(base, nivel), base, est, nivel) }))
 const sin = [{ caso: 'membresias:pocos sin ejemplos', entrada: { plantilla: 'membresias', nivel: 'pocos' }, salida: sinEjemplos(datosEjemplo(base, 'pocos')) }]
 
-writeFileSync('backend/test/crm/fixtures/lab/ejemplos_plantillas.json', JSON.stringify(plantillas))
 writeFileSync('backend/test/crm/fixtures/lab/ejemplos_datos.json', JSON.stringify({ hoy: '2026-10-16', casos }))
 writeFileSync('backend/test/crm/fixtures/lab/ejemplos_extender.json', JSON.stringify({ hoy: '2026-10-16', casos: [...extender, ...sin] }))
 console.log(`${plantillas.length} plantillas · ${casos.length} casos de datos · ${extender.length + sin.length} de extender/sin ejemplos`)

@@ -8,8 +8,6 @@ const v = await createServer({ configFile: 'laboratorio/vite.config.js', server:
 const { asignar } = await v.ssrLoadModule('/src/plantillas/asignar.js')
 const { PLANTILLAS } = await v.ssrLoadModule('/src/plantillas/semillas.js')
 
-// Lo que usa la regla: id, nombre, para y asignacion (en el orden del catálogo: el orden decide los empates).
-const plantillas = PLANTILLAS.map((p) => ({ id: p.id, nombre: p.nombre, ...(p.para !== undefined ? { para: p.para } : {}), ...(p.asignacion ? { asignacion: p.asignacion } : {}) }))
 const uniq = (xs) => [...new Set(xs)]
 const conAsig = PLANTILLAS.filter((p) => p.asignacion)
 const rubros = [...uniq(conAsig.flatMap((p) => p.asignacion.rubros)), 'otro', undefined]
@@ -37,7 +35,6 @@ for (const rubro of rubros) for (const ciclo of ciclos) {
 }
 for (const q of vendes) casos.push({ caso: `solo vendes: ${q}`, entrada: { queVendes: q }, salida: asignar({ queVendes: q }) })
 casos.push({ caso: 'sin respuestas', entrada: {}, salida: asignar({}) })
-writeFileSync('backend/test/crm/fixtures/lab/asignar_plantillas.json', JSON.stringify(plantillas))
 writeFileSync('backend/test/crm/fixtures/lab/asignar_casos.json', JSON.stringify(casos))
-console.log(`${plantillas.length} plantillas (${conAsig.length} con asignación) · ${casos.length} casos · ambiguos ${casos.filter((c) => c.salida.ambiguo).length}`)
+console.log(`${PLANTILLAS.length} plantillas (${conAsig.length} con asignación) · ${casos.length} casos · ambiguos ${casos.filter((c) => c.salida.ambiguo).length}`)
 await v.close()
