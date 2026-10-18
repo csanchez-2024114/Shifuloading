@@ -102,6 +102,10 @@ class Settings:
     # devolvieron las herramientas ni en lo que escribió el usuario, aunque ANSWER_VERIFY=0. 0 tokens. Apagado por
     # defecto: puede cambiar la respuesta final.
     url_filter_always: bool = False
+    # P3.3: las herramientas con efecto write/send/delete (ToolPolicy.effect del perfil o effect de @tool_spec) piden
+    # aprobación con la tarjeta, en el agente normal y en bigtool. Apagado por defecto: cambia el flujo
+    # (crm_create_order, por ejemplo, hoy corre sin preguntar).
+    effect_approval: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -167,6 +171,7 @@ class Settings:
             untrusted_wrap=_bool("UNTRUSTED_WRAP"),
             memory_require_quote=_bool("MEMORY_REQUIRE_QUOTE"),
             url_filter_always=_bool("URL_FILTER_ALWAYS"),
+            effect_approval=_bool("EFFECT_APPROVAL"),
         )
 
     def context_window(self) -> int:

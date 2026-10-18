@@ -244,3 +244,82 @@ def test_inyeccion_completa_no_guarda_nada_ni_saca_enlaces_nuevos():
 
     assert _recuerdos(store, "ana") == []
     assert "atacante.example" not in get_history(agent, thread, s)[-1]["content"]
+
+
+# --------------------------------------------------------------------------- EFFECT_APPROVAL
+
+
+def _perfil_con_efecto():
+    """El perfil por defecto, pero calculator declarada como write (sin approval explícita)."""
+    from dataclasses import replace
+
+    from assistant.core.profile import ToolPolicy, load_profile
+
+    base = load_profile("default")
+    return replace(base, tool_policies={**base.tool_policies, "calculator": ToolPolicy(effect="write")})
+
+
+def test_effect_approval_apagado_no_cambia_las_aprobaciones():
+    from assistant.core.agent import approvals
+    from assistant.core.profile import load_profile
+
+    default = load_profile("default")
+    assert list(approvals(default, _settings())) == ["send_simulated_email", "deep_research"]
+    # en el perfil por defecto solo el email tiene efecto (send) y ya pedía aprobación: encendido, igual
+    assert approvals(default, _settings(effect_approval=True)) == approvals(default, _settings())
+    assert "calculator" not in approvals(_perfil_con_efecto(), _settings())
+
+
+def test_effect_approval_pide_la_tarjeta_para_write_en_el_agente_normal():
+    from langgraph.types import Command
+
+    from assistant.core.agent import build_agent, stream_events
+    from assistant.core.tools import build_tools
+    from assistant.packs.i18n.es import EFFECT_CONFIRM
+
+    s, perfil = _settings(effect_approval=True), _perfil_con_efecto()
+    llm = fake_llm(tool_call("calculator", {"expression": "2+2"}), "Son 4")
+    agent = build_agent(llm, build_tools(llm, s, search_fn=FakeSearch(), profile=perfil), s,
+                        checkpointer=InMemorySaver(), profile=perfil)
+    thread = uid("ef")
+    ev = run_turn(agent, s, "cuánto es 2+2", thread)
+    tarjeta = next(e for e in ev if e["type"] == "interrupt")
+    assert tarjeta["action_requests"][0]["name"] == "calculator"
+    assert tarjeta["action_requests"][0]["description"] == EFFECT_CONFIRM.format(name="calculator")
+    assert not any(e["type"] == "tool_end" for e in ev)
+    ev = list(stream_events(agent, Command(resume={"decisions": [{"type": "approve"}]}), thread, "u1", s))
+    assert next(e for e in ev if e["type"] == "tool_end")["output"] == "4"
+
+
+def test_effect_approval_en_bigtool_usa_interrupt_como_deep_research():
+    from typing import TypedDict
+
+    from langgraph.graph import END, START, StateGraph
+    from langgraph.types import Command
+
+    from assistant.core.extensions.bigtool import build_registry
+
+    args = {"product": "monitor", "quantity": 2, "customer_email": "ana@example.com"}
+    normal = build_registry(fake_llm("x"), _settings(bigtool_demo_tools=True), None)
+    assert normal["crm_create_order"].invoke(args)  # apagado: corre sin preguntar, como hoy
+    registry = build_registry(fake_llm("x"), _settings(bigtool_demo_tools=True, effect_approval=True), None)
+    assert registry["crm_create_order"].description == normal["crm_create_order"].description
+
+    class S(TypedDict):
+        out: str
+
+    def nodo(state):
+        return {"out": str(registry["crm_create_order"].invoke(args))}
+
+    g = StateGraph(S)
+    g.add_node("n", nodo)
+    g.add_edge(START, "n")
+    g.add_edge("n", END)
+    app = g.compile(checkpointer=InMemorySaver())
+    cfg = {"configurable": {"thread_id": uid("big")}}
+    r = app.invoke({"out": ""}, cfg)
+    pedido = r["__interrupt__"][0].value["action_requests"][0]
+    assert pedido["name"] == "crm_create_order" and args.items() <= pedido["args"].items()
+    rechazo = app.invoke(Command(resume={"decisions": [{"type": "reject"}]}), cfg)
+    assert rechazo["out"] == "User rejected the tool call: crm_create_order was not run."
+    assert registry["calculator"].invoke({"expression": "1+1"}) == "2"  # read: sin tarjeta

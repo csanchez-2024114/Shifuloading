@@ -652,6 +652,7 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "UNTRUSTED_WRAP": ("untrusted_wrap", False),
     "MEMORY_REQUIRE_QUOTE": ("memory_require_quote", False),
     "URL_FILTER_ALWAYS": ("url_filter_always", False),
+    "EFFECT_APPROVAL": ("effect_approval", False),
 }
 
 

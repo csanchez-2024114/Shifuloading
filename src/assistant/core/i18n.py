@@ -18,6 +18,7 @@ REQUIRED_TEXTS = (
     "format.thousands_sep",       # separador de miles de las cifras en los avisos
     # herramientas
     "tools.deep_research_confirm",  # tarjeta de aprobación de deep_research
+    "tools.effect_confirm",       # EFFECT_APPROVAL: tarjeta de una herramienta con efecto; {name}
     # citas (notas de ANSWER_VERIFY que ve el usuario)
     "citations.correction_discarded",  # {numbers}
     "citations.citation_removed",      # {url}

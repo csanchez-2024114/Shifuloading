@@ -706,6 +706,23 @@ def _approval(policy, profile):
     return policy.approval
 
 
+def effect_approval(name: str, profile=None) -> dict:
+    """EFFECT_APPROVAL: tarjeta aprobar/rechazar para una herramienta con efecto (write/send/delete)."""
+    return {"allowed_decisions": ["approve", "reject"], "description": tr("tools.effect_confirm", profile, name=name)}
+
+
+def approvals(profile, settings: Settings) -> dict:
+    """interrupt_on de HumanInTheLoopMiddleware: las aprobaciones del perfil (ToolPolicy.approval) y, con
+    EFFECT_APPROVAL, también las herramientas cuyo efecto no es "read"."""
+    out = {}
+    for name, policy in profile.tool_policies.items():
+        if policy.approval:
+            out[name] = _approval(policy, profile)
+        elif settings.effect_approval and policy.effect != "read":
+            out[name] = effect_approval(name, profile)
+    return out
+
+
 def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None,
                 profile=None):
     """`summarizer`/`checker`: modelos para la compactación/ANSWER_VERIFY (se inyectan en tests). `profile`: el
@@ -723,8 +740,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         ToolErrorMiddleware(on_error=_on_tool_error),
         LimiteRepeticiones(settings.tool_repeat_limit),
         # aprobaciones del perfil (tarjeta de la UI): las herramientas con ToolPolicy.approval
-        HumanInTheLoopMiddleware(interrupt_on={name: _approval(policy, profile)
-                                               for name, policy in profile.tool_policies.items() if policy.approval}),
+        HumanInTheLoopMiddleware(interrupt_on=approvals(profile, settings)),
         AvisoCorte(),
     ]
     if prune_age:

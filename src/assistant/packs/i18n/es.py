@@ -10,6 +10,7 @@ UNVERIFIED_NOTE = "No verificada: este mensaje llegó a su tope de tokens (TURN_
 # avisos al usuario: texto plano (la interfaz no interpreta _cursiva_ y mostraba los guiones bajos)
 TURN_CAP_MSG = ("\n\n⚠️ Detuve este mensaje: superó el tope de {cap} tokens por mensaje (TURN_TOKEN_CAP). Lo que "
                 "alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.")
+EFFECT_CONFIRM = "La herramienta {name} modifica o envía datos. ¿La ejecuto?"
 STREAM_ERROR_MSG = "Algo falló al generar la respuesta. Inténtalo de nuevo."
 TURN_TIME_MSG = ("\n\n⚠️ Detuve este mensaje: superó el tiempo máximo de {seconds} s por mensaje (TURN_MAX_SECONDS). "
                  "Lo que alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.")
@@ -77,6 +78,7 @@ TEXTS = {
     "agent.compact_pending": COMPACT_PENDING_MSG,
     "format.thousands_sep": THOUSANDS_SEP,
     "tools.deep_research_confirm": DEEP_RESEARCH_CONFIRM,
+    "tools.effect_confirm": EFFECT_CONFIRM,
     "citations.correction_discarded": CORRECTION_DISCARDED_NOTE,
     "citations.citation_removed": CITATION_REMOVED_NOTE,
     "citations.sources_label": SOURCES_LABEL,
