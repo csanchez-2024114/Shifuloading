@@ -1066,6 +1066,7 @@ textarea#input:disabled { opacity: .6; }
     this.timing.setAttribute("aria-label", "Tiempo de respuesta " + head.slice(2) + ": " + parts.join(", "));
   };
   AssistantBubble.prototype.finish = function () {
+    if (this.researchResult) { this.researchResult.textContent = "✓ Aprobada"; this.researchResult = null; }
     this.stopTiming();
     this.live = false; this.hideDots();
     if (this.seg) { this.closeSeg(); }
@@ -1138,6 +1139,7 @@ textarea#input:disabled { opacity: .6; }
       var r = el("div", "result", research ? (approve ? "✓ Investigando…" : "✗ Sin investigación a fondo")
                                             : (approve ? "✓ Aprobado" : "✗ Rechazado"));
       card.appendChild(r);
+      if (research && approve) self.researchResult = r;  // al terminar el turno pasa a "✓ Aprobada"
       var n = acts.length || 1, decisions = [];
       for (var k = 0; k < n; k++) decisions.push(approve ? { type: "approve" } : { type: "reject", message: REJECT_MSG });
       onDecide(decisions);
@@ -1163,9 +1165,12 @@ textarea#input:disabled { opacity: .6; }
       return;
     }
     if (!resp.ok) {
-      var detail = "";
-      try { detail = (await resp.text()).slice(0, 300); } catch (e) { /* ignore */ }
-      bubble.error("Error del servidor (" + resp.status + ")" + (detail ? ": " + detail : ""));
+      var detail = "", raw = "";
+      try { raw = await resp.text(); } catch (e) { /* ignore */ }
+      try { var parsed = JSON.parse(raw); if (typeof parsed.detail === "string") detail = parsed.detail; } catch (e) { /* no es JSON */ }
+      // 4xx con "detail" (413 por largo, 409 por turno en curso, 400/404…): el aviso en español, sin el JSON crudo
+      if (detail && resp.status < 500) bubble.error(detail);
+      else bubble.error("Error del servidor (" + resp.status + ")" + ((detail || raw) ? ": " + (detail || raw).slice(0, 300) : ""));
       return;
     }
     if (!resp.body || !resp.body.getReader) {
@@ -1247,6 +1252,10 @@ textarea#input:disabled { opacity: .6; }
   function send(text) {
     text = (text || "").trim();
     if (!text || state.streaming || state.pending) return;
+    // un /history que aún no respondió ya no puede pintar encima de este turno (la pantalla vacía lo borraba)
+    state.loadSeq++;
+    var stale = messagesEl.querySelector(".sys.loading");
+    if (stale) stale.remove();
     var ready = files.pending.filter(function (f) { return f.file_id && f.thread === state.threadId; });
     addUserBubble(text, ready);
     touchThread(state.threadId, text);
@@ -1264,7 +1273,7 @@ textarea#input:disabled { opacity: .6; }
   async function loadHistory(id) {
     var seq = ++state.loadSeq;
     clearMessages();
-    var loading = el("div", "sys", "Cargando conversación…");
+    var loading = el("div", "sys loading", "Cargando conversación…");
     messagesEl.appendChild(loading);
     var data = null;
     try {
