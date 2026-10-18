@@ -1,4 +1,7 @@
 """Detector de «afirma un cambio» (D51): los 18 casos reales de `laboratorio/pruebas/afirma.test.mjs`."""
+import json
+from pathlib import Path
+
 import pytest
 
 from app.crm.afirma import afirma_cambio
@@ -32,3 +35,16 @@ def test_no_afirma(texto):
 
 def test_vacio_y_none():
     assert afirma_cambio("") is False and afirma_cambio(None) is False
+
+
+# Los 412 casos dorados de afirmaCambio (grabar-fixtures.mjs, contrato §6).
+_DORADOS = json.loads((Path(__file__).parent / "fixtures" / "lab" / "afirmaCambio.json").read_text(encoding="utf-8"))
+
+
+def test_hay_412_casos_dorados():
+    assert len(_DORADOS) == 412
+
+
+@pytest.mark.parametrize("caso", _DORADOS, ids=[str(i) for i in range(len(_DORADOS))])
+def test_igual_que_el_laboratorio(caso):
+    assert afirma_cambio(caso["entrada"]["texto"]) is caso["salida"], caso["caso"]
