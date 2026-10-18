@@ -6,7 +6,8 @@ Estado: **aprobado** (2026-10-17), con las decisiones de la sección 8.
 - Fase 3: terminada (`28bb3c8`…`0b68973`). Huella intacta; las constantes que cambiaron de módulo se leen con el mapa de reubicación (`MOVED_CONSTANTS` en `tests/test_caracterizacion.py`).
 - Fase 4: terminada (`1c1b71e`…`b667f45`). JSON de la huella sin cambios; los valores que cambiaron de módulo se leen con el mapa de reubicación, y el test del multiconjunto lo comprueba contra `05773c4`.
 - Fase 5: terminada (`6968647`…`3dfb595`). Perfiles `generic` y `tests/profiles/minimal`, y `docs/CREAR_PERFIL.md`. JSON de la huella sin cambios; solo el mapa de reubicación (reglas → `packs.lang.es_en`; `agent.EVIDENCE_TOOLS` → `core.agent:evidence_tools()`).
-- Siguiente: Fase 6.
+- Fase 6: terminada (`f083182`…). PARIDAD 85/85 ✅ con 3 corridas de 370 tests (sin inestables), CONTRATO.md corregido (eventos SSE y endpoints sin cambios contra `main@0dce7d4`), README y CLAUDE.md al día.
+- Siguiente: el merge a `main` lo decide el usuario. Después, la primera tarea de `REFACTOR_NOTAS.md` y luego S1–S7.
 Rama `refactor/core-profiles`. Línea base: 269 tests en `main`; 346 con los de caracterización (commit `05773c4`).
 
 Principio rector: **mover primero y cambiar después**. En la Fase 2, cada archivo se mueve 1:1 y su nombre viejo sigue apuntando al **mismo objeto de módulo**. Los cortes de los módulos mixtos (sacar textos, reglas y herramientas de dominio) llegan en las Fases 3 y 4, con la huella (`tests/snapshots/perfil_por_defecto.json`) como juez: con el perfil por defecto, el modelo, la UI y el cliente SSE deben recibir exactamente lo mismo.

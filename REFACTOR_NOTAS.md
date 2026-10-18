@@ -2,7 +2,22 @@
 
 Este refactor solo reorganiza. Todo lo de aquí abajo es un **cambio de comportamiento** y va en commits o tareas aparte, después de terminar el refactor y con la suite en verde.
 
-## Seguridad (de la auditoría del 2026-10-17, `docs/AUDITORIA_AGENTE.md`): siguiente fase, sin implementar
+## Primera tarea posterior: que todo lea el perfil pasado a `build_agent`, no solo `AGENT_PROFILE`
+
+Hoy, pasar `profile=` a `build_agent`, `build_tools`, `create_app` o `system_prompt_text` decide el prompt, las herramientas, las aprobaciones, las herramientas-evidencia y los nombres antiguos del middleware. Pero hay piezas que leen siempre el perfil **activo** (`active_profile()`, es decir, `AGENT_PROFILE`), aunque se haya pasado otro:
+- **reglas de intención:**
+  - la regla de mensaje corto de `elegir_esfuerzo` (`necesita_clasificador`, `core/agent.py:74`; nadie le pasa `intents=`);
+  - "continúa" tras un corte (`core/agent.py:228`);
+  - el pedido explícito de investigar (`core/tools.py:560`);
+  - el encabezado de fuentes en las citas (`core/citations.py:59`);
+- **léxico de la memoria:** `core/memory.py:104` (forma neutra y búsqueda por palabras);
+- **avisos durante el turno:** las llamadas a `tr(...)` sin perfil en `core/agent.py` (tope de llamadas, corte, no verificada, tope del turno, recursión);
+- **tarjeta de `deep_research`:** el predicado `research_needs_confirmation` y `earlier_research`, que usa los nombres antiguos del perfil activo (`core/tools.py:528`);
+- **`rename_old_tools`:** su default sin `legacy=` (`core/agent.py:245`).
+
+Con un solo perfil por proceso, el resultado es el mismo. Con dos perfiles en un proceso (o un test que pase `profile=` sin fijar `AGENT_PROFILE`), no. La propuesta es llevar el perfil por el contexto del grafo (`Context`/`runtime`) o por los constructores de los middleware y las herramientas, y probarlo con dos perfiles distintos en el mismo proceso. Es un cambio de comportamiento para el caso multi-perfil, así que va en su propia tarea.
+
+## Seguridad (de la auditoría del 2026-10-17, `docs/AUDITORIA_AGENTE.md`): siguiente fase, sin implementar (después de la tarea anterior)
 
 | # | Hallazgo | Dónde (antes de mover) |
 |---|---|---|
