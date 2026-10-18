@@ -411,7 +411,9 @@ class Sesion:
         self.doc = op.tareas_crear(self.doc, t, self.ahora, fecha, hora, cid)
         nueva = self.doc["tareas"]["porHacer"][-1]
         self.vista = "desarrollo"
-        return f"Agregué la tarea “{t}”{self._cuando(nueva)}{f' (contacto: {c['n']})' if cid else ''} en Por hacer."
+        # Fuera del f-string: comillas iguales anidadas no compilan en Python 3.11 (el Dockerfile usa python:3.11).
+        de_contacto = f" (contacto: {c['n']})" if cid else ""
+        return f"Agregué la tarea “{t}”{self._cuando(nueva)}{de_contacto} en Por hacer."
 
     def _h_cambiar_tarea(self, buscar: str, texto: str | None = None, fecha: str | None = None, hora: str | None = None, contacto: str | None = None) -> str:
         hit, error = self._uno(self._tareas(buscar), lambda x: x[1]["t"], f"ninguna tarea que diga “{buscar}”")
@@ -523,7 +525,8 @@ class Sesion:
         nueva = self.doc["listas"][-1]
         self.creadas.add(nueva["nombre"])
         self.vista = nueva["id"]
-        return f"Creé la sección “{nueva['nombre']}” con los campos: {', '.join(f'{c['nombre']} ({c['tipo']})' for c in nueva['campos'])}."
+        campos = ", ".join(f"{c['nombre']} ({c['tipo']})" for c in nueva["campos"])  # fuera del f-string: Python 3.11
+        return f"Creé la sección “{nueva['nombre']}” con los campos: {campos}."
 
     def _h_quitar_seccion(self, seccion: str) -> str:
         sid = self._seccion(seccion)
