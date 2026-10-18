@@ -555,6 +555,13 @@ def _on_tool_error(exc: Exception, request) -> str:
     return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
 
+def _on_tool_error_hidden(exc: Exception, request) -> str:
+    """TOOL_ERROR_DETAIL_HIDDEN: al modelo, solo el tipo de excepción; el detalle va al log del servidor."""
+    name = (getattr(request, "tool_call", None) or {}).get("name")
+    logger.warning("La herramienta %s falló: %s: %s", name, type(exc).__name__, exc)
+    return f"Tool error ({type(exc).__name__}). Try another approach."
+
+
 def system_prompt_text(settings: Settings | None = None, profile=None) -> str:
     """Prompt del perfil (el del turno o el activo si no se pasa) + su política de memoria + fecha local."""
     profile = profile or current_profile()
@@ -745,7 +752,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         _razonamiento,
         LimiteLlamadas(),
         AterrizajeSuave(settings.turn_token_cap),
-        ToolErrorMiddleware(on_error=_on_tool_error),
+        ToolErrorMiddleware(on_error=_on_tool_error_hidden if settings.tool_error_detail_hidden else _on_tool_error),
         LimiteRepeticiones(settings.tool_repeat_limit),
         # aprobaciones del perfil (tarjeta de la UI): las herramientas con ToolPolicy.approval
         HumanInTheLoopMiddleware(interrupt_on=approvals(profile, settings)),

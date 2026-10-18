@@ -315,6 +315,7 @@
    "sse_ping_seconds": 15.0,
    "summary_keep_tokens": 0,
    "summary_trigger_tokens": 0,
+   "tool_error_detail_hidden": false,
    "tool_repeat_limit": 8,
    "trace_metadata": false,
    "trusted_hosts": [
@@ -397,6 +398,7 @@
    "SSE_PING_SECONDS",
    "SUMMARY_KEEP_TOKENS",
    "SUMMARY_TRIGGER_TOKENS",
+   "TOOL_ERROR_DETAIL_HIDDEN",
    "TOOL_REPEAT_LIMIT",
    "TRACE_METADATA",
    "TRUSTED_HOSTS",

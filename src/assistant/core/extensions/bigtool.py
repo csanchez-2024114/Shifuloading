@@ -61,8 +61,9 @@ def _ctx(attr: str, default=None):
         return default
 
 
-def _seguro(t: BaseTool) -> BaseTool:
-    """Misma herramienta, pero devuelve 'Error: ...' en vez de lanzar (el agente lo ve e intenta otra cosa)."""
+def _seguro(t: BaseTool, hidden: bool = False) -> BaseTool:
+    """Misma herramienta, pero devuelve 'Tool error ...' en vez de lanzar (el agente lo ve e intenta otra cosa).
+    `hidden` (TOOL_ERROR_DETAIL_HIDDEN): solo el tipo de excepción; el detalle va al log."""
 
     def run(**kwargs):
         try:
@@ -70,6 +71,9 @@ def _seguro(t: BaseTool) -> BaseTool:
         except GraphBubbleUp:  # interrupt() (confirmación de deep_research): no es un error de la herramienta
             raise
         except Exception as exc:  # noqa: BLE001
+            if hidden:
+                logger.warning("La herramienta %s falló: %s: %s", t.name, type(exc).__name__, exc)
+                return f"Tool error ({type(exc).__name__}). Try another approach."
             return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
     return StructuredTool.from_function(func=run, name=t.name, description=t.description, args_schema=t.args_schema,
@@ -177,7 +181,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
         tools += _file_tools(memories_store)
     if settings.effect_approval:  # P3.3: write/send/delete pasan por la tarjeta, con el interrupt() de deep_research
         tools = [_con_aprobacion(t, profile) if _effect(t, profile) != "read" else t for t in tools]
-    registry = {t.name: _seguro(t) for t in tools}
+    registry = {t.name: _seguro(t, settings.tool_error_detail_hidden) for t in tools}
     assert len(registry) == len(tools), "nombres de herramientas duplicados en el registro"
     validate_registry(registry)
     return registry

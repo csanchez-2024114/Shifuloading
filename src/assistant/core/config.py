@@ -126,6 +126,9 @@ class Settings:
     turn_metrics: bool = False        # métricas por turno en turn_metrics (sin contenido de mensajes) y /metrics/summary
     feedback_enabled: bool = False    # POST /feedback (👍/👎) y create_feedback en LangSmith si está activo
     metrics_ttl_days: int = 90        # días que se conservan turn_metrics y feedback; 0 = sin caducidad
+    # Con 1, el error de una herramienta le llega al modelo solo con el tipo de excepción ("Tool error (KeyError).
+    # ..."); el detalle (mensajes de librerías, rutas, datos) va solo al log del servidor. Apagado por defecto.
+    tool_error_detail_hidden: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -204,6 +207,7 @@ class Settings:
             turn_metrics=_bool("TURN_METRICS"),
             feedback_enabled=_bool("FEEDBACK_ENABLED"),
             metrics_ttl_days=_num("METRICS_TTL_DAYS", "90"),
+            tool_error_detail_hidden=_bool("TOOL_ERROR_DETAIL_HIDDEN"),
             trusted_hosts=tuple(h.strip().lower() for h in (os.getenv("TRUSTED_HOSTS") or "localhost,127.0.0.1")
                                 .split(",") if h.strip()),
         )
