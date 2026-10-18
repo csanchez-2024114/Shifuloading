@@ -1,7 +1,8 @@
 """Toma de diseño: el port a Python da lo mismo que `edicion.js` paso a paso (fixtures de `laboratorio/servidor/grabar-toma.mjs`), y los
 comportamientos que mide `laboratorio/pruebas/banco_toma.py`, sin IA: se llaman las herramientas con los argumentos que mandaría el modelo.
 
-Lo que no es de la toma (gráficos posibles, revisión de vistas, acomodo, validación) se inyecta: aquí sale de lo que grabó el laboratorio.
+Lo que no es de la toma se inyecta: los gráficos posibles salen del catálogo real (plantillas.py); la revisión de vistas es una copia de
+`revisarVista` sobre `plantillas.vistas()`, y el acomodo y la validación de cada construir son los que grabó el laboratorio.
 """
 import copy
 import json
@@ -10,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from app.crm import plantillas as catalogo_crm
 from app.crm import toma as tm
 
 LAB = Path(__file__).parent / "fixtures" / "lab"
@@ -22,7 +24,7 @@ AHORA_MS = int(datetime(2026, 10, 16, 18, 0, tzinfo=timezone.utc).timestamp() * 
 
 def revisar_vista(vista, opciones, campos, donde):
     """`revisarVista` de validar.js, sobre el catálogo VISTAS grabado (solo para estas pruebas)."""
-    vistas = CAT["vistas"]
+    vistas = catalogo_crm.vistas()
     d = vistas.get(vista)
     if not d:
         return [f"{donde}: la vista «{vista}» no está en el catálogo ({', '.join(vistas)})."]
@@ -60,23 +62,11 @@ def revisar_vista(vista, opciones, campos, donde):
 
 
 def catalogo(pid: str) -> tm.Catalogo:
-    p = CAT["plantillas"][pid]
-    por_id = {s["id"]: s for s in p["secciones"]}
-
-    def posibles_de(campos):
-        for sid, lista in p["compatibles"].items():
-            s = por_id[sid]
-            if (por_id[s["fuente"]]["campos"] if s.get("fuente") else s.get("campos") or []) == campos:
-                return lista
-        raise AssertionError(f"campos sin gráficos grabados: {campos}")
-
-    def opciones_por_defecto(tipo, campos):
-        g = next((x for x in posibles_de(campos) if x["id"] == tipo), None)
-        assert g, f"sin opciones grabadas para {tipo}"
-        return copy.deepcopy(g["opciones_por_defecto"])
-
-    return tm.Catalogo(secciones=p["secciones"], compatibles=lambda campos: posibles_de(campos) if campos else [],
-                       opciones_por_defecto=opciones_por_defecto, revisar_vista=revisar_vista, graficos=CAT["graficos"], fuentes=CAT["fuentes"])
+    """El catálogo real del CRM (plantillas.py: secciones, compatibles y opciones por defecto). Las tipografías permitidas son las de
+    marca.js (no están en el catálogo compartido): salen de lo grabado."""
+    return tm.Catalogo(secciones=catalogo_crm.plantilla_por_id(pid)["secciones"], compatibles=catalogo_crm.compatibles,
+                       opciones_por_defecto=catalogo_crm.opciones_por_defecto, revisar_vista=revisar_vista,
+                       graficos=catalogo_crm.graficos(), fuentes=CAT["fuentes"])
 
 
 def doc_inicial():
@@ -152,6 +142,12 @@ def test_los_guiones_cubren_todas_las_herramientas():
 def test_esquemas_literales_del_laboratorio():
     assert tm.TOMA_HERRAMIENTAS == CAT["herramientas"]
     assert [h["function"]["name"] for h in tm.TOMA_HERRAMIENTAS] == list(tm.NOMBRES_TOMA)
+
+
+def test_el_catalogo_grabado_es_el_compartido():
+    for pid, p in CAT["plantillas"].items():
+        assert catalogo_crm.plantilla_por_id(pid)["secciones"] == p["secciones"]
+    assert catalogo_crm.vistas() == CAT["vistas"]
 
 
 def test_bloqueadas_iguales_al_laboratorio():

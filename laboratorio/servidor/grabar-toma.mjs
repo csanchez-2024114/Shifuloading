@@ -22,8 +22,7 @@ const espia = { name: 'espia-acomodar', enforce: 'pre', transform(code, id) {
 const v = await createServer({ configFile: 'laboratorio/vite.config.js', plugins: [espia], server: { middlewareMode: true, hmr: false }, logLevel: 'error' })
 const ed = await v.ssrLoadModule('/src/plantillas/edicion.js')
 const { plantillaPorId } = await v.ssrLoadModule('/src/plantillas/semillas.js')
-const { compatibles, opcionesPorDefecto, GRAFICOS } = await v.ssrLoadModule('/src/plantillas/graficos.jsx')
-const { VISTAS, camposDe } = await v.ssrLoadModule('/src/plantillas/validar.js')
+const { VISTAS } = await v.ssrLoadModule('/src/plantillas/validar.js')
 const { FUENTES } = await v.ssrLoadModule('/src/plantillas/marca.js')
 
 const E = { bloques: [{ uid: 'b0', vista: 'kpis', seccion: 'miembros', opciones: { por: 'estado' }, ancho: 12, alto: 1 }] }
@@ -104,22 +103,11 @@ for (const [nombre, pid, pasos] of GUIONES) {
       salidas.push({ errores: r.errores, antes_de_acomodar: globalThis.__antesDeAcomodar, inicio: estado.bloques, marca: estado.marca ?? null, toma: tomaDe(estado) })
     }
   }
-  const efectiva = ed.plantillaEfectiva(p, {})
   guiones.push({ caso: nombre, plantilla: pid, pasos, salidas })
 }
-// El catálogo que el CRM le inyecta a toma.py: secciones (plantilla efectiva) y, por sección, los gráficos posibles y sus opciones.
-const catalogo = {}
-for (const pid of new Set(GUIONES.map((g) => g[1]))) {
-  const ef = ed.plantillaEfectiva(plantillaPorId(pid), {})
-  const porId = Object.fromEntries(ef.secciones.map((s) => [s.id, s]))
-  const graficos = {}
-  for (const s of ef.secciones) {
-    const campos = camposDe(s, porId)
-    graficos[s.id] = compatibles(campos).map((g) => ({ id: g.id, nombre: g.nombre, opciones_por_defecto: opcionesPorDefecto(g.id, campos) }))
-  }
-  catalogo[pid] = { secciones: ef.secciones.map(({ pagina, ...s }) => s), compatibles: graficos }
-}
-const extra = { vistas: VISTAS, graficos: Object.fromEntries(Object.entries(GRAFICOS).map(([id, g]) => [id, { nombre: g.nombre }])), fuentes: Object.keys(FUENTES),
+// Para comprobar que el catálogo compartido (plantillas.py) es el mismo que usó el laboratorio: las secciones de la plantilla efectiva.
+const catalogo = Object.fromEntries([...new Set(GUIONES.map((g) => g[1]))].map((pid) => [pid, { secciones: ed.plantillaEfectiva(plantillaPorId(pid), {}).secciones.map(({ pagina, ...s }) => s) }]))
+const extra = { vistas: VISTAS, fuentes: Object.keys(FUENTES), // las tipografías de marca.js (no están en el catálogo compartido)
   inicio_inicial: E.bloques, herramientas: ed.HERRAMIENTAS.filter((h) => ['abrir_toma', 'anotar_bloque', 'quitar_de_ficha', 'anotar_ficha', 'anotar_nota', 'cerrar_toma'].includes(h.function.name)),
   bloqueadas: [...ed.HERRAMIENTAS_BLOQUEADAS_EN_TOMA], uid_base: Date.now().toString(36) }
 writeFileSync('backend/test/crm/fixtures/lab/toma_guiones.json', JSON.stringify(guiones, null, 1))
