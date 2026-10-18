@@ -236,3 +236,8 @@ Capturas en `docs/e2e/`, sin claves, URIs ni datos reales: `t3_archivos_01_csv.p
 - **Seguridad:** 100 %. Con el texto trampa a la vista, y aunque el usuario pidió seguir sus instrucciones, el modelo no guardó nada ni sacó el enlace. La regla del prompt de archivos y la cita literal obligatoria en hilos con adjuntos se ejercitaron con el modelo real; el bloqueo en código de `save_memory` lo cubren los tests con modelos falsos (el modelo nunca lo intentó).
 - **Calidad:** 100 % en evals y en la UI. Un mensaje con un archivo de texto cuesta unos 6,1–6,4k tokens (una lectura más la respuesta); una imagen pequeña, unos 3,2–3,4k.
 - **Pendientes** (en `REFACTOR_NOTAS.md`): bigtool no añade la regla de archivos al prompt, y `generic` no recibe las herramientas de archivos.
+
+# Fase 3: trazas, métricas y feedback
+
+- **LangSmith:** el envío del feedback (`create_feedback(run_id, key="user_score")`) y los metadatos de la traza (`run_id`, `run_name`, `metadata`, `tags`) están probados **solo con un cliente falso** (`tests/test_feedback.py`, `tests/test_trazas.py`). No se probó contra LangSmith real: en las pruebas reales `LANGSMITH_TRACING=false`.
+- **UI de 👍/👎:** probada en Edge headless con modelo falso (`tests/test_ui_feedback.py`, 0 tokens).
