@@ -97,14 +97,17 @@ def memory_namespace(user_id: str) -> tuple[str, str, str]:
     return ("user", user_id, "memories")
 
 
-# sujeto genérico al inicio de un recuerdo: "El usuario vive en…" -> "Vive en…". Con sujeto, la búsqueda por palabras
-# casaba por "usuario" y perdía "La usuaria trabaja…" (prueba real). Solo recuerdos nuevos: los guardados no se tocan.
-_SUBJECT = re.compile(r"^\s*(?:(?:el|la)\s+usuari[oa](?:/[oa])?|al\s+usuario|a\s+la\s+usuaria|the\s+user)\s+", re.I)
+def _lexicon():
+    """Léxico de la memoria del perfil activo (sujeto, palabras vacías, temas, raíz)."""
+    from assistant.core.profile import active_profile
+
+    return active_profile().lexicon
 
 
 def neutral_fact(text: str) -> str:
-    """"El usuario vive en X" -> "Vive en X"; "Al usuario le gusta X" -> "Le gusta X". Lo demás, igual."""
-    rest = _SUBJECT.sub("", text, count=1)
+    """"El usuario vive en X" -> "Vive en X"; "Al usuario le gusta X" -> "Le gusta X". Lo demás, igual. El sujeto
+    genérico lo da el léxico del perfil."""
+    rest = _lexicon().subject.sub("", text, count=1)
     if rest == text or not rest.strip():
         return text
     return rest[0].upper() + rest[1:]
@@ -371,56 +374,27 @@ def _words(text: str) -> list[str]:
     return [w for w in re.findall(r"\w+", _normalize(text)) if len(w) >= 3]
 
 
-# Palabras que no aportan tema (español e inglés, sin acentos). Incluye genéricas de los recuerdos y preguntas
-# ("usuario", "nombre", "llama", "favorito"...): con ellas "nombre de mi gato" encontraría "su perro se llama Rex"
-# y "color favorito" encontraría "su bebida favorita".
-_STOPWORDS = set("""
-a al algo como con cual cuales cuando cuanto de del donde e el ella ellos en entre es esa ese eso esta este esto
-fue ha hay la las le les lo los mas me mi mis muy no nos o para pero por que quien se sea ser si sin sobre son su
-sus tambien te ti tu tus un una uno unos y ya yo era soy estoy esta estan tiene tengo tener hace hago dime dame
-sabes saber recuerdas recuerda recuerdo recuerdos dato datos informacion usuario usuaria nombre nombres llama llamo
-llamas llamado llamada favorito favorita favoritos favoritas preferido preferida prefiero prefiere prefieres
-preferencia preferencias gusta gustan gusto fecha cosa cosas actual ahora
-the and or of to in on at for with my me your his her their is are was what which who where when how about do does
-user name named called favorite favourite prefer prefers like likes know remember
-""".split())
-
-
-# Sinónimos de los datos personales más consultados: "ciudad" no comparte palabras con "vive en Querétaro".
-# Raíz (tras _stem) -> tema. Pocos y concretos, para no traer recuerdos de otro tema.
-_TOPICS = {**dict.fromkeys(("viv", "vivo", "ciuda", "resid", "domic", "mud", "radic", "live", "lives", "city"), "~vivir"),
-           **dict.fromkeys(("traba", "emple", "profe", "ofici", "puest", "work", "works", "job"), "~trabajo"),
-           # parche del modo por palabras: "qué me gusta comer" no comparte raíz con "comida favorita"
-           **dict.fromkeys(("comer", "comid", "alime", "food", "eat", "eats"), "~comida")}
-
-
-def _stem(word: str) -> str:
-    """Raíz aproximada para comparar variantes ("trabajo"/"trabaja", "vivo"/"vive", "ciudades"/"ciudad")."""
-    if len(word) > 4:
-        word = re.sub(r"(es|s)$", "", word)
-    if len(word) > 3:
-        word = re.sub(r"[aeiou]$", "", word)
-    return _TOPICS.get(word[:5], word[:5])
-
-
 def content_stems(text: str, query: bool = False) -> set[str]:
     """Palabras con contenido como raíces. En un recuerdo, las palabras con mayúscula (nombres propios) solo valen
-    completas ("=tomas"), para que "qué tomo" no encuentre a "Tomás"; la consulta aporta raíz y palabra completa."""
+    completas ("=tomas"), para que "qué tomo" no encuentre a "Tomás"; la consulta aporta raíz y palabra completa.
+    Palabras vacías y raíz: las del léxico del perfil."""
+    lexicon = _lexicon()
+    stem_of, stopwords = lexicon.stem, lexicon.stopwords
     out = set()
     for m in re.finditer(r"\w+", text):
         raw, w = m.group(0), _normalize(m.group(0))
-        if len(w) < 3 or w in _STOPWORDS or w.isdigit():
+        if len(w) < 3 or w in stopwords or w.isdigit():
             continue
         if query:
-            out |= {_stem(w), "=" + w}
+            out |= {stem_of(w), "=" + w}
         elif not raw[0].isupper():
-            out.add(_stem(w))
+            out.add(stem_of(w))
         else:
             out.add("=" + w)
             # la primera palabra de una frase va en mayúscula sin ser nombre propio ("Vive en…", "Trabaja como…"):
             # también cuenta por raíz, salvo raíces cortas y ambiguas ("Tomás" -> "tom" no debe casar con "tomo")
             starts = not text[:m.start()].strip() or text[:m.start()].rstrip()[-1] in ".!?:;\n"
-            if starts and len(stem := _stem(w)) >= 4:
+            if starts and len(stem := stem_of(w)) >= 4:
                 out.add(stem)
     return out
 

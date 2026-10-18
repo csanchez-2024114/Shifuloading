@@ -33,6 +33,21 @@ class IntentRules:
     sources_heading: re.Pattern = NEVER           # encabezado de una sección de fuentes (se quita si no hubo web)
 
 
+def _whole_word(word: str) -> str:
+    return word
+
+
+@dataclass(frozen=True)
+class MemoryLexicon:
+    """Léxico de la memoria por palabras: sujeto genérico que se quita al guardar ("El usuario vive en X" -> "Vive en
+    X"), palabras vacías, temas (raíz -> tema) y la raíz de una palabra (ya en minúsculas y sin tildes). El default no
+    sabe de ningún idioma: no quita sujeto, no hay palabras vacías ni temas y la raíz es la palabra entera."""
+    subject: re.Pattern = NEVER
+    stopwords: frozenset[str] = frozenset()
+    topics: Mapping[str, str] = field(default_factory=dict)
+    stem: Callable[[str], str] = _whole_word
+
+
 @dataclass(frozen=True)
 class ToolPolicy:
     effect: Effect = "read"  # metadato: aún no cambia el comportamiento
@@ -57,6 +72,7 @@ class AgentProfile:
     legacy_tool_names: Mapping[str, str] = field(default_factory=dict)  # nombre antiguo -> actual (hilos viejos)
     texts: TextCatalog = field(default_factory=TextCatalog)  # textos al usuario: base de un pack + sobreescrituras
     intents: IntentRules = field(default_factory=IntentRules)  # reglas de intención (idioma del caso de uso)
+    lexicon: MemoryLexicon = field(default_factory=MemoryLexicon)  # búsqueda de recuerdos por palabras
 
 
 _CACHE: dict[str, AgentProfile] = {}

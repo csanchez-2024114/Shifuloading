@@ -4,6 +4,7 @@ from pathlib import Path
 from assistant.core.i18n import TextCatalog
 from assistant.core.profile import AgentProfile
 from assistant.packs.i18n import es
+from assistant.packs.lang import es_en
 from assistant.profiles.default.policies import MEMORY_POLICIES, OLD_TOOL_NAMES, SEARCH_ECONOMY_RULE, TOOL_POLICIES
 from assistant.profiles.default.rules import INTENTS
 from assistant.profiles.default.tools import bigtool_tools, build_tools
@@ -23,4 +24,5 @@ PROFILE = AgentProfile(
     legacy_tool_names=OLD_TOOL_NAMES,
     texts=TextCatalog(es.TEXTS),  # español, sin sobreescrituras
     intents=INTENTS,
+    lexicon=es_en.LEXICON,  # memoria por palabras en español e inglés
 )

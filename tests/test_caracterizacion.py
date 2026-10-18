@@ -86,6 +86,9 @@ MOVED_CONSTANTS = {
     "citations._SOURCES_HEADING": "assistant.profiles.default.rules:SOURCES_HEADING_RE",
     # derivada: las de memoria global con sus nombres antiguos según el perfil activo (el por defecto)
     "context.PRUNE_KEEP_TOOLS": "assistant.core.context:prune_keep_tools()",
+    "memory._SUBJECT": "assistant.packs.lang.es_en:SUBJECT_RE",
+    "memory._STOPWORDS": "assistant.packs.lang.es_en:STOPWORDS",
+    "memory._TOPICS": "assistant.packs.lang.es_en:TOPICS",
 }
 
 CONST_MODULES = ("agent", "tools", "memory", "context", "citations", "auth", "bigtool_agent", "extra_tools",
