@@ -75,6 +75,33 @@ def _seguro(t: BaseTool) -> BaseTool:
                                         metadata=t.metadata)  # conserva la ficha de @tool_spec
 
 
+def _effect(t: BaseTool, profile) -> str:
+    """Efecto de la herramienta: el de su ficha @tool_spec o, si no tiene, el de ToolPolicy del perfil."""
+    spec = get_spec(t)
+    if spec is not None and spec.effect != "read":
+        return spec.effect
+    policy = profile.tool_policies.get(t.name)
+    return policy.effect if policy is not None else "read"
+
+
+def _con_aprobacion(t: BaseTool, profile) -> BaseTool:
+    """Misma herramienta (nombre, descripción, argumentos y ficha), pero antes de correr pide la tarjeta de aprobación
+    con interrupt(), igual que deep_research: bigtool no tiene HumanInTheLoopMiddleware."""
+
+    def run(**kwargs):
+        answer = interrupt({"action_requests": [{"name": t.name, "args": kwargs,
+                                                 "description": tr("tools.effect_confirm", profile, name=t.name)}],
+                            "review_configs": [{"action_name": t.name, "allowed_decisions": ["approve", "reject"]}]})
+        decision = ((answer or {}).get("decisions") or [{}])[0] if isinstance(answer, dict) else {}
+        if decision.get("type") != "approve":
+            # mismo prefijo que el rechazo de HumanInTheLoopMiddleware: la UI lo marca como no realizada
+            return f"User rejected the tool call: {t.name} was not run."
+        return t.invoke(kwargs)
+
+    return StructuredTool.from_function(func=run, name=t.name, description=t.description, args_schema=t.args_schema,
+                                        metadata=t.metadata)
+
+
 def _thread_messages(checkpointer) -> tuple[str | None, list]:
     """(thread_id, mensajes) del hilo en curso. Bigtool no inyecta el estado a las herramientas:
     se lee del último checkpoint, que ya incluye el mensaje del usuario de este turno."""
@@ -115,7 +142,8 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
         return memory.remember(memories_store, _ctx("user_id", "anon"), text, evidence, memory.user_texts(messages),
                                thread_id=thread_id, verifier=verifier, saved_this_turn=memory.turn_saves(messages),
                                max_per_turn=settings.memory_max_per_turn, dedup=settings.memory_dedup,
-                               dedup_score=settings.memory_dedup_score)
+                               dedup_score=settings.memory_dedup_score,
+                               require_quote=settings.memory_require_quote)
 
     @tool("search_memories", description=BUSCAR_RECUERDOS_DOC)
     def buscar_recuerdos(query: str) -> str:
@@ -125,7 +153,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
     def actualizar_recuerdo(id: str, text: str, evidence: str = "") -> str:  # noqa: A002
         thread_id, texts = _thread_user_texts(checkpointer)
         return memory.revise(memories_store, _ctx("user_id", "anon"), id, text, evidence, texts,
-                             thread_id=thread_id, verifier=verifier)
+                             thread_id=thread_id, verifier=verifier, require_quote=settings.memory_require_quote)
 
     @tool("deep_research", description=INVESTIGADOR_DOC)
     def investigador_profundo(task: str) -> str:
@@ -147,6 +175,8 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
     tools = [calculadora, fecha_hora, check_python_syntax, buscar_web, guardar_recuerdo, buscar_recuerdos,
              actualizar_recuerdo,
              investigador_profundo, *profile.bigtool_tools(settings)]
+    if settings.effect_approval:  # P3.3: write/send/delete pasan por la tarjeta, con el interrupt() de deep_research
+        tools = [_con_aprobacion(t, profile) if _effect(t, profile) != "read" else t for t in tools]
     registry = {t.name: _seguro(t) for t in tools}
     assert len(registry) == len(tools), "nombres de herramientas duplicados en el registro"
     validate_registry(registry)

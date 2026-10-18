@@ -331,8 +331,9 @@ def find_duplicate(store, user_id: str, text: str, min_score: float = 0.85) -> t
 
 def remember(store, user_id: str, text: str, quote: str, texts: list[str], *,
              thread_id: str | None = None, verifier=None, saved_this_turn: int = 0, max_per_turn: int = 0,
-             dedup: bool = False, dedup_score: float = 0.85) -> str:
+             dedup: bool = False, dedup_score: float = 0.85, require_quote: bool = False) -> str:
     """Lógica común de save_memory (agente normal y bigtool). Devuelve el mensaje para el agente.
+    `require_quote` (MEMORY_REQUIRE_QUOTE): sin una cita literal de lo que escribió el usuario, no se guarda.
     `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope.
     `dedup` (MEMORY_DEDUP): no guarda un dato equivalente a uno existente; sugiere update_memory con su id."""
     if max_per_turn and saved_this_turn >= max_per_turn:
@@ -343,6 +344,9 @@ def remember(store, user_id: str, text: str, quote: str, texts: list[str], *,
     if prov is None:
         return ("Not saved: the user never stated this in the conversation. Do not save assumptions; "
                 "tell the user it was not saved and ask them to confirm if needed.")
+    if require_quote and not prov[0]:
+        return ("Not saved: evidence must quote the user's exact words from this conversation, and it does not. "
+                "Do not save it; tell the user it was not saved.")
     save_memory(store, user_id, text, thread_id=thread_id, evidence=prov[0], confidence=prov[1])
     return SAVED_MSG
 
@@ -352,7 +356,7 @@ NOT_FOUND_MSG = "Not updated: there is no memory with that id. Use search_memori
 
 
 def revise(store, user_id: str, key: str, text: str, quote: str, texts: list[str], *,
-           thread_id: str | None = None, verifier=None) -> str:
+           thread_id: str | None = None, verifier=None, require_quote: bool = False) -> str:
     """Lógica común de update_memory: solo recuerdos del propio user_id y con la misma verificación."""
     if store.get(memory_namespace(user_id), key) is None:
         return NOT_FOUND_MSG
@@ -360,6 +364,9 @@ def revise(store, user_id: str, key: str, text: str, quote: str, texts: list[str
     if prov is None:
         return ("Not updated: the user never stated the new value in the conversation. Do not update with "
                 "assumptions; tell the user it was not updated.")
+    if require_quote and not prov[0]:
+        return ("Not updated: evidence must quote the user's exact words from this conversation, and it does not. "
+                "Do not update it; tell the user it was not updated.")
     if not update_memory(store, user_id, key, text, thread_id=thread_id, evidence=prov[0], confidence=prov[1]):
         return NOT_FOUND_MSG
     return UPDATED_MSG

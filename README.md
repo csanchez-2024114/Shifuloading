@@ -67,6 +67,15 @@ copy .env.example .env   # y pon tu OPENAI_API_KEY
 | `MEMORY_SEMANTIC` | `0` | `1` = búsqueda semántica de recuerdos con Atlas Vector Search y embeddings `text-embedding-3-small`; con MongoDB local se ignora (log de aviso) y usa búsqueda por palabras |
 | `MEMORY_MIN_SCORE` | `0.68` | puntuación mínima (0–1) para que un recuerdo cuente como relevante en la búsqueda semántica; calibrado, ver "MongoDB Atlas" |
 | `ENABLE_HITL_DEMO` | `0` | activa la herramienta de ejemplo con aprobación humana |
+| `LLM_TIMEOUT_SECONDS` | `300` | tope de espera por llamada a OpenAI en todos los `ChatOpenAI`; solo corta llamadas colgadas (con 90 s cortaría el razonamiento alto o el investigador); `0` = el del cliente |
+| `LLM_MAX_RETRIES` | `2` | reintentos por llamada a OpenAI (lo mismo que hacía el cliente) |
+| `TRUSTED_HOSTS` | `localhost,127.0.0.1` | cabeceras `Host` aceptadas (las demás dan 400). Con `AUTH_ENABLED=0` solo puede tener hosts locales (si no, no arranca) y las conexiones que no llegan por loopback dan 403 |
+| `MAX_MESSAGE_CHARS` | `50000` | largo máximo de un mensaje en `/chat` (413 si se pasa); `0` = sin tope |
+| `TURN_MAX_SECONDS` | `0` | tiempo máximo por mensaje: al pasarlo, el turno se cierra en la siguiente frontera de paso, como con `TURN_TOKEN_CAP`; `0` = apagado |
+| `UNTRUSTED_WRAP` | `0` | `1` = el contenido de la web (web_search, deep_research y las herramientas de red de bigtool) va entre `<untrusted_web_content>` y el prompt suma una regla para tratarlo como datos |
+| `MEMORY_REQUIRE_QUOTE` | `0` | `1` = save_memory/update_memory solo guardan con una cita literal de lo que escribió el usuario (sin LLM) |
+| `URL_FILTER_ALWAYS` | `0` | `1` = quita de la respuesta final los enlaces cuya URL (con su query) no está en los resultados de herramientas ni en lo que escribió el usuario, aunque `ANSWER_VERIFY=0` (0 tokens; solo agente normal) |
+| `EFFECT_APPROVAL` | `0` | `1` = las herramientas con efecto `write`/`send`/`delete` piden aprobación con la tarjeta, también en bigtool (p. ej. `crm_create_order`) |
 | `AGENT_PROFILE` | `default` | perfil del agente (ver "Estructura"): `default` (Agente 0), `generic`, o una ruta con puntos a un paquete propio. Vacía = `default`. Se lee al cargar el perfil, no en `Settings` |
 
 ### Configuración recomendada (validada con el modelo real)

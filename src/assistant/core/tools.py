@@ -19,7 +19,8 @@ from langchain_openai import ChatOpenAI
 from assistant.core import memory
 from assistant.core import citations
 from assistant.core.agent import Context
-from assistant.core.config import Settings
+from assistant.core import untrusted
+from assistant.core.config import Settings, llm_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,28 @@ _FUNCS.update({"abs": abs, "round": round, "min": min, "max": max})
 _MAX_POW = 10_000  # evita 9**9**9 y similares
 
 
+# Topes de tamaño (S4 de la auditoría): solo afectan entradas patológicas. Un entero de más de ~14 000 bits ya no se
+# podía mostrar (Python limita str(int) a 4300 dígitos), y ((10**10000)**10000)**10000 o factorial(10**6) colgaban el
+# hilo del servidor. Van como defaults de función, no como constantes del módulo: la huella no cambia.
+def _small_int(value, max_bits: int = 14_000):
+    """`value` si no es un entero gigante; si lo es, ValueError antes de seguir calculando con él."""
+    if isinstance(value, int) and value.bit_length() > max_bits:
+        raise ValueError("result too large")
+    return value
+
+
+def _check_pow(left, right, max_bits: int = 14_000) -> None:
+    """Estima el tamaño de left ** right (enteros) antes de calcularlo."""
+    if isinstance(left, int) and isinstance(right, int) and right > 0 and abs(left) > 1:
+        if right * math.log2(abs(left)) > max_bits:
+            raise ValueError("result too large")
+
+
+def _check_call(fn, args, max_factorial: int = 1000) -> None:
+    if fn is math.factorial and args and isinstance(args[0], int) and args[0] > max_factorial:
+        raise ValueError("factorial argument too large")
+
+
 def _eval_node(node: ast.AST):
     if isinstance(node, ast.Expression):
         return _eval_node(node.body)
@@ -54,11 +77,13 @@ def _eval_node(node: ast.AST):
         return node.value
     if isinstance(node, ast.BinOp) and type(node.op) in _BIN_OPS:
         left, right = _eval_node(node.left), _eval_node(node.right)
-        if isinstance(node.op, ast.Pow) and abs(right) > _MAX_POW:
-            raise ValueError("exponent too large")
-        return _BIN_OPS[type(node.op)](left, right)
+        if isinstance(node.op, ast.Pow):
+            if abs(right) > _MAX_POW:
+                raise ValueError("exponent too large")
+            _check_pow(left, right)
+        return _small_int(_BIN_OPS[type(node.op)](left, right))
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY_OPS:
-        return _UNARY_OPS[type(node.op)](_eval_node(node.operand))
+        return _small_int(_UNARY_OPS[type(node.op)](_eval_node(node.operand)))
     if isinstance(node, ast.Name) and node.id in _NAMES:
         return _NAMES[node.id]
     if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "math":
@@ -77,7 +102,9 @@ def _eval_node(node: ast.AST):
         ):
             fn = _FUNCS[node.func.attr]
         if fn is not None:
-            return fn(*[_eval_node(a) for a in node.args])
+            args = [_eval_node(a) for a in node.args]
+            _check_call(fn, args)
+            return _small_int(fn(*args))
     raise ValueError("expression not allowed")
 
 
@@ -166,7 +193,7 @@ def save_memory_doc(policy: str = "strict") -> str:
 
 
 def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: int = 0, dedup: bool = False,
-                          dedup_score: float = 0.85) -> BaseTool:
+                          dedup_score: float = 0.85, require_quote: bool = False) -> BaseTool:
     """`verifier` (MEMORY_VERIFY): (candidato, textos_usuario) -> (respaldado, cita); None = sin verificar.
     `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope.
     `dedup` (MEMORY_DEDUP): rechaza datos equivalentes a uno existente."""
@@ -179,7 +206,8 @@ def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: i
         return memory.remember(runtime.store, runtime.context.user_id, text, evidence, texts,
                                thread_id=thread_id, verifier=verifier,
                                saved_this_turn=memory.turn_saves(messages, runtime.tool_call_id),
-                               max_per_turn=max_per_turn, dedup=dedup, dedup_score=dedup_score)
+                               max_per_turn=max_per_turn, dedup=dedup, dedup_score=dedup_score,
+                               require_quote=require_quote)
 
     return guardar_recuerdo
 
@@ -215,7 +243,7 @@ def make_buscar_recuerdos(min_score: float = 0.0) -> BaseTool:
 buscar_recuerdos = make_buscar_recuerdos()
 
 
-def make_actualizar_recuerdo(verifier=None) -> BaseTool:
+def make_actualizar_recuerdo(verifier=None, require_quote: bool = False) -> BaseTool:
     """Misma verificación que save_memory. Solo toca recuerdos del user_id del contexto."""
 
     @tool("update_memory", description=ACTUALIZAR_RECUERDO_DOC)
@@ -223,7 +251,7 @@ def make_actualizar_recuerdo(verifier=None) -> BaseTool:
         texts = memory.user_texts(runtime.state.get("messages"))
         thread_id = (runtime.config.get("configurable") or {}).get("thread_id")
         return memory.revise(runtime.store, runtime.context.user_id, id, text, evidence, texts,
-                             thread_id=thread_id, verifier=verifier)
+                             thread_id=thread_id, verifier=verifier, require_quote=require_quote)
 
     return actualizar_recuerdo
 
@@ -251,6 +279,7 @@ def web_search(query: str, settings: Settings) -> tuple[str, str]:
             api_key=settings.openai_api_key or None,
             use_responses_api=True,
             tags=["nostream"],
+            **llm_kwargs(settings),
         ).bind_tools([{"type": "web_search", "search_context_size": settings.search_context_size}],
                      # max_tool_calls: tope de búsquedas internas en esta llamada (cada una suma páginas como entrada)
                      **({"max_tool_calls": settings.search_max_tool_calls} if settings.search_max_tool_calls else {}))
@@ -327,7 +356,8 @@ def run_search(settings: Settings, search_fn, query: str, budget: TurnBudget | N
         if budget is not None:
             budget.searches += 1
             budget.tokens += tokens
-    return True, f"[engine: {engine}]\n{text}", tokens
+    # la primera línea sigue siendo el motor (la lee _engine_from_output); el contenido de la web va envuelto
+    return True, f"[engine: {engine}]\n{untrusted.wrap_if(settings, text)}", tokens
 
 
 ONE_SEARCH_MSG = ("Not run: one search per step. Answer with what you have or ask the user; if another search is "
@@ -517,7 +547,8 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
     if not found:
         final = citations.drop_sources_section(final)
         notes.append(NO_WEB_NOTE)
-    return "\n".join(notes + [final])
+    # las notas son nuestras; el resumen se escribió a partir de páginas de terceros
+    return "\n".join(notes + [untrusted.wrap_if(settings, final)])
 
 
 def earlier_research(messages, tool_name: str = "deep_research") -> str | None:
@@ -640,9 +671,9 @@ def base_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, c
         fecha_hora,
         check_python_syntax,
         make_guardar_recuerdo(verifier, settings.memory_save_policy, settings.memory_max_per_turn,
-                              settings.memory_dedup, settings.memory_dedup_score),
+                              settings.memory_dedup, settings.memory_dedup_score, settings.memory_require_quote),
         make_buscar_recuerdos(settings.memory_min_score),
-        make_actualizar_recuerdo(verifier),
+        make_actualizar_recuerdo(verifier, settings.memory_require_quote),
         make_investigador(model, settings, search_fn),
     ]
 

@@ -83,6 +83,34 @@ class Settings:
     login_max_fails: int = 5            # fallos de login por correo antes del bloqueo
     login_max_fails_ip: int = 20        # fallos de login por IP antes del bloqueo (más alto: IP compartidas)
     login_lock_minutes: int = 10        # ventana de fallos y duración del bloqueo
+    # P4: tope de espera por llamada a OpenAI y reintentos, en todos los ChatOpenAI. 300 s y no 90: una llamada con
+    # razonamiento alto o del investigador puede pasar de 90 s y se cortaría (cambio de comportamiento); 300 solo
+    # corta llamadas colgadas (antes, el cliente de OpenAI esperaba hasta 600 s). 2 reintentos = lo de antes.
+    llm_timeout_seconds: float = 300.0  # 0 = sin tope propio (el del cliente de OpenAI)
+    llm_max_retries: int = 2
+    # P4.3: tiempo máximo de un mensaje (segundos). Al pasarlo, el turno se cierra en la siguiente frontera de paso,
+    # igual que con TURN_TOKEN_CAP (una respuesta final en curso termina). 0 = apagado (default: sin cambio).
+    turn_max_seconds: float = 0.0
+    # P2.1-P2.2: envuelve el contenido de la web en <untrusted_web_content> y suma una regla al prompt. Apagado por
+    # defecto: cambia lo que ve el modelo (prompt y resultados de herramientas).
+    untrusted_wrap: bool = False
+    # P2.3: save_memory/update_memory solo guardan si la evidencia cita literalmente lo que escribió el usuario
+    # (confidence "quoted"), sin llamar a un LLM. Apagado por defecto: hoy un recuerdo sin cita se guarda como
+    # "unverified" y el modelo recibiría otro resultado.
+    memory_require_quote: bool = False
+    # P2.4: al terminar cada turno quita de la respuesta los enlaces cuya URL (con su query) no está en lo que
+    # devolvieron las herramientas ni en lo que escribió el usuario, aunque ANSWER_VERIFY=0. 0 tokens. Apagado por
+    # defecto: puede cambiar la respuesta final.
+    url_filter_always: bool = False
+    # P3.3: las herramientas con efecto write/send/delete (ToolPolicy.effect del perfil o effect de @tool_spec) piden
+    # aprobación con la tarjeta, en el agente normal y en bigtool. Apagado por defecto: cambia el flujo
+    # (crm_create_order, por ejemplo, hoy corre sin preguntar).
+    effect_approval: bool = False
+    # S1: cabeceras Host aceptadas (TrustedHostMiddleware). Con AUTH_ENABLED=0 solo pueden ser locales.
+    trusted_hosts: tuple[str, ...] = ("localhost", "127.0.0.1")
+    # S5 (parcial): largo máximo de un mensaje en /chat. Alto a propósito para no cortar usos actuales (~12k tokens);
+    # 0 = sin tope. El presupuesto por usuario y el rate limit quedan para después.
+    max_message_chars: int = 50000
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -142,6 +170,16 @@ class Settings:
             login_max_fails=int(os.getenv("LOGIN_MAX_FAILS_PER_EMAIL") or os.getenv("LOGIN_MAX_FAILS") or "5"),
             login_max_fails_ip=int(os.getenv("LOGIN_MAX_FAILS_PER_IP") or "20"),
             login_lock_minutes=_num("LOGIN_LOCK_MINUTES", "10"),
+            llm_timeout_seconds=_num("LLM_TIMEOUT_SECONDS", "300", float),
+            llm_max_retries=_num("LLM_MAX_RETRIES", "2"),
+            turn_max_seconds=_num("TURN_MAX_SECONDS", "0", float),
+            untrusted_wrap=_bool("UNTRUSTED_WRAP"),
+            memory_require_quote=_bool("MEMORY_REQUIRE_QUOTE"),
+            url_filter_always=_bool("URL_FILTER_ALWAYS"),
+            effect_approval=_bool("EFFECT_APPROVAL"),
+            max_message_chars=_num("MAX_MESSAGE_CHARS", "50000"),
+            trusted_hosts=tuple(h.strip().lower() for h in (os.getenv("TRUSTED_HOSTS") or "localhost,127.0.0.1")
+                                .split(",") if h.strip()),
         )
 
     def context_window(self) -> int:
@@ -177,6 +215,11 @@ class Settings:
             from assistant.core.i18n import tr  # perezoso: el catálogo es del perfil
 
             raise ConfigError(tr("startup.missing_api_key"))
+
+
+def llm_kwargs(settings: Settings) -> dict:
+    """timeout y max_retries de LLM_TIMEOUT_SECONDS/LLM_MAX_RETRIES para todo ChatOpenAI que hace llamadas."""
+    return {"timeout": settings.llm_timeout_seconds or None, "max_retries": settings.llm_max_retries}
 
 
 DEFAULT_CONTEXT_WINDOW = 128000  # modelos sin perfil conocido en langchain

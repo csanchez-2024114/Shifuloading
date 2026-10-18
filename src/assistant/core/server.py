@@ -12,10 +12,12 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from langgraph.types import Command
 from pydantic import BaseModel
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from assistant.core import agent as agent_mod
 from assistant.core import ai_data
 from assistant.core import context as context_mod
+from assistant.core import hosts
 from assistant.core import memory
 from assistant.core.appdata import MAX_TITLE_CHARS, clean_title, thread_title
 from assistant.core.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
@@ -153,7 +155,14 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
                        settings.login_lock_minutes, settings.login_max_fails_ip) if settings.auth_enabled else None
 
+    if not settings.auth_enabled and (lejanos := hosts.non_local_hosts(settings.trusted_hosts)):
+        raise ConfigError(tr("startup.non_local_hosts", profile, hosts=", ".join(lejanos)))
+
     app = FastAPI(title=profile.display_name)
+    # S1: el último en agregarse corre primero. Loopback (sin cuentas) y luego la cabecera Host.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.trusted_hosts))
+    if not settings.auth_enabled:
+        app.add_middleware(hosts.LoopbackOnly, message=tr("http.not_loopback", profile))
 
     # ---------------------------------------------------------------- sesión y propiedad (AUTH_ENABLED=1)
     def _token(request: Request) -> str | None:
@@ -219,6 +228,9 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     @app.post("/chat")
     def chat(body: ChatIn, request: Request):
+        if settings.max_message_chars and len(body.message) > settings.max_message_chars:
+            raise HTTPException(413, tr("http.message_too_long", profile, max=f"{settings.max_message_chars:,}"
+                                        .replace(",", tr("format.thousands_sep", profile))))
         user_id = body.user_id
         if auth:  # el user_id sale de la sesión, nunca del navegador
             user = _changing(request)

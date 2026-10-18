@@ -40,13 +40,26 @@ def _links(text: str) -> list[tuple[str, str, str]]:
 _HEADING = re.compile(r"^\s*#{1,6}\s", re.M)
 
 
-def keep_supported(text: str, evidence: str) -> tuple[str, list[str]]:
+def _with_query(url: str) -> str:
+    """normalize_url más la query sin parámetros de seguimiento (utm_*, fbclid, gclid...), ordenada: así
+    https://atacante/?d=<dato> no pasa por estar https://atacante/ en la evidencia."""
+    try:
+        parts = urlsplit(url.strip().rstrip(".,;:"))
+    except ValueError:
+        return url
+    pairs = sorted(p for p in parts.query.split("&") if p and not p.lower().startswith(("utm_", "fbclid", "gclid")))
+    return normalize_url(url) + ("?" + "&".join(pairs) if pairs else "")
+
+
+def keep_supported(text: str, evidence: str, strict_query: bool = False) -> tuple[str, list[str]]:
     """Quita de `text` las URLs que no aparecen en `evidence` (de un enlace markdown queda el título; una URL suelta
-    desaparece). Devuelve (texto, URLs quitadas)."""
-    supported = {normalize_url(u) for u in urls(evidence)}
+    desaparece). Devuelve (texto, URLs quitadas). `strict_query`: la query también debe coincidir (filtro contra
+    exfiltración de URL_FILTER_ALWAYS); sin él, como siempre, solo dominio y ruta."""
+    key = _with_query if strict_query else normalize_url
+    supported = {key(u) for u in urls(evidence)}
     removed = []
     for whole, title, url in _links(text):
-        if normalize_url(url) not in supported:
+        if key(url) not in supported:
             text = text.replace(whole, title, 1)
             removed.append(url)
     return text, removed

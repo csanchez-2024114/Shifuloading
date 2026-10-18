@@ -10,6 +10,16 @@ UNVERIFIED_NOTE = "No verificada: este mensaje llegó a su tope de tokens (TURN_
 # avisos al usuario: texto plano (la interfaz no interpreta _cursiva_ y mostraba los guiones bajos)
 TURN_CAP_MSG = ("\n\n⚠️ Detuve este mensaje: superó el tope de {cap} tokens por mensaje (TURN_TOKEN_CAP). Lo que "
                 "alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.")
+EFFECT_CONFIRM = "La herramienta {name} modifica o envía datos. ¿La ejecuto?"
+NON_LOCAL_HOSTS_MSG = ("Sin cuentas (AUTH_ENABLED=0) la app solo puede atender en esta máquina, pero TRUSTED_HOSTS "
+                       "incluye hosts no locales: {hosts}. Activa AUTH_ENABLED=1 o deja TRUSTED_HOSTS en "
+                       "localhost,127.0.0.1.")
+NOT_LOOPBACK_MSG = ("Sin cuentas (AUTH_ENABLED=0) la app solo atiende conexiones locales. Ábrela en "
+                    "http://localhost o activa AUTH_ENABLED=1.")
+MESSAGE_TOO_LONG_MSG = "El mensaje es demasiado largo: el máximo es {max} caracteres (MAX_MESSAGE_CHARS)."
+STREAM_ERROR_MSG = "Algo falló al generar la respuesta. Inténtalo de nuevo."
+TURN_TIME_MSG = ("\n\n⚠️ Detuve este mensaje: superó el tiempo máximo de {seconds} s por mensaje (TURN_MAX_SECONDS). "
+                 "Lo que alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.")
 RECURSION_MSG = ("Me detuve: la tarea superó {limit} pasos internos. "
                  "Pídeme que continúe o sube RECURSION_LIMIT en .env.")
 COMPACT_UNSUPPORTED_MSG = "Este agente no admite compactación"
@@ -67,11 +77,14 @@ TEXTS = {
     "agent.cut_note": CUT_NOTE,
     "agent.unverified_note": UNVERIFIED_NOTE,
     "agent.turn_cap": TURN_CAP_MSG,
+    "agent.turn_time_cap": TURN_TIME_MSG,
     "agent.recursion_limit": RECURSION_MSG,
+    "agent.stream_error": STREAM_ERROR_MSG,
     "agent.compact_unsupported": COMPACT_UNSUPPORTED_MSG,
     "agent.compact_pending": COMPACT_PENDING_MSG,
     "format.thousands_sep": THOUSANDS_SEP,
     "tools.deep_research_confirm": DEEP_RESEARCH_CONFIRM,
+    "tools.effect_confirm": EFFECT_CONFIRM,
     "citations.correction_discarded": CORRECTION_DISCARDED_NOTE,
     "citations.citation_removed": CITATION_REMOVED_NOTE,
     "citations.sources_label": SOURCES_LABEL,
@@ -98,5 +111,8 @@ TEXTS = {
     "startup.model_not_found": MODEL_NOT_FOUND_MSG,
     "startup.none_available": NONE_AVAILABLE,
     "startup.same_db": SAME_DB_MSG,
+    "startup.non_local_hosts": NON_LOCAL_HOSTS_MSG,
+    "http.not_loopback": NOT_LOOPBACK_MSG,
+    "http.message_too_long": MESSAGE_TOO_LONG_MSG,
     "startup.app_db_required": APP_DB_REQUIRED_MSG,
 }

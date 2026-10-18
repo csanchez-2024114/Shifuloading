@@ -93,6 +93,8 @@ def _env(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake")
     monkeypatch.setenv("MONGODB_URI", MONGO_URI)
     monkeypatch.setenv("MONGODB_DB", TEST_DB)
+    # TestClient manda Host: testserver (Settings.from_env en create_app sin settings)
+    monkeypatch.setenv("TRUSTED_HOSTS", "localhost,127.0.0.1,testserver")
 
 
 def _settings(**overrides):
@@ -108,6 +110,7 @@ def _settings(**overrides):
         model_call_limit=15,
         memory_semantic=False,
         enable_hitl_demo=False,
+        trusted_hosts=("localhost", "127.0.0.1", "testserver"),  # TestClient manda Host: testserver
     )
     base.update(overrides)
     return Settings(**base)

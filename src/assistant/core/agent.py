@@ -33,7 +33,7 @@ from langgraph.errors import GraphRecursionError
 from langgraph.runtime import Runtime
 
 from assistant.core import citations
-from assistant.core.config import Settings, read_system_prompt
+from assistant.core.config import Settings, llm_kwargs, read_system_prompt
 from assistant.core.i18n import tr
 from assistant.core.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
                                prune_tool_results)
@@ -114,7 +114,7 @@ def clasificar_esfuerzo(settings: Settings, mensaje: str) -> str:
     Ante cualquier fallo devuelve "medio"."""
     try:
         llm = ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None,
-                         use_responses_api=True, reasoning={"effort": "none"}, max_tokens=16)
+                         use_responses_api=True, reasoning={"effort": "none"}, max_tokens=16, **llm_kwargs(settings))
         palabra = llm.invoke(CLASSIFIER_PROMPT + mensaje[:2000]).text.strip().lower()
         return next((nivel for word, nivel in _CLASSIFIER_LEVELS.items() if word in palabra), "medio")
     except Exception as exc:  # noqa: BLE001
@@ -285,19 +285,20 @@ def make_model(settings: Settings) -> ChatOpenAI:
         use_responses_api=True,
         max_tokens=settings.max_tokens or None,  # 0 = sin tope (el modelo decide; máx. 128k)
         streaming=True,
+        **llm_kwargs(settings),
     )
 
 
 def make_checker_model(settings: Settings) -> ChatOpenAI:
     """Modelo barato para verificaciones (recuerdos, respuestas): sin razonamiento y fuera del stream."""
     return ChatOpenAI(model=settings.llm_model, api_key=settings.openai_api_key or None, use_responses_api=True,
-                      reasoning={"effort": "none"}, tags=["nostream"])
+                      reasoning={"effort": "none"}, tags=["nostream"], **llm_kwargs(settings))
 
 
 def make_summary_model(settings: Settings) -> ChatOpenAI:
     # tags=["nostream"]: sin esto el texto del resumen llega a la UI como tokens (stream_mode="messages").
     return ChatOpenAI(model=settings.compact_model or settings.llm_model, api_key=settings.openai_api_key or None,
-                      use_responses_api=True, reasoning={"effort": "low"}, tags=["nostream"])
+                      use_responses_api=True, reasoning={"effort": "low"}, tags=["nostream"], **llm_kwargs(settings))
 
 
 SUMMARY_PROMPT = """Summarize the earlier part of a conversation between a user and an assistant so the assistant can \
@@ -559,6 +560,10 @@ def system_prompt_text(settings: Settings | None = None, profile=None) -> str:
     policy = memory_policy(settings.memory_save_policy if settings else "strict",
                            settings.memory_max_per_turn if settings else 3,
                            settings.memory_search_economy if settings else False, profile=profile)
+    if settings and settings.untrusted_wrap:  # solo con el interruptor: con el default el prompt es idéntico
+        from assistant.core.untrusted import UNTRUSTED_RULE
+
+        policy = f"{policy}\n\n{UNTRUSTED_RULE}"
     return (
         f"{read_system_prompt(profile)}\n\n{policy}\n\n"
         f"User's current local date and time: {now:%A %Y-%m-%d %H:%M} (UTC{now:%z}). "
@@ -614,6 +619,32 @@ def tool_ran(output: str) -> bool:
 
 def is_evidence(output: str) -> bool:
     return tool_ran(output) or output.lstrip().startswith(_REUSED_RESEARCH)
+
+
+class FiltroURLs(AgentMiddleware):
+    """URL_FILTER_ALWAYS (P2.4, S3): al terminar el turno, quita de la respuesta final los enlaces cuya URL (con su
+    query) no aparece en ningún resultado de herramienta que corrió ni en lo que escribió el usuario en el hilo. Sin
+    LLM: 0 tokens. Si quita algo, reemplaza el mensaje (mismo id) y avisa a la UI con el original, como ANSWER_VERIFY:
+    el cambio nunca es silencioso."""
+
+    def after_agent(self, state, runtime):
+        messages = state.get("messages") or []
+        last = messages[-1] if messages else None
+        if not isinstance(last, AIMessage) or last.tool_calls or not _content_text(last).strip():
+            return None
+        evidence = "\n\n".join(_content_text(m) for m in messages if (m.type == "human") or (
+            isinstance(m, ToolMessage) and tool_ran(_content_text(m))))
+        original = _content_text(last)
+        text, removed = citations.keep_supported(original, evidence, strict_query=True)
+        if not removed:
+            return None
+        notes = [tr("citations.citation_removed", url=url) for url in removed]
+        previous = (last.additional_kwargs or {}).get("answer_verify") or {}
+        first = previous.get("original") or original  # si ANSWER_VERIFY ya corrigió, se conserva su original
+        runtime.stream_writer({"tipo": "verificacion", "status": "corrected", "notes": previous.get("notes", []) + notes,
+                               "tokens": 0, "text": text, "original": first})
+        return {"messages": [AIMessage(id=last.id, content=text, additional_kwargs={
+            "answer_verify": {"original": first, "status": "corrected", "notes": previous.get("notes", []) + notes}})]}
 
 
 class AnswerVerifier(AgentMiddleware):
@@ -675,6 +706,23 @@ def _approval(policy, profile):
     return policy.approval
 
 
+def effect_approval(name: str, profile=None) -> dict:
+    """EFFECT_APPROVAL: tarjeta aprobar/rechazar para una herramienta con efecto (write/send/delete)."""
+    return {"allowed_decisions": ["approve", "reject"], "description": tr("tools.effect_confirm", profile, name=name)}
+
+
+def approvals(profile, settings: Settings) -> dict:
+    """interrupt_on de HumanInTheLoopMiddleware: las aprobaciones del perfil (ToolPolicy.approval) y, con
+    EFFECT_APPROVAL, también las herramientas cuyo efecto no es "read"."""
+    out = {}
+    for name, policy in profile.tool_policies.items():
+        if policy.approval:
+            out[name] = _approval(policy, profile)
+        elif settings.effect_approval and policy.effect != "read":
+            out[name] = effect_approval(name, profile)
+    return out
+
+
 def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None,
                 profile=None):
     """`summarizer`/`checker`: modelos para la compactación/ANSWER_VERIFY (se inyectan en tests). `profile`: el
@@ -692,8 +740,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         ToolErrorMiddleware(on_error=_on_tool_error),
         LimiteRepeticiones(settings.tool_repeat_limit),
         # aprobaciones del perfil (tarjeta de la UI): las herramientas con ToolPolicy.approval
-        HumanInTheLoopMiddleware(interrupt_on={name: _approval(policy, profile)
-                                               for name, policy in profile.tool_policies.items() if policy.approval}),
+        HumanInTheLoopMiddleware(interrupt_on=approvals(profile, settings)),
         AvisoCorte(),
     ]
     if prune_age:
@@ -702,6 +749,8 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     compactor = ResumenPorTurno(summarizer or make_summary_model(settings), settings, base)
     if settings.memory_summarize:
         middleware.insert(1, compactor)
+    if settings.url_filter_always:  # antes en la lista = su after_agent corre después del verificador
+        middleware.append(FiltroURLs())
     if settings.answer_verify:
         middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap,
                                          evidence_tools(profile)))
@@ -812,6 +861,10 @@ SOFT_CAP_RATIO = 0.8  # al llegar a este % de TURN_TOKEN_CAP, última llamada si
 def turn_cap_msg(cap: int) -> str:
     # avisos al usuario: texto plano (la interfaz no interpreta _cursiva_); cifras con el separador del catálogo
     return tr("agent.turn_cap", cap=f"{cap:,}".replace(",", tr("format.thousands_sep")))
+
+
+def turn_time_msg(seconds: float) -> str:
+    return tr("agent.turn_time_cap", seconds=f"{seconds:g}")
 
 
 def _step_kind(chunk) -> str | None:
@@ -1004,6 +1057,8 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
     config["callbacks"] = [counter]  # cuenta todas las llamadas del mensaje (agente, investigador, búsquedas...)
     _ACTIVE_TURNS[thread_id] = counter
     cap = settings.turn_token_cap
+    # TURN_MAX_SECONDS: mismo cierre que el tope de tokens. El reloj empieza en cada /chat o /resume.
+    deadline = time.monotonic() + settings.turn_max_seconds if settings.turn_max_seconds else None
     try:
         stream = agent.stream(
             payload,
@@ -1017,12 +1072,14 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             # espera al cierre del paso: si el modelo ya dio la respuesta final, el mensaje termina solo (prueba real:
             # el aviso se pegaba detrás de una respuesta completa); si pidió herramientas o terminó otro nodo, se
             # aborta antes de la siguiente llamada. Los tokens de la llamada que cruzó el tope siguen llegando.
-            step = _step_kind(chunk) if cap and counter.total >= cap and not counter.landing else None
+            over_tokens = bool(cap) and counter.total >= cap
+            over_time = deadline is not None and time.monotonic() >= deadline
+            step = _step_kind(chunk) if (over_tokens or over_time) and not counter.landing else None
             if step == "final":
                 counter.landing = True
             elif step in ("tools", "other"):
                 stream.close()  # aborta el turno: no se lanzan más llamadas
-                note = turn_cap_msg(cap)
+                note = turn_cap_msg(cap) if over_tokens else turn_time_msg(settings.turn_max_seconds)
                 _close_aborted_turn(agent, config, note)
                 yield {"type": "token", "text": note}
                 break
@@ -1060,9 +1117,10 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
     except GraphRecursionError:
         yield {"type": "error", "message": tr("agent.recursion_limit", limit=settings.recursion_limit)}
         return
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Error durante el stream del agente")
-        yield {"type": "error", "message": f"{type(exc).__name__}: {exc}"}
+    except Exception:  # noqa: BLE001
+        # S7: el detalle (tipo, mensaje de Mongo u OpenAI, rutas) solo va al log; al cliente, un aviso genérico
+        logger.exception("Error durante el stream del agente (hilo %s)", thread_id)
+        yield {"type": "error", "message": tr("agent.stream_error")}
         return
     finally:
         _ACTIVE_TURNS.pop(thread_id, None)
