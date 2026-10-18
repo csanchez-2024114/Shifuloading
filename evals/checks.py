@@ -21,6 +21,12 @@ def _ran(tr: dict) -> dict[str, list[str]]:
     return out
 
 
+def _was_cut(step: dict) -> bool:
+    """El turno terminó por TURN_TOKEN_CAP o TURN_MAX_SECONDS (el aviso nombra la variable)."""
+    text = "".join(e.get("text", "") for e in step["events"] if e["type"] == "token")
+    return "TURN_TOKEN_CAP" in text or "TURN_MAX_SECONDS" in text
+
+
 def http(tr: dict, case: dict) -> tuple[bool, str]:
     bad = [f"paso {i}: {s['status_code']} (esperado {s['expect_status']})" for i, s in enumerate(tr["steps"], 1)
            if s["status_code"] != s["expect_status"]]
@@ -70,7 +76,9 @@ def chip_truthful(tr: dict, case: dict) -> tuple[bool, str]:
     una salida que de verdad se ejecutó, y una herramienta rechazada en la tarjeta no queda como "success"."""
     starts = {e.get("id"): e.get("name") for e in _events(tr, "tool_start")}
     ends = {e.get("id"): e for e in _events(tr, "tool_end")}
-    bad = [f"sin tool_end: {name}" for cid, name in starts.items() if cid not in ends]
+    # un turno cortado por el tope deja chips abiertos y la UI los marca como abortados (index.html, "abortados")
+    cut = {e.get("id") for step in tr["steps"] if _was_cut(step) for e in step["events"] if e["type"] == "tool_start"}
+    bad = [f"sin tool_end: {name}" for cid, name in starts.items() if cid not in ends and cid not in cut]
     bad += [f"{e.get('name')}: success con salida no ejecutada" for e in ends.values()
             if e.get("status") == "success" and not tool_ran(e.get("output") or "")]
     rejected = {r.get("name") for step in tr["steps"] if step.get("decision") == "reject"

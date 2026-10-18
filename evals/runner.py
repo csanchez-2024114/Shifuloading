@@ -18,7 +18,7 @@ import uuid
 from dataclasses import fields, replace
 from pathlib import Path
 
-from evals.checks import evaluate
+from evals.checks import _ANY_URL, evaluate
 
 ROOT = Path(__file__).resolve().parents[1]
 DATASET = ROOT / "evals" / "dataset.jsonl"
@@ -102,6 +102,8 @@ def summarize_case(case: dict, tr: dict) -> dict:
     return {"id": case["id"], "category": case.get("category"), "noise": case.get("noise"),
             "passed": all(c["ok"] for c in checks), "checks": checks, "tokens": tr["tokens"],
             "seconds": tr["seconds"], "tools": tools, "answer": tr["answer"][:2000],
+            # para diagnosticar urls_backed sin la base temporal (que se borra): las URLs de la evidencia, no su texto
+            "evidence_urls": sorted(set(_ANY_URL.findall(tr["evidence"])))[:50],
             "steps": [{k: s[k] for k in ("kind", "status_code", "tokens", "seconds", "detail")} for s in tr["steps"]]}
 
 
