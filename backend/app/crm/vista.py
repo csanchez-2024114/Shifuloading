@@ -8,7 +8,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.crm import automatizaciones
+from app.crm.estructura import ESQUEMA, esquema2_faltante
 from app.crm.operaciones import ahora_utc
+
+# Lo opcional de cada lista (esquema 2) que llega a la pantalla, con su nombre en camelCase.
+_LISTA_V2 = (("vista", "vista"), ("opciones", "opciones"), ("icono", "icono"), ("grupo", "grupo"), ("ficha", "ficha"), ("tarjeta", "tarjeta"),
+             ("opciones_estado", "opcionesEstado"), ("origen", "origen"))
 
 
 def _utc(d: datetime) -> datetime:
@@ -42,7 +47,33 @@ def _tarea(x: dict, nombres: dict[str, str]) -> dict:
     return salida
 
 
-def vista_crm(doc: dict, ahora: datetime | None = None) -> dict:
+def _registro(r: dict) -> dict:
+    return {"id": r["id"], "valores": r["valores"], **({"ejemplo": True} if r.get("ejemplo") else {})}
+
+
+def _lista_v2(l: dict) -> dict:
+    return {nuevo: l[viejo] for viejo, nuevo in _LISTA_V2 if l.get(viejo) is not None}
+
+
+def vista_puntos(puntos: list[dict]) -> list[dict]:
+    """Los puntos de deshacer para la pantalla: los últimos 30, sin foto."""
+    return [{"n": p["n"], "antesDe": p.get("antes_de", ""), "hora": p.get("hora"), "cambio": p.get("cambio") or []}
+            for p in sorted(puntos, key=lambda x: x["n"])[-30:]]
+
+
+def vista_crm(doc: dict, ahora: datetime | None = None, puntos: list[dict] | None = None) -> dict:
+    """Un CRM de esquema 2 (ya normalizado) suma lo del sistema de diseño; uno de antes sale exactamente como siempre.
+    `puntos` (opcional): la lista de `crm_puntos`; si se pasa, sale en `puntos` (sin foto)."""
+    salida = _vista_v1(doc, ahora)
+    if (doc.get("esquema") or 1) >= ESQUEMA:
+        v2 = {**{k: doc.get(k) for k in ("plantilla", "inicio", "paginas", "marca", "toma")}, **esquema2_faltante(doc)}
+        salida.update(esquema=doc["esquema"], plantilla=v2["plantilla"], inicio=v2["inicio"], paginas=v2["paginas"], marca=v2["marca"], toma=v2["toma"])
+    if puntos is not None:
+        salida["puntos"] = vista_puntos(puntos)
+    return salida
+
+
+def _vista_v1(doc: dict, ahora: datetime | None = None) -> dict:
     ahora = ahora or ahora_utc()
     nombres = {c["id"]: c["n"] for c in doc["contactos"]}
     return {
@@ -55,8 +86,8 @@ def vista_crm(doc: dict, ahora: datetime | None = None) -> dict:
         "etapas": doc["etapas"],
         "camposContacto": doc["campos_contacto"],
         "ocultas": doc["ocultas"],
-        "listas": [{"id": l["id"], "nombre": l["nombre"], "tipo": l.get("tipo"), "campos": l["campos"],
-                    "registros": [{"id": r["id"], "valores": r["valores"]} for r in l["registros"]],
+        "listas": [{"id": l["id"], "nombre": l["nombre"], "tipo": l.get("tipo"), "campos": l["campos"], **_lista_v2(l),
+                    "registros": [_registro(r) for r in l["registros"]],
                     # Las importaciones que siguen teniendo registros (si ya se borraron todos a mano, no se muestra).
                     "importaciones": [{"id": i["id"], "nombre": i["nombre"], "creado": i["creado"].isoformat() if hasattr(i["creado"], "isoformat") else str(i["creado"]),
                                        "cantidad": sum(1 for r in l["registros"] if r.get("lote") == i["id"])}
