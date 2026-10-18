@@ -3,7 +3,7 @@
 import { createServer } from 'vite'
 import assert from 'node:assert/strict'
 const v = await createServer({ configFile: 'laboratorio/vite.config.js', server: { middlewareMode: true, hmr: false }, logLevel: 'error' })
-const { ejecutar, consultarDatos, datosActuales, describirPantalla, etiquetaCambio, creadoSinDecir, conPunto } = await v.ssrLoadModule('/src/plantillas/edicion.js')
+const { ejecutar, consultarDatos, datosActuales, describirPantalla, etiquetaCambio, creadoSinDecir, conPunto, revertirDatos } = await v.ssrLoadModule('/src/plantillas/edicion.js')
 const { plantillaPorId } = await v.ssrLoadModule('/src/plantillas/semillas.js')
 const { datosEjemplo } = await v.ssrLoadModule('/src/plantillas/datosEjemplo.js')
 const p = plantillaPorId('membresias')
@@ -66,6 +66,24 @@ caso('a mano (D56): los valores del formulario (fecha ISO, hora, monto en texto)
   assert.equal(conP.puntos.length, 1); assert.deepEqual(conP.puntos[0].cambio, ['datos']); assert.equal(conP.puntos[0].antes_de, 'A mano: agregó «Rosa Gómez» a Pagos')
   assert.equal(conPunto(E, E, 'nada').puntos, undefined, 'sin cambio no hay punto')
   const nuevo = r.estado.datos.nuevos.pagos[0].valores; assert.equal(nuevo.monto, 1250.5); assert.equal(nuevo.fecha, '2026-10-30')
+})
+caso('deshacer UN pedido de datos (3 vías): «lo que le cambié a Rosa» no devuelve a Carlos, borrado después', () => {
+  const c = { ...ctx, confirmado: true }
+  const e1 = ejecutar(p, E, 'agregar_registro', { seccion: 'miembros', valores: { nombre: 'Rosa Gómez', plan: 'Mensual' } }, c).estado
+  const e2 = ejecutar(p, e1, 'editar_registro', { seccion: 'miembros', registro: 'Rosa Gómez', valores: { plan: 'Anual' } }, c).estado
+  const e3 = ejecutar(p, e2, 'borrar_registro', { seccion: 'miembros', registro: 'Carlos Pérez' }, c).estado
+  const plan = (d) => miembros({ datos: d }).find((r) => r.valores.nombre === 'Rosa Gómez')?.valores.plan
+  const hay = (d, n) => miembros({ datos: d }).some((r) => r.valores.nombre === n)
+  const r = revertirDatos(e1.datos, e2.datos, e3.datos)
+  assert.ok(!r.choca); assert.equal(plan(r.datos), 'Mensual'); assert.ok(!hay(r.datos, 'Carlos Pérez'), 'Carlos sigue borrado')
+  // Deshacer el borrado (el último): Carlos vuelve y Rosa queda como está.
+  const r2 = revertirDatos(e2.datos, e3.datos, e3.datos); assert.ok(hay(r2.datos, 'Carlos Pérez')); assert.equal(plan(r2.datos), 'Anual')
+  // Deshacer el alta de Rosa cuando después le cambiaron el plan: choca (se deshace en cadena, como antes).
+  assert.ok(revertirDatos(E.datos || {}, e1.datos, e3.datos).choca)
+  // Cadena: deshacer 2, ajustar la foto del 3 y después deshacer 3 → no revive el plan Anual.
+  const foto3 = revertirDatos(e1.datos, e2.datos, e2.datos).datos
+  const r3 = revertirDatos(foto3, r.datos, r.datos)
+  assert.equal(plan(r3.datos), 'Mensual'); assert.ok(hay(r3.datos, 'Carlos Pérez'))
 })
 caso('agregar sin el nombre: no inventa, pide el dato', () => {
   const r = ejecutar(p, E, 'agregar_registro', { seccion: 'miembros', valores: { plan: 'Anual' } }, ctx)

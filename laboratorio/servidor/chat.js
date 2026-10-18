@@ -68,7 +68,7 @@ function clave() {
 }
 
 const INSTRUCCIONES = `Eres Shifu, el asistente del CRM. Aquí editas el DISEÑO del CRM de la persona: su marca (colores, fondos, tipografía, logo) y la pantalla de inicio: qué bloques hay,
-qué vista usa cada uno, su tamaño, su orden y los rangos de los vencimientos. Y sus DATOS: agregas, cambias, borras y consultas sus registros. El diseño solo cambia contigo; sus datos también los puede editar a mano.
+qué vista usa cada uno, su tamaño, su orden y los rangos de los vencimientos. Y sus DATOS: agregas, cambias, borras y consultas sus registros. No hay botones para editar: todo pasa por ti, y solo con tus herramientas.
 Reglas:
 - Usa SOLO las vistas, secciones y campos que aparecen en el estado. Si piden algo que no existe (por ejemplo un calendario, un mapa,
   una gráfica de radar), dilo con honestidad y ofrece lo más parecido que SÍ existe. Nunca digas que hiciste algo que no hiciste.
@@ -234,12 +234,27 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
         // Deshacer selectivo (calculado por el código): solo vuelve lo que ESE pedido cambió (bloques, marca o estructura).
         // Si un pedido posterior tocó lo mismo, también se deshace (no hay forma de conservarlo) y se dice.
         const cats = new Set(p.cambio || ['bloques', 'marca', 'estructura'])
-        const arrastrados = lista.filter((x) => x.n > p.n && (x.cambio || ['bloques', 'marca', 'estructura']).some((c) => cats.has(c)))
         const foto = JSON.parse(JSON.stringify(p.foto))
         const nuevo = { ...estado }
-        for (const c of cats) nuevo[c] = foto[c] ?? (c === 'bloques' ? [] : {})
+        // Datos: solo lo de ESE pedido (3 vías), sin arrastrar los posteriores, salvo que hayan tocado lo mismo.
+        let datosSolo = false
+        if (cats.has('datos')) {
+          const siguiente = lista.filter((x) => x.n > p.n).sort((a, b) => a.n - b.n)[0]
+          const r = edicion.revertirDatos(foto.datos || {}, (siguiente ? siguiente.foto.datos : estado.datos) || {}, estado.datos || {})
+          if (!r.choca) { nuevo.datos = r.datos; datosSolo = true }
+        }
+        // Las fotos de los pedidos posteriores también olvidan lo deshecho: si después se deshace uno de ellos, no lo revive.
+        const despues = datosSolo ? (lista.filter((x) => x.n > p.n).sort((a, b) => a.n - b.n)[0]?.foto.datos ?? estado.datos) : null
+        const puntosAjustados = !datosSolo ? lista : lista.map((x) => {
+          if (x.n <= p.n) return x
+          const r = edicion.revertirDatos(foto.datos || {}, despues || {}, x.foto.datos || {})
+          return r.choca ? x : { ...x, foto: { ...x.foto, datos: r.datos } }
+        })
+        const enCadena = new Set([...cats].filter((c) => !(c === 'datos' && datosSolo)))
+        const arrastrados = lista.filter((x) => x.n > p.n && (x.cambio || ['bloques', 'marca', 'estructura']).some((c) => enCadena.has(c)))
+        for (const c of enCadena) nuevo[c] = foto[c] ?? (c === 'bloques' ? [] : {})
         const fuera = new Set([p.n, ...arrastrados.map((x) => x.n)])
-        estado = { ...nuevo, puntos: lista.filter((x) => !fuera.has(x.n)) }
+        estado = { ...nuevo, puntos: puntosAjustados.filter((x) => !fuera.has(x.n)) }
         restaurado = p.n
         const NOMBRE = { bloques: 'los bloques del inicio', marca: 'los colores y la marca', estructura: 'las secciones y campos', datos: 'los registros' }
         const txt = `Deshecho el pedido ${p.n} «${p.antes_de}» (${[...cats].map((c) => NOMBRE[c]).join(' y ')} quedaron como antes).${arrastrados.length ? ` También se deshizo ${arrastrados.map((x) => `«${x.antes_de}»`).join(', ')} porque cambiaba lo mismo.` : ''} Lo demás quedó igual.`

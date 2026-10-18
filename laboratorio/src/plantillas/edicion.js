@@ -479,6 +479,40 @@ export function consultarDatos(plantillaBase, estado, args = {}, muestra = {}) {
   return consultar({ ...c, args, muestra })
 }
 
+// Cada cosa del delta de datos como una clave: los valores de cada registro propio, cada cambio a un ejemplo y cada borrado.
+function clavesDatos(d = {}) {
+  const m = new Map()
+  for (const [f, rs] of Object.entries(d.nuevos || {})) for (const r of rs) { m.set(`n|${f}|${r.id}`, true); for (const [k, v] of Object.entries(r.valores || {})) m.set(`n|${f}|${r.id}|${k}`, v) }
+  for (const [f, ids] of Object.entries(d.cambios || {})) for (const [id, vs] of Object.entries(ids)) for (const [k, v] of Object.entries(vs)) m.set(`c|${f}|${id}|${k}`, v)
+  for (const [f, ids] of Object.entries(d.borrados || {})) for (const id of ids) m.set(`b|${f}|${id}`, true)
+  return m
+}
+const difieren = (a, b) => new Set([...a.keys(), ...b.keys()].filter((k) => JSON.stringify(a.get(k)) !== JSON.stringify(b.get(k))))
+
+/** Deshacer UN pedido de datos sin tocar los demás (3 vías): lo que cambió entre `antes` y `despues` de ese pedido vuelve
+ * a como estaba en `actual`; lo demás de `actual` queda. Medido: «deshaz lo que le cambié a Rosa» también devolvía a Carlos,
+ * borrado DESPUÉS (se restauraba todo `datos`). Si un pedido posterior tocó lo mismo, { choca: true } (se deshace en cadena). */
+export function revertirDatos(antes = {}, despues = {}, actual = {}) {
+  const A = clavesDatos(antes), B = clavesDatos(despues), C = clavesDatos(actual)
+  const delPedido = difieren(A, B), despuesDe = difieren(B, C)
+  if ([...delPedido].some((k) => despuesDe.has(k))) return { choca: true }
+  const R = new Map(C)
+  for (const k of delPedido) { if (A.has(k)) R.set(k, A.get(k)); else R.delete(k) }
+  // Se rearma el delta: los registros propios en el orden de `actual` y, al final, los que vuelven.
+  const nuevos = {}, cambios = {}, borrados = {}
+  const orden = (f) => [...new Set([...(actual.nuevos?.[f] || []), ...(antes.nuevos?.[f] || [])].map((r) => r.id))]
+  for (const f of new Set([...Object.keys(actual.nuevos || {}), ...Object.keys(antes.nuevos || {})])) {
+    const rs = orden(f).filter((id) => R.has(`n|${f}|${id}`)).map((id) => ({ id, valores: Object.fromEntries([...R].filter(([k]) => k.startsWith(`n|${f}|${id}|`)).map(([k, v]) => [k.split('|')[3], v])) }))
+    if (rs.length) nuevos[f] = rs
+  }
+  for (const [k, v] of R) {
+    const [t, f, id, campo] = k.split('|')
+    if (t === 'c') ((cambios[f] ||= {})[id] ||= {})[campo] = v
+    if (t === 'b') (borrados[f] ||= []).push(id)
+  }
+  return { datos: { ...actual, nuevos, cambios, borrados } }
+}
+
 /** Punto de guardado (estilo saver de Alan): la foto de ANTES y qué cambió (lo mide el código), para que deshacer revierta
  * solo lo de ese pedido. Lo usan el chat y lo que la persona hace a mano (D56). */
 export function conPunto(antes, despues, texto) {
