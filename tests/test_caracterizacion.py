@@ -76,14 +76,14 @@ MOVED_CONSTANTS = {
     "auth.LOCKED_ERROR": "assistant.packs.i18n.es",
     "auth.PASSWORD_RULE": "assistant.packs.i18n.es",
     "memory.SAME_DB_MSG": "assistant.packs.i18n.es",
-    "agent._CONTINUE_RE": "assistant.profiles.default.rules:CONTINUE_RE",
-    "agent._SIGNAL_RE": "assistant.profiles.default.rules:SIGNAL_RE",
-    "agent._SIGNAL_WORDS": "assistant.profiles.default.rules:SIGNAL_WORDS",
-    "agent.SHORT_MESSAGE_CHARS": "assistant.profiles.default.rules:SHORT_MESSAGE_CHARS",
-    "tools._RESEARCH_AGAIN": "assistant.profiles.default.rules:RESEARCH_AGAIN_RE",
-    "tools.FOLLOW_UP_MAX_CHARS": "assistant.profiles.default.rules:FOLLOW_UP_MAX_CHARS",
-    "tools._EXPLICIT_RESEARCH": "assistant.profiles.default.rules:EXPLICIT_RESEARCH_RE",
-    "citations._SOURCES_HEADING": "assistant.profiles.default.rules:SOURCES_HEADING_RE",
+    "agent._CONTINUE_RE": "assistant.packs.lang.es_en:CONTINUE_RE",
+    "agent._SIGNAL_RE": "assistant.packs.lang.es_en:SIGNAL_RE",
+    "agent._SIGNAL_WORDS": "assistant.packs.lang.es_en:SIGNAL_WORDS",
+    "agent.SHORT_MESSAGE_CHARS": "assistant.packs.lang.es_en:SHORT_MESSAGE_CHARS",
+    "tools._RESEARCH_AGAIN": "assistant.packs.lang.es_en:RESEARCH_AGAIN_RE",
+    "tools.FOLLOW_UP_MAX_CHARS": "assistant.packs.lang.es_en:FOLLOW_UP_MAX_CHARS",
+    "tools._EXPLICIT_RESEARCH": "assistant.packs.lang.es_en:EXPLICIT_RESEARCH_RE",
+    "citations._SOURCES_HEADING": "assistant.packs.lang.es_en:SOURCES_HEADING_RE",
     # derivada: las de memoria global con sus nombres antiguos según el perfil activo (el por defecto)
     "context.PRUNE_KEEP_TOOLS": "assistant.core.context:prune_keep_tools()",
     "memory._SUBJECT": "assistant.packs.lang.es_en:SUBJECT_RE",
@@ -491,7 +491,7 @@ def test_presupuesto_de_busqueda_olvida_los_turnos_mas_viejos(monkeypatch):
     ("hola", False), ("¿y luego qué?", False), ("puedes continuar", False),
 ])
 def test_regex_de_continuar(texto, continua):
-    from assistant.profiles.default.rules import CONTINUE_RE as _CONTINUE_RE
+    from assistant.packs.lang.es_en import CONTINUE_RE as _CONTINUE_RE
 
     assert bool(_CONTINUE_RE.match(texto)) is continua
 
@@ -583,7 +583,7 @@ CONSTANTS_05773C4_SHA256 = "d4715e5569f5f996ee4a30b3046b4725866e1e092a6dc2604c6e
 CONSTANTS_05773C4_COUNT = 136
 # módulos nuevos del refactor donde pueden vivir las constantes movidas
 NEW_HOMES = ("assistant.packs.i18n.es", "assistant.packs.lang.es_en", "assistant.packs.tools.demo",
-             "assistant.packs.tools.utilities", "assistant.profiles.default.policies", "assistant.profiles.default.rules",
+             "assistant.packs.tools.utilities", "assistant.profiles.default.policies",
              "assistant.profiles.default.tools")
 
 

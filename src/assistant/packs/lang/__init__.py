@@ -1,1 +1,1 @@
-"""Packs de idioma para la memoria: léxicos (MemoryLexicon) de la búsqueda por palabras."""
+"""Packs de idioma: léxicos de la memoria por palabras (MemoryLexicon) y reglas de intención (IntentRules)."""

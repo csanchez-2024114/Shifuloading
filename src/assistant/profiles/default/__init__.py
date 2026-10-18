@@ -7,7 +7,6 @@ from assistant.packs import ui
 from assistant.packs.i18n import es
 from assistant.packs.lang import es_en
 from assistant.profiles.default.policies import MEMORY_POLICIES, OLD_TOOL_NAMES, SEARCH_ECONOMY_RULE, TOOL_POLICIES
-from assistant.profiles.default.rules import INTENTS
 from assistant.profiles.default.tools import bigtool_tools, build_tools
 
 HERE = Path(__file__).parent
@@ -24,6 +23,6 @@ PROFILE = AgentProfile(
     search_economy_rule=SEARCH_ECONOMY_RULE,
     legacy_tool_names=OLD_TOOL_NAMES,
     texts=TextCatalog(es.TEXTS),  # español, sin sobreescrituras
-    intents=INTENTS,
+    intents=es_en.INTENTS,  # reglas de intención en español e inglés
     lexicon=es_en.LEXICON,  # memoria por palabras en español e inglés
 )
