@@ -29,15 +29,33 @@ caso('deshacer solo lo de ese pedido (otra sección se queda)', () => {
   assert.deepEqual(P.vista().map((p) => p.n), [2])
 })
 
+caso('a 3 vías: deshacer un registro de la misma sección deja los demás, y los posteriores no lo reviven', () => {
+  const s0 = base()
+  const s1 = { ...s0, contactos: [{ id: 'c2', n: 'Beto' }, ...s0.contactos], totalContactos: 2 }; P.anotar(s0, s1, 'agrega a Beto')
+  const s2 = { ...s1, contactos: [{ id: 'c3', n: 'Carla' }, ...s1.contactos], totalContactos: 3 }; P.anotar(s1, s2, 'agrega a Carla')
+  const r = P.deshacer(s2, 1)
+  assert.deepEqual(r.deshechos, [1]); assert.deepEqual(r.crm.contactos.map((c) => c.n), ['Carla', 'Ana']); assert.equal(r.crm.totalContactos, 2)
+  const r2 = P.deshacer(r.crm, 2)
+  assert.deepEqual(r2.crm.contactos.map((c) => c.n), ['Ana'], 'deshacer a Carla no revive a Beto'); assert.equal(r2.crm.totalContactos, 1)
+})
+
+caso('a 3 vías por campo: una tarea movida y luego renombrada', () => {
+  const s0 = base()
+  const s1 = { ...s0, tareas: { porHacer: [], enCurso: [{ id: 't1', t: 'Llamar' }], hecho: [] } }; P.anotar(s0, s1, 'mueve')
+  const s2 = { ...s1, tareas: { porHacer: [], enCurso: [{ id: 't1', t: 'Llamar hoy' }], hecho: [] } }; P.anotar(s1, s2, 'renombra')
+  const r = P.deshacer(s2, 1)
+  assert.deepEqual(r.deshechos, [1]); assert.deepEqual(r.crm.tareas.porHacer, [{ id: 't1', t: 'Llamar hoy' }], 'vuelve de columna y se queda con su nombre nuevo')
+})
+
 caso('en cadena si uno posterior tocó lo mismo, y se dice', () => {
   const s0 = base()
   const s1 = { ...s0, contactos: [{ id: 'c2', n: 'Beto' }, ...s0.contactos] }; P.anotar(s0, s1, 'agrega a Beto')
   const s2 = { ...s1, contactos: s1.contactos.map((c) => ({ ...c, n: c.n + '!' })) }; P.anotar(s1, s2, 'ponles !')
   const r = P.deshacer(s2) // sin n: el último
-  assert.deepEqual(r.deshechos, [2]); assert.equal(r.crm.contactos[0].n, 'Beto')
-  P.anotar(r.crm, { ...r.crm, contactos: [] }, 'borra todo')
-  const r2 = P.deshacer({ ...r.crm, contactos: [] }, 1)
-  assert.deepEqual(r2.deshechos, [1, 3]); assert.match(r2.texto, /También se deshizo «borra todo» porque cambiaba lo mismo\./)
+  assert.deepEqual(r.deshechos, [2]); assert.deepEqual(r.crm.contactos.map((c) => c.n), ['Beto', 'Ana'])
+  const s3 = { ...r.crm, contactos: r.crm.contactos.map((c) => (c.id === 'c2' ? { ...c, det: '555' } : c)) }; P.anotar(r.crm, s3, 'teléfono de Beto')
+  const r2 = P.deshacer(s3, 1)
+  assert.deepEqual(r2.deshechos, [1, 3]); assert.match(r2.texto, /También se deshizo «teléfono de Beto» porque cambiaba lo mismo\./)
   assert.deepEqual(r2.crm.contactos, s0.contactos); assert.equal(P.vista().length, 0)
 })
 
