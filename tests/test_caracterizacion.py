@@ -89,6 +89,8 @@ MOVED_CONSTANTS = {
     "memory._SUBJECT": "assistant.packs.lang.es_en:SUBJECT_RE",
     "memory._STOPWORDS": "assistant.packs.lang.es_en:STOPWORDS",
     "memory._TOPICS": "assistant.packs.lang.es_en:TOPICS",
+    # derivada: las herramientas marcadas evidence=True en el perfil activo
+    "agent.EVIDENCE_TOOLS": "assistant.core.agent:evidence_tools()",
 }
 
 CONST_MODULES = ("agent", "tools", "memory", "context", "citations", "auth", "bigtool_agent", "extra_tools",
@@ -623,7 +625,9 @@ def test_cada_valor_de_05773c4_sigue_existiendo_sin_el_mapa():
             if re.fullmatch(r"_?[A-Z][A-Z0-9_]*", attr) and not isinstance(value, pytypes.ModuleType):
                 if (s := _ser(value)) is not None:
                     found[_canon(s)] += 1
+    from assistant.core.agent import evidence_tools
     from assistant.core.context import prune_keep_tools
     found[_canon(_ser(prune_keep_tools()))] += 1
+    found[_canon(_ser(evidence_tools()))] += 1
     faltan = [k for k, v in _snapshot_constants().items() if found[_canon(v)] == 0]
     assert not faltan, f"valores de 05773c4 que ya no existen: {faltan}"

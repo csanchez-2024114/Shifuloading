@@ -574,7 +574,13 @@ def _make_system_prompt(settings: Settings, profile=None):
     return _system_prompt
 
 
-EVIDENCE_TOOLS = ("web_search", "deep_research")
+def evidence_tools(profile=None) -> tuple[str, ...]:
+    """Herramientas cuyo resultado es evidencia para ANSWER_VERIFY: las marcadas evidence=True en el perfil."""
+    from assistant.core.profile import active_profile
+
+    return tuple(name for name, policy in (profile or active_profile()).tool_policies.items() if policy.evidence)
+
+
 _EVIDENCE_CHARS = 12000
 
 VERIFY_ANSWER_PROMPT = """You are a fact-checker. Given an ANSWER and the EVIDENCE the assistant retrieved in this turn, \
@@ -615,17 +621,19 @@ class AnswerVerifier(AgentMiddleware):
     contrasta la respuesta con lo recuperado. Si corrige, reemplaza el mensaje (mismo id) y avisa a la UI con el
     original: el cambio nunca es silencioso. Sin búsqueda en el turno no hace nada (0 tokens)."""
 
-    def __init__(self, checker, cap: int = 0):
+    def __init__(self, checker, cap: int = 0, evidence: tuple[str, ...] | None = None):
         super().__init__()
         self.checker = checker
         self.cap = cap  # TURN_TOKEN_CAP: si el mensaje ya aterrizó o lo pasó, no se gasta otra llamada en verificar
+        self.evidence = evidence  # herramientas-evidencia; None = las del perfil activo, resueltas al usar
 
     def after_agent(self, state, runtime):
         messages = state.get("messages") or []
         start = max((i for i, m in enumerate(messages) if m.type == "human"), default=-1) + 1
         turn = messages[start:]
         # solo lo que se ejecutó de verdad es evidencia: una búsqueda rechazada ("Not run: …") no aporta nada
-        evidence = [_content_text(m) for m in turn if isinstance(m, ToolMessage) and m.name in EVIDENCE_TOOLS
+        sources = evidence_tools() if self.evidence is None else self.evidence
+        evidence = [_content_text(m) for m in turn if isinstance(m, ToolMessage) and m.name in sources
                     and is_evidence(_content_text(m))]
         last = turn[-1] if turn else None
         if not evidence or not isinstance(last, AIMessage) or last.tool_calls or not _content_text(last).strip():
@@ -695,7 +703,8 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     if settings.memory_summarize:
         middleware.insert(1, compactor)
     if settings.answer_verify:
-        middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap))
+        middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap,
+                                         evidence_tools(profile)))
     agent = create_agent(
         model,
         tools,

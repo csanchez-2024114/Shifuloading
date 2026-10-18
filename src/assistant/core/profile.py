@@ -55,6 +55,7 @@ class ToolPolicy:
     # con allowed_decisions/description/when
     approval: bool | dict = False
     description_key: str | None = None  # clave del catálogo con el texto de la tarjeta (se resuelve al construir)
+    evidence: bool = False  # su resultado es evidencia para ANSWER_VERIFY (si no se ejecutó, no cuenta)
 
 
 @dataclass(frozen=True)
