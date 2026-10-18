@@ -1,8 +1,7 @@
 """Perfil por defecto: Agente 0, asistente tipo ChatGPT. Reproduce exactamente el comportamiento anterior al refactor."""
 from assistant.core.config import ROOT
-from assistant.core.memory import MEMORY_POLICIES, SEARCH_ECONOMY_RULE
 from assistant.core.profile import AgentProfile
-from assistant.profiles.default.policies import OLD_TOOL_NAMES, TOOL_POLICIES
+from assistant.profiles.default.policies import MEMORY_POLICIES, OLD_TOOL_NAMES, SEARCH_ECONOMY_RULE, TOOL_POLICIES
 from assistant.profiles.default.tools import bigtool_tools, build_tools
 
 PROFILE = AgentProfile(

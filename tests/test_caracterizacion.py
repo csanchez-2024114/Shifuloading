@@ -62,6 +62,8 @@ MOVED_CONSTANTS = {
     "agent.OLD_TOOL_NAMES": "assistant.profiles.default.policies",
     "tools.OLD_TOOL_NAMES": "assistant.profiles.default.policies",
     "bigtool_agent.OLD_TOOL_NAMES": "assistant.profiles.default.policies",
+    "memory.MEMORY_POLICIES": "assistant.profiles.default.policies",
+    "memory.SEARCH_ECONOMY_RULE": "assistant.profiles.default.policies",
 }
 
 CONST_MODULES = ("agent", "tools", "memory", "context", "citations", "auth", "bigtool_agent", "extra_tools",
