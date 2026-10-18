@@ -194,5 +194,8 @@ def _profile_window(model: str) -> int:
         return DEFAULT_CONTEXT_WINDOW
 
 
-def read_system_prompt() -> str:
-    return (ROOT / "prompts" / "system.md").read_text(encoding="utf-8")
+def read_system_prompt(profile=None) -> str:
+    """Prompt del sistema del perfil (el activo si no se pasa). Se relee en cada mensaje."""
+    from assistant.core.profile import active_profile  # perezoso: profile importa config
+
+    return (profile or active_profile()).system_prompt_path.read_text(encoding="utf-8")

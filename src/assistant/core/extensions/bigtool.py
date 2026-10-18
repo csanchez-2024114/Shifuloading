@@ -37,9 +37,7 @@ from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 from assistant.core import memory
 from assistant.core.agent import (OLD_TOOL_NAMES, history_landing, landing_due, landing_note, mark_no_tools,
                              rename_old_tools, system_prompt_text)
-from assistant.apps.crm_demo import crm_tools
 from assistant.core.config import Settings
-from assistant.extra_tools import extra_tools
 from assistant.core.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.core.tools import (
     ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, INVESTIGADOR_DOC, calculadora, save_memory_doc,
@@ -169,8 +167,12 @@ def _thread_user_texts(checkpointer) -> tuple[str | None, list[str]]:
 
 
 def build_registry(model, settings: Settings, memories_store, search_fn: Callable = web_search,
-                   checkpointer=None, checker=None) -> dict[str, BaseTool]:
-    """Registro id -> herramienta. id = nombre de la herramienta (legible en la UI)."""
+                   checkpointer=None, checker=None, profile=None) -> dict[str, BaseTool]:
+    """Registro id -> herramienta. id = nombre de la herramienta (legible en la UI). Las base del núcleo más las
+    extra del perfil (el activo si no se pasa)."""
+    from assistant.core.profile import active_profile
+
+    profile = profile or active_profile()
     def search_key():
         thread_id, messages = _thread_messages(checkpointer)
         return thread_id, turn_key(thread_id, messages), messages
@@ -216,9 +218,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
 
     tools = [calculadora, fecha_hora, check_python_syntax, buscar_web, guardar_recuerdo, buscar_recuerdos,
              actualizar_recuerdo,
-             investigador_profundo, *extra_tools()]
-    if settings.bigtool_demo_tools:
-        tools += _herramientas_math() + _herramientas_texto() + crm_tools()
+             investigador_profundo, *profile.bigtool_tools(settings)]
     registry = {t.name: _seguro(t) for t in tools}
     assert len(registry) == len(tools), "nombres de herramientas duplicados en el registro"
     validate_registry(registry)
@@ -264,10 +264,11 @@ class PromptedModel:
     """Adaptador mínimo: bigtool no acepta system prompt (issue #7) ni middleware. Antepone el prompt
     dinámico (system.md + fecha + instrucciones de retrieve_tools) y aplica el razonamiento del esfuerzo."""
 
-    def __init__(self, model, cap: int = 0, settings: Settings | None = None):
+    def __init__(self, model, cap: int = 0, settings: Settings | None = None, profile=None):
         self.model = model
         self.cap = cap  # TURN_TOKEN_CAP: al 80% (o con un historial más pesado que el tope), sin herramientas
         self.settings = settings  # política de memoria del prompt (MEMORY_SAVE_POLICY)
+        self.profile = profile  # prompt y política del perfil; None = el activo
 
     def bind_tools(self, tools, **kwargs):
         if effort := _ctx("razonamiento"):
@@ -284,7 +285,7 @@ class PromptedModel:
 
         def prompt(msgs):
             msgs = rename_old_tools(msgs)
-            system = system_prompt_text(self.settings) + BIGTOOL_PROMPT
+            system = system_prompt_text(self.settings, self.profile) + BIGTOOL_PROMPT
             counter = landing_due(self.cap, [SystemMessage(system), *msgs])
             note = f"\n\n{landing_note(counter, self.cap)}" if counter else ""
             return [SystemMessage(system + note), *msgs]
@@ -302,9 +303,10 @@ class PromptedModel:
 
 
 def build_bigtool_agent(model, settings: Settings, checkpointer=None, memories_store=None,
-                        embeddings=None, search_fn: Callable = web_search, checker=None):
-    registry = build_registry(model, settings, memories_store, search_fn, checkpointer=checkpointer, checker=checker)
+                        embeddings=None, search_fn: Callable = web_search, checker=None, profile=None):
+    registry = build_registry(model, settings, memories_store, search_fn, checkpointer=checkpointer, checker=checker,
+                              profile=profile)
     index = build_tool_index(registry, settings, embeddings)
-    builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap, settings), RegistroTolerante(registry), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
+    builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap, settings, profile), RegistroTolerante(registry), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
                                    retrieve_tools_function=make_retrieve_tools(registry))
     return builder.compile(checkpointer=checkpointer, store=index)

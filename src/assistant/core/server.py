@@ -19,7 +19,8 @@ from assistant.core import context as context_mod
 from assistant.core import memory
 from assistant.core.appdata import MAX_TITLE_CHARS, clean_title, thread_title
 from assistant.core.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
-from assistant.core.config import ROOT, ConfigError, Settings
+from assistant.core.config import ConfigError, Settings
+from assistant.core.profile import active_profile
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("assistant")
@@ -57,7 +58,7 @@ class RenameIn(BaseModel):
     title: str
 
 
-def _build_real_agent(settings: Settings):
+def _build_real_agent(settings: Settings, profile):
     """Devuelve (agente, store de recuerdos)."""
     client = memory.startup_checks(settings)
     from assistant.core.tools import build_tools
@@ -71,13 +72,14 @@ def _build_real_agent(settings: Settings):
         log.info("Agente: langgraph-bigtool (demo tools: %s)", settings.bigtool_demo_tools)
         # antes de buscar solo ve retrieve_tools
         agent_mod.check_turn_cap(settings, extra_prompt=BIGTOOL_PROMPT)
-        agent = build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store)
+        agent = build_bigtool_agent(model, settings, checkpointer=checkpointer, memories_store=store, profile=profile)
         # bigtool no tiene medidor en vivo: el endpoint usa el uso real guardado
-        agent.base_context_tokens = context_mod.prompt_tokens(agent_mod.system_prompt_text(settings) + BIGTOOL_PROMPT)
+        agent.base_context_tokens = context_mod.prompt_tokens(agent_mod.system_prompt_text(settings, profile)
+                                                              + BIGTOOL_PROMPT)
         return agent, store
-    tools = build_tools(model, settings)
+    tools = build_tools(model, settings, profile=profile)
     agent_mod.check_turn_cap(settings, tools)
-    return agent_mod.build_agent(model, tools, settings, checkpointer=checkpointer, store=store), store
+    return agent_mod.build_agent(model, tools, settings, checkpointer=checkpointer, store=store, profile=profile), store
 
 
 PING = ": ping\n\n"  # comentario SSE: el cliente lo ignora, pero mantiene viva la conexión en proxies
@@ -126,14 +128,17 @@ def with_keepalive(events, interval: float):
         stop.set()
 
 
-def create_app(agent=None, settings: Settings | None = None, classify=None, store=None, appdata=None) -> FastAPI:
-    """`appdata`: base de negocio (AUTH_ENABLED); se inyecta en tests."""
+def create_app(agent=None, settings: Settings | None = None, classify=None, store=None, appdata=None,
+               profile=None) -> FastAPI:
+    """`appdata`: base de negocio (AUTH_ENABLED); se inyecta en tests. `profile`: perfil del agente (prompt,
+    herramientas, UI); None = el de AGENT_PROFILE."""
     settings = settings or Settings.from_env()
+    profile = profile or active_profile()
     if classify is None:
         # agente inyectado (tests) → sin llamadas reales a OpenAI para clasificar
         classify = agent_mod.clasificar_esfuerzo if agent is None else (lambda s, m: "medio")
     if agent is None:
-        agent, store = _build_real_agent(settings)
+        agent, store = _build_real_agent(settings, profile)
         host = settings.mongodb_uri.rsplit("@", 1)[-1]  # nunca loguear usuario/contraseña
         log.info("Modelo: %s | MongoDB IA: %s (db %s)", settings.llm_model, host, settings.mongodb_db)
         if appdata is None and (app_client := memory.app_startup(settings)) is not None:
@@ -147,7 +152,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
                        settings.login_lock_minutes, settings.login_max_fails_ip) if settings.auth_enabled else None
 
-    app = FastAPI(title="Agente 0")
+    app = FastAPI(title=profile.display_name)
 
     # ---------------------------------------------------------------- sesión y propiedad (AUTH_ENABLED=1)
     def _token(request: Request) -> str | None:
@@ -205,7 +210,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     @app.get("/")
     def index():
-        return FileResponse(ROOT / "static" / "index.html")
+        return FileResponse(profile.static_dir / "index.html")
 
     @app.get("/health")
     def health():
@@ -343,7 +348,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         return {"deleted": thread_id}
 
     base_tokens = (getattr(agent, "base_context_tokens", None)
-                   or context_mod.prompt_tokens(agent_mod.system_prompt_text(settings)))
+                   or context_mod.prompt_tokens(agent_mod.system_prompt_text(settings, profile)))
     can_compact = getattr(agent, "compactor", None) is not None
 
     @app.get("/threads/{thread_id}/context")

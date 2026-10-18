@@ -37,6 +37,7 @@ from assistant.core.config import Settings, read_system_prompt
 from assistant.core.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
                                prune_tool_results)
 from assistant.core.memory import DUPLICATE_PREFIX, SUMMARY_SOURCE, memory_policy
+from assistant.core.profile import active_profile
 
 logger = logging.getLogger(__name__)
 
@@ -560,37 +561,28 @@ def compact_thread(agent, thread_id: str, settings: Settings) -> dict | None:
     return record
 
 
-def _confirm_text() -> str:
-    from assistant.core.tools import DEEP_RESEARCH_CONFIRM
-    return DEEP_RESEARCH_CONFIRM
-
-
-def _research_needs_confirmation(request) -> bool:
-    from assistant.core.tools import research_needs_confirmation
-    return research_needs_confirmation(request.state.get("messages"))
-
-
 def _on_tool_error(exc: Exception, request) -> str:
     return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
 
-def system_prompt_text(settings: Settings | None = None) -> str:
+def system_prompt_text(settings: Settings | None = None, profile=None) -> str:
+    """Prompt del perfil (el activo si no se pasa) + su política de memoria + fecha local."""
     # Fecha local en cada llamada: el modelo no la sabe y la búsqueda web va en UTC.
     now = datetime.now().astimezone()
     policy = memory_policy(settings.memory_save_policy if settings else "strict",
                            settings.memory_max_per_turn if settings else 3,
-                           settings.memory_search_economy if settings else False)
+                           settings.memory_search_economy if settings else False, profile=profile)
     return (
-        f"{read_system_prompt()}\n\n{policy}\n\n"
+        f"{read_system_prompt(profile)}\n\n{policy}\n\n"
         f"User's current local date and time: {now:%A %Y-%m-%d %H:%M} (UTC{now:%z}). "
         "Treat it as 'today'; never infer the date from search results."
     )
 
 
-def _make_system_prompt(settings: Settings):
+def _make_system_prompt(settings: Settings, profile=None):
     @dynamic_prompt
     def _system_prompt(request) -> str:
-        return system_prompt_text(settings)
+        return system_prompt_text(settings, profile)
 
     return _system_prompt
 
@@ -684,25 +676,25 @@ class AnswerVerifier(AgentMiddleware):
             "answer_verify": {"original": original, "status": status, "notes": notes}})]}
 
 
-def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None):
-    """`summarizer`/`checker`: modelos para la compactación/ANSWER_VERIFY (se inyectan en tests)."""
-    base = prompt_tokens(system_prompt_text(settings), tools)  # contexto de un hilo nuevo: prompt + herramientas
+def build_agent(model, tools, settings: Settings, checkpointer=None, store=None, summarizer=None, checker=None,
+                profile=None):
+    """`summarizer`/`checker`: modelos para la compactación/ANSWER_VERIFY (se inyectan en tests). `profile`: el
+    perfil (prompt, aprobaciones); None = el activo (AGENT_PROFILE)."""
+    profile = profile or active_profile()
+    base = prompt_tokens(system_prompt_text(settings, profile), tools)  # contexto de un hilo nuevo: prompt + herramientas
     prune_age = settings.compact_prune_age if settings.compact_prune_tools else 0
     middleware = [
         MedidorContexto(base, prune_age),  # primero: sus after_model/after_agent corren al final
-        _make_system_prompt(settings),
+        _make_system_prompt(settings, profile),
         _nombres_antiguos,
         _razonamiento,
         LimiteLlamadas(),
         AterrizajeSuave(settings.turn_token_cap),
         ToolErrorMiddleware(on_error=_on_tool_error),
         LimiteRepeticiones(settings.tool_repeat_limit),
-        HumanInTheLoopMiddleware(interrupt_on={
-            "send_simulated_email": True,
-            # pausa con la tarjeta de aprobación, salvo que el usuario haya pedido investigar en ese mensaje
-            "deep_research": {"allowed_decisions": ["approve", "reject"], "description": _confirm_text(),
-                              "when": _research_needs_confirmation},
-        }),
+        # aprobaciones del perfil (tarjeta de la UI): las herramientas con ToolPolicy.approval
+        HumanInTheLoopMiddleware(interrupt_on={name: policy.approval for name, policy in profile.tool_policies.items()
+                                               if policy.approval}),
         AvisoCorte(),
     ]
     if prune_age:

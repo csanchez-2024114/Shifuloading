@@ -570,6 +570,16 @@ def research_needs_confirmation(messages) -> bool:
     return not _EXPLICIT_RESEARCH.search(text) and earlier_research(messages) is None
 
 
+def _research_when(request) -> bool:
+    return research_needs_confirmation(request.state.get("messages"))
+
+
+def research_approval() -> dict:
+    """Aprobación de deep_research para HumanInTheLoopMiddleware (ToolPolicy.approval): tarjeta con aprobar/rechazar,
+    salvo que el usuario haya pedido investigar en ese mensaje."""
+    return {"allowed_decisions": ["approve", "reject"], "description": DEEP_RESEARCH_CONFIRM, "when": _research_when}
+
+
 def investigator_model(model: BaseChatModel, settings: Settings) -> BaseChatModel:
     """MAX_TOKENS no se aplica al investigador: con 2000, su razonamiento agotaba el tope y el resumen salía vacío."""
     if isinstance(model, ChatOpenAI):
@@ -629,9 +639,10 @@ def check_python_syntax(code: str) -> str:
     return SYNTAX_OK_MSG
 
 
-def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, checker=None) -> list[BaseTool]:
+def base_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, checker=None) -> list[BaseTool]:
+    """Herramientas base del núcleo, en su orden. El perfil decide cuáles usa (build_tools)."""
     verifier = memory_verifier_for(settings, checker)
-    tools: list[BaseTool] = [
+    return [
         make_buscar_web_con_presupuesto(settings, search_fn),
         calculadora,
         fecha_hora,
@@ -642,6 +653,11 @@ def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, 
         make_actualizar_recuerdo(verifier),
         make_investigador(model, settings, search_fn),
     ]
-    if settings.enable_hitl_demo:
-        tools.append(enviar_email_simulado)
-    return tools
+
+
+def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, checker=None,
+                profile=None) -> list[BaseTool]:
+    """Herramientas del agente normal según el perfil (el activo si no se pasa)."""
+    from assistant.core.profile import active_profile
+
+    return (profile or active_profile()).build_tools(model, settings, base_tools(model, settings, search_fn, checker))

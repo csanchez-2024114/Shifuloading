@@ -240,12 +240,16 @@ SEARCH_ECONOMY_RULE = """## Looking up memories
 - If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation."""
 
 
-def memory_policy(name: str = "strict", max_per_turn: int = 3, search_economy: bool = False) -> str:
-    text = MEMORY_POLICIES.get(name, MEMORY_POLICIES["strict"])
+def memory_policy(name: str = "strict", max_per_turn: int = 3, search_economy: bool = False, profile=None) -> str:
+    """Política de guardado del perfil (el activo si no se pasa); un nombre desconocido usa "strict"."""
+    from assistant.core.profile import active_profile
+
+    profile = profile or active_profile()
+    text = profile.memory_policies.get(name, profile.memory_policies["strict"])
     if not max_per_turn:
         text = text.replace("\n- Save at most {max_per_turn} memories per message.", "")
     text = text.replace("{max_per_turn}", str(max_per_turn))
-    return f"{text}\n\n{SEARCH_ECONOMY_RULE}" if search_economy else text
+    return f"{text}\n\n{profile.search_economy_rule}" if search_economy else text
 
 
 TURN_LIMIT_MSG = ("Not run: the limit of {limit} memories per message was reached, so this was not saved. Tell the "
