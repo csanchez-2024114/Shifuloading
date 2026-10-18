@@ -561,12 +561,12 @@ def compact_thread(agent, thread_id: str, settings: Settings) -> dict | None:
 
 
 def _confirm_text() -> str:
-    from assistant.tools import DEEP_RESEARCH_CONFIRM
+    from assistant.core.tools import DEEP_RESEARCH_CONFIRM
     return DEEP_RESEARCH_CONFIRM
 
 
 def _research_needs_confirmation(request) -> bool:
-    from assistant.tools import research_needs_confirmation
+    from assistant.core.tools import research_needs_confirmation
     return research_needs_confirmation(request.state.get("messages"))
 
 

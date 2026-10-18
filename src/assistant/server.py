@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from langgraph.types import Command
 from pydantic import BaseModel
 
-from assistant import agent as agent_mod
+from assistant.core import agent as agent_mod
 from assistant.core import ai_data
 from assistant.core import context as context_mod
 from assistant.core import memory
@@ -60,7 +60,7 @@ class RenameIn(BaseModel):
 def _build_real_agent(settings: Settings):
     """Devuelve (agente, store de recuerdos)."""
     client = memory.startup_checks(settings)
-    from assistant.tools import build_tools
+    from assistant.core.tools import build_tools
 
     model = agent_mod.make_model(settings)
     checkpointer = memory.build_checkpointer(client, settings.mongodb_db)

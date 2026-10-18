@@ -35,13 +35,13 @@ from langgraph_bigtool import create_agent as create_bigtool_agent
 from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 
 from assistant.core import memory
-from assistant.agent import (OLD_TOOL_NAMES, history_landing, landing_due, landing_note, mark_no_tools,
+from assistant.core.agent import (OLD_TOOL_NAMES, history_landing, landing_due, landing_note, mark_no_tools,
                              rename_old_tools, system_prompt_text)
 from assistant.apps.crm_demo import crm_tools
 from assistant.core.config import Settings
 from assistant.extra_tools import extra_tools
 from assistant.core.tool_spec import expand_requirements, get_spec, validate_registry
-from assistant.tools import (
+from assistant.core.tools import (
     ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, INVESTIGADOR_DOC, calculadora, save_memory_doc,
     check_python_syntax,
     earlier_research, fecha_hora, investigar, investigator_model, make_buscar_web, memory_verifier_for, turn_key,

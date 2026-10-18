@@ -194,7 +194,7 @@ class MedidorContexto(AgentMiddleware):
         return {"context_stats": {**(state.get("context_stats") or {}), "overhead": overhead}}
 
     def after_agent(self, state, runtime):
-        from assistant.agent import _turn_counter
+        from assistant.core.agent import _turn_counter
 
         counter = _turn_counter()
         if counter is None:

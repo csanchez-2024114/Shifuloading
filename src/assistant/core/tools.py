@@ -19,7 +19,7 @@ from langchain_openai import ChatOpenAI
 
 from assistant.core import memory
 from assistant.core import citations
-from assistant.agent import OLD_TOOL_NAMES, Context
+from assistant.core.agent import OLD_TOOL_NAMES, Context
 from assistant.core.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -322,7 +322,7 @@ def run_search(settings: Settings, search_fn, query: str, budget: TurnBudget | N
     """(se hizo, texto para el modelo, tokens). Antes de buscar reserva el costo estimado (SEARCH_COST_ESTIMATE): no
     busca si con él se pasaría INVESTIGATOR_TOKEN_BUDGET, TURN_MAX_SEARCHES o TURN_TOKEN_CAP. Así el presupuesto solo
     se supera si una búsqueda cuesta más que su estimado."""
-    from assistant.agent import turn_tokens
+    from assistant.core.agent import turn_tokens
 
     est = settings.search_cost_estimate
     with budget.lock if budget else threading.Lock():
@@ -456,7 +456,7 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
     """Corre el subagente investigador; avisa cada búsqueda interna con `write` y devuelve su resumen.
     Topes: INVESTIGATOR_MAX_SEARCHES propias y los del mensaje, compartidos con web_search (run_search). Si se corta,
     devuelve lo hallado con un aviso, nunca una respuesta vacía."""
-    from assistant.agent import turn_tokens
+    from assistant.core.agent import turn_tokens
 
     max_searches, token_budget = settings.investigator_max_searches, settings.investigator_token_budget
     budget = turn_budget(turn_key)
@@ -598,7 +598,7 @@ def memory_verifier_for(settings: Settings, checker=None):
     if not settings.memory_verify:
         return None
     if checker is None:
-        from assistant.agent import make_checker_model
+        from assistant.core.agent import make_checker_model
 
         checker = make_checker_model(settings)
     return memory.make_memory_verifier(checker)

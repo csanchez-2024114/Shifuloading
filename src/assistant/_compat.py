@@ -20,6 +20,8 @@ ALIASES: dict[str, str] = {
     "assistant.ai_data": "assistant.core.ai_data",
     "assistant.appdata": "assistant.core.appdata",
     "assistant.auth": "assistant.core.auth",
+    "assistant.agent": "assistant.core.agent",
+    "assistant.tools": "assistant.core.tools",
 }
 
 
