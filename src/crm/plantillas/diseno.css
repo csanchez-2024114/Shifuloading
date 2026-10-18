@@ -1,0 +1,7 @@
+/* Lo poco que agrega el CRM real a las piezas del laboratorio (D61). */
+.mc-diseno { display: contents; }
+.mc-diseno .pl-form-agregar { margin-top: 14px; }
+/* La tabla se desvanece abajo para avisar que sigue (plantillas.css); con pocas filas eso apagaba la última (con una sola,
+ * toda la tabla). Un margen al final del desplazamiento: lo que se desvanece es ese margen, no un registro. */
+.mc-diseno .pl-tabla::after { content: ''; display: block; height: 28px; }
+@media (max-width: 700px) { .mc-diseno .pl-tabla::after { display: none; } }

@@ -5,9 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import Logo from '@base/components/Logo'
 import { LuLayoutDashboard, LuUsers, LuCalendarDays, LuPackage, LuCreditCard, LuFolderKanban, LuTable, LuActivity, LuIdCard, LuZap, LuFileText, LuTruck, LuCalendarClock } from 'react-icons/lu'
-import { COMPONENTES, AnimarContext, VelContext, FichaContext } from './vistas'
+import { AnimarContext, VelContext, FichaContext } from './vistas'
 import Ficha from './ficha'
-import { COMPONENTES_EXTRA } from './vistas-extra'
+import { Lienzo, VistaSeccion, hacerDibujar, conTamano } from './lienzo'
 import { useSeleccion } from './seleccion'
 import { IconoSeccion } from './iconos'
 import { ESTILOS } from './estilos'
@@ -20,7 +20,6 @@ import { tokensDeMarca, cargarFuentes } from './marca'
 import { plantillaEfectiva, acomodar, ejecutar, conPunto } from './edicion'
 import { FormRegistro } from './manual'
 import { campoTitulo } from './valores'
-import { Grafico, GRAFICOS } from './graficos'
 import '@base/crm.css'
 import '@base/crm-extra.css'
 import '@base/crm-captura.css'
@@ -33,8 +32,6 @@ const ICONOS = { usuarios: LuUsers, calendario: LuCalendarDays, caja: LuPackage,
 const GRUPOS = ['Estructura', 'Medición y equipo', 'Automatizaciones']
 // Cada plantilla tiene su color de firma, tomado de la misma paleta de marca (no se agregan colores).
 const ACENTO = { embudo: '#22d3a6', agenda: '#7c5cff', pedidos: '#f5a623', membresias: '#3fb8ff', proyectos: '#b06cff', simple: '#22d3a6' }
-// Bloques que se le pueden "pedir a Shifu" en el inicio: los de la propia plantilla más los que su estructura permite.
-const nombreBloque = (w, porId) => `${w.vista === 'grafico' ? GRAFICOS[w.opciones?.tipo]?.nombre || 'Gráfico' : TITULO_VISTA[w.vista] || w.vista} · ${porId[w.seccion]?.titulo ?? ''}`
 /** Cambia el DOM con una transición animada (View Transitions) cuando el navegador la soporta; si no, cambia directo. */
 // Si llega un cambio mientras otra transición sigue animando, la anterior se salta (el navegador la cancela y
 // rechaza sus promesas con "Transition was skipped"): es esperado, así que se atrapa y no ensucia la consola.
@@ -43,15 +40,6 @@ const conTransicion = (fn) => {
   const t = document.startViewTransition(() => flushSync(fn))
   for (const p of [t.ready, t.finished, t.updateCallbackDone]) p?.catch(() => {})
   return t
-}
-const ANCHO_COMPLETO = ['kpis', 'tablero', 'agenda']
-/** Tamaño inicial: resumen, tablero y agenda a lo ancho; lo demás a media columna; si queda uno solo en su fila, a lo ancho. */
-function conTamano(bloques) {
-  const medios = bloques.filter((b) => !ANCHO_COMPLETO.includes(b.vista))
-  const solo = medios.length % 2 === 1 ? medios[medios.length - 1].uid : null
-  return bloques.map((b) => ({ ...b,
-    ancho: b.ancho || (ANCHO_COMPLETO.includes(b.vista) || b.uid === solo ? 12 : 6),
-    alto: b.alto || (b.vista === 'kpis' ? 1 : b.vista === 'tablero' || b.vista === 'agenda' ? 2 : 2) }))
 }
 /** Logo del negocio. Si es oscuro y el tema es oscuro (o claro sobre claro), muestra una versión de alto contraste automática. */
 function LogoMarca({ src, tema }) {
@@ -68,7 +56,6 @@ function LogoMarca({ src, tema }) {
   const invertir = luz !== null && ((tema === 'oscuro' && luz < 0.35) || (tema === 'claro' && luz > 0.8))
   return <img className="pl-logo" src={src} alt="Logo del negocio" style={invertir ? { filter: tema === 'oscuro' ? 'brightness(0) invert(1)' : 'brightness(0)' } : undefined} />
 }
-const TITULO_VISTA = { kpis: 'Resumen', tablero: 'Por etapa', agenda: 'Próximos días', vencimientos: 'Por vencer', grafica: 'Gráfica', tabla: 'Lista', calendario_mes: 'Calendario', tablero_dinero: 'Por etapa y monto', cifra: 'Cifra', atencion: 'Atención', franjas: 'Por atender', matriz: 'Cruce' }
 
 export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBase, nivel = 'pocos', tema = 'oscuro', estilo = 'vivo-compacto', vel = 2.2, negocio = 'Mi negocio', pais = 'gt', recorrido = false, onBorrarEjemplos, onFinRecorrido, demo = false, mostrarPlantilla = true, inicial, chatInicial, onGuardar }) {
   const [enRecorrido, setEnRecorrido] = useState(recorrido)
@@ -166,23 +153,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   // Vista "sombría" (D25): sin datos, la misma vista se dibuja con datos fantasma, apagada, y un mensaje encima. Así cada
   // vista y gráfico muestra su forma (qué va a ver) sin fingir números: los datos fantasma no se leen ni se pueden tocar.
   const fantasma = useMemo(() => extenderDatos(datosEjemplo(plantillaBase, 'pocos'), plantillaBase, estructura, 'pocos'), [plantillaBase, estructura])
-  const dibujarCon = (s, nombreVista, opciones, d) => {
-    if (nombreVista === 'grafico') return <Grafico key={opciones?.tipo} tipo={opciones?.tipo} seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, d)} opciones={opciones || {}} />
-    const V = COMPONENTES[nombreVista] || COMPONENTES_EXTRA[nombreVista]
-    return V ? <V seccion={s} campos={camposDe(s, porId)} registros={registrosDe(s, d)} opciones={opciones || {}} datos={d} /> : null
-  }
-  const dibujar = (s, nombreVista, opciones) => {
-    // Un bloque cuya sección se acaba de quitar sigue unos instantes en pantalla (animación de salida): se dibuja vacío.
-    if (!s) return null
-    const sinDatos = (s.campos || s.fuente) && !registrosDe(s, datos).length
-    if (!sinDatos) return dibujarCon(s, nombreVista, opciones, datos)
-    return (
-      <div className="pl-sombra">
-        <div className="pl-sombra-forma" aria-hidden="true" inert="">{dibujarCon(s, nombreVista, opciones, fantasma)}</div>
-        <p className="pl-sombra-msg"><b>Todavía no hay datos</b><span>Usa «Agregar» en {s.titulo} o díselo a Shifu, y aparece aquí.</span></p>
-      </div>
-    )
-  }
+  const dibujar = hacerDibujar({ porId, datos, fantasma })
   return (
     <AnimarContext.Provider value={animado}><VelContext.Provider value={vel}><FichaContext.Provider value={abrirFicha}>
     <div ref={raiz} className={`mc pl${chatAbierto ? ' con-chat' : ''}${eligiendoPiezas ? ' eligiendo' : ''}`} data-tema={tema} data-estilo={def.base} data-densidad={def.densidad} data-plantilla={plantilla.id} style={{ '--acento': ACENTO[plantilla.id] || '#22d3a6', '--vel': vel, ...tokensDeMarca(marca, tema).vars }}>
@@ -220,14 +191,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
           {errores.length === 0 && vista === 'inicio' && (
             <>
               <div className="mc-cab"><div><h1>Inicio</h1><p>{plantilla.para}</p></div></div>
-              <div className="pl-inicio">
-                {bloques.map((w, i) => (
-                  <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}${saliendo.includes(w.uid) ? ' saliendo' : ''}${w.nuevo ? ' nuevo' : ''}`} data-bloque={w.uid} data-animar={w.nuevo && animado ? '' : undefined} style={{ '--i': w.nuevo ? 0 : i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
-                    <h2>{nombreBloque(w, porId)}</h2>
-                    {dibujar(porId[w.seccion], w.vista, w.opciones)}
-                  </section>
-                ))}
-              </div>
+              <Lienzo bloques={bloques} porId={porId} dibujar={dibujar} saliendo={saliendo} animado={animado} />
             </>
           )}
           {errores.length === 0 && actual && (
@@ -244,18 +208,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
                   onGuardar={(vals) => { const err = aMano('agregar_registro', { seccion: actual.id, valores: vals }, `agregó «${vals[ct.id]}» a ${actual.titulo}`, (id) => setTimeout(() => abrirFicha(actual.id, id), 50)); if (!err) setAgregando(null); return err }} />
               })()}
               {/* Pestaña con lienzo propio (D49): varias piezas como el inicio; sin lienzo, su vista de siempre. */}
-              {actual.pagina ? (
-                actual.pagina.length ? (
-                  <div className="pl-inicio pl-pagina">
-                    {actual.pagina.map((w, i) => (
-                      <section key={w.uid} className={`pl-bloque pl-bloque-${w.vista}`} data-bloque={w.uid} style={{ '--i': i, '--ancho': w.ancho, '--alto': w.alto, viewTransitionName: `pl-${w.uid}` }} data-ancho={w.ancho}>
-                        <h2>{nombreBloque(w, porId)}</h2>
-                        {dibujar(porId[w.seccion], w.vista, w.opciones)}
-                      </section>
-                    ))}
-                  </div>
-                ) : <div className="mc-vacio-grande pl-vacio pl-pagina-vacia"><b>Esta pestaña está en blanco</b><p>Pídele a Shifu qué quieres ver aquí: una lista, un tablero, un calendario, una gráfica…</p></div>
-              ) : <div className="pl-seccion">{dibujar(actual, actual.vista, actual.opciones)}</div>}
+              <VistaSeccion seccion={actual} porId={porId} dibujar={dibujar} />
             </>
           )}
         </main>

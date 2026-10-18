@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
@@ -11,6 +11,7 @@ import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
+import { DisenoCrm, conInicio, esVistaDiseno, marcoDiseno } from '../crm/plantillas' // sistema de diseño (D61), solo con VITE_CRM_DISENO=1
 import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb, LuTrash2, LuImagePlus, LuSparkles, LuSettings, LuPencil, LuDownload } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
@@ -906,7 +907,7 @@ export default function CrmPage() {
       rubro: brief.rubro ? etiqueta('rubro', brief.rubro) : 'tu negocio',
     }
   }, [brief])
-  const menu = useMemo(() => menuDe(brief?.rubro, crm?.secciones, crm?.ocultas, crm?.listas), [brief, crm?.secciones, crm?.ocultas, crm?.listas])
+  const menu = useMemo(() => conInicio(menuDe(brief?.rubro, crm?.secciones, crm?.ocultas, crm?.listas), crm), [brief, crm?.secciones, crm?.ocultas, crm?.listas, crm?.inicio]) // eslint-disable-line react-hooks/exhaustive-deps
   // El título sale del menú; si la sección está oculta (el CRM nace limpio) se usa su nombre de siempre, para que nunca quede vacío.
   const tit = (id) => (id === 'ajustes' ? 'Ajustes' : menu.find((m) => m.id === id)?.t ?? tituloSeccion(brief?.rubro, id, crm?.secciones))
   // Solo se dibuja una sección que está en el menú: si la pedida está oculta (o todavía no se eligió ninguna), se abre la primera. Así nunca se pinta una sección oculta ni un instante.
@@ -1014,9 +1015,10 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
   }
   const ir = (id) => { setVista(id); setBuscar('') }
   const vendedores = crm.vendedores
+  const conDiseno = esVistaDiseno(vista, crm)
 
   return (
-    <div className="mc" data-tema={tema}>
+    <div {...marcoDiseno(crm, tema)} data-tema={tema}>
       <header className="mc-top">
         <Link to="/" aria-label="Shifu"><Logo height={24} color="var(--tx)" /></Link>
         <span className="mc-negocio">{d.nombre}</span>
@@ -1053,13 +1055,18 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
               <button type="button" onClick={() => setBienvenida(false)} aria-label="Cerrar">✕</button>
             </aside>
           )}
-          {vista === 'contactos' && <Contactos lista={crm.contactos} total={crm.totalContactos} buscar={buscar} etapas={crm.etapas ?? ETAPAS} campos={crm.camposContacto ?? []} vendedores={vendedores} t={tit('contactos')} onAgregar={agregarContacto} onActualizar={actualizarContacto} onBorrar={(c) => aplicar(() => apiCrm.contactosEliminar(c.id))} onImportar={() => ir('importar')} />}
-          {vista === 'desarrollo' && <Desarrollo t={tit('desarrollo')} tareas={crm.tareas} onMover={(x, destino) => aplicar(() => apiCrm.tareasMover(x.id, destino))} onAgregar={agregarTarea} onActualizar={actualizarTarea} onBorrar={(x) => aplicar(() => apiCrm.tareasEliminar(x.id))} />}
+          {conDiseno && (
+            <Suspense fallback={<p className="mc-vacio">Cargando…</p>}>
+              <DisenoCrm crm={crm} vista={vista} titulos={{ contactos: tit('contactos'), desarrollo: tit('desarrollo') }} api={apiCrm} aplicar={aplicar} buscar={buscar} onImportar={(id) => (id === 'contactos' ? ir('importar') : setImportando(id))} />
+            </Suspense>
+          )}
+          {!conDiseno && vista === 'contactos' && <Contactos lista={crm.contactos} total={crm.totalContactos} buscar={buscar} etapas={crm.etapas ?? ETAPAS} campos={crm.camposContacto ?? []} vendedores={vendedores} t={tit('contactos')} onAgregar={agregarContacto} onActualizar={actualizarContacto} onBorrar={(c) => aplicar(() => apiCrm.contactosEliminar(c.id))} onImportar={() => ir('importar')} />}
+          {!conDiseno && vista === 'desarrollo' && <Desarrollo t={tit('desarrollo')} tareas={crm.tareas} onMover={(x, destino) => aplicar(() => apiCrm.tareasMover(x.id, destino))} onAgregar={agregarTarea} onActualizar={actualizarTarea} onBorrar={(x) => aplicar(() => apiCrm.tareasEliminar(x.id))} />}
           {vista === 'importar' && (
             <Importar existentes={crm.contactos.map((c) => c.n)} onVer={() => ir('contactos')}
               onImportar={(filas) => aplicar(() => apiCrm.contactosCrear(filas, 'Importado', `Importaste ${filas.length} ${filas.length === 1 ? 'contacto' : 'contactos'} desde tus notas o Excel`))} />
           )}
-          {vista.startsWith('l_') && crm.listas?.find((l) => l.id === vista) && (
+          {!conDiseno && vista.startsWith('l_') && crm.listas?.find((l) => l.id === vista) && (
             <Lista lista={crm.listas.find((l) => l.id === vista)} metodos={comoLlevaHoy(brief)} onImportar={() => setImportando(vista)} onSubirFoto={() => window.dispatchEvent(new Event('shifu:subir-foto'))} onAgregar={(id, valores) => aplicar(() => apiCrm.registrosCrear(id, valores))}
               onActualizar={actualizarRegistro} onQuitarImportacion={quitarImportacion} onQuitarTodas={quitarTodasLasImportaciones} onVaciar={vaciarLista}
               onBorrar={(id, rid) => aplicar(() => apiCrm.registrosEliminar(id, rid))} />
