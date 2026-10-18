@@ -2,7 +2,7 @@
  * vista o su lienzo propio, y la ficha de un registro. Los datos salen del `crm` de la API (desdeCrm) y cada cambio a mano
  * va por las MISMAS funciones de la API que usa CrmPage (aplicar → setCrm): esta pantalla no guarda nada por su cuenta.
  * El diseño y la estructura no se cambian a mano (D56): solo agregar, editar y eliminar registros. */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LuPlus, LuUpload } from 'react-icons/lu'
 import { AnimarContext, VelContext, FichaContext } from '@lab/plantillas/vistas'
 import Ficha from '@lab/plantillas/ficha'
@@ -13,22 +13,34 @@ import { datosEjemplo } from '@lab/plantillas/datosEjemplo'
 import { acomodar } from '@lab/plantillas/edicion'
 import { fijarRegion } from '@lab/plantillas/regional'
 import { cargarFuentes } from '@lab/plantillas/marca'
+import { useSeleccion } from '@lab/plantillas/seleccion'
+import Recorrido, { pasosDe } from '@lab/plantillas/Recorrido'
+import { auth } from '../../api'
 import '@lab/plantillas/plantillas.css'
 import '@lab/plantillas/estilos.css'
 import '@lab/plantillas/marca-base.css'
 import './diseno.css'
-import { desdeCrm, contactoDesdeValores, tareaDesdeValores } from './desdeCrm'
+import { desdeCrm, contactoDesdeValores, tareaDesdeValores, contarEjemplos } from './desdeCrm'
+import { fijarPiezas } from './seleccion'
 
 const VEL = 2.2 // la animación lenta decidida en el laboratorio (estilo Vivo + Compacto)
 const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 const llenos = (vals) => Object.fromEntries(Object.entries(vals).filter(([, v]) => String(v ?? '').trim() !== ''))
 
+/* El recorrido (D24) sale una sola vez por persona: quién ya lo vio queda en el navegador ({ correo: fecha }). */
+const CLAVE_RECORRIDO = 'shifu_recorrido_visto'
+const quien = () => auth.usuario()?.correo || 'local'
+const vistos = () => { try { return JSON.parse(localStorage.getItem(CLAVE_RECORRIDO)) || {} } catch { return {} } }
+const yaVisto = () => !!vistos()[quien()]
+const marcarVisto = () => { try { localStorage.setItem(CLAVE_RECORRIDO, JSON.stringify({ ...vistos(), [quien()]: new Date().toISOString() })) } catch { /* sin almacenamiento */ } }
+
 /**
  * crm: el de la API · vista: 'inicio' | 'contactos' | 'desarrollo' | id de una lista · titulos: nombres del menú
  * api: las funciones de `../../api` (crm) · aplicar(peticion): la de CrmPage (setCrm + aviso si falla; devuelve true/false)
  * onImportar(secId): abre la importación de esa sección · buscar: lo escrito en el buscador de arriba (filtra contactos)
+ * setChat(abierto): abre o cierra el chat de Shifu (lo elegido en el lienzo lo abre; el recorrido lo espera cerrado)
  */
-export default function DisenoCrm({ crm, vista, titulos, api, aplicar, onImportar, buscar = '' }) {
+export default function DisenoCrm({ crm, vista, titulos, api, aplicar, onImportar, buscar = '', setChat }) {
   fijarRegion(crm.brief?.ubicacion?.pais || 'gt')
   const tc = titulos?.contactos, td = titulos?.desarrollo
   const d = useMemo(() => desdeCrm(crm, { titulos: { contactos: tc, desarrollo: td }, acomodar }), [crm, tc, td])
@@ -50,6 +62,31 @@ export default function DisenoCrm({ crm, vista, titulos, api, aplicar, onImporta
   const cerrarFicha = useCallback(() => setAbierta(null), [])
   const [agregando, setAgregando] = useState(null)
   useEffect(() => { setAgregando(null); setAbierta(null) }, [vista])
+
+  // Elegir piezas del inicio o del lienzo de una sección para editarlas con Shifu (D39, seleccion.jsx del laboratorio):
+  // lo elegido espera en `seleccion.js` hasta el siguiente mensaje y el chat se abre para decir qué hacer con ello.
+  const raiz = useRef(null)
+  const { modo: eligiendo, barra: barraSeleccion } = useSeleccion(raiz)
+  useEffect(() => {
+    const marco = raiz.current?.closest('.pl')
+    marco?.classList.toggle('eligiendo', eligiendo) // .pl.eligiendo: las piezas tiemblan y un toque suma o quita (plantillas.css)
+    return () => marco?.classList.remove('eligiendo')
+  }, [eligiendo])
+  useEffect(() => {
+    const llegan = (e) => { fijarPiezas(e.detail); setChat?.(true) }
+    window.addEventListener('lab-piezas', llegan)
+    return () => window.removeEventListener('lab-piezas', llegan)
+  }, [setChat])
+
+  // Recorrido de primera entrada (D24) de un CRM de esquema 2 que nace con datos de ejemplo: una sola vez por persona.
+  // Su último paso ofrece borrarlos (la ruta de quitar ejemplos, que deja punto: se puede deshacer en «Cambios»).
+  const [recorrido, setRecorrido] = useState(() => crm.esquema === 2 && contarEjemplos(crm) > 0 && !yaVisto())
+  const enRecorrido = recorrido && vista === 'inicio' && d.bloques.length > 0
+  useEffect(() => { if (enRecorrido) setChat?.(false) }, [enRecorrido, setChat]) // el chat abierto tapaba lo que se señala (prueba de cliente del laboratorio)
+  const finRecorrido = (borrar) => {
+    marcarVisto(); setRecorrido(false); setChat?.(true)
+    if (borrar) aplicar(() => api.quitarEjemplos())
+  }
 
   /* Datos a mano → la ruta de la API que corresponde (§2). Devuelve null si salió bien o el texto del problema
    * (el aviso con el detalle del servidor ya lo muestra CrmPage). */
@@ -111,7 +148,7 @@ export default function DisenoCrm({ crm, vista, titulos, api, aplicar, onImporta
 
   return (
     <AnimarContext.Provider value><VelContext.Provider value={VEL}><FichaContext.Provider value={abrirFicha}>
-      <div className="mc-diseno" key={vista} data-animar="">
+      <div className="mc-diseno" ref={raiz}><div className="mc-diseno" key={vista} data-animar="">
         {vista === 'inicio' && (
           <>
             <div className="mc-cab"><div><h1>Inicio</h1><p>Lo más importante de {crm.brief?.nombre || 'tu negocio'}, de un vistazo. Toca cualquier registro para ver su ficha.</p></div></div>
@@ -135,7 +172,9 @@ export default function DisenoCrm({ crm, vista, titulos, api, aplicar, onImporta
             <VistaSeccion seccion={actual} porId={porId} dibujar={dibujar} />
           </>
         )}
-      </div>
+      </div></div>
+      {barraSeleccion}
+      {enRecorrido && <Recorrido pasos={pasosDe(plantilla, d.bloques, porId)} onSaltar={() => finRecorrido(false)} onTerminar={() => finRecorrido(true)} />}
       {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} onDato={onDato} />}
     </FichaContext.Provider></VelContext.Provider></AnimarContext.Provider>
   )

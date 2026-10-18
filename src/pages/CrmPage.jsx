@@ -11,7 +11,7 @@ import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { DisenoCrm, conInicio, esVistaDiseno, marcoDiseno } from '../crm/plantillas' // sistema de diseño (D61), solo con VITE_CRM_DISENO=1
+import { ChatDiseno, DisenoCrm, conInicio, esVistaDiseno, marcoDiseno, tomarSeleccion } from '../crm/plantillas' // sistema de diseño (D61), solo con VITE_CRM_DISENO=1
 import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb, LuTrash2, LuImagePlus, LuSparkles, LuSettings, LuPencil, LuDownload } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
@@ -739,7 +739,7 @@ function sugerenciasDe(contactos) {
   return primero ? [...base, ['Medición', `Mueve a ${primero} a Cliente`], ['Estructura', `Elimina a ${primero}`]] : base
 }
 
-function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar }) {
+function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, diseno }) {
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null) // captura o imagen pegada, lista para mandar con el mensaje
   const [eligiendo, setEligiendo] = useState(false)
@@ -812,6 +812,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
           <div className="mc-chat-sug" aria-label="Ideas para empezar">
             {sugerencias.map(([p, s]) => <button key={s} type="button" disabled={escribiendo} onClick={() => onEnviar(s)}><em>{p}</em>{s}</button>)}
           </div>
+          {diseno}
           {(imagen || errorImg) && (
             <div className="mc-adjunto" role="status">
               {imagen && <img src={imagen.url} alt="Imagen lista para enviar" />}
@@ -954,11 +955,12 @@ export default function CrmPage() {
   const enviar = async (texto, imagen) => {
     const t = texto.trim()
     if (!t && !imagen) return
-    setMensajes((l) => [...l, mensaje('yo', t, imagen?.url)])
+    const sel = tomarSeleccion() // piezas elegidas en el lienzo (D61); sin la bandera, null
+    setMensajes((l) => [...l, mensaje('yo', (sel?.prefijo || '') + t, imagen?.url)])
     setEscribiendo(true)
     try {
       const historial = mensajes.slice(-16).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 500) }))
-      const r = await apiChat.enviar(t, { pendiente: pendiente.current, imagen: imagen?.url, seccion: tit(vista), historial })
+      const r = await apiChat.enviar(t, { pendiente: pendiente.current, imagen: imagen?.url, seccion: tit(vista), historial, ...sel?.contexto })
       pendiente.current = r.pendiente || null
       if (r.modo) setModo(r.modo)
       if (r.crm) setCrm(r.crm)
@@ -1057,7 +1059,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
           )}
           {conDiseno && (
             <Suspense fallback={<p className="mc-vacio">Cargando…</p>}>
-              <DisenoCrm crm={crm} vista={vista} titulos={{ contactos: tit('contactos'), desarrollo: tit('desarrollo') }} api={apiCrm} aplicar={aplicar} buscar={buscar} onImportar={(id) => (id === 'contactos' ? ir('importar') : setImportando(id))} />
+              <DisenoCrm crm={crm} vista={vista} titulos={{ contactos: tit('contactos'), desarrollo: tit('desarrollo') }} api={apiCrm} aplicar={aplicar} buscar={buscar} setChat={setChatAbierto} onImportar={(id) => (id === 'contactos' ? ir('importar') : setImportando(id))} />
             </Suspense>
           )}
           {!conDiseno && vista === 'contactos' && <Contactos lista={crm.contactos} total={crm.totalContactos} buscar={buscar} etapas={crm.etapas ?? ETAPAS} campos={crm.camposContacto ?? []} vendedores={vendedores} t={tit('contactos')} onAgregar={agregarContacto} onActualizar={actualizarContacto} onBorrar={(c) => aplicar(() => apiCrm.contactosEliminar(c.id))} onImportar={() => ir('importar')} />}
@@ -1083,7 +1085,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
         <ImportarALista lista={crm.listas.find((l) => l.id === importando)} onImportar={(filas, lote) => importarLote(importando, filas, lote)} onQuitar={(loteId) => quitarImportacion(importando, loteId)} onCerrar={() => setImportando(null)} />
       )}
       {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
-      <ChatShifu modo={modo} sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} />
+      <ChatShifu modo={modo} sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} diseno={ChatDiseno && <ChatDiseno crm={crm} aplicar={aplicar} />} />
     </div>
   )
 }
