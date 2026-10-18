@@ -305,6 +305,7 @@
    "summary_trigger_tokens": 0,
    "tool_repeat_limit": 8,
    "turn_max_searches": 6,
+   "turn_max_seconds": 0.0,
    "turn_token_cap": 150000,
    "use_bigtool": false
   },
@@ -366,6 +367,7 @@
    "SUMMARY_TRIGGER_TOKENS",
    "TOOL_REPEAT_LIMIT",
    "TURN_MAX_SEARCHES",
+   "TURN_MAX_SECONDS",
    "TURN_TOKEN_CAP",
    "USE_BIGTOOL"
   ]

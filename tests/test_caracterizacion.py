@@ -648,6 +648,7 @@ CONFIG_8857B30_SHA256 = "8d474b5b4b7e6c2be0da7d1615c4f9a8b2cc00d46f271593e966025
 NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la lista crece commit a commit
     "LLM_TIMEOUT_SECONDS": ("llm_timeout_seconds", 300.0),
     "LLM_MAX_RETRIES": ("llm_max_retries", 2),
+    "TURN_MAX_SECONDS": ("turn_max_seconds", 0.0),
 }
 
 

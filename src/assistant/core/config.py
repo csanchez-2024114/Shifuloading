@@ -88,6 +88,9 @@ class Settings:
     # corta llamadas colgadas (antes, el cliente de OpenAI esperaba hasta 600 s). 2 reintentos = lo de antes.
     llm_timeout_seconds: float = 300.0  # 0 = sin tope propio (el del cliente de OpenAI)
     llm_max_retries: int = 2
+    # P4.3: tiempo máximo de un mensaje (segundos). Al pasarlo, el turno se cierra en la siguiente frontera de paso,
+    # igual que con TURN_TOKEN_CAP (una respuesta final en curso termina). 0 = apagado (default: sin cambio).
+    turn_max_seconds: float = 0.0
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -149,6 +152,7 @@ class Settings:
             login_lock_minutes=_num("LOGIN_LOCK_MINUTES", "10"),
             llm_timeout_seconds=_num("LLM_TIMEOUT_SECONDS", "300", float),
             llm_max_retries=_num("LLM_MAX_RETRIES", "2"),
+            turn_max_seconds=_num("TURN_MAX_SECONDS", "0", float),
         )
 
     def context_window(self) -> int:

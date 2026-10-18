@@ -10,6 +10,7 @@ REQUIRED_TEXTS = (
     "agent.cut_note",             # respuesta cortada por MAX_TOKENS
     "agent.unverified_note",      # ANSWER_VERIFY no corrió por TURN_TOKEN_CAP
     "agent.turn_cap",             # mensaje abortado por TURN_TOKEN_CAP; {cap}
+    "agent.turn_time_cap",        # mensaje abortado por TURN_MAX_SECONDS; {seconds}
     "agent.recursion_limit",      # RECURSION_LIMIT; {limit}
     "agent.stream_error",         # error inesperado del stream (el detalle va solo al log)
     "agent.compact_unsupported",  # compactación manual en un agente sin compactador

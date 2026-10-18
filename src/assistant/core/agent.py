@@ -815,6 +815,10 @@ def turn_cap_msg(cap: int) -> str:
     return tr("agent.turn_cap", cap=f"{cap:,}".replace(",", tr("format.thousands_sep")))
 
 
+def turn_time_msg(seconds: float) -> str:
+    return tr("agent.turn_time_cap", seconds=f"{seconds:g}")
+
+
 def _step_kind(chunk) -> str | None:
     """Qué paso del grafo raíz cierra este chunk: "final" (el modelo respondió sin herramientas), "tools" (el modelo
     pidió herramientas), "other" (otro nodo, p. ej. herramientas) o None (tokens, avisos o subgrafos)."""
@@ -1005,6 +1009,8 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
     config["callbacks"] = [counter]  # cuenta todas las llamadas del mensaje (agente, investigador, búsquedas...)
     _ACTIVE_TURNS[thread_id] = counter
     cap = settings.turn_token_cap
+    # TURN_MAX_SECONDS: mismo cierre que el tope de tokens. El reloj empieza en cada /chat o /resume.
+    deadline = time.monotonic() + settings.turn_max_seconds if settings.turn_max_seconds else None
     try:
         stream = agent.stream(
             payload,
@@ -1018,12 +1024,14 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
             # espera al cierre del paso: si el modelo ya dio la respuesta final, el mensaje termina solo (prueba real:
             # el aviso se pegaba detrás de una respuesta completa); si pidió herramientas o terminó otro nodo, se
             # aborta antes de la siguiente llamada. Los tokens de la llamada que cruzó el tope siguen llegando.
-            step = _step_kind(chunk) if cap and counter.total >= cap and not counter.landing else None
+            over_tokens = bool(cap) and counter.total >= cap
+            over_time = deadline is not None and time.monotonic() >= deadline
+            step = _step_kind(chunk) if (over_tokens or over_time) and not counter.landing else None
             if step == "final":
                 counter.landing = True
             elif step in ("tools", "other"):
                 stream.close()  # aborta el turno: no se lanzan más llamadas
-                note = turn_cap_msg(cap)
+                note = turn_cap_msg(cap) if over_tokens else turn_time_msg(settings.turn_max_seconds)
                 _close_aborted_turn(agent, config, note)
                 yield {"type": "token", "text": note}
                 break
