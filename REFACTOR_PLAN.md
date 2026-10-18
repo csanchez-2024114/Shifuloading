@@ -1,6 +1,10 @@
 # REFACTOR_PLAN: núcleo de agente + perfiles
 
-Estado: **aprobado** (2026-10-17), con las decisiones de la sección 8. Fase 2 en curso.
+Estado: **aprobado** (2026-10-17), con las decisiones de la sección 8.
+
+- Fase 2: terminada (`cd42cc0`).
+- Fase 3: terminada (`28bb3c8`…`0b68973`). Huella intacta; las constantes que cambiaron de módulo se leen con el mapa de reubicación (`MOVED_CONSTANTS` en `tests/test_caracterizacion.py`).
+- Siguiente: Fase 4.
 Rama `refactor/core-profiles`. Línea base: 269 tests en `main`; 346 con los de caracterización (commit `05773c4`).
 
 Principio rector: **mover primero y cambiar después**. En la Fase 2, cada archivo se mueve 1:1 y su nombre viejo sigue apuntando al **mismo objeto de módulo**. Los cortes de los módulos mixtos (sacar textos, reglas y herramientas de dominio) llegan en las Fases 3 y 4, con la huella (`tests/snapshots/perfil_por_defecto.json`) como juez: con el perfil por defecto, el modelo, la UI y el cliente SSE deben recibir exactamente lo mismo.

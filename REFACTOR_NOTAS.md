@@ -22,7 +22,7 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
   - dice `recursion_limit: 25` y `model_call_limit: 15`; los defaults reales son 100 y 0 (`config.py:96-97`);
   - la firma de `make_investigador` y la pila de `build_agent` que describe no son las actuales.
 
-  La sección de eventos SSE sí coincide con el código. El refactor no cambiará su formato. ¿Se corrige la parte desactualizada en un commit de docs aparte? (a confirmar)
+  La sección de eventos SSE sí coincide con el código. El refactor no cambiará su formato. Se corrige en un commit de docs aparte **después de la Fase 6**, con los valores tomados del código.
 - **Concurrencia en un mismo hilo:** `_ACTIVE_TURNS[thread_id]` se pisa con dos `/chat` simultáneos (`agent.py:872`, `agent.py:1015`, `agent.py:1081`).
 - **Estado de proceso** (`_ACTIVE_TURNS`, `_PAUSED_SPEND`, `tools._TURNS`): no escala a varios workers.
 - **Bigtool:**
@@ -32,4 +32,14 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
 - **La UI depende de los mensajes en inglés del núcleo** (`toolOutputLabel`). Un perfil que cambie esos mensajes rompe las etiquetas. Tarea aparte: etiquetas de la UI por perfil (`labels.json`) y una cáscara de UI genérica.
 - **Defaults de configuración por perfil** (Q6): descartado en esta tarea; mejora posterior si hace falta.
 - **`check_python_syntax` es candidato a pack** (Q4): en este refactor se queda en `core/tools.py` y fuera de `generic`. Moverlo a `packs/tools/` cuando haya un segundo perfil que lo quiera.
-- **`CONTRATO.md`**: se corrige en un commit de docs aparte después de la Fase 6, con valores tomados del código (ver arriba).
+
+## Anotado en la Fase 3 (interfaz de perfil)
+
+- **`package-data`:** `system.md` e `index.html` viven ahora dentro del paquete (`src/assistant/profiles/default/`). La instalación editable por ruta (la de este proyecto) los encuentra; un *wheel* necesitaría declararlos en `pyproject.toml`. Sin cambio hasta que haga falta.
+- **`ToolPolicy.effect` no se aplica todavía:** es metadato (`send` para el email, `read` para `deep_research`). Usarlo para pedir aprobación, por ejemplo en `crm_create_order`, sería un cambio de comportamiento.
+- **`AGENT_PROFILE` vive fuera de `Settings`:** la lee `core/profile.py`, así la lista de variables de la huella no cambia. Falta documentarla en README y `.env.example` (Fase 6).
+- **Nombres antiguos en español todavía literales en `core/`:** `context.PRUNE_KEEP_TOOLS`, `memory.turn_saves` y `tools.extra_search`. Pasan a la normalización con `profile.legacy_tool_names` en la Fase 4, y ese commit cambiará el valor de `context.PRUNE_KEEP_TOOLS` en la huella.
+- **Perfil activo frente a perfil explícito:** `earlier_research` y `research_needs_confirmation` (y la aprobación de `deep_research` que las usa) leen los nombres antiguos del perfil **activo** (`AGENT_PROFILE`), no del que se pasa a `build_agent`. Da igual mientras el perfil explícito sea el activo; revisarlo si un proceso llega a servir dos perfiles.
+- **Bigtool:** `BIGTOOL_PROMPT` sigue como default del núcleo, aún sin campo en el perfil, y el `interrupt()` de `deep_research` sigue fijo en `core/extensions/bigtool.py` (es una herramienta del núcleo).
+- **`DeprecationWarning`:** son 15 (eran 13). Los 2 nuevos son los alias `assistant.apps` y `assistant.extra_tools`, que siguen usando `test_tool_spec` y `test_extra_tools`. No hay filtros.
+
