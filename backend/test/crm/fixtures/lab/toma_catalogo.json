@@ -1,0 +1,3651 @@
+{
+ "vistas": {
+  "tabla": {
+   "requiere": {},
+   "opcional": {
+    "filtro": null,
+    "orden": null,
+    "limite": null
+   }
+  },
+  "kpis": {
+   "requiere": {},
+   "opcional": {
+    "por": [
+     "estado"
+    ],
+    "suma": [
+     "dinero",
+     "numero"
+    ],
+    "vencen": [
+     "fecha"
+    ],
+    "hoy": [
+     "fecha"
+    ],
+    "estado": [
+     "estado"
+    ],
+    "excluir": null
+   }
+  },
+  "tablero": {
+   "requiere": {
+    "por": [
+     "estado"
+    ]
+   },
+   "opcional": {
+    "titulo": null,
+    "detalle": null
+   }
+  },
+  "agenda": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "hora": [
+     "hora"
+    ],
+    "titulo": null,
+    "detalle": null
+   }
+  },
+  "vencimientos": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "titulo": null,
+    "detalle": null,
+    "estado": [
+     "estado"
+    ],
+    "excluir": null
+   }
+  },
+  "grafica": {
+   "requiere": {},
+   "opcional": {
+    "por": [
+     "estado"
+    ],
+    "fecha": [
+     "fecha"
+    ],
+    "suma": [
+     "dinero",
+     "numero"
+    ]
+   }
+  },
+  "grafico": {
+   "requiere": {},
+   "libre": true
+  },
+  "calendario_mes": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "titulo": null,
+    "estado": [
+     "estado"
+    ],
+    "mes": "libre"
+   }
+  },
+  "tablero_dinero": {
+   "requiere": {
+    "por": [
+     "estado"
+    ],
+    "suma": [
+     "dinero",
+     "numero"
+    ]
+   },
+   "opcional": {
+    "titulo": null,
+    "detalle": null,
+    "dias_en": [
+     "fecha"
+    ]
+   }
+  },
+  "cifra": {
+   "requiere": {},
+   "opcional": {
+    "funcion": "libre",
+    "valor": [
+     "dinero",
+     "numero"
+    ],
+    "filtro": "libre",
+    "meta": "libre",
+    "fecha": [
+     "fecha"
+    ],
+    "periodo": "libre",
+    "ayuda": "libre"
+   }
+  },
+  "atencion": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "estado": [
+     "estado"
+    ],
+    "excluir": "libre"
+   }
+  },
+  "franjas": {
+   "requiere": {
+    "fecha": [
+     "fecha"
+    ]
+   },
+   "opcional": {
+    "estado": [
+     "estado"
+    ],
+    "titulo": null,
+    "detalle": null,
+    "urgentes": "libre"
+   }
+  },
+  "matriz": {
+   "requiere": {
+    "filas": [
+     "texto"
+    ],
+    "columnas": [
+     "estado"
+    ]
+   },
+   "opcional": {}
+  },
+  "feed": {
+   "datos": false
+  },
+  "equipo": {
+   "datos": false
+  },
+  "interruptores": {
+   "datos": false
+  }
+ },
+ "graficos": {
+  "columnas": {
+   "nombre": "Columnas"
+  },
+  "columnas-apiladas": {
+   "nombre": "Columnas apiladas"
+  },
+  "columnas-100": {
+   "nombre": "Columnas 100 %"
+  },
+  "barras": {
+   "nombre": "Barras horizontales"
+  },
+  "barras-apiladas": {
+   "nombre": "Barras apiladas"
+  },
+  "barra-100": {
+   "nombre": "Barra 100 %"
+  },
+  "linea": {
+   "nombre": "Línea"
+  },
+  "linea-area": {
+   "nombre": "Línea con área"
+  },
+  "area-apilada": {
+   "nombre": "Área apilada"
+  },
+  "linea-tendencia": {
+   "nombre": "Línea con tendencia"
+  },
+  "dona": {
+   "nombre": "Dona"
+  },
+  "pastel": {
+   "nombre": "Pastel"
+  },
+  "anillos": {
+   "nombre": "Anillos concéntricos"
+  },
+  "medidor": {
+   "nombre": "Medidor"
+  },
+  "meta": {
+   "nombre": "Anillo de meta"
+  },
+  "embudo": {
+   "nombre": "Embudo"
+  },
+  "arbol": {
+   "nombre": "Mapa de árbol"
+  },
+  "radar": {
+   "nombre": "Radar"
+  },
+  "dispersion": {
+   "nombre": "Dispersión"
+  },
+  "burbujas": {
+   "nombre": "Burbujas"
+  },
+  "histograma": {
+   "nombre": "Histograma"
+  },
+  "caja": {
+   "nombre": "Caja y bigotes"
+  },
+  "calendario": {
+   "nombre": "Mapa de calor por día"
+  },
+  "cascada": {
+   "nombre": "Cascada"
+  },
+  "kpi": {
+   "nombre": "KPI con tendencia"
+  },
+  "posiciones": {
+   "nombre": "Tabla de posiciones"
+  },
+  "estadisticas": {
+   "nombre": "Estadísticas"
+  },
+  "paleta": {
+   "nombre": "Paleta (lollipop)"
+  },
+  "combo": {
+   "nombre": "Columnas + acumulado"
+  },
+  "pareto": {
+   "nombre": "Pareto"
+  },
+  "escalones": {
+   "nombre": "Escalones"
+  },
+  "pendiente": {
+   "nombre": "Pendiente (mes anterior → actual)"
+  },
+  "multiples": {
+   "nombre": "Múltiplos pequeños"
+  },
+  "waffle": {
+   "nombre": "Waffle 10 × 10"
+  },
+  "rosa": {
+   "nombre": "Rosa polar"
+  },
+  "media-dona": {
+   "nombre": "Media dona"
+  },
+  "sol": {
+   "nombre": "Sol (2 niveles)"
+  },
+  "puntos": {
+   "nombre": "Puntos por categoría"
+  },
+  "calor-hora": {
+   "nombre": "Calor día × hora"
+  },
+  "gantt": {
+   "nombre": "Línea de tiempo"
+  },
+  "bala": {
+   "nombre": "Bala contra meta"
+  },
+  "progreso": {
+   "nombre": "Barras de progreso"
+  },
+  "dos-kpis": {
+   "nombre": "Dos KPIs"
+  }
+ },
+ "fuentes": [
+  "Inter",
+  "Poppins",
+  "Nunito",
+  "Montserrat",
+  "DM Sans",
+  "Rubik",
+  "Work Sans",
+  "Lato",
+  "Playfair Display",
+  "Lora",
+  "Merriweather",
+  "Outfit"
+ ],
+ "inicio_inicial": [
+  {
+   "uid": "b0",
+   "vista": "kpis",
+   "seccion": "miembros",
+   "opciones": {
+    "por": "estado"
+   },
+   "ancho": 12,
+   "alto": 1
+  }
+ ],
+ "herramientas": [
+  {
+   "type": "function",
+   "function": {
+    "name": "abrir_toma",
+    "description": "Abre la toma de requerimientos cuando la persona pide DISEÑAR o REHACER la pantalla de inicio o un CRM completo. NO uses esto para cambios puntuales (mover, achicar, un solo bloque): esos van directo con las herramientas de pantalla.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "objetivo": {
+       "type": "string",
+       "description": "solo si lo dijo en este mensaje"
+      }
+     },
+     "required": []
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_bloque",
+    "description": "FICHA DE DISEÑO: anota UN bloque que la persona pidió en ESTE mensaje, dicho en simple. que = resumen | grafica | lista | tablero | por_vencer | agenda; seccion = la parte del menú (nombre). grafico = tipo opcional SOLO si lo nombró (dona, barras, columnas, linea…). Llama una vez por cada cosa que pidió. No preguntes detalles técnicos: el código elige lo razonable.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "que": {
+       "type": "string",
+       "enum": [
+        "resumen",
+        "grafica",
+        "lista",
+        "tablero",
+        "por_vencer",
+        "agenda"
+       ]
+      },
+      "seccion": {
+       "type": "string"
+      },
+      "grafico": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "que",
+      "seccion"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "quitar_de_ficha",
+    "description": "Quita de la ficha el bloque número N (como aparece en el resumen) cuando la persona lo pide.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "numero": {
+       "type": "integer",
+       "minimum": 1
+      }
+     },
+     "required": [
+      "numero"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_ficha",
+    "description": "Anota en la ficha de diseño UN dato que la persona dijo explícitamente en ESTE mensaje (nunca inventes ni completes). Si dudas, usa anotar_nota. Campos: objetivo, seccion, bloque {vista, seccion, opciones?, tamano?}, marca_primario, marca_secundario, tipografia, restriccion.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "campo": {
+       "type": "string"
+      },
+      "valor": {
+       "description": "string u objeto según el campo"
+      }
+     },
+     "required": [
+      "campo",
+      "valor"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_nota",
+    "description": "Guarda una idea o duda que la persona mencionó pero que no es un dato firme de la ficha.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "texto": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "texto"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cerrar_toma",
+    "description": "Cierra la toma si la persona abandona el diseño o ya no quiere seguir con la ficha.",
+    "parameters": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   }
+  }
+ ],
+ "bloqueadas": [
+  "agregar_bloque",
+  "cambiar_visual",
+  "cambiar_tamano",
+  "mover_bloque",
+  "quitar_bloque",
+  "cambiar_rangos",
+  "cambiar_marca",
+  "usar_logo",
+  "restablecer_marca",
+  "crear_seccion",
+  "agregar_campo",
+  "renombrar_seccion",
+  "quitar_seccion",
+  "cambiar_ficha",
+  "cambiar_tarjeta",
+  "quitar_campo",
+  "renombrar_campo",
+  "cambiar_opciones_estado"
+ ],
+ "uid_base": "mvb9w000",
+ "plantillas": {
+  "membresias": {
+   "secciones": [
+    {
+     "id": "miembros",
+     "titulo": "Miembros",
+     "grupo": 0,
+     "icono": "usuarios",
+     "vista": "tabla",
+     "campos": [
+      {
+       "id": "nombre",
+       "nombre": "Nombre",
+       "tipo": "texto"
+      },
+      {
+       "id": "plan",
+       "nombre": "Plan",
+       "tipo": "texto"
+      },
+      {
+       "id": "alta",
+       "nombre": "Alta",
+       "tipo": "fecha"
+      },
+      {
+       "id": "vence",
+       "nombre": "Vence",
+       "tipo": "fecha"
+      },
+      {
+       "id": "estado",
+       "nombre": "Estado",
+       "tipo": "estado",
+       "opciones": [
+        "Activa",
+        "Pausada",
+        "Cancelada"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "vencimientos",
+     "titulo": "Vencimientos",
+     "grupo": 0,
+     "icono": "reloj",
+     "vista": "vencimientos",
+     "fuente": "miembros",
+     "opciones": {
+      "fecha": "vence",
+      "titulo": "nombre",
+      "detalle": "plan",
+      "dias": 30,
+      "estado": "estado",
+      "excluir": [
+       "Cancelada"
+      ]
+     }
+    },
+    {
+     "id": "pagos",
+     "titulo": "Pagos",
+     "grupo": 1,
+     "icono": "tarjeta",
+     "vista": "tabla",
+     "campos": [
+      {
+       "id": "miembro",
+       "nombre": "Miembro",
+       "tipo": "texto"
+      },
+      {
+       "id": "monto",
+       "nombre": "Monto",
+       "tipo": "dinero"
+      },
+      {
+       "id": "fecha",
+       "nombre": "Fecha",
+       "tipo": "fecha"
+      }
+     ]
+    },
+    {
+     "id": "actividad",
+     "titulo": "Historial",
+     "grupo": 1,
+     "icono": "actividad",
+     "vista": "feed"
+    },
+    {
+     "id": "equipo",
+     "titulo": "Equipo",
+     "grupo": 1,
+     "icono": "equipo",
+     "vista": "equipo"
+    },
+    {
+     "id": "automatizaciones",
+     "titulo": "Automatizaciones",
+     "grupo": 2,
+     "icono": "rayo",
+     "vista": "interruptores"
+    }
+   ],
+   "compatibles": {
+    "miembros": [
+     {
+      "id": "columnas",
+      "nombre": "Columnas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "mes",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "columnas-apiladas",
+      "nombre": "Columnas apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "columnas-100",
+      "nombre": "Columnas 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "barras",
+      "nombre": "Barras horizontales",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "barras-apiladas",
+      "nombre": "Barras apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "filas": "nombre",
+       "funcion": "conteo",
+       "meses": 6
+      }
+     },
+     {
+      "id": "barra-100",
+      "nombre": "Barra 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea",
+      "nombre": "Línea",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea-area",
+      "nombre": "Línea con área",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "area-apilada",
+      "nombre": "Área apilada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "linea-tendencia",
+      "nombre": "Línea con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "ventana": 3
+      }
+     },
+     {
+      "id": "dona",
+      "nombre": "Dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pastel",
+      "nombre": "Pastel",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "anillos",
+      "nombre": "Anillos concéntricos",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "medidor",
+      "nombre": "Medidor",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "objetivo": null
+      }
+     },
+     {
+      "id": "meta",
+      "nombre": "Anillo de meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meta": null
+      }
+     },
+     {
+      "id": "embudo",
+      "nombre": "Embudo",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "modo": "acumulado",
+       "excluir": []
+      }
+     },
+     {
+      "id": "arbol",
+      "nombre": "Mapa de árbol",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 12
+      }
+     },
+     {
+      "id": "radar",
+      "nombre": "Radar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "calendario",
+      "nombre": "Mapa de calor por día",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "semanas": 16,
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "cascada",
+      "nombre": "Cascada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "kpi",
+      "nombre": "KPI con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "posiciones",
+      "nombre": "Tabla de posiciones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 5
+      }
+     },
+     {
+      "id": "paleta",
+      "nombre": "Paleta (lollipop)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 8
+      }
+     },
+     {
+      "id": "combo",
+      "nombre": "Columnas + acumulado",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "pareto",
+      "nombre": "Pareto",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 10
+      }
+     },
+     {
+      "id": "escalones",
+      "nombre": "Escalones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pendiente",
+      "nombre": "Pendiente (mes anterior → actual)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "multiples",
+      "nombre": "Múltiplos pequeños",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "waffle",
+      "nombre": "Waffle 10 × 10",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "rosa",
+      "nombre": "Rosa polar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "media-dona",
+      "nombre": "Media dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "sol",
+      "nombre": "Sol (2 niveles)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "gantt",
+      "nombre": "Línea de tiempo",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "bala",
+      "nombre": "Bala contra meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meta": null
+      }
+     },
+     {
+      "id": "progreso",
+      "nombre": "Barras de progreso",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     }
+    ],
+    "vencimientos": [
+     {
+      "id": "columnas",
+      "nombre": "Columnas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "mes",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "columnas-apiladas",
+      "nombre": "Columnas apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "columnas-100",
+      "nombre": "Columnas 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "barras",
+      "nombre": "Barras horizontales",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "barras-apiladas",
+      "nombre": "Barras apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "filas": "nombre",
+       "funcion": "conteo",
+       "meses": 6
+      }
+     },
+     {
+      "id": "barra-100",
+      "nombre": "Barra 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea",
+      "nombre": "Línea",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea-area",
+      "nombre": "Línea con área",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "area-apilada",
+      "nombre": "Área apilada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "linea-tendencia",
+      "nombre": "Línea con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "ventana": 3
+      }
+     },
+     {
+      "id": "dona",
+      "nombre": "Dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pastel",
+      "nombre": "Pastel",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "anillos",
+      "nombre": "Anillos concéntricos",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "medidor",
+      "nombre": "Medidor",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "objetivo": null
+      }
+     },
+     {
+      "id": "meta",
+      "nombre": "Anillo de meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meta": null
+      }
+     },
+     {
+      "id": "embudo",
+      "nombre": "Embudo",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "modo": "acumulado",
+       "excluir": []
+      }
+     },
+     {
+      "id": "arbol",
+      "nombre": "Mapa de árbol",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 12
+      }
+     },
+     {
+      "id": "radar",
+      "nombre": "Radar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "calendario",
+      "nombre": "Mapa de calor por día",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "semanas": 16,
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "cascada",
+      "nombre": "Cascada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "kpi",
+      "nombre": "KPI con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "posiciones",
+      "nombre": "Tabla de posiciones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 5
+      }
+     },
+     {
+      "id": "paleta",
+      "nombre": "Paleta (lollipop)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 8
+      }
+     },
+     {
+      "id": "combo",
+      "nombre": "Columnas + acumulado",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "pareto",
+      "nombre": "Pareto",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 10
+      }
+     },
+     {
+      "id": "escalones",
+      "nombre": "Escalones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pendiente",
+      "nombre": "Pendiente (mes anterior → actual)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "multiples",
+      "nombre": "Múltiplos pequeños",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "waffle",
+      "nombre": "Waffle 10 × 10",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "rosa",
+      "nombre": "Rosa polar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "media-dona",
+      "nombre": "Media dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "sol",
+      "nombre": "Sol (2 niveles)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "gantt",
+      "nombre": "Línea de tiempo",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "bala",
+      "nombre": "Bala contra meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meta": null
+      }
+     },
+     {
+      "id": "progreso",
+      "nombre": "Barras de progreso",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     }
+    ],
+    "pagos": [
+     {
+      "id": "columnas",
+      "nombre": "Columnas",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "mes",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "barras",
+      "nombre": "Barras horizontales",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "barra-100",
+      "nombre": "Barra 100 %",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea",
+      "nombre": "Línea",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "linea-area",
+      "nombre": "Línea con área",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea-tendencia",
+      "nombre": "Línea con tendencia",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "ventana": 3
+      }
+     },
+     {
+      "id": "dona",
+      "nombre": "Dona",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pastel",
+      "nombre": "Pastel",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "anillos",
+      "nombre": "Anillos concéntricos",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "meta",
+      "nombre": "Anillo de meta",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "meta": null
+      }
+     },
+     {
+      "id": "arbol",
+      "nombre": "Mapa de árbol",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "top": 12
+      }
+     },
+     {
+      "id": "dispersion",
+      "nombre": "Dispersión",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "x": "fecha",
+       "y": "monto"
+      }
+     },
+     {
+      "id": "burbujas",
+      "nombre": "Burbujas",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro"
+      }
+     },
+     {
+      "id": "histograma",
+      "nombre": "Histograma",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "bins": null
+      }
+     },
+     {
+      "id": "caja",
+      "nombre": "Caja y bigotes",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": null
+      }
+     },
+     {
+      "id": "calendario",
+      "nombre": "Mapa de calor por día",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "semanas": 16,
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "cascada",
+      "nombre": "Cascada",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "kpi",
+      "nombre": "KPI con tendencia",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "posiciones",
+      "nombre": "Tabla de posiciones",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "top": 5
+      }
+     },
+     {
+      "id": "estadisticas",
+      "nombre": "Estadísticas",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro"
+      }
+     },
+     {
+      "id": "paleta",
+      "nombre": "Paleta (lollipop)",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "top": 8
+      }
+     },
+     {
+      "id": "combo",
+      "nombre": "Columnas + acumulado",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "pareto",
+      "nombre": "Pareto",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "top": 10
+      }
+     },
+     {
+      "id": "escalones",
+      "nombre": "Escalones",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "pendiente",
+      "nombre": "Pendiente (mes anterior → actual)",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "multiples",
+      "nombre": "Múltiplos pequeños",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "waffle",
+      "nombre": "Waffle 10 × 10",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "rosa",
+      "nombre": "Rosa polar",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "media-dona",
+      "nombre": "Media dona",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "puntos",
+      "nombre": "Puntos por categoría",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro"
+      }
+     },
+     {
+      "id": "bala",
+      "nombre": "Bala contra meta",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma",
+       "meta": null
+      }
+     },
+     {
+      "id": "progreso",
+      "nombre": "Barras de progreso",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "dos-kpis",
+      "nombre": "Dos KPIs",
+      "opciones_por_defecto": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "miembro"
+      }
+     }
+    ],
+    "actividad": [],
+    "equipo": [],
+    "automatizaciones": []
+   }
+  },
+  "gimnasio": {
+   "secciones": [
+    {
+     "id": "membresias",
+     "titulo": "Membresías",
+     "grupo": 0,
+     "icono": "tarjeta",
+     "vista": "tabla",
+     "campos": [
+      {
+       "id": "nombre",
+       "nombre": "Nombre",
+       "tipo": "texto"
+      },
+      {
+       "id": "telefono",
+       "nombre": "Teléfono",
+       "tipo": "texto"
+      },
+      {
+       "id": "plan",
+       "nombre": "Plan",
+       "tipo": "texto",
+       "ejemplos": [
+        "Mensual básico",
+        "Mensual plus",
+        "Trimestral",
+        "Anual",
+        "Pareja",
+        "Estudiante"
+       ]
+      },
+      {
+       "id": "estado",
+       "nombre": "Estado",
+       "tipo": "estado",
+       "opciones": [
+        "Activa",
+        "Pausada",
+        "Por vencer",
+        "Cancelada"
+       ]
+      },
+      {
+       "id": "alta",
+       "nombre": "Alta",
+       "tipo": "fecha",
+       "rango": [
+        -400,
+        0
+       ]
+      },
+      {
+       "id": "vence",
+       "nombre": "Vence",
+       "tipo": "fecha",
+       "rango": [
+        -5,
+        45
+       ]
+      },
+      {
+       "id": "monto",
+       "nombre": "Monto",
+       "tipo": "dinero",
+       "rango": [
+        250,
+        4500
+       ]
+      }
+     ]
+    },
+    {
+     "id": "clases",
+     "titulo": "Clases",
+     "grupo": 0,
+     "icono": "calendario",
+     "vista": "agenda",
+     "opciones": {
+      "fecha": "fecha",
+      "hora": "hora",
+      "titulo": "clase",
+      "detalle": "entrenador",
+      "dias": 14
+     },
+     "campos": [
+      {
+       "id": "clase",
+       "nombre": "Clase",
+       "tipo": "texto",
+       "ejemplos": [
+        "Spinning",
+        "Funcional",
+        "Yoga",
+        "Zumba",
+        "CrossFit WOD",
+        "Box"
+       ]
+      },
+      {
+       "id": "entrenador",
+       "nombre": "Entrenador",
+       "tipo": "texto",
+       "ejemplos": [
+        "Carlos M.",
+        "Ana R.",
+        "Luis P.",
+        "María G.",
+        "Diego S.",
+        "Paola V."
+       ]
+      },
+      {
+       "id": "fecha",
+       "nombre": "Fecha",
+       "tipo": "fecha",
+       "rango": [
+        -7,
+        14
+       ]
+      },
+      {
+       "id": "hora",
+       "nombre": "Hora",
+       "tipo": "hora"
+      },
+      {
+       "id": "cupo",
+       "nombre": "Cupo",
+       "tipo": "numero",
+       "rango": [
+        8,
+        30
+       ]
+      },
+      {
+       "id": "inscritos",
+       "nombre": "Inscritos",
+       "tipo": "numero",
+       "rango": [
+        0,
+        30
+       ]
+      },
+      {
+       "id": "estado",
+       "nombre": "Estado",
+       "tipo": "estado",
+       "opciones": [
+        "Programada",
+        "En curso",
+        "Completa",
+        "Cancelada"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "visitas",
+     "titulo": "Visitas y prueba",
+     "grupo": 0,
+     "icono": "usuarios",
+     "vista": "tablero",
+     "opciones": {
+      "por": "estado",
+      "titulo": "nombre",
+      "detalle": "interes"
+     },
+     "campos": [
+      {
+       "id": "nombre",
+       "nombre": "Nombre",
+       "tipo": "texto"
+      },
+      {
+       "id": "telefono",
+       "nombre": "Teléfono",
+       "tipo": "texto"
+      },
+      {
+       "id": "interes",
+       "nombre": "Interés",
+       "tipo": "texto",
+       "ejemplos": [
+        "Pérdida de peso",
+        "Ganar masa",
+        "Rehabilitación",
+        "Clases grupales",
+        "Entrenador personal",
+        "Plan familiar"
+       ]
+      },
+      {
+       "id": "fecha",
+       "nombre": "Visita",
+       "tipo": "fecha",
+       "rango": [
+        -14,
+        7
+       ]
+      },
+      {
+       "id": "estado",
+       "nombre": "Estado",
+       "tipo": "estado",
+       "opciones": [
+        "Agendada",
+        "Asistió",
+        "Interesado",
+        "Inscrito",
+        "No interesado"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "actividad",
+     "titulo": "Historial",
+     "grupo": 1,
+     "icono": "actividad",
+     "vista": "feed"
+    },
+    {
+     "id": "equipo",
+     "titulo": "Equipo",
+     "grupo": 1,
+     "icono": "equipo",
+     "vista": "equipo"
+    },
+    {
+     "id": "automatizaciones",
+     "titulo": "Automatizaciones",
+     "grupo": 2,
+     "icono": "rayo",
+     "vista": "interruptores"
+    }
+   ],
+   "compatibles": {
+    "membresias": [
+     {
+      "id": "columnas",
+      "nombre": "Columnas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "mes",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "columnas-apiladas",
+      "nombre": "Columnas apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "columnas-100",
+      "nombre": "Columnas 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "barras",
+      "nombre": "Barras horizontales",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "barras-apiladas",
+      "nombre": "Barras apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "filas": "nombre",
+       "funcion": "conteo",
+       "meses": 6
+      }
+     },
+     {
+      "id": "barra-100",
+      "nombre": "Barra 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea",
+      "nombre": "Línea",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "linea-area",
+      "nombre": "Línea con área",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "area-apilada",
+      "nombre": "Área apilada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "linea-tendencia",
+      "nombre": "Línea con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "ventana": 3
+      }
+     },
+     {
+      "id": "dona",
+      "nombre": "Dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pastel",
+      "nombre": "Pastel",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "anillos",
+      "nombre": "Anillos concéntricos",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "medidor",
+      "nombre": "Medidor",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "objetivo": null
+      }
+     },
+     {
+      "id": "meta",
+      "nombre": "Anillo de meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meta": null
+      }
+     },
+     {
+      "id": "embudo",
+      "nombre": "Embudo",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "modo": "acumulado",
+       "excluir": []
+      }
+     },
+     {
+      "id": "arbol",
+      "nombre": "Mapa de árbol",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "suma",
+       "top": 12
+      }
+     },
+     {
+      "id": "radar",
+      "nombre": "Radar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "dispersion",
+      "nombre": "Dispersión",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "x": "alta",
+       "y": "monto"
+      }
+     },
+     {
+      "id": "burbujas",
+      "nombre": "Burbujas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "histograma",
+      "nombre": "Histograma",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "bins": null
+      }
+     },
+     {
+      "id": "caja",
+      "nombre": "Caja y bigotes",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "calendario",
+      "nombre": "Mapa de calor por día",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "semanas": 16,
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "cascada",
+      "nombre": "Cascada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "kpi",
+      "nombre": "KPI con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "posiciones",
+      "nombre": "Tabla de posiciones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "suma",
+       "top": 5
+      }
+     },
+     {
+      "id": "estadisticas",
+      "nombre": "Estadísticas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "paleta",
+      "nombre": "Paleta (lollipop)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "suma",
+       "top": 8
+      }
+     },
+     {
+      "id": "combo",
+      "nombre": "Columnas + acumulado",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "pareto",
+      "nombre": "Pareto",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "suma",
+       "top": 10
+      }
+     },
+     {
+      "id": "escalones",
+      "nombre": "Escalones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "pendiente",
+      "nombre": "Pendiente (mes anterior → actual)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "multiples",
+      "nombre": "Múltiplos pequeños",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "waffle",
+      "nombre": "Waffle 10 × 10",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "rosa",
+      "nombre": "Rosa polar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "media-dona",
+      "nombre": "Media dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "sol",
+      "nombre": "Sol (2 niveles)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "puntos",
+      "nombre": "Puntos por categoría",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "gantt",
+      "nombre": "Línea de tiempo",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "bala",
+      "nombre": "Bala contra meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meta": null
+      }
+     },
+     {
+      "id": "progreso",
+      "nombre": "Barras de progreso",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "dos-kpis",
+      "nombre": "Dos KPIs",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado"
+      }
+     }
+    ],
+    "clases": [
+     {
+      "id": "columnas",
+      "nombre": "Columnas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "mes",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "columnas-apiladas",
+      "nombre": "Columnas apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "columnas-100",
+      "nombre": "Columnas 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "barras",
+      "nombre": "Barras horizontales",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "barras-apiladas",
+      "nombre": "Barras apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "filas": "clase",
+       "funcion": "conteo",
+       "meses": 6
+      }
+     },
+     {
+      "id": "barra-100",
+      "nombre": "Barra 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea",
+      "nombre": "Línea",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "linea-area",
+      "nombre": "Línea con área",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "area-apilada",
+      "nombre": "Área apilada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "linea-tendencia",
+      "nombre": "Línea con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "ventana": 3
+      }
+     },
+     {
+      "id": "dona",
+      "nombre": "Dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pastel",
+      "nombre": "Pastel",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "anillos",
+      "nombre": "Anillos concéntricos",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "medidor",
+      "nombre": "Medidor",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "objetivo": null
+      }
+     },
+     {
+      "id": "meta",
+      "nombre": "Anillo de meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meta": null
+      }
+     },
+     {
+      "id": "embudo",
+      "nombre": "Embudo",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "modo": "acumulado",
+       "excluir": []
+      }
+     },
+     {
+      "id": "arbol",
+      "nombre": "Mapa de árbol",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "clase",
+       "funcion": "suma",
+       "top": 12
+      }
+     },
+     {
+      "id": "radar",
+      "nombre": "Radar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "dispersion",
+      "nombre": "Dispersión",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "x": "inscritos",
+       "y": "cupo"
+      }
+     },
+     {
+      "id": "burbujas",
+      "nombre": "Burbujas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "histograma",
+      "nombre": "Histograma",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "bins": null
+      }
+     },
+     {
+      "id": "caja",
+      "nombre": "Caja y bigotes",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "calendario",
+      "nombre": "Mapa de calor por día",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "semanas": 16,
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "cascada",
+      "nombre": "Cascada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "kpi",
+      "nombre": "KPI con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "posiciones",
+      "nombre": "Tabla de posiciones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "clase",
+       "funcion": "suma",
+       "top": 5
+      }
+     },
+     {
+      "id": "estadisticas",
+      "nombre": "Estadísticas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "paleta",
+      "nombre": "Paleta (lollipop)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "clase",
+       "funcion": "suma",
+       "top": 8
+      }
+     },
+     {
+      "id": "combo",
+      "nombre": "Columnas + acumulado",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "pareto",
+      "nombre": "Pareto",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "clase",
+       "funcion": "suma",
+       "top": 10
+      }
+     },
+     {
+      "id": "escalones",
+      "nombre": "Escalones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "pendiente",
+      "nombre": "Pendiente (mes anterior → actual)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "multiples",
+      "nombre": "Múltiplos pequeños",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meses": 12
+      }
+     },
+     {
+      "id": "waffle",
+      "nombre": "Waffle 10 × 10",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "rosa",
+      "nombre": "Rosa polar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "media-dona",
+      "nombre": "Media dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "sol",
+      "nombre": "Sol (2 niveles)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "puntos",
+      "nombre": "Puntos por categoría",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado"
+      }
+     },
+     {
+      "id": "calor-hora",
+      "nombre": "Calor día × hora",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "bala",
+      "nombre": "Bala contra meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma",
+       "meta": null
+      }
+     },
+     {
+      "id": "progreso",
+      "nombre": "Barras de progreso",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado",
+       "funcion": "suma"
+      }
+     },
+     {
+      "id": "dos-kpis",
+      "nombre": "Dos KPIs",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "hora": "hora",
+       "valor": "cupo",
+       "valor2": "inscritos",
+       "texto": "clase",
+       "agrupar": "estado"
+      }
+     }
+    ],
+    "visitas": [
+     {
+      "id": "columnas",
+      "nombre": "Columnas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "mes",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "columnas-apiladas",
+      "nombre": "Columnas apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "columnas-100",
+      "nombre": "Columnas 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "barras",
+      "nombre": "Barras horizontales",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "barras-apiladas",
+      "nombre": "Barras apiladas",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "filas": "nombre",
+       "funcion": "conteo",
+       "meses": 6
+      }
+     },
+     {
+      "id": "barra-100",
+      "nombre": "Barra 100 %",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea",
+      "nombre": "Línea",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "linea-area",
+      "nombre": "Línea con área",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "area-apilada",
+      "nombre": "Área apilada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "linea-tendencia",
+      "nombre": "Línea con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "ventana": 3
+      }
+     },
+     {
+      "id": "dona",
+      "nombre": "Dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pastel",
+      "nombre": "Pastel",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "anillos",
+      "nombre": "Anillos concéntricos",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "medidor",
+      "nombre": "Medidor",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "objetivo": null
+      }
+     },
+     {
+      "id": "meta",
+      "nombre": "Anillo de meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meta": null
+      }
+     },
+     {
+      "id": "embudo",
+      "nombre": "Embudo",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "modo": "acumulado",
+       "excluir": []
+      }
+     },
+     {
+      "id": "arbol",
+      "nombre": "Mapa de árbol",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 12
+      }
+     },
+     {
+      "id": "radar",
+      "nombre": "Radar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "calendario",
+      "nombre": "Mapa de calor por día",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "semanas": 16,
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "cascada",
+      "nombre": "Cascada",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "kpi",
+      "nombre": "KPI con tendencia",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "posiciones",
+      "nombre": "Tabla de posiciones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 5
+      }
+     },
+     {
+      "id": "paleta",
+      "nombre": "Paleta (lollipop)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 8
+      }
+     },
+     {
+      "id": "combo",
+      "nombre": "Columnas + acumulado",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "pareto",
+      "nombre": "Pareto",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "nombre",
+       "funcion": "conteo",
+       "top": 10
+      }
+     },
+     {
+      "id": "escalones",
+      "nombre": "Escalones",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "pendiente",
+      "nombre": "Pendiente (mes anterior → actual)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "multiples",
+      "nombre": "Múltiplos pequeños",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meses": 12
+      }
+     },
+     {
+      "id": "waffle",
+      "nombre": "Waffle 10 × 10",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "rosa",
+      "nombre": "Rosa polar",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "media-dona",
+      "nombre": "Media dona",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "sol",
+      "nombre": "Sol (2 niveles)",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     },
+     {
+      "id": "bala",
+      "nombre": "Bala contra meta",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "meta": null
+      }
+     },
+     {
+      "id": "progreso",
+      "nombre": "Barras de progreso",
+      "opciones_por_defecto": {
+       "estado": "estado",
+       "fecha": "fecha",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo"
+      }
+     }
+    ],
+    "actividad": [],
+    "equipo": [],
+    "automatizaciones": []
+   }
+  }
+ }
+}

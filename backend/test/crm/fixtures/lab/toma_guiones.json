@@ -1,0 +1,6536 @@
+[
+ {
+  "caso": "banco: pedir, anotar, cambiar y confirmar",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "preparar",
+    "texto": "Diséñame un inicio nuevo para controlar mis pagos"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "resumen",
+     "seccion": "Pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "grafica",
+     "seccion": "Miembros",
+     "grafico": "dona"
+    }
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "No, mejor barras en vez de dona"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "quitar_de_ficha",
+    "args": {
+     "numero": 2
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "grafica",
+     "seccion": "miembros",
+     "grafico": "barras"
+    }
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "Sí"
+   },
+   {
+    "paso": "construir"
+   },
+   {
+    "paso": "resumen"
+   }
+  ],
+  "salidas": [
+   {
+    "aviso": "El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_bloque (una llamada por cada cosa) SOLO lo que la persona dijo en este mensaje que quiere ver, y anotar_ficha solo para marca o restricciones si las dijo; luego haz la pregunta de FALTA.",
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: resumen de Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: grafica (Dona) de Miembros.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "RESUMEN (muéstralo en palabras sencillas y pregunta «¿Lo armo así?»):\nVas a tener un inicio para controlar mis pagos. Partes del menú que importan: Pagos, Miembros. 1. resumen con cifras de Pagos 2. Dona en Miembros",
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Vas a tener un inicio para controlar mis pagos. Partes del menú que importan: Pagos, Miembros. 1. resumen con cifras de Pagos 2. Dona en Miembros",
+    "tarjeta": {
+     "fase": "confirmando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "controlar mis pagos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos, Miembros",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "resumen con cifras (Pagos) · gráfica (Miembros)",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [],
+     "instruccion_turno": "RESUMEN (muéstralo y pregunta «¿Lo armo así?»):\nVas a tener un inicio para controlar mis pagos. Partes del menú que importan: Pagos, Miembros. 1. resumen con cifras de Pagos 2. Dona en Miembros"
+    }
+   },
+   {
+    "aviso": "La persona pidió un ajuste. Si es reemplazar algo («mejor X en vez de Y»): quitar_de_ficha del bloque Y y anotar_bloque con X, las dos en este turno. Si es agregar: anotar_bloque. Usa solo lo que dijo en ESTE mensaje.",
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": true
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Quitado el bloque 2 de la ficha. Si la persona pidió algo EN SU LUGAR, anótalo AHORA con anotar_bloque.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: grafica (Barras horizontales) de Miembros.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "barras"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "RESUMEN (muéstralo en palabras sencillas y pregunta «¿Lo armo así?»):\nVas a tener un inicio para controlar mis pagos. Partes del menú que importan: Pagos, Miembros. 1. resumen con cifras de Pagos 2. Barras horizontales en Miembros",
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "barras"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Vas a tener un inicio para controlar mis pagos. Partes del menú que importan: Pagos, Miembros. 1. resumen con cifras de Pagos 2. Barras horizontales en Miembros",
+    "tarjeta": {
+     "fase": "confirmando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "controlar mis pagos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos, Miembros",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "resumen con cifras (Pagos) · gráfica (Miembros)",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "barras"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [],
+     "instruccion_turno": "RESUMEN (muéstralo y pregunta «¿Lo armo así?»):\nVas a tener un inicio para controlar mis pagos. Partes del menú que importan: Pagos, Miembros. 1. resumen con cifras de Pagos 2. Barras horizontales en Miembros"
+    }
+   },
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": true,
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar mis pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "barras"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "errores": [],
+    "antes_de_acomodar": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "pagos",
+      "vista": "kpis",
+      "opciones": {
+       "suma": "monto"
+      },
+      "ancho": 12,
+      "alto": 1
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "miembros",
+      "vista": "grafico",
+      "opciones": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "tipo": "barras"
+      },
+      "ancho": 12,
+      "alto": 2
+     }
+    ],
+    "inicio": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "pagos",
+      "vista": "kpis",
+      "opciones": {
+       "suma": "monto"
+      },
+      "ancho": 12,
+      "alto": 1
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "miembros",
+      "vista": "grafico",
+      "opciones": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "tipo": "barras"
+      },
+      "ancho": 12,
+      "alto": 2
+     }
+    ],
+    "marca": {},
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Aún no hay nada en la ficha.",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "—",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": false
+    }
+   }
+  ]
+ },
+ {
+  "caso": "banco: abandonar sin cambiar nada",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "preparar",
+    "texto": "Quiero rediseñar mi inicio"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "abrir_toma",
+    "args": {}
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "mejor olvídalo, déjalo como está"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "cerrar_toma",
+    "args": {},
+    "texto": "mejor olvídalo, déjalo como está"
+   }
+  ],
+  "salidas": [
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Aún no hay nada en la ficha.",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "—",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Toma de diseño abierta. Anota solo lo que la persona dijo en este mensaje con anotar_ficha; ideas dudosas van en anotar_nota.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Aún no hay nada en la ficha.",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": true
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "—",
+       "pendiente": true
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [
+     {
+      "campo": "objetivo",
+      "pregunta": "¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)"
+     },
+     {
+      "campo": "bloques",
+      "pregunta": "¿Qué quieres ver en tu inicio y de qué parte? (por ejemplo: un resumen de pagos, una gráfica de los estados de tus miembros, la lista de lo que vence…)"
+     }
+    ],
+    "contexto": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [
+      "objetivo",
+      "bloques"
+     ],
+     "instruccion_turno": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)"
+    }
+   },
+   {
+    "aviso": "La persona abandonó la ficha: el código ya la cerró. Dile en una línea que quedó todo como estaba (la pantalla NO cambió) y no toques nada.",
+    "digresion": true,
+    "construir": false,
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Aún no hay nada en la ficha.",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "—",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Toma de diseño cerrada. La pantalla no cambió por la ficha.",
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   }
+  ]
+ },
+ {
+  "caso": "banco: varias cosas en un mensaje",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "preparar",
+    "texto": "diséñame un inicio con una lista de pagos, un tablero de miembros por estado y lo que vence"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "lista",
+     "seccion": "pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "tablero",
+     "seccion": "Miembros"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "por_vencer",
+     "seccion": "Vencimientos"
+    }
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "dale"
+   },
+   {
+    "paso": "construir"
+   }
+  ],
+  "salidas": [
+   {
+    "aviso": "El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_bloque (una llamada por cada cosa) SOLO lo que la persona dijo en este mensaje que quiere ver, y anotar_ficha solo para marca o restricciones si las dijo; luego haz la pregunta de FALTA.",
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: lista de Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: tablero de Miembros.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       },
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado",
+         "titulo": "nombre"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: por_vencer de Vencimientos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       },
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado",
+         "titulo": "nombre"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "vencimientos",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       },
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado",
+         "titulo": "nombre"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "vencimientos",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Partes del menú que importan: Pagos, Miembros, Vencimientos. 1. lista de Pagos 2. tablero por etapas de Miembros 3. por vencer de Vencimientos",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": true
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos, Miembros, Vencimientos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "lista (Pagos) · tablero por etapas (Miembros) · por vencer (Vencimientos)",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [
+     {
+      "campo": "objetivo",
+      "pregunta": "¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)"
+     }
+    ],
+    "contexto": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       },
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado",
+         "titulo": "nombre"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "vencimientos",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [
+      "objetivo"
+     ],
+     "instruccion_turno": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)"
+    }
+   },
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       },
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado",
+         "titulo": "nombre"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "vencimientos",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "errores": [],
+    "antes_de_acomodar": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "pagos",
+      "vista": "tabla",
+      "opciones": {},
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "miembros",
+      "vista": "tablero",
+      "opciones": {
+       "por": "estado",
+       "titulo": "nombre"
+      },
+      "ancho": 12,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0002",
+      "seccion": "vencimientos",
+      "vista": "vencimientos",
+      "opciones": {
+       "fecha": "alta",
+       "titulo": "nombre",
+       "dias": 30
+      },
+      "ancho": 6,
+      "alto": 2
+     }
+    ],
+    "inicio": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "pagos",
+      "vista": "tabla",
+      "opciones": {},
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "miembros",
+      "vista": "tablero",
+      "opciones": {
+       "por": "estado",
+       "titulo": "nombre"
+      },
+      "ancho": 12,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0002",
+      "seccion": "vencimientos",
+      "vista": "vencimientos",
+      "opciones": {
+       "fecha": "alta",
+       "titulo": "nombre",
+       "dias": 30
+      },
+      "ancho": 6,
+      "alto": 2
+     }
+    ],
+    "marca": {},
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   }
+  ]
+ },
+ {
+  "caso": "banco: digresión en medio de la toma",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "preparar",
+    "texto": "Diséñame un inicio nuevo para mis miembros"
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "preparar",
+    "texto": "oye, ¿qué hora es en Guatemala?"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_nota",
+    "args": {
+     "texto": "pregunta la hora"
+    },
+    "digresion": true
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "objetivo",
+     "valor": "la hora"
+    },
+    "digresion": true
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "agenda",
+     "seccion": "pagos"
+    },
+    "digresion": true
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "agregar_bloque",
+    "args": {
+     "seccion": "miembros",
+     "vista": "tabla"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "cambiar_marca",
+    "args": {
+     "primario": "#ff0000"
+    },
+    "digresion": true
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   }
+  ],
+  "salidas": [
+   {
+    "aviso": "El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_bloque (una llamada por cada cosa) SOLO lo que la persona dijo en este mensaje que quiere ver, y anotar_ficha solo para marca o restricciones si las dijo; luego haz la pregunta de FALTA.",
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "FALTA: bloques — pregunta sugerida: ¿Qué quieres ver en tu inicio y de qué parte? (por ejemplo: un resumen de pagos, una gráfica de los estados de tus miembros, la lista de lo que vence…)",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "aviso": null,
+    "digresion": true,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: es una digresión: responde la charla y no anotes nada de este mensaje en la ficha.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: es una digresión: responde la charla y no anotes nada de este mensaje en la ficha.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: agenda de Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: primero termina y confirma la ficha de diseño (o ciérrala con cerrar_toma si ya no quieren diseñar).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Marca aplicada: primario #ff0000. AJUSTES para que se lea: en tema claro el color principal #ff0000 se oscureció a #e60000 para que los números se lean. Díselo en una línea.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "RESUMEN (muéstralo en palabras sencillas y pregunta «¿Lo armo así?»):\nVas a tener un inicio para mis miembros. Partes del menú que importan: Pagos. 1. agenda de Pagos",
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Vas a tener un inicio para mis miembros. Partes del menú que importan: Pagos. 1. agenda de Pagos",
+    "tarjeta": {
+     "fase": "confirmando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "mis miembros",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "agenda (Pagos)",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [],
+     "instruccion_turno": "RESUMEN (muéstralo y pregunta «¿Lo armo así?»):\nVas a tener un inicio para mis miembros. Partes del menú que importan: Pagos. 1. agenda de Pagos"
+    }
+   }
+  ]
+ },
+ {
+  "caso": "banco: pedido vago abre la ficha sin piezas",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "preparar",
+    "texto": "Diséñame un inicio nuevo para mis miembros"
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   }
+  ],
+  "salidas": [
+   {
+    "aviso": "El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_bloque (una llamada por cada cosa) SOLO lo que la persona dijo en este mensaje que quiere ver, y anotar_ficha solo para marca o restricciones si las dijo; luego haz la pregunta de FALTA.",
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "FALTA: bloques — pregunta sugerida: ¿Qué quieres ver en tu inicio y de qué parte? (por ejemplo: un resumen de pagos, una gráfica de los estados de tus miembros, la lista de lo que vence…)",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Vas a tener un inicio para mis miembros.",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "mis miembros",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "—",
+       "pendiente": true
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [
+     {
+      "campo": "bloques",
+      "pregunta": "¿Qué quieres ver en tu inicio y de qué parte? (por ejemplo: un resumen de pagos, una gráfica de los estados de tus miembros, la lista de lo que vence…)"
+     }
+    ],
+    "contexto": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [
+      "bloques"
+     ],
+     "instruccion_turno": "FALTA: bloques — pregunta sugerida: ¿Qué quieres ver en tu inicio y de qué parte? (por ejemplo: un resumen de pagos, una gráfica de los estados de tus miembros, la lista de lo que vence…)"
+    }
+   }
+  ]
+ },
+ {
+  "caso": "banco: cambio puntual no abre la toma",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "preparar",
+    "texto": "haz el resumen más chico"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "resumen",
+     "seccion": "miembros"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_nota",
+    "args": {
+     "texto": "x"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "quitar_de_ficha",
+    "args": {
+     "numero": 1
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "objetivo",
+     "valor": "x"
+    }
+   },
+   {
+    "paso": "senal"
+   }
+  ],
+  "salidas": [
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Aún no hay nada en la ficha.",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "—",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: no hay una ficha de diseño abierta.",
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: no hay una toma de diseño abierta.",
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: no hay una ficha abierta.",
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: no hay una toma de diseño abierta.",
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": null,
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   }
+  ]
+ },
+ {
+  "caso": "bordes de anotar_bloque y quitar_de_ficha",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "herramienta",
+    "nombre": "abrir_toma",
+    "args": {
+     "objetivo": "ver cobros y vencimientos de mis miembros"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "abrir_toma",
+    "args": {}
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "tablero",
+     "seccion": "pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "agenda",
+     "seccion": "Pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "algo",
+     "seccion": "pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "lista",
+     "seccion": "Proveedores"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "lista"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "grafica",
+     "seccion": "pagos",
+     "grafico": "dona"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "grafica",
+     "seccion": "pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "resumen",
+     "seccion": "Miembros"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "por_vencer",
+     "seccion": "miembros"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "grafica",
+     "seccion": "vencimientos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "lista",
+     "seccion": "Historial"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "quitar_de_ficha",
+    "args": {
+     "numero": 9
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "quitar_de_ficha",
+    "args": {
+     "numero": 0
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "quitar_de_ficha",
+    "args": {
+     "numero": "2"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "quitar_de_ficha",
+    "args": {}
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "construir"
+   }
+  ],
+  "salidas": [
+   {
+    "ok": true,
+    "resultado": "Toma de diseño abierta. Anota solo lo que la persona dijo en este mensaje con anotar_ficha; ideas dudosas van en anotar_nota.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "La toma de diseño ya está abierta: sigue con anotar_ficha, no vuelvas a abrir.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "FALTA: bloques — pregunta sugerida: ¿Qué quieres ver en tu inicio y de qué parte? (por ejemplo: un resumen de pagos, una gráfica de los estados de tus miembros, la lista de lo que vence…)",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: Pagos no tiene un campo de estado para armar un tablero.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: agenda de Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: «que» debe ser: resumen, grafica, lista, tablero, por_vencer o agenda.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: no encuentro «Proveedores». Partes: Miembros, Vencimientos, Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: no encuentro «undefined». Partes: Miembros, Vencimientos, Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: grafica (Dona) de Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "miembro",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: grafica (Columnas) de Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "miembro",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: resumen de Miembros.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "miembro",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: por_vencer de Miembros.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "miembro",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: grafica (Dona) de Vencimientos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "miembro",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "vencimientos",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: no encuentro «Historial». Partes: Miembros, Vencimientos, Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "miembro",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "vencimientos",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: la ficha tiene 6 bloques (numera desde 1).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "miembro",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "vencimientos",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: la ficha tiene 6 bloques (numera desde 1).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "miembro",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "vencimientos",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Quitado el bloque 2 de la ficha. Si la persona pidió algo EN SU LUGAR, anótalo AHORA con anotar_bloque.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "vencimientos",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: la ficha tiene 5 bloques (numera desde 1).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "vencimientos",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "RESUMEN (muéstralo en palabras sencillas y pregunta «¿Lo armo así?»):\nVas a tener un inicio para ver cobros y vencimientos de mis miembros. Partes del menú que importan: Pagos, Miembros, Vencimientos. 1. agenda de Pagos 2. Columnas en Pagos 3. resumen con cifras de Miembros 4. por vencer de Miembros 5. Dona en Vencimientos",
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "vencimientos",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "bloques"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Vas a tener un inicio para ver cobros y vencimientos de mis miembros. Partes del menú que importan: Pagos, Miembros, Vencimientos. 1. agenda de Pagos 2. Columnas en Pagos 3. resumen con cifras de Miembros 4. por vencer de Miembros 5. Dona en Vencimientos",
+    "tarjeta": {
+     "fase": "confirmando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "ver cobros y vencimientos de mis miembros",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos, Miembros, Vencimientos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "agenda (Pagos) · gráfica (Pagos) · resumen con cifras (Miembros) · por vencer (Miembros) · gráfica (Vencimientos)",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "ver cobros y vencimientos de mis miembros",
+      "secciones": [
+       "pagos",
+       "miembros",
+       "vencimientos"
+      ],
+      "bloques": [
+       {
+        "vista": "agenda",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "miembro",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "fecha": "fecha",
+         "valor": "monto",
+         "texto": "miembro",
+         "agrupar": "mes",
+         "funcion": "suma",
+         "tipo": "columnas"
+        }
+       },
+       {
+        "vista": "kpis",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "miembros",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "vencimientos",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [],
+     "instruccion_turno": "RESUMEN (muéstralo y pregunta «¿Lo armo así?»):\nVas a tener un inicio para ver cobros y vencimientos de mis miembros. Partes del menú que importan: Pagos, Miembros, Vencimientos. 1. agenda de Pagos 2. Columnas en Pagos 3. resumen con cifras de Miembros 4. por vencer de Miembros 5. Dona en Vencimientos"
+    }
+   },
+   {
+    "errores": [],
+    "antes_de_acomodar": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "pagos",
+      "vista": "agenda",
+      "opciones": {
+       "fecha": "fecha",
+       "titulo": "miembro",
+       "dias": 7
+      },
+      "ancho": 12,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "pagos",
+      "vista": "grafico",
+      "opciones": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "mes",
+       "funcion": "suma",
+       "tipo": "columnas"
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0002",
+      "seccion": "miembros",
+      "vista": "kpis",
+      "opciones": {
+       "por": "estado"
+      },
+      "ancho": 12,
+      "alto": 1
+     },
+     {
+      "uid": "fmvb9w0003",
+      "seccion": "miembros",
+      "vista": "vencimientos",
+      "opciones": {
+       "fecha": "alta",
+       "titulo": "nombre",
+       "dias": 30
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0004",
+      "seccion": "vencimientos",
+      "vista": "grafico",
+      "opciones": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "tipo": "dona"
+      },
+      "ancho": 12,
+      "alto": 2
+     }
+    ],
+    "inicio": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "pagos",
+      "vista": "agenda",
+      "opciones": {
+       "fecha": "fecha",
+       "titulo": "miembro",
+       "dias": 7
+      },
+      "ancho": 12,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "pagos",
+      "vista": "grafico",
+      "opciones": {
+       "fecha": "fecha",
+       "valor": "monto",
+       "texto": "miembro",
+       "agrupar": "mes",
+       "funcion": "suma",
+       "tipo": "columnas"
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0002",
+      "seccion": "miembros",
+      "vista": "kpis",
+      "opciones": {
+       "por": "estado"
+      },
+      "ancho": 12,
+      "alto": 1
+     },
+     {
+      "uid": "fmvb9w0003",
+      "seccion": "miembros",
+      "vista": "vencimientos",
+      "opciones": {
+       "fecha": "alta",
+       "titulo": "nombre",
+       "dias": 30
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0004",
+      "seccion": "vencimientos",
+      "vista": "grafico",
+      "opciones": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "tipo": "dona"
+      },
+      "ancho": 12,
+      "alto": 2
+     }
+    ],
+    "marca": {},
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   }
+  ]
+ },
+ {
+  "caso": "bordes de anotar_ficha, notas y marca",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "objetivo",
+     "valor": "x"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "abrir_toma",
+    "args": {}
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "objetivo",
+     "valor": "   "
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "objetivo",
+     "valor": "controlar pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "seccion",
+     "valor": "Pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "seccion",
+     "valor": "pagos"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "seccion",
+     "valor": "Bodega"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "tablero",
+      "seccion": "Miembros",
+      "opciones": {
+       "por": "estado"
+      },
+      "tamano": {
+       "ancho": 8
+      }
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "tablero",
+      "seccion": "miembros",
+      "opciones": {}
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "mapa",
+      "seccion": "miembros"
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "grafico",
+      "seccion": "miembros",
+      "opciones": {}
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "grafico",
+      "seccion": "pagos",
+      "opciones": {
+       "tipo": "dona"
+      }
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "grafico",
+      "seccion": "miembros",
+      "opciones": {
+       "tipo": "dona"
+      },
+      "tamano": {
+       "ancho": 4,
+       "alto": 3
+      }
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "tabla",
+      "seccion": "pagos",
+      "tamano": {
+       "ancho": 5
+      }
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "tabla",
+      "seccion": "pagos",
+      "tamano": {
+       "alto": 7
+      }
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": {
+      "vista": "agenda",
+      "seccion": "Proveedores"
+     }
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "bloque",
+     "valor": "una tabla"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "marca_primario",
+     "valor": "1e40af"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "marca_secundario",
+     "valor": "#F59E0B"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "marca_primario",
+     "valor": "azul"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "tipografia",
+     "valor": "Poppins"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "tipografia",
+     "valor": "Comic Sans"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "restriccion",
+     "valor": "nada de rojo"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "restriccion",
+     "valor": ""
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {
+     "campo": "color",
+     "valor": "x"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_ficha",
+    "args": {}
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_nota",
+    "args": {
+     "texto": "  "
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_nota",
+    "args": {
+     "texto": "quizá una agenda después"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "cerrar_toma",
+    "args": {},
+    "texto": "sigue"
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "y también una agenda"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "Perfecto, adelante"
+   },
+   {
+    "paso": "construir"
+   },
+   {
+    "paso": "resumen"
+   }
+  ],
+  "salidas": [
+   {
+    "ok": false,
+    "resultado": "ERROR: no hay una toma de diseño abierta.",
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Toma de diseño abierta. Anota solo lo que la persona dijo en este mensaje con anotar_ficha; ideas dudosas van en anotar_nota.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: el objetivo no puede estar vacío.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (objetivo).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (seccion).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (seccion).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: la sección «Bodega» no existe. Secciones: Miembros, Vencimientos, Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (bloque).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: «Miembros»: la vista «tablero» necesita la opción «por».",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: vista «mapa» no válida; usa: kpis, tablero, agenda, vencimientos, grafico, tabla, calendario_mes, tablero_dinero, cifra, atencion, franjas, matriz.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: falta opciones.tipo de gráfico válido (posibles con Miembros: columnas, columnas-apiladas, columnas-100, barras, barras-apiladas, barra-100, linea, linea-area, area-apilada, linea-tendencia, dona, pastel, anillos, medidor, meta, embudo, arbol, radar, calendario, cascada, kpi, posiciones, paleta, combo, pareto, escalones, pendiente, multiples, waffle, rosa, media-dona, sol, gantt, bala, progreso).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (bloque).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (bloque).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: ancho debe ser uno de 3, 4, 6, 8, 12.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: alto entre 1 y 4.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: la sección «Proveedores» no existe.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: la sección «undefined» no existe.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (marca_primario).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af"
+      },
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (marca_secundario).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B"
+      },
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: debe ser un color hex como #1E40AF.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B"
+      },
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (tipografia).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: tipografía «Comic Sans» no disponible (Inter, Poppins, Nunito, Montserrat, DM Sans, Rubik, Work Sans, Lato, Playfair Display, Lora, Merriweather, Outfit).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Ficha actualizada (restriccion).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: la restricción no puede estar vacía.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: campo «color» no reconocido (objetivo, seccion, bloque, marca_primario, marca_secundario, tipografia, restriccion).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: campo «» no reconocido (objetivo, seccion, bloque, marca_primario, marca_secundario, tipografia, restriccion).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: falta el texto de la nota.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Nota guardada (no es un dato confirmado de la ficha).",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [
+      "quizá una agenda después"
+     ],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": false,
+    "resultado": "ERROR: la persona no pidió dejar el diseño: sigue con la ficha (anota lo que pidió) y no la cierres.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [
+      "quizá una agenda después"
+     ],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "RESUMEN (muéstralo en palabras sencillas y pregunta «¿Lo armo así?»):\nVas a tener un inicio para controlar pagos. Partes del menú que importan: Pagos, Miembros. 1. tablero por etapas de Miembros (ancho 8) 2. Dona en Pagos 3. Dona en Miembros (ancho 4, alto 3) Marca: color principal #1e40af, acento #F59E0B, letra Poppins. Restricciones: nada de rojo. Notas: quizá una agenda después.",
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [
+      "quizá una agenda después"
+     ],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Vas a tener un inicio para controlar pagos. Partes del menú que importan: Pagos, Miembros. 1. tablero por etapas de Miembros (ancho 8) 2. Dona en Pagos 3. Dona en Miembros (ancho 4, alto 3) Marca: color principal #1e40af, acento #F59E0B, letra Poppins. Restricciones: nada de rojo. Notas: quizá una agenda después.",
+    "tarjeta": {
+     "fase": "confirmando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "controlar pagos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos, Miembros",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "tablero por etapas (Miembros) · gráfica (Pagos) · gráfica (Miembros)",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Marca / extras",
+       "texto": "#1e40af · #F59E0B · Poppins · nada de rojo",
+       "pendiente": false
+      }
+     ],
+     "notas": [
+      "quizá una agenda después"
+     ]
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [
+      "quizá una agenda después"
+     ],
+     "faltantes": [],
+     "instruccion_turno": "RESUMEN (muéstralo y pregunta «¿Lo armo así?»):\nVas a tener un inicio para controlar pagos. Partes del menú que importan: Pagos, Miembros. 1. tablero por etapas de Miembros (ancho 8) 2. Dona en Pagos 3. Dona en Miembros (ancho 4, alto 3) Marca: color principal #1e40af, acento #F59E0B, letra Poppins. Restricciones: nada de rojo. Notas: quizá una agenda después."
+    }
+   },
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [
+      "quizá una agenda después"
+     ],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Vas a tener un inicio para controlar pagos. Partes del menú que importan: Pagos, Miembros. 1. tablero por etapas de Miembros (ancho 8) 2. Dona en Pagos 3. Dona en Miembros (ancho 4, alto 3) Marca: color principal #1e40af, acento #F59E0B, letra Poppins. Restricciones: nada de rojo. Notas: quizá una agenda después.",
+    "tarjeta": {
+     "fase": "confirmando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "controlar pagos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos, Miembros",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "tablero por etapas (Miembros) · gráfica (Pagos) · gráfica (Miembros)",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Marca / extras",
+       "texto": "#1e40af · #F59E0B · Poppins · nada de rojo",
+       "pendiente": false
+      }
+     ],
+     "notas": [
+      "quizá una agenda después"
+     ]
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [
+      "quizá una agenda después"
+     ],
+     "faltantes": [],
+     "instruccion_turno": "RESUMEN (muéstralo y pregunta «¿Lo armo así?»):\nVas a tener un inicio para controlar pagos. Partes del menú que importan: Pagos, Miembros. 1. tablero por etapas de Miembros (ancho 8) 2. Dona en Pagos 3. Dona en Miembros (ancho 4, alto 3) Marca: color principal #1e40af, acento #F59E0B, letra Poppins. Restricciones: nada de rojo. Notas: quizá una agenda después."
+    }
+   },
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": true,
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "controlar pagos",
+      "secciones": [
+       "pagos",
+       "miembros"
+      ],
+      "bloques": [
+       {
+        "vista": "tablero",
+        "seccion": "miembros",
+        "opciones": {
+         "por": "estado"
+        },
+        "tamano": {
+         "ancho": 8
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "pagos",
+        "opciones": {
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "miembros",
+        "opciones": {
+         "tipo": "dona"
+        },
+        "tamano": {
+         "ancho": 4,
+         "alto": 3
+        }
+       }
+      ],
+      "marca": {
+       "primario": "#1e40af",
+       "secundario": "#F59E0B",
+       "tipografia": "Poppins"
+      },
+      "restricciones": [
+       "nada de rojo"
+      ]
+     },
+     "notas": [
+      "quizá una agenda después"
+     ],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "errores": [],
+    "antes_de_acomodar": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "miembros",
+      "vista": "tablero",
+      "opciones": {
+       "por": "estado"
+      },
+      "ancho": 8,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "pagos",
+      "vista": "grafico",
+      "opciones": {
+       "tipo": "dona"
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0002",
+      "seccion": "miembros",
+      "vista": "grafico",
+      "opciones": {
+       "tipo": "dona"
+      },
+      "ancho": 4,
+      "alto": 3
+     }
+    ],
+    "inicio": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "miembros",
+      "vista": "tablero",
+      "opciones": {
+       "por": "estado"
+      },
+      "ancho": 8,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "pagos",
+      "vista": "grafico",
+      "opciones": {
+       "tipo": "dona"
+      },
+      "ancho": 8,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0002",
+      "seccion": "miembros",
+      "vista": "grafico",
+      "opciones": {
+       "tipo": "dona"
+      },
+      "ancho": 4,
+      "alto": 4
+     }
+    ],
+    "marca": {
+     "primario": "#1e40af",
+     "secundario": "#F59E0B",
+     "fuenteTitulos": "Poppins",
+     "fuenteTexto": "Poppins"
+    },
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Aún no hay nada en la ficha.",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "—",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "—",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": false
+    }
+   }
+  ]
+ },
+ {
+  "caso": "confirmando: ajuste agregando y un sí con coma",
+  "plantilla": "membresias",
+  "pasos": [
+   {
+    "paso": "preparar",
+    "texto": "arma mi nuevo inicio"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "resumen",
+     "seccion": "pagos"
+    }
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "cambia: prefiero también la lista de pagos"
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "lista",
+     "seccion": "pagos"
+    }
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "ok, gracias"
+   },
+   {
+    "paso": "construir"
+   }
+  ],
+  "salidas": [
+   {
+    "aviso": "El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_bloque (una llamada por cada cosa) SOLO lo que la persona dijo en este mensaje que quiere ver, y anotar_ficha solo para marca o restricciones si las dijo; luego haz la pregunta de FALTA.",
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: resumen de Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Partes del menú que importan: Pagos. 1. resumen con cifras de Pagos",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": true
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "resumen con cifras (Pagos)",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [
+     {
+      "campo": "objetivo",
+      "pregunta": "¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)"
+     }
+    ],
+    "contexto": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [
+      "objetivo"
+     ],
+     "instruccion_turno": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)"
+    }
+   },
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: lista de Pagos.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Partes del menú que importan: Pagos. 1. resumen con cifras de Pagos 2. lista de Pagos",
+    "tarjeta": {
+     "fase": "juntando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "—",
+       "pendiente": true
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Pagos",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "resumen con cifras (Pagos) · lista (Pagos)",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [
+     {
+      "campo": "objetivo",
+      "pregunta": "¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)"
+     }
+    ],
+    "contexto": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [
+      "objetivo"
+     ],
+     "instruccion_turno": "FALTA: objetivo — pregunta sugerida: ¿Para qué quieres esta pantalla de inicio? (por ejemplo controlar ventas, ver cobros, seguir clientes…)"
+    }
+   },
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [
+       "pagos"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "pagos",
+        "opciones": {
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "tabla",
+        "seccion": "pagos",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [
+      "objetivo"
+     ],
+     "rechazo": false
+    }
+   },
+   {
+    "errores": [],
+    "antes_de_acomodar": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "pagos",
+      "vista": "kpis",
+      "opciones": {
+       "suma": "monto"
+      },
+      "ancho": 12,
+      "alto": 1
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "pagos",
+      "vista": "tabla",
+      "opciones": {},
+      "ancho": 12,
+      "alto": 2
+     }
+    ],
+    "inicio": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "pagos",
+      "vista": "kpis",
+      "opciones": {
+       "suma": "monto"
+      },
+      "ancho": 12,
+      "alto": 1
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "pagos",
+      "vista": "tabla",
+      "opciones": {},
+      "ancho": 12,
+      "alto": 2
+     }
+    ],
+    "marca": {},
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   }
+  ]
+ },
+ {
+  "caso": "gimnasio: resumen con suma y un solo medio a lo ancho",
+  "plantilla": "gimnasio",
+  "pasos": [
+   {
+    "paso": "preparar",
+    "texto": "Rediseña mi inicio para ver mis membresías"
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "resumen",
+     "seccion": "Membresías"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "agenda",
+     "seccion": "clases"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "grafica",
+     "seccion": "membresias"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "por_vencer",
+     "seccion": "membresias"
+    }
+   },
+   {
+    "paso": "herramienta",
+    "nombre": "anotar_bloque",
+    "args": {
+     "que": "lista",
+     "seccion": "visitas y prueba"
+    }
+   },
+   {
+    "paso": "senal"
+   },
+   {
+    "paso": "resumen"
+   },
+   {
+    "paso": "preparar",
+    "texto": "sí"
+   },
+   {
+    "paso": "construir"
+   }
+  ],
+  "salidas": [
+   {
+    "aviso": "El código abrió la ficha de diseño con este pedido (no llames abrir_toma). NO toques la pantalla: anota con anotar_bloque (una llamada por cada cosa) SOLO lo que la persona dijo en este mensaje que quiere ver, y anotar_ficha solo para marca o restricciones si las dijo; luego haz la pregunta de FALTA.",
+    "digresion": false,
+    "construir": false,
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: resumen de Membresías.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [
+       "membresias"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "membresias",
+        "opciones": {
+         "por": "estado",
+         "suma": "monto"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: agenda de Clases.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [
+       "membresias",
+       "clases"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "membresias",
+        "opciones": {
+         "por": "estado",
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "agenda",
+        "seccion": "clases",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "clase",
+         "dias": 7
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: grafica (Dona) de Membresías.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [
+       "membresias",
+       "clases"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "membresias",
+        "opciones": {
+         "por": "estado",
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "agenda",
+        "seccion": "clases",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "clase",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "membresias",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "valor": "monto",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: por_vencer de Membresías.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [
+       "membresias",
+       "clases"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "membresias",
+        "opciones": {
+         "por": "estado",
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "agenda",
+        "seccion": "clases",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "clase",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "membresias",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "valor": "monto",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "membresias",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "ok": true,
+    "resultado": "Anotado en la ficha: lista de Visitas y prueba.",
+    "toma": {
+     "activa": true,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [
+       "membresias",
+       "clases",
+       "visitas"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "membresias",
+        "opciones": {
+         "por": "estado",
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "agenda",
+        "seccion": "clases",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "clase",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "membresias",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "valor": "monto",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "membresias",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "tabla",
+        "seccion": "visitas",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "senal": "RESUMEN (muéstralo en palabras sencillas y pregunta «¿Lo armo así?»):\nVas a tener un inicio para ver mis membresías. Partes del menú que importan: Membresías, Clases, Visitas y prueba. 1. resumen con cifras de Membresías 2. agenda de Clases 3. Dona en Membresías 4. por vencer de Membresías 5. lista de Visitas y prueba",
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [
+       "membresias",
+       "clases",
+       "visitas"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "membresias",
+        "opciones": {
+         "por": "estado",
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "agenda",
+        "seccion": "clases",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "clase",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "membresias",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "valor": "monto",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "membresias",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "tabla",
+        "seccion": "visitas",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "resumen": "Vas a tener un inicio para ver mis membresías. Partes del menú que importan: Membresías, Clases, Visitas y prueba. 1. resumen con cifras de Membresías 2. agenda de Clases 3. Dona en Membresías 4. por vencer de Membresías 5. lista de Visitas y prueba",
+    "tarjeta": {
+     "fase": "confirmando",
+     "filas": [
+      {
+       "etiqueta": "Objetivo",
+       "texto": "ver mis membresías",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Secciones",
+       "texto": "Membresías, Clases, Visitas y prueba",
+       "pendiente": false
+      },
+      {
+       "etiqueta": "Bloques en inicio",
+       "texto": "resumen con cifras (Membresías) · agenda (Clases) · gráfica (Membresías) · por vencer (Membresías) · lista (Visitas y prueba)",
+       "pendiente": false
+      }
+     ],
+     "notas": []
+    },
+    "faltantes": [],
+    "contexto": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [
+       "membresias",
+       "clases",
+       "visitas"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "membresias",
+        "opciones": {
+         "por": "estado",
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "agenda",
+        "seccion": "clases",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "clase",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "membresias",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "valor": "monto",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "membresias",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "tabla",
+        "seccion": "visitas",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "faltantes": [],
+     "instruccion_turno": "RESUMEN (muéstralo y pregunta «¿Lo armo así?»):\nVas a tener un inicio para ver mis membresías. Partes del menú que importan: Membresías, Clases, Visitas y prueba. 1. resumen con cifras de Membresías 2. agenda de Clases 3. Dona en Membresías 4. por vencer de Membresías 5. lista de Visitas y prueba"
+    }
+   },
+   {
+    "aviso": null,
+    "digresion": false,
+    "construir": true,
+    "toma": {
+     "activa": true,
+     "fase": "confirmando",
+     "ficha": {
+      "objetivo": "ver mis membresías",
+      "secciones": [
+       "membresias",
+       "clases",
+       "visitas"
+      ],
+      "bloques": [
+       {
+        "vista": "kpis",
+        "seccion": "membresias",
+        "opciones": {
+         "por": "estado",
+         "suma": "monto"
+        }
+       },
+       {
+        "vista": "agenda",
+        "seccion": "clases",
+        "opciones": {
+         "fecha": "fecha",
+         "titulo": "clase",
+         "dias": 7
+        }
+       },
+       {
+        "vista": "grafico",
+        "seccion": "membresias",
+        "opciones": {
+         "estado": "estado",
+         "fecha": "alta",
+         "fecha2": "vence",
+         "valor": "monto",
+         "texto": "nombre",
+         "agrupar": "estado",
+         "funcion": "conteo",
+         "tipo": "dona"
+        }
+       },
+       {
+        "vista": "vencimientos",
+        "seccion": "membresias",
+        "opciones": {
+         "fecha": "alta",
+         "titulo": "nombre",
+         "dias": 30
+        }
+       },
+       {
+        "vista": "tabla",
+        "seccion": "visitas",
+        "opciones": {}
+       }
+      ],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   },
+   {
+    "errores": [],
+    "antes_de_acomodar": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "membresias",
+      "vista": "kpis",
+      "opciones": {
+       "por": "estado",
+       "suma": "monto"
+      },
+      "ancho": 12,
+      "alto": 1
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "clases",
+      "vista": "agenda",
+      "opciones": {
+       "fecha": "fecha",
+       "titulo": "clase",
+       "dias": 7
+      },
+      "ancho": 12,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0002",
+      "seccion": "membresias",
+      "vista": "grafico",
+      "opciones": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "tipo": "dona"
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0003",
+      "seccion": "membresias",
+      "vista": "vencimientos",
+      "opciones": {
+       "fecha": "alta",
+       "titulo": "nombre",
+       "dias": 30
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0004",
+      "seccion": "visitas",
+      "vista": "tabla",
+      "opciones": {},
+      "ancho": 12,
+      "alto": 2
+     }
+    ],
+    "inicio": [
+     {
+      "uid": "fmvb9w0000",
+      "seccion": "membresias",
+      "vista": "kpis",
+      "opciones": {
+       "por": "estado",
+       "suma": "monto"
+      },
+      "ancho": 12,
+      "alto": 1
+     },
+     {
+      "uid": "fmvb9w0001",
+      "seccion": "clases",
+      "vista": "agenda",
+      "opciones": {
+       "fecha": "fecha",
+       "titulo": "clase",
+       "dias": 7
+      },
+      "ancho": 12,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0002",
+      "seccion": "membresias",
+      "vista": "grafico",
+      "opciones": {
+       "estado": "estado",
+       "fecha": "alta",
+       "fecha2": "vence",
+       "valor": "monto",
+       "texto": "nombre",
+       "agrupar": "estado",
+       "funcion": "conteo",
+       "tipo": "dona"
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0003",
+      "seccion": "membresias",
+      "vista": "vencimientos",
+      "opciones": {
+       "fecha": "alta",
+       "titulo": "nombre",
+       "dias": 30
+      },
+      "ancho": 6,
+      "alto": 2
+     },
+     {
+      "uid": "fmvb9w0004",
+      "seccion": "visitas",
+      "vista": "tabla",
+      "opciones": {},
+      "ancho": 12,
+      "alto": 2
+     }
+    ],
+    "marca": {},
+    "toma": {
+     "activa": false,
+     "fase": "juntando",
+     "ficha": {
+      "objetivo": "",
+      "secciones": [],
+      "bloques": [],
+      "marca": {},
+      "restricciones": []
+     },
+     "notas": [],
+     "preguntadas": [],
+     "rechazo": false
+    }
+   }
+  ]
+ }
+]
