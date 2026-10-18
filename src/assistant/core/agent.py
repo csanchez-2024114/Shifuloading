@@ -621,6 +621,32 @@ def is_evidence(output: str) -> bool:
     return tool_ran(output) or output.lstrip().startswith(_REUSED_RESEARCH)
 
 
+class FiltroURLs(AgentMiddleware):
+    """URL_FILTER_ALWAYS (P2.4, S3): al terminar el turno, quita de la respuesta final los enlaces cuya URL (con su
+    query) no aparece en ningún resultado de herramienta que corrió ni en lo que escribió el usuario en el hilo. Sin
+    LLM: 0 tokens. Si quita algo, reemplaza el mensaje (mismo id) y avisa a la UI con el original, como ANSWER_VERIFY:
+    el cambio nunca es silencioso."""
+
+    def after_agent(self, state, runtime):
+        messages = state.get("messages") or []
+        last = messages[-1] if messages else None
+        if not isinstance(last, AIMessage) or last.tool_calls or not _content_text(last).strip():
+            return None
+        evidence = "\n\n".join(_content_text(m) for m in messages if (m.type == "human") or (
+            isinstance(m, ToolMessage) and tool_ran(_content_text(m))))
+        original = _content_text(last)
+        text, removed = citations.keep_supported(original, evidence, strict_query=True)
+        if not removed:
+            return None
+        notes = [tr("citations.citation_removed", url=url) for url in removed]
+        previous = (last.additional_kwargs or {}).get("answer_verify") or {}
+        first = previous.get("original") or original  # si ANSWER_VERIFY ya corrigió, se conserva su original
+        runtime.stream_writer({"tipo": "verificacion", "status": "corrected", "notes": previous.get("notes", []) + notes,
+                               "tokens": 0, "text": text, "original": first})
+        return {"messages": [AIMessage(id=last.id, content=text, additional_kwargs={
+            "answer_verify": {"original": first, "status": "corrected", "notes": previous.get("notes", []) + notes}})]}
+
+
 class AnswerVerifier(AgentMiddleware):
     """ANSWER_VERIFY: al terminar el turno, si se usó web_search/deep_research, una llamada barata
     contrasta la respuesta con lo recuperado. Si corrige, reemplaza el mensaje (mismo id) y avisa a la UI con el
@@ -707,6 +733,8 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     compactor = ResumenPorTurno(summarizer or make_summary_model(settings), settings, base)
     if settings.memory_summarize:
         middleware.insert(1, compactor)
+    if settings.url_filter_always:  # antes en la lista = su after_agent corre después del verificador
+        middleware.append(FiltroURLs())
     if settings.answer_verify:
         middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap,
                                          evidence_tools(profile)))

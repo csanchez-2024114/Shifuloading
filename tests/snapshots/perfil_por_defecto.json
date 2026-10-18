@@ -309,6 +309,7 @@
    "turn_max_seconds": 0.0,
    "turn_token_cap": 150000,
    "untrusted_wrap": false,
+   "url_filter_always": false,
    "use_bigtool": false
   },
   "env_vars": [
@@ -373,6 +374,7 @@
    "TURN_MAX_SECONDS",
    "TURN_TOKEN_CAP",
    "UNTRUSTED_WRAP",
+   "URL_FILTER_ALWAYS",
    "USE_BIGTOOL"
   ]
  },

@@ -98,6 +98,10 @@ class Settings:
     # (confidence "quoted"), sin llamar a un LLM. Apagado por defecto: hoy un recuerdo sin cita se guarda como
     # "unverified" y el modelo recibiría otro resultado.
     memory_require_quote: bool = False
+    # P2.4: al terminar cada turno quita de la respuesta los enlaces cuya URL (con su query) no está en lo que
+    # devolvieron las herramientas ni en lo que escribió el usuario, aunque ANSWER_VERIFY=0. 0 tokens. Apagado por
+    # defecto: puede cambiar la respuesta final.
+    url_filter_always: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -162,6 +166,7 @@ class Settings:
             turn_max_seconds=_num("TURN_MAX_SECONDS", "0", float),
             untrusted_wrap=_bool("UNTRUSTED_WRAP"),
             memory_require_quote=_bool("MEMORY_REQUIRE_QUOTE"),
+            url_filter_always=_bool("URL_FILTER_ALWAYS"),
         )
 
     def context_window(self) -> int:

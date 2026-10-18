@@ -651,6 +651,7 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "TURN_MAX_SECONDS": ("turn_max_seconds", 0.0),
     "UNTRUSTED_WRAP": ("untrusted_wrap", False),
     "MEMORY_REQUIRE_QUOTE": ("memory_require_quote", False),
+    "URL_FILTER_ALWAYS": ("url_filter_always", False),
 }
 
 
