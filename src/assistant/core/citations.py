@@ -26,14 +26,39 @@ def normalize_url(url: str) -> str:
     return host + parts.path.rstrip("/")
 
 
+_never_in_url = "`“”‘’«»"  # no son válidos en una URL (irían codificados): donde aparece uno, la URL ya terminó
+_closers = {")": "(", "]": "[", "}": "{"}
+
+
+def _trim_url(url: str) -> str:
+    """Quita lo que se pegó al final de una URL sin ser parte de ella: comillas invertidas o tipográficas,
+    puntuación final (. , ; : ! ?) y paréntesis, corchetes o llaves de cierre sin su apertura dentro de la URL."""
+    for ch in _never_in_url:
+        url = url.split(ch, 1)[0]
+    while url:
+        last = url[-1]
+        if last in ".,;:!?'\"":
+            url = url[:-1]
+        elif last in _closers and url.count(last) > url.count(_closers[last]):
+            url = url[:-1]
+        else:
+            break
+    return url
+
+
+def _bare_urls(text: str) -> list[str]:
+    return [u for u in (_trim_url(m) for m in _BARE_URL.findall(text)) if "://" in u]
+
+
 def urls(text: str) -> list[str]:
-    return [u for _, u in _MD_LINK.findall(text)] + _BARE_URL.findall(text)
+    return [_trim_url(u) for _, u in _MD_LINK.findall(text)] + _bare_urls(text)
 
 
 def _links(text: str) -> list[tuple[str, str, str]]:
-    """(texto completo del enlace, título, url) de los enlaces markdown y las URLs sueltas."""
-    out = [(m.group(0), m.group(1), m.group(2)) for m in _MD_LINK.finditer(text)]
-    out += [(u, "", u) for u in _BARE_URL.findall(text)]
+    """(texto completo del enlace, título, url) de los enlaces markdown y las URLs sueltas. De una URL suelta, el
+    texto del enlace es solo la URL: los delimitadores que la rodean se quedan en la respuesta."""
+    out = [(m.group(0), m.group(1), _trim_url(m.group(2))) for m in _MD_LINK.finditer(text)]
+    out += [(u, "", u) for u in _bare_urls(text)]
     return out
 
 
