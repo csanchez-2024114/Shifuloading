@@ -58,3 +58,13 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
 - **`IntentRules`, `MemoryLexicon` y `TextCatalog` por defecto no asumen idioma:** las reglas no reconocen nada, el léxico no tiene palabras vacías ni temas y el catálogo está vacío (así que `load_profile` exige todas las claves). Un perfil nuevo debe traer su catálogo (por ejemplo `packs/i18n/es.py`), y las reglas y el léxico si los quiere.
 - **La huella tiene 136 constantes, no 139.** La cifra 139 de la Fase 0 era de la primera generación, antes de excluir el estado en vivo. Corregido en `PARIDAD.md`.
 
+## Anotado en la Fase 5 (prueba de pivote)
+
+- **Pasos que no estaban en el plan, cada uno en su commit y sin cambio de comportamiento:**
+  - la UI pasa a `packs/ui/`, con los mismos bytes;
+  - `ToolPolicy.evidence` reemplaza la tupla fija `EVIDENCE_TOOLS`, con el mismo valor para `default`;
+  - las reglas de intención pasan a `packs/lang/es_en.py`, porque un perfil no importa otro y `generic` las comparte.
+- **Con `USE_BIGTOOL=1`, el registro siempre trae las 8 herramientas base del núcleo**, `check_python_syntax` incluida, así que `generic` en bigtool sí la tiene. Para que el perfil filtre ese registro, `build_tools` o un campo nuevo tendría que aplicarse también a bigtool. Sería un cambio de comportamiento, y se suma a los pendientes de bigtool de la Fase 4.
+- **La UI compartida solo conoce las etiquetas de las herramientas del núcleo y de `default`:** una herramienta nueva (`word_count` en `tests/profiles/minimal`) sale con su nombre crudo. Un perfil que quiera etiquetas propias necesita su propio `static_dir`. Una opción futura es que la UI pida las etiquetas al servidor.
+- **`generic` repite** su política de memoria `strict` y la regla de economía de búsqueda, en una versión más corta. Las de `default` viven en `profiles/default/policies.py`. Si un tercer perfil las necesita, conviene moverlas a un pack.
+- **Los perfiles de `tests/profiles/` se cargan por ruta con puntos** (`profiles.minimal`). Funciona porque pytest pone `tests/` en `sys.path`. `available_profiles()` solo lista los de `assistant.profiles`.
