@@ -117,7 +117,13 @@ def ejecutar(doc: dict, nombre: str, args: dict | None = None, contexto: dict | 
     return r
 
 
+# Las que despacha el chat, no este módulo (datos: registros.py; deshacer: puntos.py; leer_enlace: red).
+DEL_CHAT = frozenset([*(h["function"]["name"] for h in HERRAMIENTAS_DATOS), "deshacer", "leer_enlace"])
+
+
 def _ejecutar(doc: dict, nombre: str, args: dict, ctx: dict) -> dict:
+    if nombre in DEL_CHAT:
+        raise ValueError(f"«{nombre}» la despacha el chat (registros.py / puntos.py), no edicion.ejecutar")
     vista = ctx.get("vista") or "inicio"
     if nombre in HERR_BLOQUE:
         # Si la persona está MIRANDO una pestaña, las piezas van ahí por defecto; tocar el inicio desde ahí exige decirlo
@@ -138,6 +144,8 @@ def _ejecutar(doc: dict, nombre: str, args: dict, ctx: dict) -> dict:
                 or next((x for x in efectiva["secciones"] if x["id"] == f"l_{js(pid)}"), None)  # «miembros» → l_miembros
             if not sec:
                 return _no(doc, f"la pestaña «{js(pid)}» no existe. Pestañas: inicio, {', '.join(x['id'] for x in efectiva['secciones'] if paginable(x))}.")
+            if args.get("bloque") == f"p_{js(pid)}" and pid != sec["id"]:
+                args = {**args, "bloque": f"p_{sec['id']}"}  # la pieza por defecto nombrada sin `l_` (p_miembros → p_l_miembros)
             pid = sec["id"]
             pagina = pagina_de(efectiva, doc, pid)
             if pagina is None:
@@ -172,6 +180,13 @@ def _ejecutar(doc: dict, nombre: str, args: dict, ctx: dict) -> dict:
              "resultado": f"{r0['resultado']} El código ya acomodó solo {', '.join(js(x) for x in tocados)} para que no quede hueco." if tocados else r0["resultado"]}
     # Cada resultado dice dónde quedó TODO de verdad: el modelo describe eso, no lo que supone.
     return {**r, "resultado": f"{r['resultado']} Así se ve ahora: {asi_se_ve(r['doc'].get('inicio') or [])}."}
+
+
+def construir_desde_ficha(doc: dict, ahora_ms: int | None = None) -> dict:
+    """«Sí» a la ficha de diseño: el CÓDIGO arma el inicio desde la ficha (toma.py) con el acomodo del lienzo y la validación de la
+    plantilla completa con esos bloques como inicio (como `construirDesdeFicha`). Devuelve {doc, errores}; con errores no cambia nada."""
+    return tm.construir_desde_ficha(doc, acomodar, lambda d: validar_plantilla({**plantilla_efectiva(d), "inicio": d.get("inicio") or []}),
+                                    list(FUENTES), ahora_ms=ahora_ms)
 
 
 def asi_se_ve(bs: list[dict]) -> str:

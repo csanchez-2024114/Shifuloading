@@ -210,3 +210,26 @@ def test_describir_incluye_las_secciones_virtuales(con_contactos):
     assert [s["id"] for s in p["secciones"]][:2] == ["contactos", "desarrollo"]
     assert p["pedidos_anteriores"] == [{"pedido": 3, "dijo": "pon verde", "cambio": ["marca"], "hora": "10:00"}]
     assert "pestanas_base" in p and "conteo" not in str(p["secciones"][0])  # sin números de registros (decisión medida)
+
+
+# ───────── Toma de diseño y despacho ─────────
+
+def test_construir_desde_la_ficha_con_el_lienzo_y_la_validacion_reales(doc):
+    d = ejecutar(doc, "abrir_toma", {"objetivo": "ver mis miembros"})["doc"]
+    d = ejecutar(d, "anotar_bloque", {"que": "resumen", "seccion": "miembros"})["doc"]
+    d = ejecutar(d, "anotar_bloque", {"que": "grafica", "seccion": "miembros", "grafico": "dona"})["doc"]
+    from app.crm.edicion import construir_desde_ficha
+    r = construir_desde_ficha(d, ahora_ms=1_700_000_000_000)
+    assert r["errores"] == []
+    assert [(b["vista"], b["seccion"], b["ancho"]) for b in r["doc"]["inicio"]] == [("kpis", "l_miembros", 12), ("grafico", "l_miembros", 12)]
+    assert r["doc"]["toma"]["activa"] is False
+    malo = copy.deepcopy(d)
+    malo["toma"]["ficha"]["bloques"].append({"vista": "tablero", "seccion": "l_pagos", "opciones": {"por": "monto"}})
+    r2 = construir_desde_ficha(malo, ahora_ms=1_700_000_000_000)
+    assert r2["errores"] and "«por» debe ser un campo de tipo estado" in r2["errores"][0] and r2["doc"]["inicio"] == doc["inicio"]
+
+
+@pytest.mark.parametrize("nombre", ["agregar_registro", "consultar_datos", "deshacer", "leer_enlace"])
+def test_lo_que_despacha_el_chat_no_pasa_por_aqui(doc, nombre):
+    with pytest.raises(ValueError):
+        ejecutar(doc, nombre, {})

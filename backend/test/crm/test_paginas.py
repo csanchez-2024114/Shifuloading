@@ -111,3 +111,9 @@ def test_pieza_igual_a_otra_del_mismo_lienzo_d55(base):
     assert ejecutar(a["doc"], "agregar_bloque", {"vista": "grafico", "seccion": "miembros", "opciones": {"tipo": "columnas"}})["ok"], "otro tipo"
     assert ejecutar(a["doc"], "agregar_bloque", {"vista": "grafico", "seccion": "miembros", "opciones": {"tipo": "dona"}}, {"confirmado": True})["ok"], "con «sí»"
     assert ejecutar(base, "agregar_bloque", {"pestana": "miembros", "vista": "kpis", "opciones": {"por": "estado"}})["ok"], "en otra pestaña"
+
+
+def test_la_pieza_por_defecto_nombrada_sin_l_tambien_se_encuentra(base):
+    r = ejecutar(base, "cambiar_visual", {"bloque": "p_miembros", "vista": "tablero", "opciones": {"por": "estado"}})
+    assert r["ok"], r["resultado"]
+    assert pag(r["doc"], "l_miembros")[0]["uid"] == "p_l_miembros" and pag(r["doc"], "l_miembros")[0]["vista"] == "tablero"
