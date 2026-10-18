@@ -2,7 +2,7 @@
 
 Este refactor solo reorganiza. Todo lo de aquí abajo es un **cambio de comportamiento** y va en commits o tareas aparte, después de terminar el refactor y con la suite en verde.
 
-## Seguridad (de la auditoría del 2026-10-17, `AUDITORIA_AGENTE.md`): siguiente fase, sin implementar
+## Seguridad (de la auditoría del 2026-10-17, `docs/AUDITORIA_AGENTE.md`): siguiente fase, sin implementar
 
 | # | Hallazgo | Dónde (antes de mover) |
 |---|---|---|
@@ -30,4 +30,6 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
   - Sin compactación, `ANSWER_VERIFY` ni tope por esfuerzo.
 - **Dependencias sin fijar y sin lockfile** (`pyproject.toml:5-21`).
 - **La UI depende de los mensajes en inglés del núcleo** (`toolOutputLabel`). Un perfil que cambie esos mensajes rompe las etiquetas. Tarea aparte: etiquetas de la UI por perfil (`labels.json`) y una cáscara de UI genérica.
-- **Defaults de configuración por perfil** (Q6 del plan): mejora posterior.
+- **Defaults de configuración por perfil** (Q6): descartado en esta tarea; mejora posterior si hace falta.
+- **`check_python_syntax` es candidato a pack** (Q4): en este refactor se queda en `core/tools.py` y fuera de `generic`. Moverlo a `packs/tools/` cuando haya un segundo perfil que lo quiera.
+- **`CONTRATO.md`**: se corrige en un commit de docs aparte después de la Fase 6, con valores tomados del código (ver arriba).

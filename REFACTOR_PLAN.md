@@ -1,6 +1,6 @@
 # REFACTOR_PLAN: núcleo de agente + perfiles
 
-Estado: **pendiente de aprobación** (Fase 1). No se ha movido ningún archivo de código.
+Estado: **aprobado** (2026-10-17), con las decisiones de la sección 8. Fase 2 en curso.
 Rama `refactor/core-profiles`. Línea base: 269 tests en `main`; 346 con los de caracterización (commit `05773c4`).
 
 Principio rector: **mover primero y cambiar después**. En la Fase 2, cada archivo se mueve 1:1 y su nombre viejo sigue apuntando al **mismo objeto de módulo**. Los cortes de los módulos mixtos (sacar textos, reglas y herramientas de dominio) llegan en las Fases 3 y 4, con la huella (`tests/snapshots/perfil_por_defecto.json`) como juez: con el perfil por defecto, el modelo, la UI y el cliente SSE deben recibir exactamente lo mismo.
@@ -293,3 +293,24 @@ Ninguna fase llama a la API real. Si en algún punto hiciera falta validar con e
 - **Q6. Defaults de configuración por perfil.** ¿Quieres que un perfil pueda fijar defaults propios de variables (por ejemplo `generic` con `TURN_TOKEN_CAP` más bajo)? *Recomendado:* **no en esta tarea**. Todas las variables y defaults siguen en `Settings`; anotado en `REFACTOR_NOTAS.md` como mejora.
 - **Q7. Commits de documentación.** `AUDITORIA_AGENTE.md` (de la auditoría anterior) sigue sin trackear. ¿Lo commiteo en la rama junto con estos documentos o lo dejo fuera?
 - **Q8. Reglas de CLAUDE.md.** Dicen "nunca ramas nuevas" y "sin commits hasta que se pidan". Entendí que esta tarea los pide expresamente (rama `refactor/core-profiles`, un commit por paso) y por eso ya creé la rama y un commit. Sigue sin haber push. Confírmame que es así.
+
+---
+
+## 8. Decisiones (2026-10-17)
+
+| # | Decisión |
+|---|---|
+| Q1 | (a): `system.md` e `index.html` van a `profiles/default/`; en ese mismo commit, en los 6 tests que los leen, cambia solo la constante de ruta |
+| Q2 | `index.html` va intacto al perfil por defecto y `generic` lo reutiliza; las etiquetas por perfil, en una tarea aparte |
+| Q3 | `extra_tools.py` → `packs/tools/utilities.py` |
+| Q4 | `check_python_syntax` se queda en `core/tools.py`, fuera de `generic`; anotado en `REFACTOR_NOTAS.md` como candidato a pack |
+| Q5 | El núcleo no trae textos al usuario. `TextCatalog` = **base** (`packs/i18n/es.py`) + **sobreescrituras del perfil**; la validación de `REQUIRED_TEXTS` se hace sobre el catálogo **ya fusionado**. El error de perfil inexistente va en español |
+| Q6 | No hay defaults de configuración por perfil |
+| Q7 | La auditoría queda en `docs/AUDITORIA_AGENTE.md`, en un commit solo de docs (`52e661f`) |
+| Q8 | Rama y commits sí; **ni push ni merge a `main`** |
+
+Además:
+- **`CONTRATO.md`** se corrige en un commit de docs aparte, **después de la Fase 6**, con los valores tomados del código.
+- **Plan B del alias:** si el `MetaPathFinder` da problemas, shims de archivo (`sys.modules[__name__] = <módulo de core>`, y en paquetes también cada submódulo). `test_compat.py` no cambia, porque verifica el resultado y no el mecanismo.
+- **`tests/test_compat.py`** entra en el primer commit de la Fase 2 con **3 tests de cantidad fija**: uno recorre el mapa completo. La suite pasa de 346 a **349** y no cambia en el resto de la Fase 2.
+- **Imports internos:** en cada movimiento, los imports dentro de `src/` pasan al nombre nuevo (`assistant.core.*`). Los tests y los scripts siguen usando los nombres viejos, y así prueban la compatibilidad.
