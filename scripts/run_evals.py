@@ -30,6 +30,7 @@ def main(argv=None) -> int:
     p.add_argument("--hard-cap", type=int, default=0, help="tope duro acumulado del modo real")
     p.add_argument("--confirm-cap", type=int, default=0, help="debe ser igual a --hard-cap para correr")
     p.add_argument("--out", default=str(runner.RESULTS_DIR))
+    p.add_argument("--repeat", action="append", default=[], help="id=N: corre ese caso N veces")
     p.add_argument("--langsmith", action="store_true")
     a = p.parse_args(argv)
 
@@ -43,6 +44,7 @@ def main(argv=None) -> int:
     if not cases:
         print("Ningún caso coincide.")
         return 1
+    cases = runner.with_repeats(cases, {k: int(v) for k, v in (r.split("=", 1) for r in a.repeat)})
 
     extra = {}
     if a.real:
@@ -75,6 +77,9 @@ def main(argv=None) -> int:
             print(f"FALLA {c['id']}: " + "; ".join(f"{k['name']}: {k['detail']}" for k in c["checks"] if not k["ok"]))
     print(f"{s['passed']}/{s['cases']} casos en verde, {s['failed']} fallas, {s['skipped']} sin correr, "
           f"{s['tokens']:,} tokens. Resultados: {path}")
+    for gate, g in s["gates"].items():
+        if g["cases"]:
+            print(f"  {'Calidad' if gate == 'quality' else 'Seguridad'}: {g['passed']}/{g['cases']} ({g['rate']:.0%})")
     if a.langsmith:
         from evals.langsmith_upload import upload
 

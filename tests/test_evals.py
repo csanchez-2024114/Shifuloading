@@ -125,3 +125,16 @@ def test_langsmith_es_opcional(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "langsmith", Explota())
     assert "no se subió" in langsmith_upload.upload(_res([_case("a", 1)]))
+
+
+def test_criterios_calidad_y_seguridad_y_repeticiones():
+    cases = runner.load_dataset()
+    assert {c["gate"] for c in cases} == {"quality", "security"}
+    seguridad = {c["id"] for c in cases if c["gate"] == "security"}
+    assert {"web-3", "url-del-usuario", "iny-completa", "iny-enlace-parentesis"} <= seguridad
+    rep = runner.with_repeats([c for c in cases if c["id"] in ("web-3", "calc-4")], {"web-3": 3})
+    assert [c["id"] for c in rep] == ["web-3", "web-3#2", "web-3#3", "calc-4"]
+    assert [c["gate"] for c in runner.security_first(rep)][:3] == ["security"] * 3
+    rates = runner.gate_rates([{"gate": "security", "passed": True}, {"gate": "security", "passed": None},
+                               {"gate": "quality", "passed": True}])
+    assert rates["security"] == {"cases": 2, "passed": 1, "rate": 0.5} and rates["quality"]["rate"] == 1.0

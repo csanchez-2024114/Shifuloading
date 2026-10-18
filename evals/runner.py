@@ -62,12 +62,13 @@ def run_case(client, case: dict, run_tag: str, real: bool = False) -> dict:
     steps: list[dict] = []
     last_interrupts: list[dict] = []
     started = time.monotonic()
+    case_spent = 0
     for st in case["steps"]:
         if st.get("new_thread"):
             thread = f"eval-{uuid.uuid4().hex[:10]}"
             threads.append(thread)
-        if real:
-            client.post("/_eval/margin", params={"n": case.get("margin", 30000)})
+        if real:  # margen del paso: lo que le queda al caso (así el /resume de una tarjeta aprobada sí cabe)
+            client.post("/_eval/margin", params={"n": max(case.get("margin", 30000) - case_spent, 5000)})
         if "chat" in st:
             path, body, decision = "/chat", {"message": message_text(st), "thread_id": thread, "user_id": user,
                                              "effort": st.get("effort")}, None
@@ -81,6 +82,7 @@ def run_case(client, case: dict, run_tag: str, real: bool = False) -> dict:
         seconds = round(time.monotonic() - t0, 2)
         events = parse_sse(resp.text) if resp.status_code == 200 else []
         turns = client.get("/_eval/turns", params={"thread_id": thread}).json()["turns"][before:]
+        case_spent += sum(t.get("tokens_total", 0) for t in turns)
         steps.append({"kind": path[1:], "status_code": resp.status_code, "expect_status": st.get("status", 200),
                       "decision": decision, "prev_interrupts": last_interrupts if decision else [],
                       "events": events, "seconds": seconds,
@@ -100,11 +102,25 @@ def summarize_case(case: dict, tr: dict) -> dict:
     tools = [{"name": e.get("name"), "status": e.get("status")} for s in tr["steps"] for e in s["events"]
              if e["type"] == "tool_end"]
     return {"id": case["id"], "category": case.get("category"), "noise": case.get("noise"),
-            "passed": all(c["ok"] for c in checks), "checks": checks, "tokens": tr["tokens"],
+            "gate": case.get("gate", "quality"), "passed": all(c["ok"] for c in checks), "checks": checks, "tokens": tr["tokens"],
             "seconds": tr["seconds"], "tools": tools, "answer": tr["answer"][:2000],
             # para diagnosticar urls_backed sin la base temporal (que se borra): las URLs de la evidencia, no su texto
             "evidence_urls": sorted(set(_ANY_URL.findall(tr["evidence"])))[:50],
             "steps": [{k: s[k] for k in ("kind", "status_code", "tokens", "seconds", "detail")} for s in tr["steps"]]}
+
+
+def with_repeats(cases: list[dict], repeats: dict[str, int]) -> list[dict]:
+    """Repite casos (id -> veces). Las copias llevan id "caso#2", "caso#3"... para compararse por separado."""
+    out = []
+    for c in cases:
+        out.append(c)
+        out += [{**c, "id": f"{c['id']}#{n}"} for n in range(2, repeats.get(c["id"], 1) + 1)]
+    return out
+
+
+def security_first(cases: list[dict]) -> list[dict]:
+    """Con presupuesto justo, lo que no puede quedar sin correr son los casos de seguridad (criterio: 100 %)."""
+    return sorted(cases, key=lambda c: c.get("gate") != "security")
 
 
 # ------------------------------------------------------------------ modo falso
@@ -242,7 +258,7 @@ def run_real(cases: list[dict], cap: int, hard_cap: int, log_path: Path, db: str
     out = []
     client = httpx.Client(base_url=f"http://127.0.0.1:{REAL_PORT}", timeout=900)
     run_tag = time.strftime("%H%M%S")
-    for settings, group in _groups(cases):
+    for settings, group in _groups(security_first(cases)):
         cmd = [sys.executable, str(ROOT / "scripts" / "eval_server.py"), "--db", db, "--log", str(log_path),
                "--cap", str(settings.get("TURN_TOKEN_CAP", cap)), "--hard-cap", str(hard_cap)]
         cmd += [a for k, v in settings.items() if k != "TURN_TOKEN_CAP" for a in ("--set", f"{k}={v}")]
@@ -254,7 +270,7 @@ def run_real(cases: list[dict], cap: int, hard_cap: int, log_path: Path, db: str
                 if state["spent"] + case.get("margin", 30000) > hard_cap:
                     print(f"  {case['id']}: sin presupuesto (gastado {state['spent']}), no se corre", flush=True)
                     out.append({"id": case["id"], "category": case.get("category"), "noise": case.get("noise"),
-                                "passed": None, "skipped": "sin presupuesto", "checks": [], "tokens": 0})
+                                "gate": case.get("gate", "quality"), "passed": None, "skipped": "sin presupuesto", "checks": [], "tokens": 0})
                     continue
                 res = summarize_case(case, run_case(client, case, run_tag, real=True))
                 print(f"  {case['id']}: {'ok' if res['passed'] else 'FALLA'} · {res['tokens']} tokens · "
@@ -287,13 +303,24 @@ def git_commit() -> str:
         return "?"
 
 
+def gate_rates(cases_out: list[dict]) -> dict:
+    """% de casos en verde por criterio (calidad y seguridad). Un caso sin correr cuenta como no aprobado."""
+    out = {}
+    for gate in ("quality", "security"):
+        rows = [c for c in cases_out if c.get("gate", "quality") == gate]
+        out[gate] = {"cases": len(rows), "passed": sum(1 for c in rows if c.get("passed")),
+                     "rate": round(sum(1 for c in rows if c.get("passed")) / len(rows), 3) if rows else None}
+    return out
+
+
 def build_results(mode: str, cases_out: list[dict], extra: dict | None = None) -> dict:
     ran = [c for c in cases_out if c.get("passed") is not None]
     return {"meta": {"mode": mode, "date": time.strftime("%Y-%m-%dT%H:%M:%S"), "commit": git_commit(),
                      "dataset_sha": dataset_sha(), **(extra or {})},
             "summary": {"cases": len(cases_out), "passed": sum(1 for c in ran if c["passed"]),
                         "failed": sum(1 for c in ran if not c["passed"]),
-                        "skipped": len(cases_out) - len(ran), "tokens": sum(c.get("tokens", 0) for c in cases_out)},
+                        "skipped": len(cases_out) - len(ran), "tokens": sum(c.get("tokens", 0) for c in cases_out),
+                        "gates": gate_rates(cases_out)},
             "cases": cases_out}
 
 

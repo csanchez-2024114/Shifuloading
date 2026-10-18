@@ -77,7 +77,9 @@ def chip_truthful(tr: dict, case: dict) -> tuple[bool, str]:
     starts = {e.get("id"): e.get("name") for e in _events(tr, "tool_start")}
     ends = {e.get("id"): e for e in _events(tr, "tool_end")}
     # un turno cortado por el tope deja chips abiertos y la UI los marca como abortados (index.html, "abortados")
-    cut = {e.get("id") for step in tr["steps"] if _was_cut(step) for e in step["events"] if e["type"] == "tool_start"}
+    # (también los abiertos en un paso anterior: la tarjeta se pide en /chat y el corte llega en /resume)
+    last_cut = max((i for i, step in enumerate(tr["steps"]) if _was_cut(step)), default=-1)
+    cut = {e.get("id") for step in tr["steps"][:last_cut + 1] for e in step["events"] if e["type"] == "tool_start"}
     bad = [f"sin tool_end: {name}" for cid, name in starts.items() if cid not in ends and cid not in cut]
     bad += [f"{e.get('name')}: success con salida no ejecutada" for e in ends.values()
             if e.get("status") == "success" and not tool_ran(e.get("output") or "")]
