@@ -4,6 +4,7 @@
 Todas las rutas están ligadas al usuario autenticado: nadie ve ni toca el CRM de otra persona. Cada ruta que cambia algo
 devuelve el CRM completo y actualizado (forma documentada en API.md), así la pantalla solo lo reemplaza.
 Errores: `{"mensaje": "..."}` con el código HTTP que corresponda.
+Lo que se cambia a mano (estas rutas) deja un punto de deshacer, con `antes_de` = «A mano: …» (ver `app/crm/puntos.py`).
 
 Endpoints (relativos al prefijo):
   GET    ""                       — El CRM (404 si todavía no tiene uno)
@@ -22,6 +23,9 @@ Endpoints (relativos al prefijo):
   POST   /listas/{id}/registros   — Agrega un registro a una sección propia (valores por id de campo)
   PATCH  /listas/{id}/registros/{rid}  — Cambia valores de un registro
   DELETE /listas/{id}/registros/{rid}
+  POST   /registros/ejemplos/quitar  — Quita los registros de ejemplo (los que sembró una plantilla); lo de la persona se queda
+  GET    /puntos                  — Los puntos de deshacer (los últimos 30, sin foto)
+  POST   /deshacer                — Deshace un punto ({n}; sin n, el último): solo lo que ese cambio tocó
   POST   /chat                    — Mensaje para Shifu (texto y/o captura) -> respuesta + CRM actualizado
 """
 import logging
@@ -38,6 +42,7 @@ from app.crm import diseno
 from app.crm import estructura as est
 from app.crm import memoria as mem
 from app.crm import operaciones as op
+from app.crm import puntos as pt
 from app.crm import repositorio as repo
 from app.crm.chat import responder, sanear_pendiente
 from app.crm.generador import generar
@@ -197,6 +202,14 @@ class ContextoChat(_Texto):
     seccion: Optional[str] = Field(None, max_length=40)
 
 
+class QuitarEjemplos(_Texto):
+    seccion: Optional[str] = Field(None, max_length=40)  # sin sección: de todas
+
+
+class Deshacer(BaseModel):
+    n: Optional[int] = Field(None, ge=1)  # sin n: el último
+
+
 class ChatEntrada(_Texto):
     texto: str = Field("", max_length=2000)
     contexto: Optional[ContextoChat] = None
@@ -208,13 +221,58 @@ def _error(e: op.ErrorCrm) -> JSONResponse:
     return JSONResponse({"mensaje": e.mensaje}, status_code=e.estado)
 
 
-async def _aplicar(request: Request, user: dict, cambiar, estado: int = 200):
-    """Corre una operación sobre el CRM de la persona y devuelve el CRM actualizado."""
+async def _vista(db, user_id: str, doc: dict) -> dict:
+    """El CRM para la pantalla, con sus puntos de deshacer (si no se pueden leer, sale sin ellos: no impide nada)."""
     try:
-        doc = await repo.actualizar(request.app.state.db, user["id"], cambiar)
+        puntos = await repo.puntos_listar(db, user_id)
+    except Exception as e:
+        logger.warning("No se pudieron leer los puntos de deshacer: %s", type(e).__name__)
+        puntos = None
+    return vista_crm(doc, puntos=puntos)
+
+
+async def _guardar_punto(db, user_id: str, punto: dict) -> None:
+    try:
+        await repo.puntos_agregar(db, user_id, punto)
+    except Exception as e:  # el cambio ya se guardó: que no se pueda deshacer no lo echa atrás
+        logger.warning("No se pudo guardar el punto de deshacer: %s", type(e).__name__)
+
+
+async def _aplicar(request: Request, user: dict, cambiar, estado: int = 200, que=None, extra: dict | None = None):
+    """Corre una operación sobre el CRM de la persona y devuelve el CRM actualizado.
+    `que` (texto, o función del CRM de antes que lo da) describe el cambio: si cambió algo que se puede deshacer, queda un punto
+    «A mano: <que>». `extra` se suma a la respuesta (lo llena `cambiar`)."""
+    db = request.app.state.db
+    punto: dict = {}
+
+    def con_punto(d: dict) -> dict:
+        nuevo = cambiar(d)
+        if nuevo is d or que is None:
+            return nuevo
+        nuevo, p = pt.con_punto(d, nuevo, f"A mano: {que(d) if callable(que) else que}")
+        punto.clear()
+        punto.update(p or {})
+        return nuevo
+
+    try:
+        doc = await repo.actualizar(db, user["id"], con_punto)
     except op.ErrorCrm as e:
         return _error(e)
-    return JSONResponse(vista_crm(doc), status_code=estado)
+    if punto:
+        await _guardar_punto(db, user["id"], punto)
+    return JSONResponse({**await _vista(db, user["id"], doc), **(extra or {})}, status_code=estado)
+
+
+def _contacto(d: dict, contacto_id: str) -> str:
+    return next((c["n"] for c in d["contactos"] if c["id"] == contacto_id), "un contacto")
+
+
+def _seccion(d: dict, lista_id: str) -> str:
+    return next((l["nombre"] for l in d["listas"] if l["id"] == lista_id), "una sección")
+
+
+def _tarea(d: dict, tarea_id: str) -> str:
+    return next((t["t"] for col in d["tareas"].values() for t in col if t["id"] == tarea_id), "una tarea")
 
 
 # ───────── CRM ─────────
@@ -224,7 +282,7 @@ async def obtener_crm(request: Request, user: dict = Depends(get_current_user)):
     doc = await repo.obtener(request.app.state.db, user["id"])
     if doc is None:
         return JSONResponse({"mensaje": "Todavía no tienes un CRM."}, status_code=404)
-    return vista_crm(doc)
+    return await _vista(request.app.state.db, user["id"], doc)
 
 
 def _tiene_datos(doc: dict) -> bool:
@@ -241,8 +299,17 @@ async def crear_crm(request: Request, datos: CrearCrm, user: dict = Depends(get_
         return JSONResponse({"mensaje": "Ya tienes un CRM con información. Para rehacerlo usa «Repetir cuestionario» (eso borra el actual)."}, status_code=409)
     brief = datos.brief.model_dump(exclude_none=True)
     doc = await diseno.disenar(generar(user["id"], brief), brief)  # la IA arma la estructura a la medida; sin IA queda la plantilla base
+    doc = est.normalizar(doc)  # nace en el esquema 2 (inicio, marca, toma…), igual que lo verá la próxima lectura
     await repo.reemplazar(request.app.state.db, user["id"], doc)
-    return JSONResponse(vista_crm(doc), status_code=201)
+    await _olvidar_puntos(request.app.state.db, user["id"])  # los del CRM anterior no sirven para este
+    return JSONResponse(vista_crm(doc, puntos=[]), status_code=201)
+
+
+async def _olvidar_puntos(db, user_id: str) -> None:
+    try:
+        await repo.puntos_borrar_desde(db, user_id, 0)
+    except Exception as e:
+        logger.warning("No se pudieron borrar los puntos de deshacer: %s", type(e).__name__)
 
 
 @router.post("/seguimiento")
@@ -270,6 +337,7 @@ async def siguiente_pregunta(request: Request, datos: SiguienteEntrada):
 @router.delete("", status_code=204)
 async def borrar_crm(request: Request, user: dict = Depends(get_current_user)):
     await repo.borrar(request.app.state.db, user["id"])
+    await _olvidar_puntos(request.app.state.db, user["id"])
     await mem.reiniciar_trabajo(request.app.state.db, user["id"])  # el CRM nuevo no arrastra la conversación del anterior; sí cómo le gusta que le hablen
     return Response(status_code=204)
 
@@ -279,7 +347,8 @@ async def borrar_crm(request: Request, user: dict = Depends(get_current_user)):
 @router.post("/contactos", status_code=201)
 async def crear_contactos(request: Request, datos: ContactosCrear, user: dict = Depends(get_current_user)):
     filas = [f.model_dump(exclude_none=True) for f in datos.filas]  # `extra` va por id de campo
-    return await _aplicar(request, user, lambda d: op.contactos_crear(d, filas, datos.canal, datos.texto), 201)
+    que = f"agregó a {filas[0]['n']}" if len(filas) == 1 else f"agregó {len(filas)} contactos"
+    return await _aplicar(request, user, lambda d: op.contactos_crear(d, filas, datos.canal, datos.texto), 201, que)
 
 
 @router.patch("/contactos/{contacto_id}")
@@ -287,12 +356,12 @@ async def actualizar_contacto(contacto_id: str, request: Request, datos: Contact
     cambios = datos.model_dump(exclude_unset=True, exclude_none=True)
     if not cambios:
         return JSONResponse({"mensaje": "No hay nada que cambiar."}, status_code=422)
-    return await _aplicar(request, user, lambda d: op.contactos_actualizar(d, contacto_id, cambios))
+    return await _aplicar(request, user, lambda d: op.contactos_actualizar(d, contacto_id, cambios), que=lambda d: f"editó a {_contacto(d, contacto_id)}")
 
 
 @router.delete("/contactos/{contacto_id}")
 async def eliminar_contacto(contacto_id: str, request: Request, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: op.contactos_eliminar(d, contacto_id))
+    return await _aplicar(request, user, lambda d: op.contactos_eliminar(d, contacto_id), que=lambda d: f"eliminó a {_contacto(d, contacto_id)}")
 
 
 # ───────── Registros de las secciones propias ─────────
@@ -300,7 +369,7 @@ async def eliminar_contacto(contacto_id: str, request: Request, user: dict = Dep
 
 @router.post("/listas/{lista_id}/registros", status_code=201)
 async def crear_registro(lista_id: str, request: Request, datos: RegistroValores, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: est.registro_agregar(d, lista_id, datos.valores), 201)
+    return await _aplicar(request, user, lambda d: est.registro_agregar(d, lista_id, datos.valores), 201, lambda d: f"agregó un registro a {_seccion(d, lista_id)}")
 
 
 @router.post("/listas/{lista_id}/registros/lote", status_code=201)
@@ -313,46 +382,42 @@ async def crear_registros_lote(lista_id: str, request: Request, datos: Registros
         resumen.update(agregadas=agregadas, omitidas=omitidas)
         return nuevo
 
-    try:
-        doc = await repo.actualizar(request.app.state.db, user["id"], cambiar)
-    except op.ErrorCrm as e:
-        return _error(e)
-    return JSONResponse({**vista_crm(doc), "importacion": resumen}, status_code=201)
+    return await _aplicar(request, user, cambiar, 201, lambda d: f"importó {len(datos.filas)} filas a {_seccion(d, lista_id)}", {"importacion": resumen})
 
 
 @router.delete("/listas/{lista_id}/registros")
 async def vaciar_lista(lista_id: str, request: Request, user: dict = Depends(get_current_user)):
     """Borra TODOS los registros de una sección (la sección y sus campos se quedan). No se puede deshacer."""
-    return await _aplicar(request, user, lambda d: est.registros_vaciar(d, lista_id))
+    return await _aplicar(request, user, lambda d: est.registros_vaciar(d, lista_id), que=lambda d: f"vació {_seccion(d, lista_id)}")
 
 
 @router.delete("/listas/{lista_id}/importaciones")
 async def quitar_todas_las_importaciones(lista_id: str, request: Request, user: dict = Depends(get_current_user)):
     """Quita TODO lo importado en una sección (lo escrito a mano se queda). No se puede deshacer."""
-    return await _aplicar(request, user, lambda d: est.importaciones_quitar_todas(d, lista_id))
+    return await _aplicar(request, user, lambda d: est.importaciones_quitar_todas(d, lista_id), que=lambda d: f"quitó lo importado en {_seccion(d, lista_id)}")
 
 
 @router.delete("/listas/{lista_id}/importaciones/{lote_id}")
 async def quitar_importacion(lista_id: str, lote_id: str, request: Request, user: dict = Depends(get_current_user)):
     """Quita una importación entera (todos sus registros). No se puede deshacer."""
-    return await _aplicar(request, user, lambda d: est.importacion_quitar(d, lista_id, lote_id))
+    return await _aplicar(request, user, lambda d: est.importacion_quitar(d, lista_id, lote_id), que=lambda d: f"quitó una importación de {_seccion(d, lista_id)}")
 
 
 @router.patch("/listas/{lista_id}/registros/{registro_id}")
 async def cambiar_registro(lista_id: str, registro_id: str, request: Request, datos: RegistroValores, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: est.registro_actualizar(d, lista_id, registro_id, datos.valores))
+    return await _aplicar(request, user, lambda d: est.registro_actualizar(d, lista_id, registro_id, datos.valores), que=lambda d: f"editó un registro de {_seccion(d, lista_id)}")
 
 
 @router.delete("/listas/{lista_id}/registros/{registro_id}")
 async def eliminar_registro(lista_id: str, registro_id: str, request: Request, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: est.registro_eliminar(d, lista_id, registro_id))
+    return await _aplicar(request, user, lambda d: est.registro_eliminar(d, lista_id, registro_id), que=lambda d: f"eliminó un registro de {_seccion(d, lista_id)}")
 
 
 # ───────── Tareas ─────────
 
 @router.post("/tareas", status_code=201)
 async def crear_tarea(request: Request, datos: TareaNueva, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: op.tareas_crear(d, datos.t, vence=datos.vence, hora=datos.hora), 201)
+    return await _aplicar(request, user, lambda d: op.tareas_crear(d, datos.t, vence=datos.vence, hora=datos.hora), 201, f"agregó la tarea «{datos.t}»")
 
 
 @router.patch("/tareas/{tarea_id}")
@@ -371,24 +436,68 @@ async def mover_tarea(tarea_id: str, request: Request, datos: TareaCambios, user
             d = op.tareas_mover(d, tarea_id, cambios["columna"])
         return d
 
-    return await _aplicar(request, user, cambiar)
+    return await _aplicar(request, user, cambiar, que=lambda d: f"{'movió' if set(cambios) == {'columna'} else 'cambió'} la tarea «{_tarea(d, tarea_id)}»")
 
 
 @router.delete("/tareas/{tarea_id}")
 async def eliminar_tarea(tarea_id: str, request: Request, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: op.tareas_eliminar(d, tarea_id))
+    return await _aplicar(request, user, lambda d: op.tareas_eliminar(d, tarea_id), que=lambda d: f"eliminó la tarea «{_tarea(d, tarea_id)}»")
 
 
 # ───────── Automatizaciones y secciones ─────────
 
 @router.put("/automatizaciones/{auto_id}")
 async def fijar_automatizacion(auto_id: str, request: Request, datos: AutomatizacionFijar, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: op.automatizacion_fijar(d, auto_id, datos.on))
+    # Prender o apagar una automatización no es bloques, marca, estructura ni datos: no deja punto (con_punto no mide nada).
+    return await _aplicar(request, user, lambda d: op.automatizacion_fijar(d, auto_id, datos.on), que=f"{'activó' if datos.on else 'apagó'} una automatización")
 
 
 @router.put("/secciones/{seccion_id}")
 async def renombrar_seccion(seccion_id: str, request: Request, datos: SeccionNombre, user: dict = Depends(get_current_user)):
-    return await _aplicar(request, user, lambda d: op.seccion_renombrar(d, seccion_id, datos.nombre))
+    return await _aplicar(request, user, lambda d: op.seccion_renombrar(d, seccion_id, datos.nombre), que=f"renombró una sección a «{datos.nombre}»")
+
+
+@router.post("/registros/ejemplos/quitar")
+async def quitar_ejemplos(request: Request, datos: Optional[QuitarEjemplos] = None, user: dict = Depends(get_current_user)):
+    """Quita los registros de ejemplo (`ejemplo: true`) de todas las secciones o de una. Se puede deshacer."""
+    seccion = datos.seccion if datos else None
+    return await _aplicar(request, user, lambda d: est.ejemplos_quitar(d, seccion), que="quitó los ejemplos")
+
+
+# ───────── Deshacer ─────────
+
+@router.get("/puntos")
+async def listar_puntos(request: Request, user: dict = Depends(get_current_user)):
+    """Los puntos de deshacer, del más viejo al más nuevo: {n, antesDe, hora, cambio} (sin foto)."""
+    from app.crm.vista import vista_puntos
+
+    return {"puntos": vista_puntos(await repo.puntos_listar(request.app.state.db, user["id"]))}
+
+
+@router.post("/deshacer")
+async def deshacer(request: Request, datos: Optional[Deshacer] = None, user: dict = Depends(get_current_user)):
+    """Deshace un punto (`n`; sin n, el último): solo lo que ese cambio tocó. Si uno posterior tocó lo mismo, se deshace también
+    y se dice. Responde el CRM y `deshacer: {texto, deshechos}`."""
+    db = request.app.state.db
+    puntos = await repo.puntos_listar(db, user["id"], con_foto=True)
+    n = datos.n if datos else None
+    resultado: dict = {}
+
+    def cambiar(d: dict) -> dict:
+        r = pt.deshacer(d, puntos, n)
+        resultado.clear()
+        resultado.update(r)
+        return r["doc"]
+
+    try:
+        doc = await repo.actualizar(db, user["id"], cambiar)
+    except op.ErrorCrm as e:
+        return _error(e)
+    try:
+        await repo.puntos_reponer(db, user["id"], min(resultado["deshechos"]), resultado["puntos"])
+    except Exception as e:
+        logger.warning("No se pudieron ajustar los puntos de deshacer: %s", type(e).__name__)
+    return {**await _vista(db, user["id"], doc), "deshacer": {"texto": resultado["texto"], "deshechos": resultado["deshechos"]}}
 
 
 # ───────── Chat ─────────
