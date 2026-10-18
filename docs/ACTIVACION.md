@@ -4,6 +4,8 @@ Qué poner en tu `.env` tras la validación con el modelo real. Los defaults del
 
 La evidencia sale de [VALIDACION_E2E.md](VALIDACION_E2E.md) (2026-10-17, segunda tanda, `gpt-6-luna`, un interruptor por corrida y luego los tres juntos).
 
+> ⚠️ **No actives `URL_FILTER_ALWAYS` todavía.** La corrida real de evals del 2026-10-18 (`evals/resultados/20261018-142830_real.json`, caso `url-del-usuario`) encontró que el filtro borra un enlace respaldado cuando va pegado a un delimitador de cierre (por ejemplo, entre comillas invertidas: `` `https://…` ``). Esta advertencia se quita cuando la corrección esté hecha y validada con la repetición de las evals.
+
 ## Para tu `.env`
 
 ```dotenv
