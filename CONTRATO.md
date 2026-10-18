@@ -230,6 +230,21 @@ Los eventos SSE no cambian. El evento `error` de una excepción inesperada lleva
 
 Con `AUTH_ENABLED=1`: sin sesión, 401. Las peticiones que cambian estado (POST/PATCH/DELETE con sesión) exigen `Origin` o `Referer` de la misma página y la cabecera `X-CSRF-Token` (si no, 403). Un hilo ajeno o inexistente responde **404** en `/chat`, `/resume`, `/history`, `/threads/{id}/context`, `/threads/{id}/compact`, `PATCH /threads/{id}` y `DELETE /threads/{id}`. El `user_id` del body de `/chat` y `/resume` se ignora: sale de la sesión. Las rutas `/memories/{user_id}` solo existen con `AUTH_ENABLED=0`.
 
+### Archivos (`FILES_ENABLED=1`; con 0 estas rutas no existen y `file_ids` se ignora)
+
+| Método | Ruta | Body / respuesta |
+|---|---|---|
+| GET | `/files/config` | `{"max_bytes": int, "max_per_message": int, "extensions": [str]}` |
+| POST | `/threads/{thread_id}/files` | multipart: `file` y, sin cuentas, `user_id` → `{"file_id", "name", "kind", "size", "pages", "chars", "truncated"}`. `kind`: pdf, txt, md, csv, xlsx, docx, png, jpeg, gif o webp, decidido por el contenido. **413** si pasa `FILE_MAX_BYTES`; **415** si el tipo no está permitido o el contenido no corresponde a la extensión; **422** si trae macros, es un zip bomb, no es UTF-8, está cifrado o no se pudo leer (o tardó más de `FILE_EXTRACT_TIMEOUT`). Siempre `{"detail": str}` en español |
+| GET | `/threads/{thread_id}/files` | `{"files": [{…los mismos campos…}]}` del hilo |
+| DELETE | `/threads/{thread_id}/files/{file_id}` | `{"deleted": file_id}`; 404 si no es de ese usuario y ese hilo |
+
+- `/chat` acepta `"file_ids": [str]`: archivos ya subidos a ese hilo que van con el mensaje. **400** si son más de `FILE_MAX_PER_MESSAGE`; **404** si alguno no es de ese usuario y ese hilo.
+- En `/history`, un mensaje del usuario con adjuntos trae `"files": [{"file_id", "name", "kind"}]`. Su `content` es solo lo que escribió el usuario, sin la ficha de adjuntos que ve el modelo.
+- Con cuentas, las rutas de archivos siguen las reglas de abajo (sesión, CSRF y 404 para un hilo ajeno), y el `user_id` del formulario se ignora.
+- `DELETE /threads/{id}` y `/auth/delete-account` borran también los archivos de ese hilo o de ese usuario, aunque el interruptor esté apagado.
+- Herramientas nuevas: `read_file` y `search_in_file`, con salida envuelta en `<untrusted_file_content>`. Sus `tool_end` tienen el formato de siempre.
+
 `server.create_app(agent=None) -> FastAPI`: si recibe `agent`, NO hace chequeos de arranque (para tests).
 `server.app` se crea perezosamente (al pedirlo uvicorn); ahí corren `memory.startup_checks` y un `ConfigError` se imprime sin traceback y sale con código 1.
 

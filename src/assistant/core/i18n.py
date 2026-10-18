@@ -41,6 +41,14 @@ REQUIRED_TEXTS = (
 )
 
 
+# Claves que un perfil necesita solo con FILES_ENABLED=1 (create_app las comprueba al arrancar con el interruptor)
+FILE_TEXTS = (
+    "files.empty", "files.too_large", "files.type_not_allowed", "files.content_mismatch", "files.macro",
+    "files.zip_bomb", "files.not_text", "files.encrypted", "files.image_too_big", "files.extract_failed",
+    "files.extract_timeout", "files.too_many", "files.not_found", "startup.files_missing_deps",
+)
+
+
 class TextCatalog(Mapping):
     """Catálogo fusionado: `base` (p. ej. assistant.packs.i18n.es.TEXTS) y encima las sobreescrituras del perfil."""
 

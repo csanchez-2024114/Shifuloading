@@ -252,7 +252,12 @@ def user_texts(messages) -> list[str]:
             continue
         if (getattr(m, "additional_kwargs", None) or {}).get("lc_source") == SUMMARY_SOURCE:
             continue
-        text = m.text if isinstance(getattr(m, "text", None), str) else str(m.content)
+        if isinstance(m.content, list):  # con adjuntos (FILES_ENABLED): sin la ficha de archivos
+            from assistant.core.files import visible_text
+
+            text = visible_text(m)
+        else:
+            text = m.text if isinstance(getattr(m, "text", None), str) else str(m.content)
         if text.strip():
             out.append(text)
     return out

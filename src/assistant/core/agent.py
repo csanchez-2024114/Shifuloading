@@ -574,7 +574,12 @@ def system_prompt_text(settings: Settings | None = None, profile=None) -> str:
 def _make_system_prompt(settings: Settings, profile=None):
     @dynamic_prompt
     def _system_prompt(request) -> str:
-        return system_prompt_text(settings, profile)
+        text = system_prompt_text(settings, profile)
+        if settings.files_enabled:  # la regla de archivos, solo si el hilo tiene adjuntos
+            from assistant.core.files import prompt_addition
+
+            text += prompt_addition(request.state.get("messages"))
+        return text
 
     return _system_prompt
 
@@ -752,8 +757,12 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     if settings.url_filter_always:  # antes en la lista = su after_agent corre después del verificador
         middleware.append(FiltroURLs())
     if settings.answer_verify:
-        middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap,
-                                         evidence_tools(profile)))
+        sources = evidence_tools(profile)
+        if settings.files_enabled:  # lo leído de un archivo adjunto también respalda la respuesta
+            from assistant.core.files import FILE_TOOL_NAMES
+
+            sources += FILE_TOOL_NAMES
+        middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap, sources))
     agent = create_agent(
         model,
         tools,
@@ -1149,6 +1158,12 @@ def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
             out.append({"role": "summary"})  # la conversación anterior se compactó (resumen)
             if record := msg.additional_kwargs.get("compaction"):
                 out[-1]["compaction"] = {"before": record.get("before"), "after": record.get("after")}
+        elif isinstance(msg, HumanMessage) and isinstance(msg.content, list):  # con adjuntos (FILES_ENABLED)
+            from assistant.core.files import attachments_of, visible_text
+
+            out.append({"role": "user", "content": visible_text(msg)})
+            if files := attachments_of(msg):
+                out[-1]["files"] = [{"file_id": f["file_id"], "name": f["name"], "kind": f["kind"]} for f in files]
         elif isinstance(msg, HumanMessage):
             out.append({"role": "user", "content": _content_text(msg)})
         elif isinstance(msg, AIMessage):

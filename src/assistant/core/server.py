@@ -34,6 +34,7 @@ class ChatIn(BaseModel):
     thread_id: str
     user_id: str = "anon"
     effort: str | None = None  # bajo/medio/alto desde el selector de la UI; None o "auto" = clasificador
+    file_ids: list[str] = []   # FILES_ENABLED: archivos ya subidos a este hilo que van con el mensaje
 
 
 class ResumeIn(BaseModel):
@@ -238,6 +239,8 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             appdata.threads.touch(body.thread_id, None if row["title"] else thread_title(body.message))
             user_id = user["user_id"]
         payload = {"messages": [{"role": "user", "content": body.message}]}
+        if settings.files_enabled and body.file_ids:
+            payload = {"messages": [_message_with_files(body, user_id)]}
         esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify)
         return sse_response(sse(payload, body.thread_id, user_id, esfuerzo, origen))
 
@@ -313,6 +316,10 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         uid = user["user_id"]
         threads = [t["thread_id"] for t in appdata.threads.list_for_user(uid)]
         ai_data.delete_user_ai_data(agent.checkpointer, store, uid, threads)
+        if store is not None:  # archivos adjuntos (también los subidos cuando FILES_ENABLED estaba encendido)
+            from assistant.core.files import store as fstore
+
+            fstore.delete_user(store, uid)
         appdata.sessions.delete_for_user(uid)
         appdata.threads.delete_for_user(uid)
         appdata.attempts.clear(f"email:{user['email']}")
@@ -357,6 +364,10 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         user = _changing(request)
         _owned(user, thread_id)
         ai_data.delete_thread(agent.checkpointer, thread_id)
+        if store is not None:
+            from assistant.core.files import store as fstore
+
+            fstore.delete_thread(store, user["user_id"], thread_id)
         appdata.threads.delete(thread_id)
         return {"deleted": thread_id}
 
@@ -404,6 +415,36 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             raise HTTPException(404, tr("http.memory_not_found", profile))
         return {"deleted": key}
 
+    # ---------------------------------------------------------------- archivos (FILES_ENABLED=1)
+    def _file_owner(request: Request, thread_id: str, user_id: str, changing: bool) -> str:
+        """user_id dueño de los archivos del hilo: el de la sesión (y el hilo debe ser suyo) o, sin cuentas, el que
+        manda la página, como en /chat."""
+        if not auth:
+            return user_id
+        user = _changing(request) if changing else _user(request)
+        _owned(user, thread_id)
+        return user["user_id"]
+
+    def _message_with_files(body: ChatIn, user_id: str):
+        from assistant.core.files import user_message
+        from assistant.core.files import store as fstore
+
+        ids = list(dict.fromkeys(body.file_ids))
+        if len(ids) > settings.file_max_per_message:
+            raise HTTPException(400, tr("files.too_many", profile, max=settings.file_max_per_message))
+        metas, images = [], {}
+        for fid in ids:
+            meta = fstore.get(_store(), user_id, body.thread_id, fid)
+            if meta is None:
+                raise HTTPException(404, tr("files.not_found", profile))
+            metas.append(meta)
+            if (img := fstore.image(store, user_id, body.thread_id, fid)) is not None:
+                images[fid] = img
+        return user_message(body.message, metas, images)
+
+    if settings.files_enabled:
+        _install_file_routes(app, settings, profile, _store, _file_owner)
+
     @app.get("/memories/{user_id}")
     def list_memories(user_id: str):
         if auth:
@@ -417,6 +458,66 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         return {"deleted": key}
 
     return app
+
+
+def _install_file_routes(app: FastAPI, settings: Settings, profile, get_store, owner) -> None:
+    """Rutas de FILES_ENABLED. Solo se registran con el interruptor (con el default, las rutas no cambian)."""
+    from assistant.core.i18n import FILE_TEXTS
+
+    for module in ("pypdf", "openpyxl", "docx", "PIL", "multipart"):
+        try:
+            __import__(module)
+        except ImportError as exc:
+            raise ConfigError(tr("startup.files_missing_deps", profile, module=module)) from exc
+    if missing := [k for k in FILE_TEXTS if k not in profile.texts]:
+        raise ConfigError(f"El perfil {profile.name!r} no trae los textos de archivos: {', '.join(missing)}")
+
+    import hashlib
+
+    from fastapi import File, Form, UploadFile
+
+    from assistant.core.files import store as fstore
+    from assistant.core.files.extract import extract
+    from assistant.core.files.validate import FileRejected, validate
+
+    def rejected(exc: FileRejected) -> HTTPException:
+        status = 413 if exc.code == "too_large" else 415 if exc.code in ("type_not_allowed", "content_mismatch")             else 422
+        return HTTPException(status, tr(f"files.{exc.code}", profile, **exc.values))
+
+    @app.get("/files/config")
+    def files_config():
+        from assistant.core.files.validate import ALLOWED
+
+        return {"max_bytes": settings.file_max_bytes, "max_per_message": settings.file_max_per_message,
+                "extensions": sorted(e for exts, _ in ALLOWED.values() for e in exts)}
+
+    @app.post("/threads/{thread_id}/files")
+    def upload_file(thread_id: str, request: Request, file: UploadFile = File(...), user_id: str = Form("anon")):
+        uid = owner(request, thread_id, user_id, True)
+        data = file.file.read(settings.file_max_bytes + 1)  # nunca más del tope en memoria
+        try:
+            kind, mime, name = validate(data, file.filename or "", settings.file_max_bytes)
+            extracted = extract(data, kind, settings)
+        except FileRejected as exc:
+            raise rejected(exc) from exc
+        meta = fstore.save(get_store(), uid, thread_id, name, kind, mime, len(data),
+                           hashlib.sha256(data).hexdigest(), extracted)
+        log.info("Archivo %s (%s, %d bytes, %d páginas) en el hilo %s", meta["file_id"], kind, len(data),
+                 meta["pages"], thread_id)  # sin el nombre ni el contenido
+        return {k: meta[k] for k in ("file_id", "name", "kind", "size", "pages", "chars", "truncated")}
+
+    @app.get("/threads/{thread_id}/files")
+    def list_files(thread_id: str, request: Request, user_id: str = "anon"):
+        uid = owner(request, thread_id, user_id, False)
+        return {"files": [{k: m[k] for k in ("file_id", "name", "kind", "size", "pages", "chars", "truncated")}
+                          for m in fstore.list_files(get_store(), uid, thread_id)]}
+
+    @app.delete("/threads/{thread_id}/files/{file_id}")
+    def delete_file(thread_id: str, file_id: str, request: Request, user_id: str = "anon"):
+        uid = owner(request, thread_id, user_id, True)
+        if not fstore.delete(get_store(), uid, thread_id, file_id):
+            raise HTTPException(404, tr("files.not_found", profile))
+        return {"deleted": file_id}
 
 
 def __getattr__(name: str):

@@ -20,6 +20,7 @@ from assistant.core import memory
 from assistant.core import citations
 from assistant.core.agent import Context
 from assistant.core import untrusted
+from assistant.core.files import thread_has_files
 from assistant.core.config import Settings, llm_kwargs
 
 logger = logging.getLogger(__name__)
@@ -207,7 +208,7 @@ def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: i
                                thread_id=thread_id, verifier=verifier,
                                saved_this_turn=memory.turn_saves(messages, runtime.tool_call_id),
                                max_per_turn=max_per_turn, dedup=dedup, dedup_score=dedup_score,
-                               require_quote=require_quote)
+                               require_quote=require_quote or thread_has_files(messages))
 
     return guardar_recuerdo
 
@@ -248,10 +249,13 @@ def make_actualizar_recuerdo(verifier=None, require_quote: bool = False) -> Base
 
     @tool("update_memory", description=ACTUALIZAR_RECUERDO_DOC)
     def actualizar_recuerdo(id: str, text: str, runtime: ToolRuntime[Context], evidence: str = "") -> str:  # noqa: A002
-        texts = memory.user_texts(runtime.state.get("messages"))
+        messages = runtime.state.get("messages")
+        texts = memory.user_texts(messages)
         thread_id = (runtime.config.get("configurable") or {}).get("thread_id")
+        # con archivos adjuntos en el hilo, solo se guarda lo que el usuario dijo con sus palabras (cita literal)
         return memory.revise(runtime.store, runtime.context.user_id, id, text, evidence, texts,
-                             thread_id=thread_id, verifier=verifier, require_quote=require_quote)
+                             thread_id=thread_id, verifier=verifier,
+                             require_quote=require_quote or thread_has_files(messages))
 
     return actualizar_recuerdo
 
@@ -675,7 +679,14 @@ def base_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, c
         make_buscar_recuerdos(settings.memory_min_score),
         make_actualizar_recuerdo(verifier, settings.memory_require_quote),
         make_investigador(model, settings, search_fn),
-    ]
+    ] + (_file_tools() if settings.files_enabled else [])
+
+
+def _file_tools() -> list[BaseTool]:
+    """FILES_ENABLED: read_file y search_in_file (importación perezosa: con el default no se cargan)."""
+    from assistant.core.files.tools import make_file_tools
+
+    return make_file_tools()
 
 
 def build_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, checker=None,
