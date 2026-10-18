@@ -12,7 +12,7 @@ La **huella** fija, de una vez:
 - el prompt del sistema (la fecha va enmascarada) y las políticas de memoria;
 - el grafo (nodos y aristas) por defecto y con todas las opciones;
 - las rutas HTTP;
-- las 139 constantes en MAYÚSCULAS (textos al usuario y al modelo, regex, topes);
+- las 136 constantes en MAYÚSCULAS (textos al usuario y al modelo, regex, topes). Antes decía 139 por error: era la cuenta de la primera generación, antes de excluir el estado en vivo `_TURNS`/`_ACTIVE_TURNS`/`_PAUSED_SPEND`;
 - el registro de bigtool y los documentos indexados;
 - el sha256 de `static/index.html` y de `prompts/system.md`;
 - los eventos SSE de 4 escenarios: respuesta simple, búsqueda, HITL aprobado e investigación rechazada.

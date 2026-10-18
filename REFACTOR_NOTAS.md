@@ -40,6 +40,21 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
 - **`AGENT_PROFILE` vive fuera de `Settings`:** la lee `core/profile.py`, así la lista de variables de la huella no cambia. Falta documentarla en README y `.env.example` (Fase 6).
 - **Nombres antiguos en español todavía literales en `core/`:** `context.PRUNE_KEEP_TOOLS`, `memory.turn_saves` y `tools.extra_search`. Pasan a la normalización con `profile.legacy_tool_names` en la Fase 4, y ese commit cambiará el valor de `context.PRUNE_KEEP_TOOLS` en la huella.
 - **Perfil activo frente a perfil explícito:** `earlier_research` y `research_needs_confirmation` (y la aprobación de `deep_research` que las usa) leen los nombres antiguos del perfil **activo** (`AGENT_PROFILE`), no del que se pasa a `build_agent`. Da igual mientras el perfil explícito sea el activo; revisarlo si un proceso llega a servir dos perfiles.
-- **Bigtool:** `BIGTOOL_PROMPT` sigue como default del núcleo, aún sin campo en el perfil, y el `interrupt()` de `deep_research` sigue fijo en `core/extensions/bigtool.py` (es una herramienta del núcleo).
 - **`DeprecationWarning`:** son 15 (eran 13). Los 2 nuevos son los alias `assistant.apps` y `assistant.extra_tools`, que siguen usando `test_tool_spec` y `test_extra_tools`. No hay filtros.
+
+## Anotado en la Fase 4 (textos y reglas)
+
+- **Pendientes de enforcement en bigtool** (se quedan como están, a propósito):
+  - `BIGTOOL_PROMPT` sigue como default del núcleo, en inglés y sin campo en el perfil;
+  - el `interrupt()` de `deep_research` sigue fijo en `core/extensions/bigtool.py`: no lee `profile.tool_policies` (aprobaciones ni `effect`), solo toma del catálogo el texto de la tarjeta.
+
+  Que bigtool obedezca las políticas del perfil, como hace el agente normal con `HumanInTheLoopMiddleware`, sería un cambio de comportamiento.
+- **Siguen en español en `core/`, a propósito:**
+  - logs (`logger.*`), docstrings y comentarios (regla del proyecto: comentarios en español; los logs son para quien opera);
+  - los errores del cargador de perfiles (decidido: en español);
+  - el `"si"`/`"sí"` que acepta `_bool` al leer el entorno;
+  - el `ValueError` interno "respuesta vacía del web_search hospedado", que solo dispara el respaldo a DuckDuckGo y va al log.
+- **Perfil activo frente a perfil explícito (amplía la nota de la Fase 3):** los textos (`tr`), las reglas de intención y el léxico de memoria se leen del perfil **activo** (`AGENT_PROFILE`), salvo en el servidor y en las tarjetas de aprobación, que usan el perfil que reciben. Revisarlo si un proceso llega a servir dos perfiles.
+- **`IntentRules`, `MemoryLexicon` y `TextCatalog` por defecto no asumen idioma:** las reglas no reconocen nada, el léxico no tiene palabras vacías ni temas y el catálogo está vacío (así que `load_profile` exige todas las claves). Un perfil nuevo debe traer su catálogo (por ejemplo `packs/i18n/es.py`), y las reglas y el léxico si los quiere.
+- **La huella tiene 136 constantes, no 139.** La cifra 139 de la Fase 0 era de la primera generación, antes de excluir el estado en vivo. Corregido en `PARIDAD.md`.
 
