@@ -34,6 +34,7 @@ class ChatIn(BaseModel):
     thread_id: str
     user_id: str = "anon"
     effort: str | None = None  # bajo/medio/alto desde el selector de la UI; None o "auto" = clasificador
+    file_ids: list[str] = []   # FILES_ENABLED: archivos ya subidos a este hilo que van con el mensaje
 
 
 class ResumeIn(BaseModel):
@@ -59,6 +60,13 @@ class PasswordIn(BaseModel):
 
 class RenameIn(BaseModel):
     title: str
+
+
+class FeedbackIn(BaseModel):
+    run_id: str
+    score: int                 # 1 = 👍, -1 = 👎
+    comment: str = ""
+    user_id: str = "anon"      # sin cuentas, como en /chat; con cuentas se ignora
 
 
 def _build_real_agent(settings: Settings, profile):
@@ -147,11 +155,18 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         if appdata is None and (app_client := memory.app_startup(settings)) is not None:
             from assistant.core.appdata.mongo import MongoAppData
 
-            appdata = MongoAppData(app_client, settings.app_mongodb_db)
+            appdata = MongoAppData(app_client, settings.app_mongodb_db, settings.metrics_ttl_days)
             log.info("MongoDB negocio: %s (db %s)", settings.app_mongodb_uri.rsplit("@", 1)[-1],
                      settings.app_mongodb_db)
     if settings.auth_enabled and appdata is None:
         raise ConfigError(tr("http.server_needs_app_db", profile))
+    if (settings.turn_metrics or settings.feedback_enabled) and appdata is None:
+        raise ConfigError(profile.texts.get("startup.metrics_need_app_db") or
+                          "TURN_METRICS y FEEDBACK_ENABLED necesitan la base de negocio (APP_MONGODB_URI).")
+    if settings.feedback_enabled and not (settings.trace_metadata and settings.turn_metrics):
+        # el run_id sale del evento "run" y el dueño del turno, de su fila en turn_metrics
+        raise ConfigError(profile.texts.get("startup.feedback_needs_trace") or
+                          "FEEDBACK_ENABLED necesita TRACE_METADATA=1 y TURN_METRICS=1.")
     auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
                        settings.login_lock_minutes, settings.login_max_fails_ip) if settings.auth_enabled else None
 
@@ -209,10 +224,38 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     def _auth_error(exc: AuthError) -> HTTPException:
         return HTTPException(exc.status, exc.message)
 
+    # TURN_METRICS: cada turno deja su fila (sin contenido de mensajes) en la base de negocio
+    observer = appdata.turn_metrics.add if settings.turn_metrics else None
+
+    # Candado por hilo: un turno a la vez en cada conversación. Un segundo /chat o /resume en un hilo con un turno en
+    # curso responde 409. Vale por proceso (un solo worker de uvicorn, como se usa la app).
+    busy: set[str] = set()
+    busy_lock = threading.Lock()
+
+    def _claim(thread_id: str) -> None:
+        with busy_lock:
+            if thread_id in busy:
+                raise HTTPException(409, profile.texts.get("http.thread_busy") or
+                                    "Esta conversación ya tiene una respuesta en curso.")
+            busy.add(thread_id)
+
+    def _release(thread_id: str) -> None:
+        with busy_lock:
+            busy.discard(thread_id)
+
+    def _held(events, thread_id: str):
+        """Libera el candado cuando el turno termina de verdad: with_keepalive cierra este iterador en su hilo al
+        acabar o cuando el cliente se va, después del último evento del agente."""
+        try:
+            yield from events
+        finally:
+            _release(thread_id)
+
     def sse(payload, thread_id: str, user_id: str, esfuerzo: str | None = None, origen: str = "auto"):
+        extra = {"observer": observer} if observer else {}
         events = (f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n" for event in
-                  agent_mod.stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen))
-        return with_keepalive(events, settings.sse_ping_seconds)
+                  agent_mod.stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen, **extra))
+        return with_keepalive(_held(events, thread_id), settings.sse_ping_seconds)
 
     def sse_response(gen):
         return StreamingResponse(gen, media_type="text/event-stream",
@@ -238,8 +281,16 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             appdata.threads.touch(body.thread_id, None if row["title"] else thread_title(body.message))
             user_id = user["user_id"]
         payload = {"messages": [{"role": "user", "content": body.message}]}
-        esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify)
-        return sse_response(sse(payload, body.thread_id, user_id, esfuerzo, origen))
+        if settings.files_enabled and body.file_ids:
+            payload = {"messages": [_message_with_files(body, user_id)]}
+        _claim(body.thread_id)  # antes del clasificador: un doble envío no llega a gastar
+        try:
+            esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify,
+                                                         (getattr(agent, "profile", None) or profile).intents)
+            return sse_response(sse(payload, body.thread_id, user_id, esfuerzo, origen))
+        except BaseException:
+            _release(body.thread_id)
+            raise
 
     @app.post("/resume")
     def resume(body: ResumeIn, request: Request):
@@ -249,7 +300,12 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             _owned(user, body.thread_id)
             appdata.threads.touch(body.thread_id)
             user_id = user["user_id"]
-        return sse_response(sse(Command(resume={"decisions": body.decisions}), body.thread_id, user_id))
+        _claim(body.thread_id)
+        try:
+            return sse_response(sse(Command(resume={"decisions": body.decisions}), body.thread_id, user_id))
+        except BaseException:
+            _release(body.thread_id)
+            raise
 
     @app.get("/history/{thread_id}")
     def history(thread_id: str, request: Request):
@@ -313,6 +369,12 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         uid = user["user_id"]
         threads = [t["thread_id"] for t in appdata.threads.list_for_user(uid)]
         ai_data.delete_user_ai_data(agent.checkpointer, store, uid, threads)
+        if store is not None:  # archivos adjuntos (también los subidos cuando FILES_ENABLED estaba encendido)
+            from assistant.core.files import store as fstore
+
+            fstore.delete_user(store, uid)
+        appdata.turn_metrics.delete_for_user(uid)
+        appdata.feedback.delete_for_user(uid)
         appdata.sessions.delete_for_user(uid)
         appdata.threads.delete_for_user(uid)
         appdata.attempts.clear(f"email:{user['email']}")
@@ -357,6 +419,12 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         user = _changing(request)
         _owned(user, thread_id)
         ai_data.delete_thread(agent.checkpointer, thread_id)
+        if store is not None:
+            from assistant.core.files import store as fstore
+
+            fstore.delete_thread(store, user["user_id"], thread_id)
+        appdata.turn_metrics.delete_for_thread(thread_id)
+        appdata.feedback.delete_for_thread(thread_id)
         appdata.threads.delete(thread_id)
         return {"deleted": thread_id}
 
@@ -404,6 +472,82 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             raise HTTPException(404, tr("http.memory_not_found", profile))
         return {"deleted": key}
 
+    # ---------------------------------------------------------------- archivos (FILES_ENABLED=1)
+    def _file_owner(request: Request, thread_id: str, user_id: str, changing: bool) -> str:
+        """user_id dueño de los archivos del hilo: el de la sesión (y el hilo debe ser suyo) o, sin cuentas, el que
+        manda la página, como en /chat."""
+        if not auth:
+            return user_id
+        user = _changing(request) if changing else _user(request)
+        _owned(user, thread_id)
+        return user["user_id"]
+
+    def _message_with_files(body: ChatIn, user_id: str):
+        from assistant.core.files import user_message
+        from assistant.core.files import store as fstore
+
+        ids = list(dict.fromkeys(body.file_ids))
+        if len(ids) > settings.file_max_per_message:
+            raise HTTPException(400, tr("files.too_many", profile, max=settings.file_max_per_message))
+        metas, images = [], {}
+        for fid in ids:
+            meta = fstore.get(_store(), user_id, body.thread_id, fid)
+            if meta is None:
+                raise HTTPException(404, tr("files.not_found", profile))
+            metas.append(meta)
+            if (img := fstore.image(store, user_id, body.thread_id, fid)) is not None:
+                images[fid] = img
+        return user_message(body.message, metas, images)
+
+    if settings.files_enabled:
+        _install_file_routes(app, settings, profile, _store, _file_owner)
+
+    # ---------------------------------------------------------------- feedback (FEEDBACK_ENABLED=1)
+    if settings.feedback_enabled:
+        from assistant.core import feedback as feedback_mod
+
+        @app.get("/feedback/config")
+        def feedback_config():
+            return {"enabled": True, "comment_max": feedback_mod.COMMENT_MAX}
+
+        @app.post("/feedback")
+        def give_feedback(body: FeedbackIn, request: Request):
+            """👍/👎 de un turno propio (el run_id del evento "run"). Uno por turno y usuario: el último gana."""
+            from datetime import datetime, timezone
+
+            uid = _changing(request)["user_id"] if auth else body.user_id
+            if body.score not in (1, -1):
+                raise HTTPException(400, tr("feedback.bad_score", profile))
+            if len(body.comment) > feedback_mod.COMMENT_MAX:
+                raise HTTPException(400, tr("feedback.comment_too_long", profile, max=feedback_mod.COMMENT_MAX))
+            row = appdata.turn_metrics.get(body.run_id)
+            if row is None or row.get("user_id") != uid:  # un turno ajeno o inexistente responde igual: 404
+                raise HTTPException(404, tr("feedback.not_found", profile))
+            appdata.feedback.put({"turn_id": body.run_id, "run_id": body.run_id, "user_id": uid,
+                                  "thread_id": row.get("thread_id"), "score": body.score,
+                                  "comment": body.comment.strip(), "ts": datetime.now(timezone.utc)})
+            feedback_mod.send_to_langsmith(body.run_id, body.score, body.comment.strip())
+            return {"ok": True, "run_id": body.run_id, "score": body.score}
+
+    # ---------------------------------------------------------------- métricas (TURN_METRICS=1)
+    if settings.turn_metrics:
+        @app.get("/metrics/summary")
+        def metrics_summary(request: Request, days: int = 7):
+            """Resumen de los turnos de los últimos `days` días: con cuentas, solo los del usuario de la sesión; sin
+            cuentas (app local), todos."""
+            from datetime import datetime, timedelta, timezone
+
+            from assistant.core.metrics import summarize
+
+            days = max(1, min(days, 365))
+            uid = _user(request)["user_id"] if auth else None
+            since = datetime.now(timezone.utc) - timedelta(days=days)
+            out = {"days": days, **summarize(appdata.turn_metrics.since(since, uid))}
+            if settings.feedback_enabled:
+                scores = [f.get("score") for f in appdata.feedback.since(since, uid)]
+                out["feedback"] = {"up": scores.count(1), "down": scores.count(-1)}
+            return out
+
     @app.get("/memories/{user_id}")
     def list_memories(user_id: str):
         if auth:
@@ -417,6 +561,66 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         return {"deleted": key}
 
     return app
+
+
+def _install_file_routes(app: FastAPI, settings: Settings, profile, get_store, owner) -> None:
+    """Rutas de FILES_ENABLED. Solo se registran con el interruptor (con el default, las rutas no cambian)."""
+    from assistant.core.i18n import FILE_TEXTS
+
+    for module in ("pypdf", "openpyxl", "docx", "PIL", "multipart"):
+        try:
+            __import__(module)
+        except ImportError as exc:
+            raise ConfigError(tr("startup.files_missing_deps", profile, module=module)) from exc
+    if missing := [k for k in FILE_TEXTS if k not in profile.texts]:
+        raise ConfigError(f"El perfil {profile.name!r} no trae los textos de archivos: {', '.join(missing)}")
+
+    import hashlib
+
+    from fastapi import File, Form, UploadFile
+
+    from assistant.core.files import store as fstore
+    from assistant.core.files.extract import extract
+    from assistant.core.files.validate import FileRejected, validate
+
+    def rejected(exc: FileRejected) -> HTTPException:
+        status = 413 if exc.code == "too_large" else 415 if exc.code in ("type_not_allowed", "content_mismatch")             else 422
+        return HTTPException(status, tr(f"files.{exc.code}", profile, **exc.values))
+
+    @app.get("/files/config")
+    def files_config():
+        from assistant.core.files.validate import ALLOWED
+
+        return {"max_bytes": settings.file_max_bytes, "max_per_message": settings.file_max_per_message,
+                "extensions": sorted(e for exts, _ in ALLOWED.values() for e in exts)}
+
+    @app.post("/threads/{thread_id}/files")
+    def upload_file(thread_id: str, request: Request, file: UploadFile = File(...), user_id: str = Form("anon")):
+        uid = owner(request, thread_id, user_id, True)
+        data = file.file.read(settings.file_max_bytes + 1)  # nunca más del tope en memoria
+        try:
+            kind, mime, name = validate(data, file.filename or "", settings.file_max_bytes)
+            extracted = extract(data, kind, settings)
+        except FileRejected as exc:
+            raise rejected(exc) from exc
+        meta = fstore.save(get_store(), uid, thread_id, name, kind, mime, len(data),
+                           hashlib.sha256(data).hexdigest(), extracted)
+        log.info("Archivo %s (%s, %d bytes, %d páginas) en el hilo %s", meta["file_id"], kind, len(data),
+                 meta["pages"], thread_id)  # sin el nombre ni el contenido
+        return {k: meta[k] for k in ("file_id", "name", "kind", "size", "pages", "chars", "truncated")}
+
+    @app.get("/threads/{thread_id}/files")
+    def list_files(thread_id: str, request: Request, user_id: str = "anon"):
+        uid = owner(request, thread_id, user_id, False)
+        return {"files": [{k: m[k] for k in ("file_id", "name", "kind", "size", "pages", "chars", "truncated")}
+                          for m in fstore.list_files(get_store(), uid, thread_id)]}
+
+    @app.delete("/threads/{thread_id}/files/{file_id}")
+    def delete_file(thread_id: str, file_id: str, request: Request, user_id: str = "anon"):
+        uid = owner(request, thread_id, user_id, True)
+        if not fstore.delete(get_store(), uid, thread_id, file_id):
+            raise HTTPException(404, tr("files.not_found", profile))
+        return {"deleted": file_id}
 
 
 def __getattr__(name: str):

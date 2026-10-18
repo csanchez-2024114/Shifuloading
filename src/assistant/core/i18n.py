@@ -41,6 +41,14 @@ REQUIRED_TEXTS = (
 )
 
 
+# Claves que un perfil necesita solo con FILES_ENABLED=1 (create_app las comprueba al arrancar con el interruptor)
+FILE_TEXTS = (
+    "files.empty", "files.too_large", "files.type_not_allowed", "files.content_mismatch", "files.macro",
+    "files.zip_bomb", "files.not_text", "files.encrypted", "files.image_too_big", "files.extract_failed",
+    "files.extract_timeout", "files.too_many", "files.not_found", "startup.files_missing_deps",
+)
+
+
 class TextCatalog(Mapping):
     """Catálogo fusionado: `base` (p. ej. assistant.packs.i18n.es.TEXTS) y encima las sobreescrituras del perfil."""
 
@@ -62,7 +70,7 @@ class TextCatalog(Mapping):
 
 def tr(key: str, profile=None, **values) -> str:
     """Texto `key` del perfil (el activo si no se pasa), con `values` aplicados con str.format si se dan."""
-    from assistant.core.profile import active_profile  # perezoso: profile importa este módulo
+    from assistant.core.profile import current_profile  # perezoso: profile importa este módulo
 
-    text = (profile or active_profile()).texts[key]
+    text = (profile or current_profile()).texts[key]
     return text.format(**values) if values else text

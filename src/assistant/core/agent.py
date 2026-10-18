@@ -38,7 +38,7 @@ from assistant.core.i18n import tr
 from assistant.core.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
                                prune_tool_results)
 from assistant.core.memory import DUPLICATE_PREFIX, SUMMARY_SOURCE, memory_policy
-from assistant.core.profile import active_profile
+from assistant.core.profile import active_profile, current_profile, profile_scope
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class Context:
 def necesita_clasificador(mensaje: str, intents=None) -> bool:
     """False solo para mensajes cortos sin señales de trabajo ("hola", "gracias"). Las señales (dígitos, operadores,
     código, verbos de trabajo) son reglas del perfil (`intents`; None = las del perfil activo)."""
-    rules = intents or active_profile().intents
+    rules = intents or current_profile().intents
     texto = _strip_accents(mensaje.strip().lower())
     if len(texto) > rules.short_message_chars or rules.classifier_signal.search(texto):
         return True
@@ -82,14 +82,15 @@ def _strip_accents(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
 
 
-def elegir_esfuerzo(settings: Settings, mensaje: str, elegido: str | None, classify) -> tuple[str | None, str]:
+def elegir_esfuerzo(settings: Settings, mensaje: str, elegido: str | None, classify,
+                    intents=None) -> tuple[str | None, str]:
     """(esfuerzo, origen). origen: "manual" (selector de la UI), "auto" (clasificador) o "regla" (mensaje corto).
     Con MODEL_CALL_LIMIT>0 no hay esfuerzo (tope fijo)."""
     if settings.model_call_limit > 0:
         return None, "fijo"
     if elegido in ESFUERZOS:
         return elegido, "manual"
-    if not necesita_clasificador(mensaje):
+    if not necesita_clasificador(mensaje, intents):
         return ESFUERZO_SIN_CLASIFICAR, "regla"
     return classify(settings, mensaje), "auto"
 
@@ -225,7 +226,7 @@ def _continue_cut(request):
     aviso (en español, para el usuario) y CONTINUE_NOTE. Prueba real: rehízo el script entero en vez de continuarlo."""
     msgs = request.messages
     if (len(msgs) < 2 or msgs[-1].type != "human"
-            or not active_profile().intents.continue_request.match(_content_text(msgs[-1]))):
+            or not current_profile().intents.continue_request.match(_content_text(msgs[-1]))):
         return request
     i = next((k for k in range(len(msgs) - 2, -1, -1) if isinstance(msgs[k], AIMessage)), None)
     if i is None or not msgs[i].additional_kwargs.get("cut"):
@@ -242,7 +243,7 @@ def rename_old_tools(messages, legacy=None) -> list:
     """Copia de los mensajes con los nombres antiguos de herramientas (`legacy`: antiguo -> actual; None = los del
     perfil activo) cambiados por los actuales, para que el modelo no vea llamadas a herramientas que ya no existen.
     No toca el historial guardado."""
-    names = active_profile().legacy_tool_names if legacy is None else legacy
+    names = current_profile().legacy_tool_names if legacy is None else legacy
     out = []
     for m in messages:
         if isinstance(m, AIMessage) and any(c.get("name") in names for c in m.tool_calls):
@@ -528,12 +529,13 @@ def compact_thread(agent, thread_id: str, settings: Settings) -> dict | None:
     """Compactación manual ("Compactar ahora"). Devuelve el registro, o None si no había nada que resumir.
     ValueError: el agente no compacta (bigtool). RuntimeError: el hilo tiene un turno en pausa (aprobación)."""
     compactor = getattr(agent, "compactor", None)
+    profile = getattr(agent, "profile", None)
     if compactor is None:
-        raise ValueError(tr("agent.compact_unsupported"))
+        raise ValueError(tr("agent.compact_unsupported", profile))
     config = run_config(thread_id, settings)
     state = agent.get_state(config)
     if state.interrupts:
-        raise RuntimeError(tr("agent.compact_pending"))
+        raise RuntimeError(tr("agent.compact_pending", profile))
     values = state.values or {}
     messages = values.get("messages") or []
     human = next((m for m in reversed(messages) if m.type == "human"
@@ -553,8 +555,16 @@ def _on_tool_error(exc: Exception, request) -> str:
     return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
 
+def _on_tool_error_hidden(exc: Exception, request) -> str:
+    """TOOL_ERROR_DETAIL_HIDDEN: al modelo, solo el tipo de excepción; el detalle va al log del servidor."""
+    name = (getattr(request, "tool_call", None) or {}).get("name")
+    logger.warning("La herramienta %s falló: %s: %s", name, type(exc).__name__, exc)
+    return f"Tool error ({type(exc).__name__}). Try another approach."
+
+
 def system_prompt_text(settings: Settings | None = None, profile=None) -> str:
-    """Prompt del perfil (el activo si no se pasa) + su política de memoria + fecha local."""
+    """Prompt del perfil (el del turno o el activo si no se pasa) + su política de memoria + fecha local."""
+    profile = profile or current_profile()
     # Fecha local en cada llamada: el modelo no la sabe y la búsqueda web va en UTC.
     now = datetime.now().astimezone()
     policy = memory_policy(settings.memory_save_policy if settings else "strict",
@@ -574,7 +584,12 @@ def system_prompt_text(settings: Settings | None = None, profile=None) -> str:
 def _make_system_prompt(settings: Settings, profile=None):
     @dynamic_prompt
     def _system_prompt(request) -> str:
-        return system_prompt_text(settings, profile)
+        text = system_prompt_text(settings, profile)
+        if settings.files_enabled:  # la regla de archivos, solo si el hilo tiene adjuntos
+            from assistant.core.files import prompt_addition
+
+            text += prompt_addition(request.state.get("messages"))
+        return text
 
     return _system_prompt
 
@@ -583,7 +598,7 @@ def evidence_tools(profile=None) -> tuple[str, ...]:
     """Herramientas cuyo resultado es evidencia para ANSWER_VERIFY: las marcadas evidence=True en el perfil."""
     from assistant.core.profile import active_profile
 
-    return tuple(name for name, policy in (profile or active_profile()).tool_policies.items() if policy.evidence)
+    return tuple(name for name, policy in (profile or current_profile()).tool_policies.items() if policy.evidence)
 
 
 _EVIDENCE_CHARS = 12000
@@ -737,7 +752,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
         _razonamiento,
         LimiteLlamadas(),
         AterrizajeSuave(settings.turn_token_cap),
-        ToolErrorMiddleware(on_error=_on_tool_error),
+        ToolErrorMiddleware(on_error=_on_tool_error_hidden if settings.tool_error_detail_hidden else _on_tool_error),
         LimiteRepeticiones(settings.tool_repeat_limit),
         # aprobaciones del perfil (tarjeta de la UI): las herramientas con ToolPolicy.approval
         HumanInTheLoopMiddleware(interrupt_on=approvals(profile, settings)),
@@ -752,8 +767,12 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     if settings.url_filter_always:  # antes en la lista = su after_agent corre después del verificador
         middleware.append(FiltroURLs())
     if settings.answer_verify:
-        middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap,
-                                         evidence_tools(profile)))
+        sources = evidence_tools(profile)
+        if settings.files_enabled:  # lo leído de un archivo adjunto también respalda la respuesta
+            from assistant.core.files import FILE_TOOL_NAMES
+
+            sources += FILE_TOOL_NAMES
+        middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap, sources))
     agent = create_agent(
         model,
         tools,
@@ -764,6 +783,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     )
     agent.compactor = compactor
     agent.base_context_tokens = base
+    agent.profile = profile  # TRACE_METADATA: nombre y sha del prompt del perfil con el que se construyó
     return agent
 
 
@@ -1045,8 +1065,52 @@ def _close_aborted_turn(agent, config, note: str) -> None:
 
 
 def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settings,
-                  esfuerzo: str | None = None, origen: str = "auto") -> Iterator[dict]:
+                  esfuerzo: str | None = None, origen: str = "auto", observer=None) -> Iterator[dict]:
+    """Eventos SSE de un turno, con el perfil del agente como perfil del turno (textos, reglas, léxico, tarjeta).
+    `observer` (TURN_METRICS): recibe la fila de métricas del turno al terminar, sin contenido de mensajes; sin él,
+    los eventos son exactamente los mismos."""
+    with profile_scope(getattr(agent, "profile", None)):
+        yield from _observed(agent, payload, thread_id, user_id, settings, esfuerzo, origen, observer)
+
+
+def _observed(agent, payload, thread_id: str, user_id: str, settings: Settings, esfuerzo, origen,
+              observer) -> Iterator[dict]:
+    events = _stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen)
+    if observer is None:
+        yield from events
+        return
+    from assistant.core.metrics import TurnRecorder
+
+    profile = getattr(agent, "profile", None) or active_profile()
+    recorder = TurnRecorder(payload, thread_id, user_id, settings, esfuerzo, origen, profile.name,
+                            cut_notes={turn_cap_msg(settings.turn_token_cap): "cap",
+                                       turn_time_msg(settings.turn_max_seconds): "time_cap"},
+                            recursion_note=tr("agent.recursion_limit", limit=settings.recursion_limit))
+    try:
+        for event in events:
+            recorder.see(event, _ACTIVE_TURNS.get(thread_id))
+            yield event
+    finally:
+        try:
+            observer(recorder.finish())
+        except Exception:  # noqa: BLE001 - una métrica que no se guarda nunca rompe el turno
+            logger.exception("No se pudo guardar la métrica del turno (hilo %s)", thread_id)
+
+
+def _stream_events(agent, payload, thread_id: str, user_id: str, settings: Settings,
+                   esfuerzo: str | None = None, origen: str = "auto") -> Iterator[dict]:
     ctx = contexto_para(user_id, settings, esfuerzo)
+    run_meta = None
+    if settings.trace_metadata:  # run_id y metadatos del turno; el evento "run" va primero
+        from assistant.core import tracing
+
+        profile = getattr(agent, "profile", None) or active_profile()
+        run_id = tracing.new_run_id()
+        run_meta = (run_id, dict(thread_id=thread_id, user_id=user_id,
+                                 kind="chat" if isinstance(payload, dict) else "resume", effort=esfuerzo,
+                                 effort_source=origen, model=settings.llm_model, profile_name=profile.name,
+                                 prompt_sha=tracing.prompt_sha256(system_prompt_text(settings, profile))))
+        yield {"type": "run", "run_id": str(run_id)}
     if esfuerzo in ESFUERZOS and settings.model_call_limit == 0:
         yield {"type": "effort", "level": esfuerzo, "max_calls": ctx.max_llamadas, "reasoning": ctx.razonamiento,
                "source": origen}
@@ -1055,6 +1119,8 @@ def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settin
     config["recursion_limit"] = max(config["recursion_limit"], ctx.max_llamadas * 8)
     counter = TurnTokens(_PAUSED_SPEND.pop(thread_id, (0, 0, 0)))
     config["callbacks"] = [counter]  # cuenta todas las llamadas del mensaje (agente, investigador, búsquedas...)
+    if run_meta:
+        tracing.apply(config, run_meta[0], **run_meta[1])
     _ACTIVE_TURNS[thread_id] = counter
     cap = settings.turn_token_cap
     # TURN_MAX_SECONDS: mismo cierre que el tope de tokens. El reloj empieza en cada /chat o /resume.
@@ -1149,6 +1215,12 @@ def get_history(agent, thread_id: str, settings: Settings) -> list[dict]:
             out.append({"role": "summary"})  # la conversación anterior se compactó (resumen)
             if record := msg.additional_kwargs.get("compaction"):
                 out[-1]["compaction"] = {"before": record.get("before"), "after": record.get("after")}
+        elif isinstance(msg, HumanMessage) and isinstance(msg.content, list):  # con adjuntos (FILES_ENABLED)
+            from assistant.core.files import attachments_of, visible_text
+
+            out.append({"role": "user", "content": visible_text(msg)})
+            if files := attachments_of(msg):
+                out[-1]["files"] = [{"file_id": f["file_id"], "name": f["name"], "kind": f["kind"]} for f in files]
         elif isinstance(msg, HumanMessage):
             out.append({"role": "user", "content": _content_text(msg)})
         elif isinstance(msg, AIMessage):

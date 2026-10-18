@@ -271,6 +271,18 @@ textarea#input {
 }
 textarea#input:disabled { opacity: .6; }
 #send { min-height: 44px; border-radius: 14px; padding: 0 16px; }
+/* FILES_ENABLED: adjuntar (solo aparece si GET /files/config responde) */
+#attach { min-height: 44px; border-radius: 14px; padding: 0 12px; }
+#filesbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 12px 0; }
+#filesbar:empty { display: none; }
+.chip.file button { border: 0; background: none; color: inherit; cursor: pointer; font-size: .9rem; padding: 0 2px; }
+.chip.file.err { background: var(--warn-bg, #fde8e8); }
+.row.user .files { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+/* FEEDBACK_ENABLED: 👍/👎 bajo la respuesta (solo si GET /feedback/config responde) */
+.feedback { display: flex; gap: 4px; margin: 2px 0 0 4px; }
+.feedback button { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; cursor: pointer;
+  padding: 2px 10px; font-size: .9rem; opacity: .75; }
+.feedback button[aria-pressed="true"] { opacity: 1; background: var(--chip-bg); border-color: currentColor; }
 .hint { text-align: center; font-size: .75rem; color: var(--muted); padding: 0 12px 6px; }
 @media (max-width: 560px) {
   header h1 { display: none; }
@@ -344,7 +356,10 @@ textarea#input:disabled { opacity: .6; }
     <div id="memlist"></div>
   </section>
   <main id="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Mensajes"></main>
+  <div id="filesbar" aria-live="polite" aria-label="Archivos adjuntos"></div>
   <form id="composer" autocomplete="off">
+    <input type="file" id="fileinput" multiple hidden>
+    <button id="attach" class="btn" type="button" hidden aria-label="Adjuntar archivo" title="Adjuntar archivo">📎</button>
     <label for="input" class="sr-only">Mensaje</label>
     <textarea id="input" rows="1" placeholder="Escribe un mensaje…" enterkeyhint="send"></textarea>
     <button id="send" class="btn primary" type="submit">Enviar</button>
@@ -649,10 +664,60 @@ textarea#input:disabled { opacity: .6; }
     messagesEl.appendChild(box);
   }
 
-  function addUserBubble(text) {
+  function addUserBubble(text, files) {
     removeEmpty();
     var row = el("div", "row user"), b = el("div", "bubble", text);
+    if (files && files.length) {
+      var box = el("div", "files");
+      files.forEach(function (f) { box.appendChild(el("span", "chip file", "📎 " + f.name)); });
+      b.appendChild(box);
+    }
     row.appendChild(b); messagesEl.appendChild(row); scrollDown(true);
+  }
+
+  /* ---------- archivos (FILES_ENABLED) ---------- */
+  var files = { enabled: false, pending: [] };
+  var filesBar = $("filesbar"), fileInput = $("fileinput"), attachBtn = $("attach");
+  function renderPending() {
+    filesBar.textContent = "";
+    files.pending.forEach(function (f, i) {
+      var chip = el("span", "chip file" + (f.error ? " err" : ""), (f.error ? "⚠️ " : f.file_id ? "📎 " : "⏳ ") + f.name + (f.error ? ": " + f.error : ""));
+      var x = el("button", null, "✕");
+      x.type = "button"; x.setAttribute("aria-label", "Quitar " + f.name);
+      x.onclick = function () {
+        files.pending.splice(i, 1); renderPending();
+        if (f.file_id) apiFetch("/threads/" + encodeURIComponent(f.thread) + "/files/" + f.file_id + "?user_id=" + encodeURIComponent(userId()), { method: "DELETE" });
+      };
+      chip.appendChild(x); filesBar.appendChild(chip);
+    });
+  }
+  async function uploadFile(file) {
+    var entry = { name: file.name, thread: state.threadId };
+    files.pending.push(entry); renderPending();
+    var fd = new FormData(); fd.append("file", file); fd.append("user_id", userId());
+    try {
+      var r = await apiFetch("/threads/" + encodeURIComponent(entry.thread) + "/files", { method: "POST", body: fd });
+      var data = await r.json().catch(function () { return {}; });
+      if (r.ok) { entry.file_id = data.file_id; entry.name = data.name; }
+      else entry.error = typeof data.detail === "string" ? data.detail : "no se pudo subir (" + r.status + ")";
+    } catch (e) { entry.error = "no se pudo subir"; }
+    renderPending();
+  }
+  attachBtn.onclick = function () { fileInput.click(); };
+  fileInput.onchange = function () {
+    Array.prototype.forEach.call(fileInput.files, uploadFile);
+    fileInput.value = "";
+  };
+  function clearPending() { files.pending = []; renderPending(); }
+  var fbEnabled = false;
+  async function checkFeedback() {
+    try { var r = await fetch("/feedback/config", { credentials: "same-origin" }); fbEnabled = r.ok; } catch (e) { /* sin feedback */ }
+  }
+  async function checkFiles() {
+    try { var r = await fetch("/files/config", { credentials: "same-origin" }); if (!r.ok) return;
+      var cfg = await r.json(); files.enabled = true; attachBtn.hidden = false;
+      if (cfg.extensions) fileInput.accept = cfg.extensions.join(",");
+    } catch (e) { /* sin archivos */ }
   }
   // el turno fue sin herramientas porque la conversación ya pesa más que TURN_TOKEN_CAP
   var NO_TOOLS_NOTE = "⚠️ Sin herramientas: esta conversación ya supera el tope por mensaje; abre una nueva para buscar";
@@ -714,7 +779,9 @@ textarea#input:disabled { opacity: .6; }
     update_memory: "✏️ Actualizando recuerdo…",
     send_simulated_email: "✉️ Enviando email simulado…",
     check_python_syntax: "🐍 Revisando la sintaxis…",
-    retrieve_tools: "🧰 Buscando herramientas…"
+    retrieve_tools: "🧰 Buscando herramientas…",
+    read_file: "📄 Leyendo el archivo…",
+    search_in_file: "📄 Buscando en el archivo…"
   };
   var TOOL_DONE = {
     web_search: "🔎 Búsqueda web",
@@ -726,7 +793,9 @@ textarea#input:disabled { opacity: .6; }
     update_memory: "✏️ Recuerdo actualizado",
     send_simulated_email: "✉️ Email simulado",
     check_python_syntax: "🐍 Sintaxis revisada",
-    retrieve_tools: "🧰 Herramientas"
+    retrieve_tools: "🧰 Herramientas",
+    read_file: "📄 Archivo leído",
+    search_in_file: "📄 Búsqueda en el archivo"
   };
   // la herramienta no se ejecutó (límite de una búsqueda por paso, tope del mensaje, rechazada): nunca "✓"
   var NOT_RUN = {
@@ -997,6 +1066,7 @@ textarea#input:disabled { opacity: .6; }
     this.timing.setAttribute("aria-label", "Tiempo de respuesta " + head.slice(2) + ": " + parts.join(", "));
   };
   AssistantBubble.prototype.finish = function () {
+    if (this.researchResult) { this.researchResult.textContent = "✓ Aprobada"; this.researchResult = null; }
     this.stopTiming();
     this.live = false; this.hideDots();
     if (this.seg) { this.closeSeg(); }
@@ -1008,6 +1078,26 @@ textarea#input:disabled { opacity: .6; }
     var spinning = this.bubble.querySelectorAll(".chip.running");
     Array.prototype.forEach.call(spinning, function (c) { c.classList.remove("running"); var s = c.querySelector(".spin"); if (s) s.remove(); });
     if (!this.bubble.children.length) this.row.remove();
+  };
+  // 👍/👎 del último turno de esta respuesta (run_id del evento "run"); se puede cambiar de opinión
+  AssistantBubble.prototype.feedback = function (runId) {
+    if (this.fbBox) this.fbBox.remove();
+    var box = el("div", "feedback"), btns = [];
+    box.setAttribute("role", "group"); box.setAttribute("aria-label", "¿Te sirvió esta respuesta?");
+    [[1, "👍", "Me sirvió"], [-1, "👎", "No me sirvió"]].forEach(function (o) {
+      var b = el("button", null, o[1]);
+      b.type = "button"; b.title = o[2]; b.setAttribute("aria-label", o[2]); b.setAttribute("aria-pressed", "false");
+      b.onclick = async function () {
+        try {
+          var r = await apiFetch("/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ run_id: runId, score: o[0], user_id: userId() }) });
+          if (!r.ok) { b.title = "No se pudo guardar (" + r.status + ")"; return; }
+          btns.forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        } catch (e) { b.title = "No se pudo guardar"; }
+      };
+      btns.push(b); box.appendChild(b);
+    });
+    this.fbBox = box; this.row.appendChild(box);
   };
   AssistantBubble.prototype.approval = function (ev, onDecide) {
     this.hideDots(); this.closeSeg();
@@ -1049,6 +1139,7 @@ textarea#input:disabled { opacity: .6; }
       var r = el("div", "result", research ? (approve ? "✓ Investigando…" : "✗ Sin investigación a fondo")
                                             : (approve ? "✓ Aprobado" : "✗ Rechazado"));
       card.appendChild(r);
+      if (research && approve) self.researchResult = r;  // al terminar el turno pasa a "✓ Aprobada"
       var n = acts.length || 1, decisions = [];
       for (var k = 0; k < n; k++) decisions.push(approve ? { type: "approve" } : { type: "reject", message: REJECT_MSG });
       onDecide(decisions);
@@ -1074,9 +1165,12 @@ textarea#input:disabled { opacity: .6; }
       return;
     }
     if (!resp.ok) {
-      var detail = "";
-      try { detail = (await resp.text()).slice(0, 300); } catch (e) { /* ignore */ }
-      bubble.error("Error del servidor (" + resp.status + ")" + (detail ? ": " + detail : ""));
+      var detail = "", raw = "";
+      try { raw = await resp.text(); } catch (e) { /* ignore */ }
+      try { var parsed = JSON.parse(raw); if (typeof parsed.detail === "string") detail = parsed.detail; } catch (e) { /* no es JSON */ }
+      // 4xx con "detail" (413 por largo, 409 por turno en curso, 400/404…): el aviso en español, sin el JSON crudo
+      if (detail && resp.status < 500) bubble.error(detail);
+      else bubble.error("Error del servidor (" + resp.status + ")" + ((detail || raw) ? ": " + (detail || raw).slice(0, 300) : ""));
       return;
     }
     if (!resp.body || !resp.body.getReader) {
@@ -1140,12 +1234,14 @@ textarea#input:disabled { opacity: .6; }
           break;
         case "error": bubble.error(ev.message || "Error desconocido"); break;
         case "done": gotDone = true; break;
+        case "run": bubble.runId = ev.run_id; break;  // TRACE_METADATA: id del turno para el feedback
       }
     });
     state.streaming = false;
     if (body.thread_id === state.threadId) loadContext(body.thread_id);  // totales y gasto del turno
     if (memEl.classList.contains("open")) loadMemories();  // por si guardó un recuerdo en este turno
     if (!state.pending) bubble.finish(); else bubble.live = false;
+    if (!state.pending && fbEnabled && bubble.runId && gotDone) bubble.feedback(bubble.runId);
     if (state.newQueued) { bubble.finish(); openNewThread(); return; }  // clic en "Nueva conversación" durante el turno
     updateControls();
     if (!inputEl.disabled) inputEl.focus({ preventScroll: true });
@@ -1156,20 +1252,28 @@ textarea#input:disabled { opacity: .6; }
   function send(text) {
     text = (text || "").trim();
     if (!text || state.streaming || state.pending) return;
-    addUserBubble(text);
+    // un /history que aún no respondió ya no puede pintar encima de este turno (la pantalla vacía lo borraba)
+    state.loadSeq++;
+    var stale = messagesEl.querySelector(".sys.loading");
+    if (stale) stale.remove();
+    var ready = files.pending.filter(function (f) { return f.file_id && f.thread === state.threadId; });
+    addUserBubble(text, ready);
     touchThread(state.threadId, text);
     inputEl.value = ""; autosize();
     var bubble = new AssistantBubble();
     scrollDown(true);
     var effort = effortEl.value === "auto" ? null : effortEl.value;  // el selector manda sobre el clasificador
-    runTurn("/chat", { message: text, thread_id: state.threadId, user_id: userId(), effort: effort }, bubble);
+    var body = { message: text, thread_id: state.threadId, user_id: userId(), effort: effort };
+    if (ready.length) body.file_ids = ready.map(function (f) { return f.file_id; });
+    clearPending();
+    runTurn("/chat", body, bubble);
   }
 
   /* ---------- historial ---------- */
   async function loadHistory(id) {
     var seq = ++state.loadSeq;
     clearMessages();
-    var loading = el("div", "sys", "Cargando conversación…");
+    var loading = el("div", "sys loading", "Cargando conversación…");
     messagesEl.appendChild(loading);
     var data = null;
     try {
@@ -1184,7 +1288,7 @@ textarea#input:disabled { opacity: .6; }
     if (!msgs.length) { showEmpty(); return; }
     var firstUser = "";
     msgs.forEach(function (m) {
-      if (m.role === "user") { if (!firstUser) firstUser = String(m.content || ""); addUserBubble(String(m.content || "")); }
+      if (m.role === "user") { if (!firstUser) firstUser = String(m.content || ""); addUserBubble(String(m.content || ""), m.files); }
       else if (m.role === "assistant") addAssistantStatic(String(m.content || ""), m.original, m.verify, m.no_tools);
       else if (m.role === "tool") addToolLine(canonicalTool(String(m.name || "herramienta")), m.status, m.reason);
       else if (m.role === "summary") messagesEl.appendChild(el("div", "sys compacted", (compactionLabel(m.compaction) || "🗜️ La conversación anterior se resumió") + "; aquí se ven los mensajes conservados."));
@@ -1337,6 +1441,7 @@ textarea#input:disabled { opacity: .6; }
   function showThreadId() { $("threadid").textContent = state.threadId || ""; }
 
   function switchThread(id, isNew) {
+    clearPending();  // un adjunto pertenece al hilo donde se subió
     state.threadId = id;
     showThreadId();
     lsSet("currentThread", id);
@@ -1508,6 +1613,7 @@ textarea#input:disabled { opacity: .6; }
   (async function boot() {
     var me = null;
     try { var r = await fetch("/auth/me", { credentials: "same-origin" }); if (r.ok) me = await r.json(); } catch (e) { /* ignore */ }
+    checkFiles(); checkFeedback();
     if (!me || !me.auth_enabled) { initLocal(); return; }
     state.auth.enabled = true;
     document.body.classList.add("auth-on");

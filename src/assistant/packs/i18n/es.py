@@ -114,5 +114,29 @@ TEXTS = {
     "startup.non_local_hosts": NON_LOCAL_HOSTS_MSG,
     "http.not_loopback": NOT_LOOPBACK_MSG,
     "http.message_too_long": MESSAGE_TOO_LONG_MSG,
+    "http.thread_busy": "Esta conversación ya tiene una respuesta en curso. Espera a que termine.",
     "startup.app_db_required": APP_DB_REQUIRED_MSG,
+    # FILES_ENABLED (opcionales: core.i18n.FILE_TEXTS; el servidor las exige solo con el interruptor)
+    "files.empty": "El archivo está vacío.",
+    "files.too_large": "El archivo pesa más de {max} bytes (FILE_MAX_BYTES).",
+    "files.type_not_allowed": "Tipo de archivo no permitido. Se aceptan PDF, TXT, MD, CSV, XLSX, DOCX, PNG, JPG, GIF "
+                              "y WEBP.",
+    "files.content_mismatch": "El contenido del archivo no corresponde a su extensión.",
+    "files.macro": "El archivo tiene macros: no se acepta.",
+    "files.zip_bomb": "El archivo está demasiado comprimido o tiene demasiadas partes: no se acepta.",
+    "files.not_text": "El archivo de texto no es UTF-8 válido o trae datos binarios.",
+    "files.encrypted": "El PDF está protegido con contraseña.",
+    "files.image_too_big": "La imagen tiene demasiados píxeles.",
+    "files.extract_failed": "No pude leer el contenido del archivo.",
+    "files.extract_timeout": "Leer el archivo tardó demasiado (FILE_EXTRACT_TIMEOUT).",
+    "files.too_many": "Puedes adjuntar como máximo {max} archivos por mensaje (FILE_MAX_PER_MESSAGE).",
+    "files.not_found": "No encontré ese archivo en esta conversación.",
+    "startup.metrics_need_app_db": "TURN_METRICS y FEEDBACK_ENABLED necesitan la base de negocio: configura "
+                                   "APP_MONGODB_URI y APP_MONGODB_DB.",
+    "startup.feedback_needs_trace": "FEEDBACK_ENABLED=1 necesita también TRACE_METADATA=1 y TURN_METRICS=1.",
+    "feedback.bad_score": "La puntuación debe ser 1 (👍) o -1 (👎).",
+    "feedback.comment_too_long": "El comentario puede tener como máximo {max} caracteres.",
+    "feedback.not_found": "No encontré ese turno.",
+    "startup.files_missing_deps": "FILES_ENABLED=1 necesita las dependencias de archivos (falta {module}). "
+                                  "Instálalas con: uv pip install --python .venv -e \".[files]\"",
 }

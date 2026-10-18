@@ -1,10 +1,12 @@
 """Perfil del agente: todo lo que define un caso de uso (prompt, herramientas, aprobaciones, políticas de memoria,
 nombres antiguos de herramientas, UI). El núcleo lo recibe de aquí y nunca importa un perfil: lo carga por nombre
 (AGENT_PROFILE, default "default") desde `assistant.profiles.<nombre>` o desde una ruta con puntos."""
+import contextvars
 import importlib
 import os
 import pkgutil
 import re
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal, Mapping
@@ -117,7 +119,34 @@ def active_profile() -> AgentProfile:
     return load_profile()
 
 
+# Perfil del turno en curso: stream_events lo fija con el perfil con el que se construyó el agente, y todo lo que se
+# lee dentro del turno (reglas de intención, léxico de la memoria, avisos, tarjeta de deep_research, nombres antiguos)
+# lo usa en vez de AGENT_PROFILE. Se propaga a los hilos de LangGraph y de las herramientas, como get_config().
+_turn_profile: contextvars.ContextVar = contextvars.ContextVar("turn_profile", default=None)
+
+
+def current_profile() -> AgentProfile:
+    """El perfil del turno en curso; fuera de un turno, el activo (AGENT_PROFILE)."""
+    return _turn_profile.get() or active_profile()
+
+
+@contextmanager
+def profile_scope(profile):
+    """Fija el perfil del turno mientras dura el bloque (None = no cambia nada)."""
+    if profile is None:
+        yield
+        return
+    token = _turn_profile.set(profile)
+    try:
+        yield
+    finally:
+        try:
+            _turn_profile.reset(token)
+        except ValueError:  # el generador se cerró desde otro contexto (el cliente se fue): ese contexto muere igual
+            pass
+
+
 def tool_aliases(names, profile=None) -> tuple[str, ...]:
     """`names` (nombres actuales de herramientas) más sus nombres antiguos según el perfil, en el orden de su mapa."""
-    legacy = (profile or active_profile()).legacy_tool_names
+    legacy = (profile or current_profile()).legacy_tool_names
     return (*names, *(old for old, new in legacy.items() if new in names))

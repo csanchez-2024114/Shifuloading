@@ -26,14 +26,48 @@ def normalize_url(url: str) -> str:
     return host + parts.path.rstrip("/")
 
 
+_never_in_url = "`“”‘’«»"  # no son válidos en una URL (irían codificados): donde aparece uno, la URL ya terminó
+_closers = {")": "(", "]": "[", "}": "{"}
+
+
+def _trim_url(url: str) -> str:
+    """Quita lo que se pegó al final de una URL sin ser parte de ella: comillas invertidas o tipográficas,
+    puntuación final (. , ; : ! ?) y paréntesis, corchetes o llaves de cierre sin su apertura dentro de la URL."""
+    for ch in _never_in_url:
+        url = url.split(ch, 1)[0]
+    while url:
+        last = url[-1]
+        if last in ".,;:!?'\"":
+            url = url[:-1]
+        elif last in _closers and url.count(last) > url.count(_closers[last]):
+            url = url[:-1]
+        else:
+            break
+    return url
+
+
+def _bare_urls(text: str) -> list[str]:
+    return [u for u in (_trim_url(m) for m in _BARE_URL.findall(text)) if "://" in u]
+
+
+# _BARE_URL salta la URL pegada a "(" (para no contar dos veces el destino de un enlace markdown), así que una
+# "(https://…)" suelta no la veía nadie. El modo estricto (URL_FILTER_ALWAYS) también mira esas: sin "](" delante.
+_after_paren = re.compile(r"(?<=\()(?<!\]\()https?://[^\s)\]\"'>]+")
+
+
+def _parenthesized_urls(text: str) -> list[str]:
+    return [u for u in (_trim_url(m) for m in _after_paren.findall(text)) if "://" in u]
+
+
 def urls(text: str) -> list[str]:
-    return [u for _, u in _MD_LINK.findall(text)] + _BARE_URL.findall(text)
+    return [_trim_url(u) for _, u in _MD_LINK.findall(text)] + _bare_urls(text)
 
 
 def _links(text: str) -> list[tuple[str, str, str]]:
-    """(texto completo del enlace, título, url) de los enlaces markdown y las URLs sueltas."""
-    out = [(m.group(0), m.group(1), m.group(2)) for m in _MD_LINK.finditer(text)]
-    out += [(u, "", u) for u in _BARE_URL.findall(text)]
+    """(texto completo del enlace, título, url) de los enlaces markdown y las URLs sueltas. De una URL suelta, el
+    texto del enlace es solo la URL: los delimitadores que la rodean se quedan en la respuesta."""
+    out = [(m.group(0), m.group(1), _trim_url(m.group(2))) for m in _MD_LINK.finditer(text)]
+    out += [(u, "", u) for u in _bare_urls(text)]
     return out
 
 
@@ -57,8 +91,12 @@ def keep_supported(text: str, evidence: str, strict_query: bool = False) -> tupl
     exfiltración de URL_FILTER_ALWAYS); sin él, como siempre, solo dominio y ruta."""
     key = _with_query if strict_query else normalize_url
     supported = {key(u) for u in urls(evidence)}
+    links = _links(text)
+    if strict_query:
+        supported |= {key(u) for u in _parenthesized_urls(evidence)}
+        links += [(u, "", u) for u in _parenthesized_urls(text)]
     removed = []
-    for whole, title, url in _links(text):
+    for whole, title, url in links:
         if key(url) not in supported:
             text = text.replace(whole, title, 1)
             removed.append(url)
@@ -67,9 +105,9 @@ def keep_supported(text: str, evidence: str, strict_query: bool = False) -> tupl
 
 def drop_sources_section(text: str) -> str:
     """Quita las secciones de fuentes: desde su encabezado hasta el siguiente encabezado markdown o el final."""
-    from assistant.core.profile import active_profile
+    from assistant.core.profile import current_profile
 
-    heading = active_profile().intents.sources_heading  # "## Fuentes", "**Sources:**"... (regla del perfil)
+    heading = current_profile().intents.sources_heading  # "## Fuentes", "**Sources:**"... (regla del perfil)
     while m := heading.search(text):
         nxt = _HEADING.search(text, m.end())
         text = text[:m.start()] + (text[nxt.start():] if nxt else "")

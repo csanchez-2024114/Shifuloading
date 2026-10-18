@@ -31,6 +31,7 @@ from assistant.core import memory
 from assistant.core.agent import (history_landing, landing_due, landing_note, mark_no_tools, rename_old_tools,
                                   system_prompt_text)
 from assistant.core.config import Settings
+from assistant.core.files import prompt_addition, thread_has_files
 from assistant.core.i18n import tr
 from assistant.core.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.core.tools import (
@@ -60,8 +61,9 @@ def _ctx(attr: str, default=None):
         return default
 
 
-def _seguro(t: BaseTool) -> BaseTool:
-    """Misma herramienta, pero devuelve 'Error: ...' en vez de lanzar (el agente lo ve e intenta otra cosa)."""
+def _seguro(t: BaseTool, hidden: bool = False) -> BaseTool:
+    """Misma herramienta, pero devuelve 'Tool error ...' en vez de lanzar (el agente lo ve e intenta otra cosa).
+    `hidden` (TOOL_ERROR_DETAIL_HIDDEN): solo el tipo de excepción; el detalle va al log."""
 
     def run(**kwargs):
         try:
@@ -69,6 +71,9 @@ def _seguro(t: BaseTool) -> BaseTool:
         except GraphBubbleUp:  # interrupt() (confirmación de deep_research): no es un error de la herramienta
             raise
         except Exception as exc:  # noqa: BLE001
+            if hidden:
+                logger.warning("La herramienta %s falló: %s: %s", t.name, type(exc).__name__, exc)
+                return f"Tool error ({type(exc).__name__}). Try another approach."
             return f"Tool error ({type(exc).__name__}): {exc}. Try another approach."
 
     return StructuredTool.from_function(func=run, name=t.name, description=t.description, args_schema=t.args_schema,
@@ -116,11 +121,6 @@ def _thread_messages(checkpointer) -> tuple[str | None, list]:
     return thread_id, messages or []
 
 
-def _thread_user_texts(checkpointer) -> tuple[str | None, list[str]]:
-    thread_id, messages = _thread_messages(checkpointer)
-    return thread_id, memory.user_texts(messages)
-
-
 def build_registry(model, settings: Settings, memories_store, search_fn: Callable = web_search,
                    checkpointer=None, checker=None, profile=None) -> dict[str, BaseTool]:
     """Registro id -> herramienta. id = nombre de la herramienta (legible en la UI). Las base del núcleo más las
@@ -143,7 +143,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
                                thread_id=thread_id, verifier=verifier, saved_this_turn=memory.turn_saves(messages),
                                max_per_turn=settings.memory_max_per_turn, dedup=settings.memory_dedup,
                                dedup_score=settings.memory_dedup_score,
-                               require_quote=settings.memory_require_quote)
+                               require_quote=settings.memory_require_quote or thread_has_files(messages))
 
     @tool("search_memories", description=BUSCAR_RECUERDOS_DOC)
     def buscar_recuerdos(query: str) -> str:
@@ -151,9 +151,11 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
 
     @tool("update_memory", description=ACTUALIZAR_RECUERDO_DOC)
     def actualizar_recuerdo(id: str, text: str, evidence: str = "") -> str:  # noqa: A002
-        thread_id, texts = _thread_user_texts(checkpointer)
-        return memory.revise(memories_store, _ctx("user_id", "anon"), id, text, evidence, texts,
-                             thread_id=thread_id, verifier=verifier, require_quote=settings.memory_require_quote)
+        thread_id, messages = _thread_messages(checkpointer)
+        # con archivos adjuntos en el hilo, solo se guarda lo que el usuario dijo con sus palabras (cita literal)
+        return memory.revise(memories_store, _ctx("user_id", "anon"), id, text, evidence, memory.user_texts(messages),
+                             thread_id=thread_id, verifier=verifier,
+                             require_quote=settings.memory_require_quote or thread_has_files(messages))
 
     @tool("deep_research", description=INVESTIGADOR_DOC)
     def investigador_profundo(task: str) -> str:
@@ -163,7 +165,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
             return FOLLOW_UP_MSG.format(previous=previous)
         if research_needs_confirmation(messages):  # bigtool no tiene middleware: misma tarjeta, vía interrupt()
             answer = interrupt({"action_requests": [{"name": "deep_research", "args": {"task": task},
-                                                     "description": tr("tools.deep_research_confirm")}],
+                                                     "description": tr("tools.deep_research_confirm", profile)}],
                                 "review_configs": [{"action_name": "deep_research",
                                                     "allowed_decisions": ["approve", "reject"]}]})
             decision = ((answer or {}).get("decisions") or [{}])[0] if isinstance(answer, dict) else {}
@@ -175,12 +177,37 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
     tools = [calculadora, fecha_hora, check_python_syntax, buscar_web, guardar_recuerdo, buscar_recuerdos,
              actualizar_recuerdo,
              investigador_profundo, *profile.bigtool_tools(settings)]
+    if settings.files_enabled:  # FILES_ENABLED: las mismas lecturas que en el agente normal, del store del agente
+        tools += _file_tools(memories_store)
     if settings.effect_approval:  # P3.3: write/send/delete pasan por la tarjeta, con el interrupt() de deep_research
         tools = [_con_aprobacion(t, profile) if _effect(t, profile) != "read" else t for t in tools]
-    registry = {t.name: _seguro(t) for t in tools}
+    registry = {t.name: _seguro(t, settings.tool_error_detail_hidden) for t in tools}
     assert len(registry) == len(tools), "nombres de herramientas duplicados en el registro"
     validate_registry(registry)
     return registry
+
+
+def _file_tools(memories_store) -> list[BaseTool]:
+    """read_file y search_in_file para bigtool: sin ToolRuntime, el hilo sale de la config y el usuario del contexto."""
+    from assistant.core.files.tools import READ_FILE_DOC, READ_MAX_CHARS, SEARCH_IN_FILE_DOC, read_file_text, search_text
+
+    def ids() -> tuple[str, str | None]:
+        try:
+            thread_id = get_config()["configurable"]["thread_id"]
+        except Exception:  # noqa: BLE001 - fuera de un grafo
+            thread_id = None
+        return _ctx("user_id", "anon"), thread_id
+
+    @tool("read_file", description=READ_FILE_DOC)
+    def read_file(file_id: str = "", page: int = 1, offset: int = 0, max_chars: int = READ_MAX_CHARS) -> str:
+        return read_file_text(memories_store, *ids(), file_id, page, offset, max_chars)
+
+    @tool("search_in_file", description=SEARCH_IN_FILE_DOC)
+    def search_in_file(query: str, file_id: str = "", k: int = 3) -> str:
+        user_id, thread_id = ids()
+        return search_text(memories_store, user_id, thread_id, query, file_id, k)
+
+    return [read_file, search_in_file]
 
 
 def _index_document(t: BaseTool) -> str:
@@ -247,7 +274,10 @@ class PromptedModel:
 
         def prompt(msgs):
             msgs = rename_old_tools(msgs, None if self.profile is None else self.profile.legacy_tool_names)
-            system = system_prompt_text(self.settings, self.profile) + BIGTOOL_PROMPT
+            system = system_prompt_text(self.settings, self.profile)
+            if self.settings is not None and self.settings.files_enabled:  # la regla, solo si el hilo tiene adjuntos
+                system += prompt_addition(msgs)
+            system += BIGTOOL_PROMPT
             counter = landing_due(self.cap, [SystemMessage(system), *msgs])
             note = f"\n\n{landing_note(counter, self.cap)}" if counter else ""
             return [SystemMessage(system + note), *msgs]
@@ -274,4 +304,6 @@ def build_bigtool_agent(model, settings: Settings, checkpointer=None, memories_s
     index = build_tool_index(registry, settings, embeddings)
     builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap, settings, profile), RegistroTolerante(registry, legacy=profile.legacy_tool_names), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
                                    retrieve_tools_function=make_retrieve_tools(registry))
-    return builder.compile(checkpointer=checkpointer, store=index)
+    agent = builder.compile(checkpointer=checkpointer, store=index)
+    agent.profile = profile  # stream_events lo fija como perfil del turno
+    return agent

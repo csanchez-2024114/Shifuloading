@@ -2,7 +2,13 @@
 
 Este refactor solo reorganiza. Todo lo de aquí abajo es un **cambio de comportamiento** y va en commits o tareas aparte, después de terminar el refactor y con la suite en verde.
 
-## Primera tarea posterior: que todo lea el perfil pasado a `build_agent`, no solo `AGENT_PROFILE`
+## Fase 4, primera tarea: hecha
+
+bigtool ya tiene `read_file` y `search_in_file`, la regla de archivos en `PromptedModel` y la cita literal obligatoria en hilos con adjuntos (`test_archivos_bigtool.py`). Se quitó el bloqueo `FILES_ENABLED`+`USE_BIGTOOL`. Corrección de lo anotado en la Fase 2: bigtool no "recibía las herramientas de archivos sin la regla"; no las recibía en absoluto, porque su registro no parte de `base_tools`.
+
+## Hecho en la Fase 4: que todo lea el perfil pasado a `build_agent`, no solo `AGENT_PROFILE`
+
+Resuelto con un perfil del turno (`profile.current_profile()` / `profile_scope`), que `stream_events` fija con el perfil del agente; test de dos perfiles en el mismo proceso en `tests/test_dos_perfiles.py`. Lo de abajo queda como registro de lo que leía el perfil activo.
 
 Hoy, pasar `profile=` a `build_agent`, `build_tools`, `create_app` o `system_prompt_text` decide el prompt, las herramientas, las aprobaciones, las herramientas-evidencia y los nombres antiguos del middleware. Pero hay piezas que leen siempre el perfil **activo** (`active_profile()`, es decir, `AGENT_PROFILE`), aunque se haya pasado otro:
 - **reglas de intención:**
@@ -28,6 +34,8 @@ Con un solo perfil por proceso, el resultado es el mismo. Con dos perfiles en un
 | S5 | Sin longitud máxima de mensaje ni presupuesto por usuario; la llamada final siempre se permite | `server.py:28-32`, `agent.py:938-963` |
 | S6 | `wikipedia_summary`: `language` va directo al host (SSRF/exfiltración), solo bigtool | `extra_tools.py:239-246` |
 | S7 | El evento `error` y `Tool error` exponen el texto de la excepción | `agent.py:1076-1078`, `agent.py:573-574` |
+
+**Estado al 2026-10-18:** S1 (`37b0d19`), S3 (`f106f65`, `9a6c22f`, `44ff6fc`), S4 (`00e0a9e`) y S6 (`b070aaa`) resueltas; S2 mitigada con `UNTRUSTED_WRAP` y `MEMORY_REQUIRE_QUOTE` (`b507eef`, `27e7610`); S7: el evento `error` ya no expone la excepción y `TOOL_ERROR_DETAIL_HIDDEN` (`e51efc1`) quita el detalle de `Tool error`; S5 parcial (`MAX_MESSAGE_CHARS`), falta presupuesto por usuario y rate limit.
 
 Los tests de caracterización **fijan a propósito** el comportamiento actual de S4 y S7 (`calculadora_caracterizada`, `stream_con_excepcion_da_tipo_y_mensaje_sin_done`). Cuando se arreglen, esos tests se cambian en el mismo commit del arreglo, diciéndolo.
 
@@ -95,5 +103,22 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
 ## De la validación E2E con el modelo real (`docs/VALIDACION_E2E.md`, línea base del 2026-10-17)
 
 - **Costo tras rechazar la tarjeta de `deep_research`** (observación 1): tras el rechazo, el modelo hizo una `web_search` y escribió un informe largo: 24k tokens en la reanudación, 3 veces lo estimado. Es correcto y honesto, porque el prompt dice "If they decline, answer without it" y no prohíbe buscar. Si se quiere un rechazo barato, habría que decirlo en el prompt o en el resultado del rechazo (por ejemplo, "answer briefly from your own knowledge; do not search"). Es un cambio de comportamiento, así que necesita su interruptor o tu decisión.
-- **El 413 de `MAX_MESSAGE_CHARS` se ve con el JSON crudo** (observación 3): la UI muestra el texto de la respuesta tal cual: `⚠️ Error del servidor (413): {"detail":"El mensaje es demasiado largo…"}`. Mejoraría si la UI leyera `detail` en los errores HTTP de `/chat` y `/resume`. Tocar `packs/ui/index.html` cambia el sha256 de la huella, así que va en un commit propio, que lo diga.
-- **La tarjeta aprobada sigue diciendo "✓ Investigando…"** (observación 4): cuando la investigación ya terminó y el informe está debajo, la tarjeta conserva el texto de la decisión, que se lee como si siguiera en curso. Habría que cambiarlo a algo como "✓ Aprobada" al llegar `done`. Es un cambio de la UI, con la misma nota sobre la huella.
+- **Resuelto en la Fase 4 (cosmético a):** ~~El 413 de `MAX_MESSAGE_CHARS` se ve con el JSON crudo~~ (observación 3): la UI muestra el texto de la respuesta tal cual: `⚠️ Error del servidor (413): {"detail":"El mensaje es demasiado largo…"}`. Mejoraría si la UI leyera `detail` en los errores HTTP de `/chat` y `/resume`. Tocar `packs/ui/index.html` cambia el sha256 de la huella, así que va en un commit propio, que lo diga.
+- **Resuelto en la Fase 4 (cosmético b):** ~~La tarjeta aprobada sigue diciendo "✓ Investigando…"~~ (observación 4): cuando la investigación ya terminó y el informe está debajo, la tarjeta conserva el texto de la decisión, que se lee como si siguiera en curso. Habría que cambiarlo a algo como "✓ Aprobada" al llegar `done`. Es un cambio de la UI, con la misma nota sobre la huella.
+
+## Anotado en la Fase 2 de `feat/seguridad-core` (análisis de archivos, `FILES_ENABLED`)
+
+- ~~**bigtool recibe las herramientas de archivos sin la regla del prompt de archivos**~~ (resuelto en la Fase 4; en realidad no las recibía). `base_tools` agrega `read_file` y `search_in_file` con el interruptor, y el registro de bigtool parte de `base_tools`. Pero `PromptedModel` no añade `FILE_UNTRUSTED_RULE` cuando el hilo tiene adjuntos, como sí hace el `dynamic_prompt` del agente normal. La salida va envuelta en `<untrusted_file_content>` igual y la memoria exige cita literal en hilos con adjuntos; lo que falta es la regla. Sin arreglar.
+- **`generic` no recibe las herramientas de archivos aunque `FILES_ENABLED=1`**: su `build_tools` filtra `base` por la lista `TOOLS`, que no las incluye. Las rutas de subida sí existen, así que el usuario puede adjuntar un archivo que el modelo no puede leer (las imágenes sí llegan). Documentado en `docs/CREAR_PERFIL.md`. Sin arreglar.
+- **La memoria semántica y `put(index=False)`**: `langgraph-store-mongodb` lanza `IndexError` con `put(..., index=False)` en un store con índice vectorial. Se evitó guardando los archivos en un store sin índice (colección `file_store`). Si se actualiza la librería, conviene revisar si se corrigió.
+
+## Anotado en la prueba real de la Fase 3 (2026-10-18)
+
+- **Resuelto en la Fase 4 (cosmético d):** ~~Un mensaje enviado mientras carga el historial desaparece de la pantalla.~~ Con `?thread=<id>` en la URL, `initLocal` llama a `loadHistory` (asíncrono). Si el usuario envía antes de que responda `/history`, y el servidor leyó el historial antes de guardar el turno, la respuesta vacía llama a `showEmpty()` y borra la burbuja en vivo. El turno se procesa y se guarda, pero el usuario no lo ve y lo reenvía (pasó en la prueba real: 2 528 tokens de más). Reproducido con modelo falso retrasando `get_history`. Arreglo propuesto (cosmético, sin aplicar): que `send()` invalide la carga pendiente (`state.loadSeq++`) y quite el "Cargando conversación…".
+
+## Diseño pendiente: etiquetas de herramientas por perfil (cosmético c, sin hacer)
+
+Hoy `TOOL_LABELS`, `TOOL_DONE` y `NOT_RUN` están fijos en `packs/ui/index.html`: una herramienta nueva de un perfil sale con su nombre crudo en los chips. Propuesta:
+- **Servidor:** ruta nueva `GET /profile/labels`, que devuelve el `labels.json` del `static_dir` del perfil (o `{}` si no hay), con el formato `{"nombre": {"running": "…", "done": "…", "not_run": "…"}}`. No la ve el modelo; cambia la sección `routes` de la huella, así que iría detrás de su decisión o de un interruptor.
+- **UI:** al arrancar, pedir esa ruta y mezclar lo recibido sobre las tablas fijas (las fijas ganan si el perfil no trae una herramienta). Cambia `index_html_sha256`.
+- **Tests:** un perfil de prueba con `labels.json` y un chip con su etiqueta en el navegador (modelo falso).

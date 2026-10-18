@@ -1,4 +1,5 @@
-"""Base de negocio en MongoDB. Colecciones: users, sessions, threads, login_attempts, login_locks."""
+"""Base de negocio en MongoDB. Colecciones: users, sessions, threads, login_attempts, login_locks y, solo con sus
+interruptores, turn_metrics y feedback."""
 from datetime import datetime, timezone
 
 import pymongo
@@ -131,11 +132,65 @@ class MongoAttempts:
         self.locks.delete_many({"key": key})
 
 
+class _Lazy:
+    """Colección cuyos índices se crean en la primera escritura: con TURN_METRICS y FEEDBACK_ENABLED en 0 no aparece
+    nada nuevo en la base (borrar o leer una colección que no existe no la crea)."""
+
+    def __init__(self, db, name: str, ttl_days: int, unique: list):
+        self.col = db[name]
+        self.ttl_days = ttl_days
+        self.unique = unique
+        self._ready = False
+
+    def _indexes(self) -> None:
+        if self._ready:
+            return
+        self.col.create_index(self.unique, unique=True)
+        self.col.create_index("thread_id")
+        self.col.create_index([("user_id", 1), ("ts", -1)])
+        if self.ttl_days:
+            self.col.create_index("ts", expireAfterSeconds=self.ttl_days * 86400)
+        self._ready = True
+
+    def since(self, since, user_id=None):
+        query = {"ts": {"$gte": since}} | ({"user_id": user_id} if user_id is not None else {})
+        return [_doc(d) for d in self.col.find(query)]
+
+    def delete_for_thread(self, thread_id):
+        self.col.delete_many({"thread_id": thread_id})
+
+    def delete_for_user(self, user_id):
+        self.col.delete_many({"user_id": user_id})
+
+
+class MongoTurnMetrics(_Lazy):
+    def __init__(self, db, ttl_days: int = 90):
+        super().__init__(db, "turn_metrics", ttl_days, [("turn_id", 1)])
+
+    def add(self, record):
+        self._indexes()
+        self.col.insert_one(dict(record))
+
+    def get(self, turn_id):
+        return _doc(self.col.find_one({"turn_id": turn_id}))
+
+
+class MongoFeedback(_Lazy):
+    def __init__(self, db, ttl_days: int = 90):
+        super().__init__(db, "feedback", ttl_days, [("turn_id", 1), ("user_id", 1)])
+
+    def put(self, record):
+        self._indexes()
+        self.col.replace_one({"turn_id": record["turn_id"], "user_id": record["user_id"]}, dict(record), upsert=True)
+
+
 class MongoAppData:
-    def __init__(self, client: pymongo.MongoClient, db_name: str):
+    def __init__(self, client: pymongo.MongoClient, db_name: str, metrics_ttl_days: int = 90):
         db = client[db_name]
         self.db_name = db_name
         self.users = MongoUsers(db)
         self.sessions = MongoSessions(db)
         self.threads = MongoThreads(db)
         self.attempts = MongoAttempts(db)
+        self.turn_metrics = MongoTurnMetrics(db, metrics_ttl_days)
+        self.feedback = MongoFeedback(db, metrics_ttl_days)
