@@ -241,3 +241,23 @@ Capturas en `docs/e2e/`, sin claves, URIs ni datos reales: `t3_archivos_01_csv.p
 
 - **LangSmith:** el envío del feedback (`create_feedback(run_id, key="user_score")`) y los metadatos de la traza (`run_id`, `run_name`, `metadata`, `tags`) están probados **solo con un cliente falso** (`tests/test_feedback.py`, `tests/test_trazas.py`). No se probó contra LangSmith real: en las pruebas reales `LANGSMITH_TRACING=false`.
 - **UI de 👍/👎:** probada en Edge headless con modelo falso (`tests/test_ui_feedback.py`, 0 tokens).
+
+## Prueba real corta: trazas, métricas y feedback (2026-10-18, 16:02–16:04)
+
+- **Montaje:** `scripts/eval_server.py` solo en `127.0.0.1:8001`, con `TRACE_METADATA=1`, `TURN_METRICS=1` y `FEEDBACK_ENABLED=1`; el resto de los interruptores de seguridad y `FILES_ENABLED` en 0. `TURN_TOKEN_CAP` 60 000 y `LANGSMITH_TRACING=false`.
+  - Bases temporales: `assistant_ux_tmp_20261018160207` (IA) y `assistant_ux_tmp_20261018160207_app` (negocio, con `--app-db`, porque `.env` no define base de negocio). Las dos se borraron; en el clúster solo quedan `assistant`, `admin` y `local`.
+  - UI manejada con `playwright@claude-plugins-official`. El usuario es el que el navegador tenía guardado (`ux-tarjeta-tmp`, inventado) y el esfuerzo "medio" elegido en Ajustes de una sesión anterior.
+- **Tope duro:** 15 000 tokens. **Gasto real: 5 101** (no se disparó).
+- **Se mandaron 2 mensajes, no 1.** El primer "Hola, ¿cómo estás?" se escribió con Enter en cuanto cargó la página. El servidor lo procesó (2 528 tokens), pero la UI lo borró de la pantalla: la carga del historial del hilo, que es asíncrona, llegó después del envío y volvió a pintar la pantalla vacía. Al no verlo, lo reenvié con el botón (2 573 tokens). Es un fallo anterior de la UI, reproducido con modelo falso (0 tokens) retrasando `/history`; está anotado en `REFACTOR_NOTAS.md` y propuesto como cosmético. Las comprobaciones de abajo son sobre el turno visible.
+
+| Comprobación | Resultado |
+|---|---|
+| Evento `run` del turno | `5002a2ca-5ac7-416f-b5a0-eea6064a89a0`, primer evento del stream |
+| `run_id` y `turn_id` de la fila de `turn_metrics` | el mismo |
+| `run_id` del POST de 👍 y del de 👎, y de la fila de `feedback` | el mismo |
+| Feedback tras 👍 y luego 👎 | **1 sola fila**, `score` -1 (el 👍 guardó 1 y el 👎 lo reemplazó) |
+| Campos de la fila de métricas | `turn_id`, `run_id`, `thread_id` (`e2efb01`), `user_id`, `kind` (`chat`), `ts`, `effort` (`medio`), `effort_source` (`manual`), `model` (`gpt-6-luna`), `profile` (`default`), `approved` 0, `rejected` 0, `tools` [], `status` `done`, `latency_ms` 2 714, `tokens_total` 2 573 (2 540 de entrada y 33 de salida). Ningún campo de texto libre |
+| Texto literal en todas las filas de `turn_metrics` | "Hola, ¿cómo estás?", "cómo estás", "Muy bien, gracias", "Estoy bien", "gracias" y "Hola": **no aparece ninguno** |
+| Respuesta del modelo | "¡Hola! Muy bien, gracias 😊 ¿Cómo estás tú?" |
+
+Captura: `docs/e2e/t4_feedback_01_pulgar_abajo.png` (sin claves, URIs ni datos reales).

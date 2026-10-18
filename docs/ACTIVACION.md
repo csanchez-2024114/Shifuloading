@@ -41,6 +41,13 @@ Validado con el modelo real el 2026-10-18 (tercera tanda de `VALIDACION_E2E.md`:
 - **no se puede combinar con `USE_BIGTOOL=1`**: el servidor no arranca con los dos, porque bigtool aún no añade la regla de archivos al prompt (primera tarea de la Fase 4 en `REFACTOR_NOTAS.md`);
 - con el perfil `generic` se pueden subir archivos, pero el modelo no recibe `read_file` ni `search_in_file` (ver `docs/CREAR_PERFIL.md`).
 
+## Trazas, métricas y feedback (`TRACE_METADATA`, `TURN_METRICS`, `FEEDBACK_ENABLED`)
+
+Validados con el modelo real el 2026-10-18 (prueba corta en `VALIDACION_E2E.md`). Si los activas:
+- **`TURN_METRICS` y `FEEDBACK_ENABLED` necesitan una base de negocio** (`APP_MONGODB_URI` y `APP_MONGODB_DB`, distinta de la de la IA). **Tu `.env` hoy no la define**: con cualquiera de los dos en 1 y sin ella, el servidor no arranca. `TRACE_METADATA` sola no la necesita.
+- `FEEDBACK_ENABLED=1` exige además `TRACE_METADATA=1` y `TURN_METRICS=1`.
+- El envío del feedback a LangSmith solo está probado con un cliente falso.
+
 ## Cómo comparar después
 
 Con `web_search`, el costo del mismo mensaje varió hasta ±30 % (14,4k a 18,9k), por la búsqueda hospedada. En esos escenarios no se compara con un umbral de 5 %; ese umbral vale solo para los escenarios sin búsqueda.
