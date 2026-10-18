@@ -152,11 +152,14 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         if appdata is None and (app_client := memory.app_startup(settings)) is not None:
             from assistant.core.appdata.mongo import MongoAppData
 
-            appdata = MongoAppData(app_client, settings.app_mongodb_db)
+            appdata = MongoAppData(app_client, settings.app_mongodb_db, settings.metrics_ttl_days)
             log.info("MongoDB negocio: %s (db %s)", settings.app_mongodb_uri.rsplit("@", 1)[-1],
                      settings.app_mongodb_db)
     if settings.auth_enabled and appdata is None:
         raise ConfigError(tr("http.server_needs_app_db", profile))
+    if (settings.turn_metrics or settings.feedback_enabled) and appdata is None:
+        raise ConfigError(profile.texts.get("startup.metrics_need_app_db") or
+                          "TURN_METRICS y FEEDBACK_ENABLED necesitan la base de negocio (APP_MONGODB_URI).")
     auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
                        settings.login_lock_minutes, settings.login_max_fails_ip) if settings.auth_enabled else None
 
@@ -214,9 +217,13 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     def _auth_error(exc: AuthError) -> HTTPException:
         return HTTPException(exc.status, exc.message)
 
+    # TURN_METRICS: cada turno deja su fila (sin contenido de mensajes) en la base de negocio
+    observer = appdata.turn_metrics.add if settings.turn_metrics else None
+
     def sse(payload, thread_id: str, user_id: str, esfuerzo: str | None = None, origen: str = "auto"):
+        extra = {"observer": observer} if observer else {}
         events = (f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n" for event in
-                  agent_mod.stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen))
+                  agent_mod.stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen, **extra))
         return with_keepalive(events, settings.sse_ping_seconds)
 
     def sse_response(gen):
@@ -324,6 +331,8 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             from assistant.core.files import store as fstore
 
             fstore.delete_user(store, uid)
+        appdata.turn_metrics.delete_for_user(uid)
+        appdata.feedback.delete_for_user(uid)
         appdata.sessions.delete_for_user(uid)
         appdata.threads.delete_for_user(uid)
         appdata.attempts.clear(f"email:{user['email']}")
@@ -372,6 +381,8 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             from assistant.core.files import store as fstore
 
             fstore.delete_thread(store, user["user_id"], thread_id)
+        appdata.turn_metrics.delete_for_thread(thread_id)
+        appdata.feedback.delete_for_thread(thread_id)
         appdata.threads.delete(thread_id)
         return {"deleted": thread_id}
 
@@ -448,6 +459,25 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     if settings.files_enabled:
         _install_file_routes(app, settings, profile, _store, _file_owner)
+
+    # ---------------------------------------------------------------- métricas (TURN_METRICS=1)
+    if settings.turn_metrics:
+        @app.get("/metrics/summary")
+        def metrics_summary(request: Request, days: int = 7):
+            """Resumen de los turnos de los últimos `days` días: con cuentas, solo los del usuario de la sesión; sin
+            cuentas (app local), todos."""
+            from datetime import datetime, timedelta, timezone
+
+            from assistant.core.metrics import summarize
+
+            days = max(1, min(days, 365))
+            uid = _user(request)["user_id"] if auth else None
+            since = datetime.now(timezone.utc) - timedelta(days=days)
+            out = {"days": days, **summarize(appdata.turn_metrics.since(since, uid))}
+            if settings.feedback_enabled:
+                scores = [f.get("score") for f in appdata.feedback.since(since, uid)]
+                out["feedback"] = {"up": scores.count(1), "down": scores.count(-1)}
+            return out
 
     @app.get("/memories/{user_id}")
     def list_memories(user_id: str):

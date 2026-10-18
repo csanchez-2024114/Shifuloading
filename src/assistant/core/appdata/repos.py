@@ -1,6 +1,7 @@
 """Interfaces de la base de negocio (usuarios, sesiones, propiedad de conversaciones, intentos de login). El resto del
 código solo usa estas interfaces: cambiar de motor es escribir otra implementación (ver mongo.py y memory.py).
-Nada de aquí guarda mensajes, resúmenes ni recuerdos: eso vive en la base de la IA."""
+Nada de aquí guarda mensajes, resúmenes ni recuerdos: eso vive en la base de la IA. Las métricas y el feedback
+(apagados por defecto) tampoco: solo ids, tiempos, tokens, estados y la puntuación con su comentario."""
 from datetime import datetime
 from typing import Protocol
 
@@ -43,8 +44,27 @@ class AttemptsRepo(Protocol):
     def clear(self, key: str) -> None: ...
 
 
+class TurnMetricsRepo(Protocol):
+    """TURN_METRICS: una fila por turno, sin contenido de mensajes (core/metrics.py)."""
+    def add(self, record: dict) -> None: ...
+    def get(self, turn_id: str) -> dict | None: ...
+    def since(self, since: datetime, user_id: str | None = None) -> list[dict]: ...
+    def delete_for_thread(self, thread_id: str) -> None: ...
+    def delete_for_user(self, user_id: str) -> None: ...
+
+
+class FeedbackRepo(Protocol):
+    """FEEDBACK_ENABLED: 👍/👎 por turno; uno por (turn_id, user_id), el último gana."""
+    def put(self, record: dict) -> None: ...
+    def since(self, since: datetime, user_id: str | None = None) -> list[dict]: ...
+    def delete_for_thread(self, thread_id: str) -> None: ...
+    def delete_for_user(self, user_id: str) -> None: ...
+
+
 class AppData(Protocol):
     users: UsersRepo
     sessions: SessionsRepo
     threads: ThreadsRepo
     attempts: AttemptsRepo
+    turn_metrics: TurnMetricsRepo
+    feedback: FeedbackRepo

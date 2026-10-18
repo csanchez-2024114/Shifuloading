@@ -57,12 +57,12 @@ class Meter:
             self._clf = sum(u.get("total_tokens", 0) or 0 for u in cb.usage_metadata.values())
             return nivel
 
-        def stream_medido(agent, payload, thread_id, user_id, settings, esfuerzo=None, origen="auto"):
+        def stream_medido(agent, payload, thread_id, user_id, settings, esfuerzo=None, origen="auto", **kwargs):
             start, events, tools, counter = time.monotonic(), [], [], None
             clf, self._clf = self._clf, 0
             status = "open"
             try:
-                for ev in stream(agent, payload, thread_id, user_id, settings, esfuerzo, origen):
+                for ev in stream(agent, payload, thread_id, user_id, settings, esfuerzo, origen, **kwargs):
                     counter = counter or agent_mod._ACTIVE_TURNS.get(thread_id)
                     events.append(ev["type"])
                     if ev["type"] == "tool_end":

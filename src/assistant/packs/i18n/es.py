@@ -130,6 +130,8 @@ TEXTS = {
     "files.extract_timeout": "Leer el archivo tardó demasiado (FILE_EXTRACT_TIMEOUT).",
     "files.too_many": "Puedes adjuntar como máximo {max} archivos por mensaje (FILE_MAX_PER_MESSAGE).",
     "files.not_found": "No encontré ese archivo en esta conversación.",
+    "startup.metrics_need_app_db": "TURN_METRICS y FEEDBACK_ENABLED necesitan la base de negocio: configura "
+                                   "APP_MONGODB_URI y APP_MONGODB_DB.",
     "startup.files_bigtool": "FILES_ENABLED=1 no funciona todavía con USE_BIGTOOL=1: bigtool no añade la regla de "
                              "archivos al prompt. Apaga una de las dos.",
     "startup.files_missing_deps": "FILES_ENABLED=1 necesita las dependencias de archivos (falta {module}). "

@@ -1055,7 +1055,33 @@ def _close_aborted_turn(agent, config, note: str) -> None:
 
 
 def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settings,
-                  esfuerzo: str | None = None, origen: str = "auto") -> Iterator[dict]:
+                  esfuerzo: str | None = None, origen: str = "auto", observer=None) -> Iterator[dict]:
+    """Eventos SSE de un turno. `observer` (TURN_METRICS): recibe la fila de métricas del turno al terminar, sin
+    contenido de mensajes; sin él, los eventos son exactamente los mismos."""
+    events = _stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen)
+    if observer is None:
+        yield from events
+        return
+    from assistant.core.metrics import TurnRecorder
+
+    profile = getattr(agent, "profile", None) or active_profile()
+    recorder = TurnRecorder(payload, thread_id, user_id, settings, esfuerzo, origen, profile.name,
+                            cut_notes={turn_cap_msg(settings.turn_token_cap): "cap",
+                                       turn_time_msg(settings.turn_max_seconds): "time_cap"},
+                            recursion_note=tr("agent.recursion_limit", limit=settings.recursion_limit))
+    try:
+        for event in events:
+            recorder.see(event, _ACTIVE_TURNS.get(thread_id))
+            yield event
+    finally:
+        try:
+            observer(recorder.finish())
+        except Exception:  # noqa: BLE001 - una métrica que no se guarda nunca rompe el turno
+            logger.exception("No se pudo guardar la métrica del turno (hilo %s)", thread_id)
+
+
+def _stream_events(agent, payload, thread_id: str, user_id: str, settings: Settings,
+                   esfuerzo: str | None = None, origen: str = "auto") -> Iterator[dict]:
     ctx = contexto_para(user_id, settings, esfuerzo)
     run_meta = None
     if settings.trace_metadata:  # run_id y metadatos del turno; el evento "run" va primero

@@ -247,6 +247,16 @@ Con `AUTH_ENABLED=1`: sin sesión, 401. Las peticiones que cambian estado (POST/
 - `DELETE /threads/{id}` y `/auth/delete-account` borran también los archivos de ese hilo o de ese usuario, aunque el interruptor esté apagado.
 - Herramientas nuevas: `read_file` y `search_in_file`, con salida envuelta en `<untrusted_file_content>`. Sus `tool_end` tienen el formato de siempre.
 
+### Métricas (`TURN_METRICS=1`; con 0 la ruta no existe y no se escribe nada)
+
+Cada `/chat` y `/resume` deja una fila en la colección `turn_metrics` de la base de negocio, **sin contenido de mensajes**: `turn_id` (el `run_id` si `TRACE_METADATA=1`), `run_id`, `thread_id`, `user_id`, `kind` (`chat`/`resume`), `ts`, `latency_ms`, `tokens_total`/`tokens_input`/`tokens_output` (los de `TurnTokens`), `tools` (`[{"name", "status"}]`), `approved` y `rejected` (decisiones de ese `/resume`), `status` (`done`, `interrupted`, `cap`, `time_cap`, `recursion`, `error` o `disconnected`), `effort`, `effort_source`, `model` y `profile`. Caduca a los `METRICS_TTL_DAYS` días (índice TTL; 0 = nunca). Sin base de negocio, el servidor no arranca.
+
+| Método | Ruta | Respuesta |
+|---|---|---|
+| GET | `/metrics/summary?days=7` | `{"days", "turns", "status": {estado: n}, "latency_ms": {"p50", "p95"}, "tokens": {"total", "avg"}, "tools": {nombre: {estado: n}}, "approvals": {"approved", "rejected", "rejection_rate"}, "feedback"?: {"up", "down"}}`. Con cuentas, solo los turnos del usuario de la sesión; sin cuentas, todos. `days` entre 1 y 365 |
+
+`DELETE /threads/{id}` y `/auth/delete-account` borran también las filas de métricas y de feedback de ese hilo o de ese usuario.
+
 `server.create_app(agent=None) -> FastAPI`: si recibe `agent`, NO hace chequeos de arranque (para tests).
 `server.app` se crea perezosamente (al pedirlo uvicorn); ahí corren `memory.startup_checks` y un `ConfigError` se imprime sin traceback y sale con código 1.
 

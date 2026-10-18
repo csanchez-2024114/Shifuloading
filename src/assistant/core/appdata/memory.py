@@ -112,9 +112,42 @@ class _Attempts:
         self.locks.pop(key, None)
 
 
+class _Rows:
+    """turn_metrics y feedback en memoria."""
+
+    def __init__(self, key: tuple[str, ...]):
+        self.key = key
+        self.rows: dict[tuple, dict] = {}
+        self._lock = threading.Lock()
+
+    def add(self, record):
+        with self._lock:
+            self.rows[tuple(record[k] for k in self.key)] = dict(record)
+
+    put = add  # feedback: el último gana
+
+    def get(self, turn_id):
+        row = next((r for r in self.rows.values() if r.get("turn_id") == turn_id), None)
+        return dict(row) if row else None
+
+    def since(self, since, user_id=None):
+        return [dict(r) for r in self.rows.values()
+                if r["ts"] >= since and (user_id is None or r.get("user_id") == user_id)]
+
+    def delete_for_thread(self, thread_id):
+        with self._lock:
+            self.rows = {k: r for k, r in self.rows.items() if r.get("thread_id") != thread_id}
+
+    def delete_for_user(self, user_id):
+        with self._lock:
+            self.rows = {k: r for k, r in self.rows.items() if r.get("user_id") != user_id}
+
+
 class MemoryAppData:
     def __init__(self):
         self.users = _Users()
         self.sessions = _Sessions()
         self.threads = _Threads()
         self.attempts = _Attempts()
+        self.turn_metrics = _Rows(("turn_id",))
+        self.feedback = _Rows(("turn_id", "user_id"))
