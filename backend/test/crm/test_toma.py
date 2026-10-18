@@ -13,6 +13,8 @@ import pytest
 
 from app.crm import plantillas as catalogo_crm
 from app.crm import toma as tm
+from app.crm.marca import FUENTES
+from app.crm.validar import revisar_vista
 
 LAB = Path(__file__).parent / "fixtures" / "lab"
 GUIONES = json.loads((LAB / "toma_guiones.json").read_text(encoding="utf-8"))
@@ -22,51 +24,16 @@ AHORA_MS = int(datetime(2026, 10, 16, 18, 0, tzinfo=timezone.utc).timestamp() * 
 
 # ───────── Lo inyectado (en el CRM lo dan secciones_v, graficos y validar) ─────────
 
-def revisar_vista(vista, opciones, campos, donde):
-    """`revisarVista` de validar.js, sobre el catálogo VISTAS grabado (solo para estas pruebas)."""
-    vistas = catalogo_crm.vistas()
-    d = vistas.get(vista)
-    if not d:
-        return [f"{donde}: la vista «{vista}» no está en el catálogo ({', '.join(vistas)})."]
-    if d.get("datos") is False or d.get("libre"):
-        return []
-    opciones = opciones or {}
-    errores = []
-
-    def tipo_de(i):
-        return next((c["tipo"] for c in campos if c["id"] == i), None)
-
-    for op, tipos in d["requiere"].items():
-        v = opciones.get(op)
-        if not v:
-            errores.append(f"{donde}: la vista «{vista}» necesita la opción «{op}».")
-            continue
-        if isinstance(v, list):
-            errores.append(f"{donde}: «{op}» debe ser el id de UN campo (texto), no una lista.")
-        elif not tipo_de(v):
-            errores.append(f"{donde}: «{op}» apunta al campo «{v}», que no existe.")
-        elif tipos and tipo_de(v) not in tipos:
-            errores.append(f"{donde}: «{op}» debe ser un campo de tipo {' o '.join(tipos)}, y «{v}» es {tipo_de(v)}.")
-    for op, tipos in (d.get("opcional") or {}).items():
-        v = opciones.get(op)
-        if tipos == "libre" or not v or not isinstance(v, str) or op in ("dias", "excluir", "orden"):
-            continue
-        if not tipo_de(v):
-            errores.append(f"{donde}: «{op}» apunta al campo «{v}», que no existe.")
-        elif tipos and tipo_de(v) not in tipos:
-            errores.append(f"{donde}: «{op}» debe ser un campo de tipo {' o '.join(tipos)}.")
-    for op in opciones:
-        if op not in d["requiere"] and op not in (d.get("opcional") or {}) and op not in ("dias", "tipo"):
-            errores.append(f"{donde}: la vista «{vista}» no tiene la opción «{op}».")
-    return errores
+def test_las_tipografias_son_las_grabadas_del_laboratorio():
+    assert list(FUENTES) == CAT["fuentes"]
 
 
 def catalogo(pid: str) -> tm.Catalogo:
-    """El catálogo real del CRM (plantillas.py: secciones, compatibles y opciones por defecto). Las tipografías permitidas son las de
-    marca.js (no están en el catálogo compartido): salen de lo grabado."""
+    """El catálogo real del CRM (plantillas.py: secciones, compatibles y opciones por defecto; validar.py: revisar_vista; marca.py: las
+    tipografías permitidas)."""
     return tm.Catalogo(secciones=catalogo_crm.plantilla_por_id(pid)["secciones"], compatibles=catalogo_crm.compatibles,
                        opciones_por_defecto=catalogo_crm.opciones_por_defecto, revisar_vista=revisar_vista,
-                       graficos=catalogo_crm.graficos(), fuentes=CAT["fuentes"])
+                       graficos=catalogo_crm.graficos(), fuentes=list(FUENTES))
 
 
 def doc_inicial():

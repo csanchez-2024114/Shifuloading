@@ -1,0 +1,1067 @@
+{
+ "HERRAMIENTAS": [
+  {
+   "type": "function",
+   "function": {
+    "name": "quitar_bloque",
+    "description": "Quita un bloque (del inicio o de una pestaña: el código sabe dónde está por su id).",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "bloque": {
+       "type": "string",
+       "description": "id del bloque, ej. b2"
+      }
+     },
+     "required": [
+      "bloque"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "agregar_bloque",
+    "description": "Agrega una pieza (bloque) al inicio o a cualquier pestaña, con una vista del catálogo sobre una sección. Cada pestaña es un cuaderno en blanco: puede llevar varias piezas.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "pestana": {
+       "type": "string",
+       "description": "dónde va: \"inicio\" (por defecto) o el id de una sección. Si la persona está mirando una pestaña (pestana_abierta) y dice «aquí» o «en esta pestaña», es esa."
+      },
+      "seccion": {
+       "type": "string"
+      },
+      "vista": {
+       "type": "string",
+       "enum": [
+        "kpis",
+        "tablero",
+        "agenda",
+        "vencimientos",
+        "grafico",
+        "tabla",
+        "calendario_mes",
+        "tablero_dinero",
+        "cifra",
+        "atencion",
+        "franjas",
+        "matriz"
+       ]
+      },
+      "opciones": {
+       "type": "object",
+       "description": "opciones de la vista: ids de campos (ver \"vistas\" y \"secciones\"). calendario_mes {fecha, titulo?, estado?}: el mes en rejilla con los registros de cada día (distinto del gráfico «calendario» de calor). tablero_dinero {por: estado, suma: dinero}: columnas con total. cifra {funcion: conteo|suma|promedio, valor?, meta?: número, fecha?: para comparar con el periodo anterior, periodo?: mes|semana, ayuda?: texto}. atencion {fecha, estado?, excluir?}: vencidos y por vencer. franjas {fecha, estado?, urgentes?: [opciones]}: bandeja por prioridad. matriz {filas: texto, columnas: estado}. Para grafico: {tipo: uno de graficos_posibles de esa sección, ...}. Para tabla: {filtro: {campo, menorOIgual: número o id de otro campo | mayorOIgual | igual}, orden: {campo, dir: asc|desc}, limite}",
+       "additionalProperties": true
+      },
+      "ancho": {
+       "type": "integer",
+       "enum": [
+        3,
+        4,
+        6,
+        8,
+        12
+       ]
+      },
+      "alto": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 4
+      },
+      "posicion": {
+       "type": "integer",
+       "minimum": 1
+      }
+     },
+     "required": [
+      "seccion",
+      "vista"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cambiar_visual",
+    "description": "Cambia la vista o sus opciones de un bloque existente (mantiene su lugar y tamaño).",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "bloque": {
+       "type": "string"
+      },
+      "vista": {
+       "type": "string",
+       "enum": [
+        "kpis",
+        "tablero",
+        "agenda",
+        "vencimientos",
+        "grafico",
+        "tabla",
+        "calendario_mes",
+        "tablero_dinero",
+        "cifra",
+        "atencion",
+        "franjas",
+        "matriz"
+       ]
+      },
+      "opciones": {
+       "type": "object",
+       "additionalProperties": true
+      },
+      "seccion": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "bloque",
+      "vista"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cambiar_tamano",
+    "description": "Cambia el ancho (columnas de 12) y/o el alto (filas) de un bloque, SOLO cuando la persona pidió cambiar ese tamaño. No la uses para acomodar después de quitar o agregar: el código tapa los huecos solo (acomodo automático).",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "bloque": {
+       "type": "string"
+      },
+      "ancho": {
+       "type": "integer",
+       "enum": [
+        3,
+        4,
+        6,
+        8,
+        12
+       ]
+      },
+      "alto": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 4
+      }
+     },
+     "required": [
+      "bloque"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "mover_bloque",
+    "description": "Cambia el orden: pone el bloque en esa posición (1 = primero). Para que algo quede a la derecha de otro, va justo después y la suma de anchos de la fila debe ser ≤ 12.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "bloque": {
+       "type": "string"
+      },
+      "posicion": {
+       "type": "integer",
+       "minimum": 1
+      }
+     },
+     "required": [
+      "bloque",
+      "posicion"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cambiar_rangos",
+    "description": "Define los grupos de un bloque de vencimientos. Reemplaza TODOS los rangos: incluye los que se quedan.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "bloque": {
+       "type": "string"
+      },
+      "rangos": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "vencidos": {
+          "type": "boolean"
+         },
+         "desde": {
+          "type": "integer"
+         },
+         "hasta": {
+          "type": "integer"
+         }
+        }
+       }
+      }
+     },
+     "required": [
+      "bloque",
+      "rangos"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "abrir_seccion",
+    "description": "Muestra una sección del menú (o \"inicio\").",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "seccion"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cambiar_marca",
+    "description": "Cambia el branding del CRM: colores en hex (primario = color de marca principal, secundario, fondo, superficie = tarjetas, texto), tipografías y nombre. Solo manda lo que cambia; \"\" para volver al de base en ese punto.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "primario": {
+       "type": "string"
+      },
+      "secundario": {
+       "type": "string"
+      },
+      "fondo": {
+       "type": "string"
+      },
+      "superficie": {
+       "type": "string"
+      },
+      "texto": {
+       "type": "string"
+      },
+      "fuenteTitulos": {
+       "type": "string",
+       "enum": [
+        "Inter",
+        "Poppins",
+        "Nunito",
+        "Montserrat",
+        "DM Sans",
+        "Rubik",
+        "Work Sans",
+        "Lato",
+        "Playfair Display",
+        "Lora",
+        "Merriweather",
+        "Outfit"
+       ]
+      },
+      "fuenteTexto": {
+       "type": "string",
+       "enum": [
+        "Inter",
+        "Poppins",
+        "Nunito",
+        "Montserrat",
+        "DM Sans",
+        "Rubik",
+        "Work Sans",
+        "Lato",
+        "Playfair Display",
+        "Lora",
+        "Merriweather",
+        "Outfit"
+       ]
+      },
+      "nombre": {
+       "type": "string"
+      }
+     },
+     "required": []
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "usar_logo",
+    "description": "Pone como logo del negocio la imagen que la persona adjuntó EN ESTE mensaje (SVG/PNG/WebP con fondo transparente).",
+    "parameters": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "crear_seccion",
+    "description": "Crea una sección NUEVA en el menú. Si lo que pide está en \"pestanas_base\", usa desde = ese id (trae campos, vista y piezas probados; no pases campos) y con_piezas = true si quiere verla también en el inicio. Si no está, pásale sus campos (máx. 8). Úsala cuando la persona quiere llevar algo que hoy no existe (inventario, cobros, proveedores, lo que sea). Para tablero/vencimientos/agenda pasa opciones (por: id campo estado / fecha: id campo fecha…); los id de campo son el nombre en minúsculas sin acentos con _ .",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "desde": {
+       "type": "string",
+       "description": "id de pestanas_base"
+      },
+      "con_piezas": {
+       "type": "boolean"
+      },
+      "titulo": {
+       "type": "string"
+      },
+      "vista": {
+       "type": "string",
+       "enum": [
+        "tabla",
+        "tablero",
+        "agenda",
+        "vencimientos"
+       ]
+      },
+      "opciones": {
+       "type": "object",
+       "additionalProperties": true
+      },
+      "grupo": {
+       "type": "integer",
+       "enum": [
+        0,
+        1
+       ]
+      },
+      "campos": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "nombre": {
+          "type": "string"
+         },
+         "tipo": {
+          "type": "string",
+          "enum": [
+           "texto",
+           "numero",
+           "dinero",
+           "fecha",
+           "hora",
+           "estado"
+          ]
+         },
+         "opciones": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         },
+         "ejemplos": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         }
+        },
+        "required": [
+         "nombre",
+         "tipo"
+        ]
+       }
+      }
+     },
+     "required": []
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "agregar_campo",
+    "description": "Agrega un campo a una sección existente.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "nombre": {
+       "type": "string"
+      },
+      "tipo": {
+       "type": "string",
+       "enum": [
+        "texto",
+        "numero",
+        "dinero",
+        "fecha",
+        "hora",
+        "estado"
+       ]
+      },
+      "opciones": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "ejemplos": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     },
+     "required": [
+      "seccion",
+      "nombre",
+      "tipo"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cambiar_ficha",
+    "description": "Define cómo se ve la FICHA de un registro (lo que se abre al tocar un cliente, una cita, un pedido…): grupos con título y los campos de cada uno, en orden. Campos que no pongas no se muestran. relacionados = mostrar lo de otras secciones ligado a este registro; linea_tiempo = sus fechas en orden.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "grupos": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "titulo": {
+          "type": "string"
+         },
+         "campos": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          },
+          "description": "ids de campos"
+         }
+        },
+        "required": [
+         "titulo",
+         "campos"
+        ]
+       }
+      },
+      "relacionados": {
+       "type": "boolean"
+      },
+      "linea_tiempo": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "seccion",
+      "grupos"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cambiar_tarjeta",
+    "description": "Elige qué campos muestran las TARJETAS del tablero de una sección (1 a 4; el primero es el título).",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "campos": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     },
+     "required": [
+      "seccion",
+      "campos"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "quitar_campo",
+    "description": "Deja de mostrar un campo de una sección (sus datos se conservan). Solo si la persona lo pidió.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "campo": {
+       "type": "string",
+       "description": "id del campo"
+      }
+     },
+     "required": [
+      "seccion",
+      "campo"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "renombrar_campo",
+    "description": "Cambia el nombre visible de un campo.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "campo": {
+       "type": "string"
+      },
+      "nombre": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "seccion",
+      "campo",
+      "nombre"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cambiar_opciones_estado",
+    "description": "Cambia las opciones de un campo de estado (agregar, quitar, renombrar o reordenar etapas). Pasa la lista COMPLETA nueva. Si una opción desaparece, di a dónde pasan sus registros: renombrar {vieja: nueva} o pasar_a.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "campo": {
+       "type": "string"
+      },
+      "opciones": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "renombrar": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       }
+      },
+      "pasar_a": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "seccion",
+      "campo",
+      "opciones"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "renombrar_seccion",
+    "description": "Cambia el nombre de una sección.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "titulo": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "seccion",
+      "titulo"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "quitar_seccion",
+    "description": "Quita una sección del menú (y sus bloques del inicio). Solo si la persona lo pidió.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "seccion"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "deshacer",
+    "description": "Anula UN pedido anterior de la persona (ver pedidos_anteriores: qué dijo y qué cambió). El código revierte solo lo que ese pedido cambió y conserva lo demás. Úsalo para \"eso no\", \"como estaba antes\", \"deshaz lo del color\", \"deshaz también X\". Nunca lo uses sin que la persona lo pida.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "pedido": {
+       "type": "integer",
+       "minimum": 1,
+       "description": "número de pedidos_anteriores"
+      }
+     },
+     "required": [
+      "pedido"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "restablecer_marca",
+    "description": "Vuelve al diseño base de Shifu (quita colores, tipografías y logo propios).",
+    "parameters": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "abrir_toma",
+    "description": "Abre la toma de requerimientos cuando la persona pide DISEÑAR o REHACER la pantalla de inicio o un CRM completo. NO uses esto para cambios puntuales (mover, achicar, un solo bloque): esos van directo con las herramientas de pantalla.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "objetivo": {
+       "type": "string",
+       "description": "solo si lo dijo en este mensaje"
+      }
+     },
+     "required": []
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_bloque",
+    "description": "FICHA DE DISEÑO: anota UN bloque que la persona pidió en ESTE mensaje, dicho en simple. que = resumen | grafica | lista | tablero | por_vencer | agenda; seccion = la parte del menú (nombre). grafico = tipo opcional SOLO si lo nombró (dona, barras, columnas, linea…). Llama una vez por cada cosa que pidió. No preguntes detalles técnicos: el código elige lo razonable.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "que": {
+       "type": "string",
+       "enum": [
+        "resumen",
+        "grafica",
+        "lista",
+        "tablero",
+        "por_vencer",
+        "agenda"
+       ]
+      },
+      "seccion": {
+       "type": "string"
+      },
+      "grafico": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "que",
+      "seccion"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "quitar_de_ficha",
+    "description": "Quita de la ficha el bloque número N (como aparece en el resumen) cuando la persona lo pide.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "numero": {
+       "type": "integer",
+       "minimum": 1
+      }
+     },
+     "required": [
+      "numero"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_ficha",
+    "description": "Anota en la ficha de diseño UN dato que la persona dijo explícitamente en ESTE mensaje (nunca inventes ni completes). Si dudas, usa anotar_nota. Campos: objetivo, seccion, bloque {vista, seccion, opciones?, tamano?}, marca_primario, marca_secundario, tipografia, restriccion.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "campo": {
+       "type": "string"
+      },
+      "valor": {
+       "description": "string u objeto según el campo"
+      }
+     },
+     "required": [
+      "campo",
+      "valor"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "anotar_nota",
+    "description": "Guarda una idea o duda que la persona mencionó pero que no es un dato firme de la ficha.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "texto": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "texto"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "cerrar_toma",
+    "description": "Cierra la toma si la persona abandona el diseño o ya no quiere seguir con la ficha.",
+    "parameters": {
+     "type": "object",
+     "properties": {},
+     "required": []
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "agregar_registro",
+    "description": "Agrega UN registro (un cliente, un pago, una cita…) a una sección con los datos que dijo la persona. Copia cada valor TAL COMO lo dijo («30 de octubre», «Q1,200», «3 de la tarde»): el código lo entiende y lo valida. No inventes lo que no dijo: queda vacío.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "valores": {
+       "type": "object",
+       "description": "campo (id o nombre) → valor como lo dijo la persona"
+      }
+     },
+     "required": [
+      "seccion",
+      "valores"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "editar_registro",
+    "description": "Cambia datos de UN registro que ya existe. registro = cómo lo nombró la persona («Ana López») o su id. Pasa solo los campos que cambian.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "registro": {
+       "type": "string"
+      },
+      "valores": {
+       "type": "object",
+       "description": "campo → valor nuevo como lo dijo; \"\" para dejarlo vacío"
+      }
+     },
+     "required": [
+      "seccion",
+      "registro",
+      "valores"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "borrar_registro",
+    "description": "Borra UN registro que la persona pidió borrar (se puede deshacer).",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "registro": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "seccion",
+      "registro"
+     ]
+    }
+   }
+  },
+  {
+   "type": "function",
+   "function": {
+    "name": "consultar_datos",
+    "description": "Responde EN EL CHAT una pregunta sobre sus datos («¿cuántos clientes activos tengo?», «¿cuánto me pagaron este mes?», «¿qué teléfono tiene Ana?»). El código filtra, cuenta y suma. No cambia la pantalla: para VER algo en pantalla se agrega una pieza.",
+    "parameters": {
+     "type": "object",
+     "properties": {
+      "seccion": {
+       "type": "string"
+      },
+      "buscar": {
+       "type": "string",
+       "description": "nombre o texto de un registro"
+      },
+      "filtros": {
+       "type": "object",
+       "description": "campo → valor (estado: Activa; plan: Mensual)"
+      },
+      "periodo": {
+       "type": "object",
+       "properties": {
+        "campo": {
+         "type": "string",
+         "description": "campo de fecha"
+        },
+        "cuando": {
+         "type": "string",
+         "description": "como lo dijo: «este mes», «esta semana», «los próximos 7 días»"
+        }
+       }
+      },
+      "sumar": {
+       "type": "string",
+       "description": "campo de número o dinero a sumar"
+      }
+     },
+     "required": [
+      "seccion"
+     ]
+    }
+   }
+  }
+ ],
+ "HERR_ENLACE": {
+  "type": "function",
+  "function": {
+   "name": "leer_enlace",
+   "description": "Abre un enlace público que pegó la persona (página web, Notion público, archivo de Google Drive compartido, imagen o PDF) para leer su branding: colores, logo, textos. Figma privado no se puede abrir.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "url": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "url"
+    ]
+   }
+  }
+ },
+ "para": [
+  {
+   "toma": false,
+   "imagen": false,
+   "nombres": [
+    "quitar_bloque",
+    "agregar_bloque",
+    "cambiar_visual",
+    "cambiar_tamano",
+    "mover_bloque",
+    "cambiar_rangos",
+    "abrir_seccion",
+    "cambiar_marca",
+    "crear_seccion",
+    "agregar_campo",
+    "cambiar_ficha",
+    "cambiar_tarjeta",
+    "quitar_campo",
+    "renombrar_campo",
+    "cambiar_opciones_estado",
+    "renombrar_seccion",
+    "quitar_seccion",
+    "deshacer",
+    "restablecer_marca",
+    "abrir_toma",
+    "agregar_registro",
+    "editar_registro",
+    "borrar_registro",
+    "consultar_datos",
+    "leer_enlace"
+   ]
+  },
+  {
+   "toma": false,
+   "imagen": true,
+   "nombres": [
+    "quitar_bloque",
+    "agregar_bloque",
+    "cambiar_visual",
+    "cambiar_tamano",
+    "mover_bloque",
+    "cambiar_rangos",
+    "abrir_seccion",
+    "cambiar_marca",
+    "usar_logo",
+    "crear_seccion",
+    "agregar_campo",
+    "cambiar_ficha",
+    "cambiar_tarjeta",
+    "quitar_campo",
+    "renombrar_campo",
+    "cambiar_opciones_estado",
+    "renombrar_seccion",
+    "quitar_seccion",
+    "deshacer",
+    "restablecer_marca",
+    "abrir_toma",
+    "agregar_registro",
+    "editar_registro",
+    "borrar_registro",
+    "consultar_datos",
+    "leer_enlace"
+   ]
+  },
+  {
+   "toma": true,
+   "imagen": false,
+   "nombres": [
+    "quitar_bloque",
+    "agregar_bloque",
+    "cambiar_visual",
+    "cambiar_tamano",
+    "mover_bloque",
+    "cambiar_rangos",
+    "abrir_seccion",
+    "cambiar_marca",
+    "crear_seccion",
+    "agregar_campo",
+    "cambiar_ficha",
+    "cambiar_tarjeta",
+    "quitar_campo",
+    "renombrar_campo",
+    "cambiar_opciones_estado",
+    "renombrar_seccion",
+    "quitar_seccion",
+    "deshacer",
+    "restablecer_marca",
+    "abrir_toma",
+    "anotar_bloque",
+    "quitar_de_ficha",
+    "anotar_ficha",
+    "anotar_nota",
+    "cerrar_toma",
+    "agregar_registro",
+    "editar_registro",
+    "borrar_registro",
+    "consultar_datos",
+    "leer_enlace"
+   ]
+  },
+  {
+   "toma": true,
+   "imagen": true,
+   "nombres": [
+    "quitar_bloque",
+    "agregar_bloque",
+    "cambiar_visual",
+    "cambiar_tamano",
+    "mover_bloque",
+    "cambiar_rangos",
+    "abrir_seccion",
+    "cambiar_marca",
+    "usar_logo",
+    "crear_seccion",
+    "agregar_campo",
+    "cambiar_ficha",
+    "cambiar_tarjeta",
+    "quitar_campo",
+    "renombrar_campo",
+    "cambiar_opciones_estado",
+    "renombrar_seccion",
+    "quitar_seccion",
+    "deshacer",
+    "restablecer_marca",
+    "abrir_toma",
+    "anotar_bloque",
+    "quitar_de_ficha",
+    "anotar_ficha",
+    "anotar_nota",
+    "cerrar_toma",
+    "agregar_registro",
+    "editar_registro",
+    "borrar_registro",
+    "consultar_datos",
+    "leer_enlace"
+   ]
+  }
+ ]
+}
