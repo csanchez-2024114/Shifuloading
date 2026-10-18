@@ -1,7 +1,7 @@
 /* Repertorio ampliado del catálogo de gráficos (16 tipos). Mismas reglas que graficos.jsx:
  * todo calculado de los registros, textos medidos (lo que no cabe no se dibuja), rellenos suavizados con contraste medido,
  * comparaciones mensuales justas (mismos días) y una animación con firma por familia.
- * Exporta NUEVOS: { id: { nombre, familia (clave corta de F), requiere, Componente, opciones, calcular, html? } }. */
+ * Exporta NUEVOS: { id: { Componente, calcular } }; nombre, familia, requiere, opciones y html están en graficos-catalogo.js. */
 import * as E from './estadistica'
 import {
   anchoTexto, anchoVal, cortar, cajaTexto, choca, cabeEn, sinChoques, usePintura, useOrden, tope, escala, ticks, fEje, plano, Rejilla, EjeX,
@@ -9,7 +9,7 @@ import {
 } from './graficos-base'
 import {
   ACENTO, sumaDe, fechaCorta, fechaLarga, campoDe, fnDe, medirDe, tipoDe, queMide, nombre, FALTA, SIN_DATOS, calcCategorias, calcMeses,
-  compararTramos, conTotal, conMeses, sumaOConteo, colorDe,
+  compararTramos, conTotal, conMeses, colorDe,
 } from './graficos-calculos'
 
 const { COLORES, fmt, fmtPct, fmtCorto } = E
@@ -887,39 +887,23 @@ function DosKpis({ w, h, d, ix }) {
 }
 
 // ── Catálogo nuevo ────────────────────────────────────────────────────────────────────────────────
-const porCat = (b) => b.estado || b.texto
+// Nombre, familia, requiere y opciones por defecto de estos 16 viven en graficos-catalogo.js (puro); aquí, el dibujo.
 export const NUEVOS = {
-  paleta: { nombre: 'Paleta (lollipop)', familia: 'cb', requiere: { categoria: 1 }, Componente: Paleta,
-    opciones: (b) => ({ agrupar: b.texto || b.estado, funcion: sumaOConteo(b), top: 8 }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 8)) },
-  combo: { nombre: 'Columnas + acumulado', familia: 'cb', requiere: { fecha: 1 }, Componente: Combo,
-    opciones: (b) => ({ funcion: sumaOConteo(b), meses: 12 }), calcular: (r, c, o, hoy) => { const d = conMeses(calcMeses(r, c, o, hoy)); return typeof d === 'string' ? d : { ...d, pie: `${d.pie} · línea = acumulado` } } },
-  pareto: { nombre: 'Pareto', familia: 'cb', requiere: { categoria: 1 }, Componente: Pareto,
-    opciones: (b) => ({ agrupar: b.texto || b.estado, funcion: sumaOConteo(b), top: 10 }), calcular: (r, c, o) => calcPareto(r, c, o) },
-  escalones: { nombre: 'Escalones', familia: 'la', requiere: { fecha: 1 }, Componente: Escalones,
-    opciones: (b) => ({ funcion: sumaOConteo(b) }), calcular: (r, c, o, hoy) => conMeses(calcMeses(r, c, o, hoy)) },
-  pendiente: { nombre: 'Pendiente (mes anterior → actual)', familia: 'la', requiere: { fecha: 1, categoria: 1 }, Componente: Pendiente,
-    opciones: (b) => ({ agrupar: porCat(b), funcion: sumaOConteo(b) }), calcular: (r, c, o, hoy) => calcPendiente(r, c, o, hoy) },
-  multiples: { nombre: 'Múltiplos pequeños', familia: 'la', requiere: { fecha: 1, categoria: 1 }, Componente: Multiples,
-    opciones: (b) => ({ agrupar: porCat(b), funcion: sumaOConteo(b), meses: 12 }), calcular: (r, c, o, hoy) => calcMultiples(r, c, o, hoy) },
-  waffle: { nombre: 'Waffle 10 × 10', familia: 'ci', requiere: { categoria: 1 }, Componente: Waffle,
-    opciones: (b) => ({ agrupar: b.agrupar, funcion: 'conteo' }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 6)) },
-  rosa: { nombre: 'Rosa polar', familia: 'ci', requiere: { categoria: 1 }, Componente: Rosa,
-    opciones: (b) => ({ agrupar: porCat(b), funcion: sumaOConteo(b) }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 8)) },
-  'media-dona': { nombre: 'Media dona', familia: 'ci', requiere: { categoria: 1 }, Componente: MediaDona,
-    opciones: (b) => ({ agrupar: b.agrupar, funcion: 'conteo' }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 6)) },
-  sol: { nombre: 'Sol (2 niveles)', familia: 'fl', requiere: { estado: 1, texto: 1 }, Componente: Sol,
-    opciones: (b) => ({ estado: b.estado, texto: b.texto, funcion: sumaOConteo(b) }), calcular: (r, c, o) => calcSol(r, c, o) },
-  puntos: { nombre: 'Puntos por categoría', familia: 'di', requiere: { categoria: 1, medida: 1 }, Componente: Puntos,
-    opciones: (b) => ({ agrupar: porCat(b), valor: b.valor }), calcular: (r, c, o) => calcPuntos(r, c, o) },
-  'calor-hora': { nombre: 'Calor día × hora', familia: 'ti', requiere: { fecha: 1, hora: 1 }, Componente: CalorHora,
-    opciones: (b) => ({ fecha: b.fecha, hora: b.hora, funcion: 'conteo' }), calcular: (r, c, o) => calcCalorHora(r, c, o) },
-  gantt: { nombre: 'Línea de tiempo', familia: 'ti', requiere: { fecha: 2 }, Componente: Gantt,
-    opciones: (b) => ({ fecha: b.fecha, fecha2: b.fecha2, texto: b.texto, estado: b.estado }), calcular: (r, c, o, hoy) => calcGantt(r, c, o, hoy) },
-  bala: { nombre: 'Bala contra meta', familia: 're', requiere: { fecha: 1 }, Componente: Bala,
-    opciones: (b) => ({ funcion: sumaOConteo(b), meta: null }), calcular: (r, c, o, hoy) => calcBala(r, c, o, hoy) },
-  progreso: { nombre: 'Barras de progreso', familia: 're', requiere: { categoria: 1 }, Componente: Progreso,
-    opciones: (b) => ({ agrupar: b.agrupar, funcion: sumaOConteo(b) }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 8)) },
-  'dos-kpis': { nombre: 'Dos KPIs', familia: 're', requiere: { fecha: 1, medida: 1 }, Componente: DosKpis, html: true,
-    opciones: (b) => ({ valor: b.valor }), calcular: (r, c, o, hoy) => calcDosKpis(r, c, o, hoy) },
+  paleta: { Componente: Paleta, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 8)) },
+  combo: { Componente: Combo, calcular: (r, c, o, hoy) => { const d = conMeses(calcMeses(r, c, o, hoy)); return typeof d === 'string' ? d : { ...d, pie: `${d.pie} · línea = acumulado` } } },
+  pareto: { Componente: Pareto, calcular: (r, c, o) => calcPareto(r, c, o) },
+  escalones: { Componente: Escalones, calcular: (r, c, o, hoy) => conMeses(calcMeses(r, c, o, hoy)) },
+  pendiente: { Componente: Pendiente, calcular: (r, c, o, hoy) => calcPendiente(r, c, o, hoy) },
+  multiples: { Componente: Multiples, calcular: (r, c, o, hoy) => calcMultiples(r, c, o, hoy) },
+  waffle: { Componente: Waffle, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 6)) },
+  rosa: { Componente: Rosa, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 8)) },
+  'media-dona': { Componente: MediaDona, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 6)) },
+  sol: { Componente: Sol, calcular: (r, c, o) => calcSol(r, c, o) },
+  puntos: { Componente: Puntos, calcular: (r, c, o) => calcPuntos(r, c, o) },
+  'calor-hora': { Componente: CalorHora, calcular: (r, c, o) => calcCalorHora(r, c, o) },
+  gantt: { Componente: Gantt, calcular: (r, c, o, hoy) => calcGantt(r, c, o, hoy) },
+  bala: { Componente: Bala, calcular: (r, c, o, hoy) => calcBala(r, c, o, hoy) },
+  progreso: { Componente: Progreso, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 8)) },
+  'dos-kpis': { Componente: DosKpis, calcular: (r, c, o, hoy) => calcDosKpis(r, c, o, hoy) },
 }
 export { nombre, choca, cajaEnSector }

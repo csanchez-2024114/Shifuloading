@@ -1,0 +1,3975 @@
+[
+  {
+    "id": "asistencia",
+    "para": "Registrar asistencia del personal por día y detectar faltas o retardos a tiempo",
+    "palabras": [
+      "asistencia",
+      "control de asistencia",
+      "faltas y retardos",
+      "entrada y salida",
+      "quién vino hoy"
+    ],
+    "seccion": {
+      "titulo": "Asistencia",
+      "icono": "reloj",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "colaborador",
+          "nombre": "Colaborador",
+          "tipo": "texto",
+          "ejemplos": [
+            "Turno mañana",
+            "Recepción",
+            "Bodega",
+            "Ventas piso",
+            "Repartidor 2"
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            0
+          ]
+        },
+        {
+          "id": "entrada",
+          "nombre": "Entrada",
+          "tipo": "hora"
+        },
+        {
+          "id": "salida",
+          "nombre": "Salida",
+          "tipo": "hora"
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Presente",
+            "Retardo",
+            "Falta justificada",
+            "Falta",
+            "Permiso",
+            "Descanso"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tabla",
+        "opciones": {
+          "orden": "fecha"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "area-apilada",
+          "estado": "estado",
+          "fecha": "fecha",
+          "funcion": "conteo",
+          "meses": 3
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "caja-diaria",
+    "para": "Cuadrar entradas y salidas de cada día para saber cuánto quedó en caja al cierre",
+    "palabras": [
+      "caja diaria",
+      "corte de caja",
+      "arqueo",
+      "movimientos del día",
+      "efectivo en caja"
+    ],
+    "seccion": {
+      "titulo": "Caja diaria",
+      "icono": "caja",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "concepto",
+          "nombre": "Concepto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Venta mostrador",
+            "Depósito banco",
+            "Retiro efectivo",
+            "Pago proveedor",
+            "Propina repartidor",
+            "Apertura turno"
+          ]
+        },
+        {
+          "id": "tipo",
+          "nombre": "Tipo",
+          "tipo": "estado",
+          "opciones": [
+            "Entrada",
+            "Salida",
+            "Ajuste",
+            "Cierre"
+          ]
+        },
+        {
+          "id": "monto",
+          "nombre": "Monto",
+          "tipo": "dinero",
+          "rango": [
+            50,
+            25000
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            0
+          ]
+        },
+        {
+          "id": "responsable",
+          "nombre": "Responsable",
+          "tipo": "texto",
+          "ejemplos": [
+            "Ana caja 1",
+            "Turno mañana",
+            "Gerente",
+            "Cajero tarde",
+            "Auxiliar"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "tipo",
+          "suma": "monto",
+          "hoy": "fecha"
+        },
+        "ancho": 12
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "cascada",
+          "fecha": "fecha",
+          "valor": "monto",
+          "funcion": "suma",
+          "meses": 3
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "calendario",
+          "fecha": "fecha",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "campanas",
+    "para": "Planear campañas de marketing, presupuesto y resultados que vas midiendo",
+    "palabras": [
+      "campañas",
+      "marketing",
+      "promoción en redes",
+      "campaña publicitaria",
+      "lanzamientos"
+    ],
+    "seccion": {
+      "titulo": "Campañas",
+      "icono": "rayo",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "nombre",
+        "detalle": "canal"
+      },
+      "campos": [
+        {
+          "id": "nombre",
+          "nombre": "Nombre",
+          "tipo": "texto",
+          "ejemplos": [
+            "Buen fin",
+            "Día de las madres",
+            "Apertura sucursal",
+            "Descuento verano",
+            "Referidos marzo"
+          ]
+        },
+        {
+          "id": "canal",
+          "nombre": "Canal",
+          "tipo": "texto",
+          "ejemplos": [
+            "Facebook Ads",
+            "Google",
+            "Email",
+            "WhatsApp",
+            "Volantes",
+            "Influencers"
+          ]
+        },
+        {
+          "id": "presupuesto",
+          "nombre": "Presupuesto",
+          "tipo": "dinero",
+          "rango": [
+            1500,
+            80000
+          ]
+        },
+        {
+          "id": "inicio",
+          "nombre": "Inicio",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            30
+          ]
+        },
+        {
+          "id": "fin",
+          "nombre": "Fin",
+          "tipo": "fecha",
+          "rango": [
+            -60,
+            60
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Idea",
+            "Planeada",
+            "Activa",
+            "Pausada",
+            "Finalizada",
+            "Cancelada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "nombre",
+          "detalle": "presupuesto"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas-100",
+          "estado": "estado",
+          "fecha": "inicio",
+          "funcion": "conteo",
+          "meses": 6
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "burbujas",
+          "estado": "canal",
+          "valor": "presupuesto",
+          "funcion": "suma"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "capacitaciones",
+    "para": "Planear capacitaciones del equipo, fechas y quién ya terminó cada curso",
+    "palabras": [
+      "capacitaciones",
+      "cursos al personal",
+      "entrenamiento",
+      "formación del equipo",
+      "talleres internos"
+    ],
+    "seccion": {
+      "titulo": "Capacitaciones",
+      "icono": "equipo",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "curso",
+        "detalle": "participante"
+      },
+      "campos": [
+        {
+          "id": "curso",
+          "nombre": "Curso",
+          "tipo": "texto",
+          "ejemplos": [
+            "Inducción nuevos",
+            "Manejo de caja",
+            "Seguridad industrial",
+            "Ventas consultivas",
+            "Primeros auxilios"
+          ]
+        },
+        {
+          "id": "participante",
+          "nombre": "Participante",
+          "tipo": "texto",
+          "ejemplos": [
+            "Todo el equipo",
+            "Ventas",
+            "Nuevo ingreso",
+            "Gerentes",
+            "Bodega completa"
+          ]
+        },
+        {
+          "id": "inicio",
+          "nombre": "Inicio",
+          "tipo": "fecha",
+          "rango": [
+            -60,
+            45
+          ]
+        },
+        {
+          "id": "duracion",
+          "nombre": "Horas",
+          "tipo": "numero",
+          "rango": [
+            2,
+            40
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Planeada",
+            "En curso",
+            "Completada",
+            "Reprogramada",
+            "Cancelada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "curso",
+          "detalle": "participante"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "linea",
+          "fecha": "inicio",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "dispersion",
+          "valor": "duracion",
+          "valor2": "duracion",
+          "x": "inicio"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "citas",
+    "para": "Reservar y confirmar citas con clientes sin encimar horarios ni olvidar a nadie",
+    "palabras": [
+      "citas",
+      "agendar cita",
+      "calendario de citas",
+      "horarios con clientes",
+      "reservaciones"
+    ],
+    "seccion": {
+      "titulo": "Citas",
+      "icono": "calendario",
+      "vista": "agenda",
+      "opciones": {
+        "fecha": "fecha",
+        "hora": "hora",
+        "titulo": "cliente",
+        "detalle": "servicio"
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "servicio",
+          "nombre": "Servicio",
+          "tipo": "texto",
+          "ejemplos": [
+            "Consulta inicial",
+            "Corte y peinado",
+            "Mantenimiento",
+            "Valoración",
+            "Entrega de pedido",
+            "Asesoría"
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -14,
+            45
+          ]
+        },
+        {
+          "id": "hora",
+          "nombre": "Hora",
+          "tipo": "hora"
+        },
+        {
+          "id": "duracion",
+          "nombre": "Duración (min)",
+          "tipo": "numero",
+          "rango": [
+            15,
+            180
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Solicitada",
+            "Confirmada",
+            "En sala",
+            "Atendida",
+            "No asistió",
+            "Cancelada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "agenda",
+        "opciones": {
+          "fecha": "fecha",
+          "hora": "hora",
+          "titulo": "cliente",
+          "detalle": "servicio"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas",
+          "fecha": "fecha",
+          "funcion": "conteo",
+          "agrupar": "mes"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "medidor",
+          "estado": "estado"
+        },
+        "ancho": 4,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "cobros",
+    "para": "Llevar lo que cada cliente te debe, cuándo vence y si ya pagó",
+    "palabras": [
+      "cobros",
+      "cuentas por cobrar",
+      "pagos pendientes",
+      "quién me debe",
+      "deudas de clientes"
+    ],
+    "seccion": {
+      "titulo": "Cobros",
+      "icono": "tarjeta",
+      "vista": "vencimientos",
+      "opciones": {
+        "fecha": "vence",
+        "titulo": "cliente",
+        "detalle": "concepto",
+        "dias": 30,
+        "estado": "estado",
+        "excluir": [
+          "Pagado"
+        ]
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "concepto",
+          "nombre": "Concepto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Factura de octubre",
+            "Anticipo del proyecto",
+            "Saldo pendiente",
+            "Mensualidad",
+            "Servicio extra"
+          ]
+        },
+        {
+          "id": "monto",
+          "nombre": "Monto",
+          "tipo": "dinero",
+          "rango": [
+            150,
+            12000
+          ]
+        },
+        {
+          "id": "emitido",
+          "nombre": "Emitido",
+          "tipo": "fecha",
+          "rango": [
+            -120,
+            0
+          ]
+        },
+        {
+          "id": "vence",
+          "nombre": "Vence",
+          "tipo": "fecha",
+          "rango": [
+            -20,
+            40
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Pendiente",
+            "Recordado",
+            "Pago parcial",
+            "Pagado",
+            "Incobrable"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "suma": "monto",
+          "vencen": "vence",
+          "dias": 7,
+          "estado": "estado",
+          "excluir": [
+            "Pagado"
+          ]
+        },
+        "ancho": 12
+      },
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "vence",
+          "titulo": "cliente",
+          "detalle": "monto",
+          "dias": 30,
+          "estado": "estado",
+          "excluir": [
+            "Pagado"
+          ]
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "dona",
+          "estado": "estado",
+          "valor": "monto",
+          "funcion": "suma"
+        },
+        "ancho": 4,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "comisiones",
+    "para": "Calcular y pagar comisiones de tu equipo según ventas cerradas y reglas que definas",
+    "palabras": [
+      "comisiones",
+      "pago por venta",
+      "comisiones vendedores",
+      "bonos por cierre",
+      "cuánto les toca"
+    ],
+    "seccion": {
+      "titulo": "Comisiones",
+      "icono": "tarjeta",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "vendedor",
+        "detalle": "venta"
+      },
+      "campos": [
+        {
+          "id": "vendedor",
+          "nombre": "Vendedor",
+          "tipo": "texto",
+          "ejemplos": [
+            "Carlos M.",
+            "Equipo norte",
+            "María ventas",
+            "Jorge mostrador",
+            "Laura digital"
+          ]
+        },
+        {
+          "id": "venta",
+          "nombre": "Venta",
+          "tipo": "texto",
+          "ejemplos": [
+            "Contrato anual",
+            "Pedido #882",
+            "Renovación",
+            "Paquete premium",
+            "Mayoreo zona sur"
+          ]
+        },
+        {
+          "id": "base",
+          "nombre": "Base",
+          "tipo": "dinero",
+          "rango": [
+            500,
+            40000
+          ]
+        },
+        {
+          "id": "comision",
+          "nombre": "Comisión",
+          "tipo": "dinero",
+          "rango": [
+            50,
+            8000
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            10
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Calculada",
+            "Aprobada",
+            "Pagada",
+            "En disputa",
+            "Anulada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "vendedor",
+          "detalle": "comision"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras",
+          "estado": "estado",
+          "valor": "comision",
+          "funcion": "suma"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "posiciones",
+          "texto": "vendedor",
+          "valor": "comision",
+          "funcion": "suma",
+          "top": 5
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "compras",
+    "para": "Ordenar compras a proveedores, montos y fechas esperadas de llegada a tu negocio",
+    "palabras": [
+      "compras",
+      "órdenes de compra",
+      "pedidos a proveedor",
+      "abastecimiento",
+      "requisiciones"
+    ],
+    "seccion": {
+      "titulo": "Compras",
+      "icono": "caja",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "proveedor",
+        "detalle": "concepto"
+      },
+      "campos": [
+        {
+          "id": "proveedor",
+          "nombre": "Proveedor",
+          "tipo": "texto"
+        },
+        {
+          "id": "concepto",
+          "nombre": "Concepto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Insumos mensuales",
+            "Mercancía temporada",
+            "Refacciones urgentes",
+            "Empaques",
+            "Equipo nuevo"
+          ]
+        },
+        {
+          "id": "monto",
+          "nombre": "Monto",
+          "tipo": "dinero",
+          "rango": [
+            500,
+            85000
+          ]
+        },
+        {
+          "id": "pedido",
+          "nombre": "Fecha pedido",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            5
+          ]
+        },
+        {
+          "id": "llegada",
+          "nombre": "Llegada esperada",
+          "tipo": "fecha",
+          "rango": [
+            -10,
+            30
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Borrador",
+            "Enviada",
+            "Confirmada",
+            "En tránsito",
+            "Recibida",
+            "Cancelada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "proveedor",
+          "detalle": "monto"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas",
+          "fecha": "pedido",
+          "valor": "monto",
+          "funcion": "suma",
+          "agrupar": "mes"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "suma": "monto",
+          "vencen": "llegada",
+          "dias": 5,
+          "estado": "estado",
+          "excluir": [
+            "Recibida",
+            "Cancelada"
+          ]
+        },
+        "ancho": 12
+      }
+    ]
+  },
+  {
+    "id": "contratos",
+    "para": "Vigilar contratos con clientes o proveedores y cuándo toca renovar o revisar",
+    "palabras": [
+      "contratos",
+      "vigencia de contrato",
+      "renovaciones",
+      "acuerdos firmados",
+      "contratos por vencer"
+    ],
+    "seccion": {
+      "titulo": "Contratos",
+      "icono": "documento",
+      "vista": "vencimientos",
+      "opciones": {
+        "fecha": "vence",
+        "titulo": "parte",
+        "detalle": "tipo",
+        "dias": 60,
+        "estado": "estado",
+        "excluir": [
+          "Vencido",
+          "Terminado"
+        ]
+      },
+      "campos": [
+        {
+          "id": "parte",
+          "nombre": "Parte",
+          "tipo": "texto",
+          "ejemplos": [
+            "Cliente Corporativo SA",
+            "Arrendador local",
+            "Proveedor IT",
+            "Franquiciante",
+            "Servicios limpieza"
+          ]
+        },
+        {
+          "id": "tipo",
+          "nombre": "Tipo",
+          "tipo": "texto",
+          "ejemplos": [
+            "Servicio mensual",
+            "Arrendamiento",
+            "Distribución",
+            "Mantenimiento",
+            "Confidencialidad"
+          ]
+        },
+        {
+          "id": "monto",
+          "nombre": "Monto mensual",
+          "tipo": "dinero",
+          "rango": [
+            2000,
+            120000
+          ]
+        },
+        {
+          "id": "inicio",
+          "nombre": "Inicio",
+          "tipo": "fecha",
+          "rango": [
+            -400,
+            -30
+          ]
+        },
+        {
+          "id": "vence",
+          "nombre": "Vence",
+          "tipo": "fecha",
+          "rango": [
+            -30,
+            180
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Vigente",
+            "Por renovar",
+            "En negociación",
+            "Renovado",
+            "Vencido",
+            "Terminado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "vence",
+          "titulo": "parte",
+          "detalle": "tipo",
+          "dias": 60,
+          "estado": "estado",
+          "excluir": [
+            "Vencido",
+            "Terminado"
+          ]
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "kpi",
+          "fecha": "vence",
+          "valor": "monto",
+          "funcion": "suma"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "suma": "monto",
+          "vencen": "vence",
+          "dias": 30,
+          "estado": "estado",
+          "excluir": [
+            "Vencido",
+            "Terminado"
+          ]
+        },
+        "ancho": 12
+      }
+    ]
+  },
+  {
+    "id": "cotizaciones",
+    "para": "Seguir cada cotización que mandas, cuánto vale y en qué paso va hasta que la aprueban",
+    "palabras": [
+      "cotizaciones",
+      "presupuestos",
+      "propuestas de precio",
+      "cotizar a clientes",
+      "ofertas enviadas"
+    ],
+    "seccion": {
+      "titulo": "Cotizaciones",
+      "icono": "documento",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "cliente",
+        "detalle": "concepto"
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "concepto",
+          "nombre": "Concepto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Mantenimiento anual",
+            "Paquete básico web",
+            "Evento corporativo",
+            "Remodelación baño",
+            "Curso empresarial"
+          ]
+        },
+        {
+          "id": "monto",
+          "nombre": "Monto",
+          "tipo": "dinero",
+          "rango": [
+            800,
+            85000
+          ]
+        },
+        {
+          "id": "enviada",
+          "nombre": "Enviada",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            15
+          ]
+        },
+        {
+          "id": "vence",
+          "nombre": "Válida hasta",
+          "tipo": "fecha",
+          "rango": [
+            -30,
+            45
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Borrador",
+            "Enviada",
+            "En revisión",
+            "Aceptada",
+            "Rechazada",
+            "Vencida"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "suma": "monto",
+          "vencen": "vence",
+          "dias": 7,
+          "estado": "estado",
+          "excluir": [
+            "Aceptada",
+            "Rechazada",
+            "Vencida"
+          ]
+        },
+        "ancho": 12
+      },
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "cliente",
+          "detalle": "monto"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "embudo",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "cumpleanos",
+    "para": "Llevar cumpleaños de clientes y colaboradores para felicitarlos y fidelizar",
+    "palabras": [
+      "cumpleaños",
+      "fechas de cumple",
+      "felicitar clientes",
+      "aniversarios personales",
+      "quién cumple este mes"
+    ],
+    "seccion": {
+      "titulo": "Cumpleaños",
+      "icono": "calendario",
+      "vista": "agenda",
+      "opciones": {
+        "fecha": "fecha",
+        "titulo": "nombre",
+        "detalle": "tipo"
+      },
+      "campos": [
+        {
+          "id": "nombre",
+          "nombre": "Nombre",
+          "tipo": "texto"
+        },
+        {
+          "id": "tipo",
+          "nombre": "Tipo",
+          "tipo": "estado",
+          "opciones": [
+            "Cliente",
+            "Colaborador",
+            "Proveedor",
+            "Socio"
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -180,
+            180
+          ]
+        },
+        {
+          "id": "nota",
+          "nombre": "Nota",
+          "tipo": "texto",
+          "ejemplos": [
+            "Enviar promoción",
+            "Llamar por la mañana",
+            "Tarjeta en mostrador",
+            "Regalo corporativo",
+            "Mensaje WhatsApp"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "agenda",
+        "opciones": {
+          "fecha": "fecha",
+          "titulo": "nombre",
+          "detalle": "tipo"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "calendario",
+          "fecha": "fecha",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barra-100",
+          "estado": "tipo",
+          "funcion": "conteo"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "devoluciones",
+    "para": "Gestionar devoluciones y cambios que piden tus clientes y el estado de cada solicitud",
+    "palabras": [
+      "devoluciones",
+      "cambios de producto",
+      "nota de crédito",
+      "cliente quiere devolver",
+      "reembolsos"
+    ],
+    "seccion": {
+      "titulo": "Devoluciones",
+      "icono": "camion",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "cliente",
+        "detalle": "motivo"
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "producto",
+          "nombre": "Producto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Playera talla L",
+            "Mouse inalámbrico",
+            "Crema facial",
+            "Zapatos número 8",
+            "Kit herramientas"
+          ]
+        },
+        {
+          "id": "motivo",
+          "nombre": "Motivo",
+          "tipo": "texto",
+          "ejemplos": [
+            "Talla incorrecta",
+            "Llegó dañado",
+            "No era lo esperado",
+            "Error de pedido",
+            "Garantía"
+          ]
+        },
+        {
+          "id": "monto",
+          "nombre": "Monto",
+          "tipo": "dinero",
+          "rango": [
+            80,
+            12000
+          ]
+        },
+        {
+          "id": "solicitud",
+          "nombre": "Solicitud",
+          "tipo": "fecha",
+          "rango": [
+            -60,
+            10
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Solicitada",
+            "Autorizada",
+            "En tránsito",
+            "Recibida",
+            "Reembolsada",
+            "Rechazada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "cliente",
+          "detalle": "monto"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "linea-tendencia",
+          "fecha": "solicitud",
+          "valor": "monto",
+          "funcion": "suma"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras-apiladas",
+          "estado": "estado",
+          "fecha": "solicitud",
+          "funcion": "conteo",
+          "meses": 6
+        },
+        "ancho": 12,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "documentos",
+    "para": "Guardar documentos clave del negocio y saber cuáles están vigentes o faltan por subir",
+    "palabras": [
+      "documentos",
+      "archivos del negocio",
+      "expedientes",
+      "papeles importantes",
+      "repositorio de docs"
+    ],
+    "seccion": {
+      "titulo": "Documentos",
+      "icono": "documento",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "nombre",
+          "nombre": "Nombre",
+          "tipo": "texto",
+          "ejemplos": [
+            "Acta constitutiva",
+            "RFC empresa",
+            "Póliza seguro",
+            "Contrato arrendamiento",
+            "Licencia sanitaria"
+          ]
+        },
+        {
+          "id": "categoria",
+          "nombre": "Categoría",
+          "tipo": "texto",
+          "ejemplos": [
+            "Legal",
+            "Fiscal",
+            "RH",
+            "Operación",
+            "Marketing",
+            "Seguros"
+          ]
+        },
+        {
+          "id": "vigencia",
+          "nombre": "Vigencia",
+          "tipo": "fecha",
+          "rango": [
+            -30,
+            365
+          ]
+        },
+        {
+          "id": "responsable",
+          "nombre": "Responsable",
+          "tipo": "texto",
+          "ejemplos": [
+            "Contador",
+            "Gerencia",
+            "RH",
+            "Legal externo",
+            "Administración"
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Vigente",
+            "Por actualizar",
+            "Vencido",
+            "En trámite",
+            "Archivado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tabla",
+        "opciones": {
+          "orden": "nombre"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "arbol",
+          "estado": "categoria",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "vigencia",
+          "titulo": "nombre",
+          "detalle": "categoria",
+          "dias": 45,
+          "estado": "estado",
+          "excluir": [
+            "Archivado"
+          ]
+        },
+        "ancho": 12,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "encuestas",
+    "para": "Lanzar encuestas a clientes y revisar respuestas y satisfacción por campaña",
+    "palabras": [
+      "encuestas",
+      "satisfacción del cliente",
+      "nps",
+      "formularios de opinión",
+      "preguntas a clientes"
+    ],
+    "seccion": {
+      "titulo": "Encuestas",
+      "icono": "tabla",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "encuesta",
+          "nombre": "Encuesta",
+          "tipo": "texto",
+          "ejemplos": [
+            "Post-compra",
+            "NPS trimestral",
+            "Evento inauguración",
+            "Servicio soporte",
+            "Calidad producto"
+          ]
+        },
+        {
+          "id": "respondente",
+          "nombre": "Respondente",
+          "tipo": "texto",
+          "ejemplos": [
+            "Cliente anónimo",
+            "María G.",
+            "Empresa XYZ",
+            "Encuesta mostrador",
+            "Email masivo"
+          ]
+        },
+        {
+          "id": "puntaje",
+          "nombre": "Puntaje",
+          "tipo": "numero",
+          "rango": [
+            0,
+            10
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -120,
+            5
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Enviada",
+            "Parcial",
+            "Completada",
+            "Analizada",
+            "Cerrada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tabla",
+        "opciones": {
+          "orden": "fecha"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "histograma",
+          "valor": "puntaje",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "linea-area",
+          "fecha": "fecha",
+          "valor": "puntaje",
+          "funcion": "promedio"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "entregas",
+    "para": "Seguir cada entrega o envío: quién recibe, cuándo sale y si ya llegó a destino",
+    "palabras": [
+      "entregas",
+      "envíos",
+      "reparto",
+      "paquetería",
+      "ruta de entrega"
+    ],
+    "seccion": {
+      "titulo": "Entregas",
+      "icono": "camion",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "cliente",
+        "detalle": "direccion"
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "direccion",
+          "nombre": "Dirección",
+          "tipo": "texto",
+          "ejemplos": [
+            "Col. Centro #45",
+            "Bodega industrial",
+            "Sucursal sur",
+            "Domicilio particular",
+            "Punto de recolección"
+          ]
+        },
+        {
+          "id": "guia",
+          "nombre": "Guía",
+          "tipo": "texto",
+          "ejemplos": [
+            "DHL-88221",
+            "Ruta 15",
+            "Mensajería local",
+            "Sin guía",
+            "Pickup tienda"
+          ]
+        },
+        {
+          "id": "programada",
+          "nombre": "Programada",
+          "tipo": "fecha",
+          "rango": [
+            -15,
+            20
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Por surtir",
+            "En ruta",
+            "Intento fallido",
+            "Entregada",
+            "Devuelta",
+            "Cancelada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "cliente",
+          "detalle": "programada"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "embudo",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "agenda",
+        "opciones": {
+          "fecha": "programada",
+          "titulo": "cliente",
+          "detalle": "direccion"
+        },
+        "ancho": 12,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "facturas",
+    "para": "Llevar las facturas que emites, lo que falta por cobrar y las fechas límite de pago",
+    "palabras": [
+      "facturas",
+      "facturación",
+      "cfdi pendientes",
+      "facturas por cobrar",
+      "mis facturas"
+    ],
+    "seccion": {
+      "titulo": "Facturas",
+      "icono": "documento",
+      "vista": "vencimientos",
+      "opciones": {
+        "fecha": "vence",
+        "titulo": "cliente",
+        "detalle": "folio",
+        "dias": 30,
+        "estado": "estado",
+        "excluir": [
+          "Pagada",
+          "Cancelada"
+        ]
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "folio",
+          "nombre": "Folio",
+          "tipo": "texto",
+          "ejemplos": [
+            "A-1042",
+            "FAC-2024-089",
+            "B-5501",
+            "E-220",
+            "Nota 15"
+          ]
+        },
+        {
+          "id": "monto",
+          "nombre": "Monto",
+          "tipo": "dinero",
+          "rango": [
+            350,
+            95000
+          ]
+        },
+        {
+          "id": "emitida",
+          "nombre": "Emitida",
+          "tipo": "fecha",
+          "rango": [
+            -120,
+            0
+          ]
+        },
+        {
+          "id": "vence",
+          "nombre": "Vence",
+          "tipo": "fecha",
+          "rango": [
+            -25,
+            45
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Borrador",
+            "Timbrada",
+            "Enviada",
+            "Pagada parcial",
+            "Pagada",
+            "Cancelada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "suma": "monto",
+          "vencen": "vence",
+          "dias": 7,
+          "estado": "estado",
+          "excluir": [
+            "Pagada",
+            "Cancelada"
+          ]
+        },
+        "ancho": 12
+      },
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "vence",
+          "titulo": "cliente",
+          "detalle": "monto",
+          "dias": 30,
+          "estado": "estado",
+          "excluir": [
+            "Pagada",
+            "Cancelada"
+          ]
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas",
+          "fecha": "emitida",
+          "valor": "monto",
+          "funcion": "suma",
+          "agrupar": "mes"
+        },
+        "ancho": 4,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "garantias",
+    "para": "Registrar garantías de productos vendidos y dar seguimiento hasta cerrar cada caso",
+    "palabras": [
+      "garantías",
+      "reclamar garantía",
+      "productos en garantía",
+      "vigencia de garantía",
+      "casos de garantía"
+    ],
+    "seccion": {
+      "titulo": "Garantías",
+      "icono": "documento",
+      "vista": "vencimientos",
+      "opciones": {
+        "fecha": "vence",
+        "titulo": "cliente",
+        "detalle": "producto",
+        "dias": 45,
+        "estado": "estado",
+        "excluir": [
+          "Cerrada",
+          "Rechazada"
+        ]
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "producto",
+          "nombre": "Producto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Laptop 14\"",
+            "Celular modelo X",
+            "Licuadora industrial",
+            "Colchón king",
+            "Aire acondicionado"
+          ]
+        },
+        {
+          "id": "compra",
+          "nombre": "Fecha compra",
+          "tipo": "fecha",
+          "rango": [
+            -365,
+            -30
+          ]
+        },
+        {
+          "id": "vence",
+          "nombre": "Vence",
+          "tipo": "fecha",
+          "rango": [
+            -30,
+            180
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Vigente",
+            "En revisión",
+            "En taller",
+            "Aprobada",
+            "Cerrada",
+            "Rechazada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "vence",
+          "titulo": "cliente",
+          "detalle": "producto",
+          "dias": 45,
+          "estado": "estado",
+          "excluir": [
+            "Cerrada",
+            "Rechazada"
+          ]
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "pastel",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "vencen": "vence",
+          "dias": 14,
+          "estado": "estado",
+          "excluir": [
+            "Cerrada",
+            "Rechazada"
+          ]
+        },
+        "ancho": 12
+      }
+    ]
+  },
+  {
+    "id": "gastos",
+    "para": "Registrar en qué se va el dinero del negocio y revisar gastos por categoría cada mes",
+    "palabras": [
+      "gastos",
+      "egresos",
+      "en qué gasto",
+      "control de gastos",
+      "salidas de dinero"
+    ],
+    "seccion": {
+      "titulo": "Gastos",
+      "icono": "caja",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "concepto",
+          "nombre": "Concepto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Renta local",
+            "Nómina quincena",
+            "Internet y teléfono",
+            "Gasolina reparto",
+            "Publicidad redes",
+            "Material de oficina"
+          ]
+        },
+        {
+          "id": "categoria",
+          "nombre": "Categoría",
+          "tipo": "texto",
+          "ejemplos": [
+            "Operación",
+            "Nómina",
+            "Marketing",
+            "Logística",
+            "Impuestos",
+            "Mantenimiento"
+          ]
+        },
+        {
+          "id": "monto",
+          "nombre": "Monto",
+          "tipo": "dinero",
+          "rango": [
+            80,
+            45000
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -120,
+            5
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Pendiente",
+            "Pagado",
+            "Programado",
+            "En revisión",
+            "Rechazado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas",
+          "fecha": "fecha",
+          "valor": "monto",
+          "funcion": "suma",
+          "agrupar": "mes"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras",
+          "estado": "estado",
+          "valor": "monto",
+          "funcion": "suma"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "tabla",
+        "opciones": {
+          "orden": "fecha"
+        },
+        "ancho": 12,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "inventario",
+    "para": "Saber qué productos tienes, cuánto queda en bodega y cuándo conviene reordenar",
+    "palabras": [
+      "inventario",
+      "stock",
+      "productos en bodega",
+      "control de existencias",
+      "qué me queda"
+    ],
+    "seccion": {
+      "titulo": "Inventario",
+      "icono": "tabla",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "producto",
+        "detalle": "categoria"
+      },
+      "campos": [
+        {
+          "id": "producto",
+          "nombre": "Producto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Aceite 20W50",
+            "Filtro de aire",
+            "Playera talla M",
+            "Cable HDMI 2m",
+            "Harina integral 1kg",
+            "Shampoo anticaspa"
+          ]
+        },
+        {
+          "id": "categoria",
+          "nombre": "Categoría",
+          "tipo": "texto",
+          "ejemplos": [
+            "Refacciones",
+            "Ropa",
+            "Abarrotes",
+            "Electrónica",
+            "Limpieza",
+            "Herramientas"
+          ]
+        },
+        {
+          "id": "existencia",
+          "nombre": "Existencia",
+          "tipo": "numero",
+          "rango": [
+            0,
+            500
+          ]
+        },
+        {
+          "id": "costo",
+          "nombre": "Costo unitario",
+          "tipo": "dinero",
+          "rango": [
+            15,
+            2500
+          ]
+        },
+        {
+          "id": "minimo",
+          "nombre": "Mínimo",
+          "tipo": "numero",
+          "rango": [
+            2,
+            50
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Disponible",
+            "Bajo stock",
+            "Por pedir",
+            "Agotado",
+            "Descontinuado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "producto",
+          "detalle": "existencia"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "histograma",
+          "valor": "existencia",
+          "funcion": "conteo"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "mantenimientos",
+    "para": "Programar mantenimiento de equipos o instalaciones y no saltarte revisiones",
+    "palabras": [
+      "mantenimientos",
+      "mantenimiento preventivo",
+      "servicio de equipo",
+      "revisiones técnicas",
+      "calendario de mantenimiento"
+    ],
+    "seccion": {
+      "titulo": "Mantenimientos",
+      "icono": "equipo",
+      "vista": "vencimientos",
+      "opciones": {
+        "fecha": "programado",
+        "titulo": "equipo",
+        "detalle": "tipo",
+        "dias": 30,
+        "estado": "estado",
+        "excluir": [
+          "Hecho",
+          "Cancelado"
+        ]
+      },
+      "campos": [
+        {
+          "id": "equipo",
+          "nombre": "Equipo",
+          "tipo": "texto",
+          "ejemplos": [
+            "Aire acondicionado",
+            "Camioneta reparto",
+            "Computadora caja",
+            "Horno industrial",
+            "Elevador"
+          ]
+        },
+        {
+          "id": "tipo",
+          "nombre": "Tipo",
+          "tipo": "texto",
+          "ejemplos": [
+            "Preventivo",
+            "Correctivo",
+            "Calibración",
+            "Limpieza profunda",
+            "Revisión anual"
+          ]
+        },
+        {
+          "id": "proveedor",
+          "nombre": "Proveedor",
+          "tipo": "texto"
+        },
+        {
+          "id": "costo",
+          "nombre": "Costo",
+          "tipo": "dinero",
+          "rango": [
+            200,
+            25000
+          ]
+        },
+        {
+          "id": "programado",
+          "nombre": "Programado",
+          "tipo": "fecha",
+          "rango": [
+            -20,
+            90
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Programado",
+            "En curso",
+            "Hecho",
+            "Atrasado",
+            "Cancelado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "programado",
+          "titulo": "equipo",
+          "detalle": "tipo",
+          "dias": 30,
+          "estado": "estado",
+          "excluir": [
+            "Hecho",
+            "Cancelado"
+          ]
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas",
+          "fecha": "programado",
+          "valor": "costo",
+          "funcion": "suma",
+          "agrupar": "mes"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "suma": "costo",
+          "vencen": "programado",
+          "dias": 7,
+          "estado": "estado",
+          "excluir": [
+            "Hecho",
+            "Cancelado"
+          ]
+        },
+        "ancho": 12
+      }
+    ]
+  },
+  {
+    "id": "metas-de-venta",
+    "para": "Poner metas de venta por periodo y ver cuánto llevas contra lo que te propusiste",
+    "palabras": [
+      "metas de venta",
+      "objetivos comerciales",
+      "cuota de ventas",
+      "meta mensual",
+      "cuánto falta para la meta"
+    ],
+    "seccion": {
+      "titulo": "Metas de venta",
+      "icono": "tablero",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "periodo",
+          "nombre": "Periodo",
+          "tipo": "texto",
+          "ejemplos": [
+            "Enero 2025",
+            "Q1 2025",
+            "Semana 12",
+            "Black Friday",
+            "Temporada escolar"
+          ]
+        },
+        {
+          "id": "responsable",
+          "nombre": "Responsable",
+          "tipo": "texto",
+          "ejemplos": [
+            "Tienda centro",
+            "Vendedor Carlos",
+            "Canal online",
+            "Sucursal norte",
+            "Equipo completo"
+          ]
+        },
+        {
+          "id": "meta",
+          "nombre": "Meta",
+          "tipo": "dinero",
+          "rango": [
+            15000,
+            500000
+          ]
+        },
+        {
+          "id": "avance",
+          "nombre": "Avance",
+          "tipo": "dinero",
+          "rango": [
+            5000,
+            480000
+          ]
+        },
+        {
+          "id": "cierre",
+          "nombre": "Cierre",
+          "tipo": "fecha",
+          "rango": [
+            -60,
+            60
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Planeada",
+            "En curso",
+            "En riesgo",
+            "Lograda",
+            "No alcanzada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "meta",
+          "fecha": "cierre",
+          "valor": "avance",
+          "funcion": "suma",
+          "meta": "meta"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "medidor",
+          "estado": "estado"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "tabla",
+        "opciones": {},
+        "ancho": 8,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "nomina",
+    "para": "Llevar pagos de nómina por colaborador, periodo y si ya se dispersó el sueldo",
+    "palabras": [
+      "nómina",
+      "sueldos",
+      "pago de personal",
+      "planilla",
+      "quincena"
+    ],
+    "seccion": {
+      "titulo": "Nómina",
+      "icono": "tarjeta",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "colaborador",
+          "nombre": "Colaborador",
+          "tipo": "texto",
+          "ejemplos": [
+            "María López",
+            "Juan Pérez",
+            "Ana García",
+            "Pedro Ruiz",
+            "Laura Díaz"
+          ]
+        },
+        {
+          "id": "periodo",
+          "nombre": "Periodo",
+          "tipo": "texto",
+          "ejemplos": [
+            "1ra quincena ene",
+            "2da quincena ene",
+            "Semana 3",
+            "Bono trimestre",
+            "Aguinaldo"
+          ]
+        },
+        {
+          "id": "neto",
+          "nombre": "Neto a pagar",
+          "tipo": "dinero",
+          "rango": [
+            3500,
+            28000
+          ]
+        },
+        {
+          "id": "pago",
+          "nombre": "Fecha pago",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            15
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Calculada",
+            "Autorizada",
+            "Pagada",
+            "Incidencia",
+            "Cancelada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tabla",
+        "opciones": {
+          "orden": "pago"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas",
+          "fecha": "pago",
+          "valor": "neto",
+          "funcion": "suma",
+          "agrupar": "mes"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "estadisticas",
+          "valor": "neto"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "pedidos",
+    "para": "Controlar los pedidos de tus clientes desde que entran hasta que los entregas o cancelas",
+    "palabras": [
+      "pedidos",
+      "órdenes de compra",
+      "ventas por surtir",
+      "qué pidieron",
+      "seguimiento de pedidos"
+    ],
+    "seccion": {
+      "titulo": "Pedidos",
+      "icono": "camion",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "cliente",
+        "detalle": "producto"
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "producto",
+          "nombre": "Producto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Combo familiar",
+            "Servicio express",
+            "Kit promocional",
+            "Pedido mayoreo",
+            "Suscripción mensual"
+          ]
+        },
+        {
+          "id": "total",
+          "nombre": "Total",
+          "tipo": "dinero",
+          "rango": [
+            120,
+            18000
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            10
+          ]
+        },
+        {
+          "id": "entrega",
+          "nombre": "Entrega",
+          "tipo": "fecha",
+          "rango": [
+            -20,
+            30
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Recibido",
+            "En preparación",
+            "Listo",
+            "En ruta",
+            "Entregado",
+            "Cancelado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "cliente",
+          "detalle": "total"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas-apiladas",
+          "estado": "estado",
+          "fecha": "fecha",
+          "funcion": "conteo",
+          "meses": 6
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "linea",
+          "fecha": "fecha",
+          "valor": "total",
+          "funcion": "suma"
+        },
+        "ancho": 12,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "promociones",
+    "para": "Administrar promociones y descuentos activos, vigencia y cuánto han vendido",
+    "palabras": [
+      "promociones",
+      "descuentos",
+      "ofertas",
+      "cupones",
+      "2x1 y rebajas"
+    ],
+    "seccion": {
+      "titulo": "Promociones",
+      "icono": "rayo",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "nombre",
+        "detalle": "descuento"
+      },
+      "campos": [
+        {
+          "id": "nombre",
+          "nombre": "Nombre",
+          "tipo": "texto",
+          "ejemplos": [
+            "10% primer compra",
+            "2x1 viernes",
+            "Envío gratis",
+            "Mes del niño",
+            "Cliente frecuente"
+          ]
+        },
+        {
+          "id": "descuento",
+          "nombre": "Descuento",
+          "tipo": "texto",
+          "ejemplos": [
+            "15%",
+            "$100 pesos",
+            "Producto gratis",
+            "3 meses sin interés",
+            "Mitad de precio"
+          ]
+        },
+        {
+          "id": "ventas",
+          "nombre": "Ventas con promo",
+          "tipo": "dinero",
+          "rango": [
+            0,
+            95000
+          ]
+        },
+        {
+          "id": "desde",
+          "nombre": "Desde",
+          "tipo": "fecha",
+          "rango": [
+            -60,
+            15
+          ]
+        },
+        {
+          "id": "hasta",
+          "nombre": "Hasta",
+          "tipo": "fecha",
+          "rango": [
+            -30,
+            60
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Borrador",
+            "Activa",
+            "Pausada",
+            "Agotada",
+            "Finalizada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "nombre",
+          "detalle": "ventas"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "linea-tendencia",
+          "fecha": "desde",
+          "valor": "ventas",
+          "funcion": "suma"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "medidor",
+          "estado": "estado"
+        },
+        "ancho": 4,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "prospectos",
+    "para": "Organizar posibles clientes, de dónde vienen y en qué etapa van antes de cerrar la venta",
+    "palabras": [
+      "prospectos",
+      "leads",
+      "posibles clientes",
+      "pipeline de ventas",
+      "gente interesada"
+    ],
+    "seccion": {
+      "titulo": "Prospectos",
+      "icono": "usuarios",
+      "vista": "tablero",
+      "opciones": {
+        "por": "etapa",
+        "titulo": "nombre",
+        "detalle": "origen"
+      },
+      "campos": [
+        {
+          "id": "nombre",
+          "nombre": "Nombre",
+          "tipo": "texto"
+        },
+        {
+          "id": "empresa",
+          "nombre": "Empresa",
+          "tipo": "texto"
+        },
+        {
+          "id": "origen",
+          "nombre": "Origen",
+          "tipo": "texto",
+          "ejemplos": [
+            "Recomendación",
+            "Facebook",
+            "Feria local",
+            "Google",
+            "Llamada fría",
+            "WhatsApp"
+          ]
+        },
+        {
+          "id": "valor",
+          "nombre": "Valor estimado",
+          "tipo": "dinero",
+          "rango": [
+            1000,
+            120000
+          ]
+        },
+        {
+          "id": "contacto",
+          "nombre": "Último contacto",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            0
+          ]
+        },
+        {
+          "id": "etapa",
+          "nombre": "Etapa",
+          "tipo": "estado",
+          "opciones": [
+            "Nuevo",
+            "Contactado",
+            "Calificado",
+            "Propuesta",
+            "Negociación",
+            "Ganado",
+            "Perdido"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "etapa",
+          "titulo": "nombre",
+          "detalle": "valor"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "embudo",
+          "estado": "etapa",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "arbol",
+          "estado": "origen",
+          "valor": "valor",
+          "funcion": "suma"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "proveedores",
+    "para": "Tener a la mano quién te surte, qué vende y cómo contactarlo cuando hace falta pedir",
+    "palabras": [
+      "proveedores",
+      "quién me surte",
+      "lista de proveedores",
+      "contactos de compras",
+      "distribuidores"
+    ],
+    "seccion": {
+      "titulo": "Proveedores",
+      "icono": "usuarios",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "proveedor",
+          "nombre": "Proveedor",
+          "tipo": "texto"
+        },
+        {
+          "id": "rubro",
+          "nombre": "Rubro",
+          "tipo": "texto",
+          "ejemplos": [
+            "Papelería",
+            "Alimentos",
+            "Refacciones",
+            "Uniformes",
+            "Empaques",
+            "Químicos de limpieza"
+          ]
+        },
+        {
+          "id": "contacto",
+          "nombre": "Contacto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Lic. Martínez",
+            "Sra. López ventas",
+            "WhatsApp bodega",
+            "Ejecutivo zona norte",
+            "Mostrador central"
+          ]
+        },
+        {
+          "id": "plazo",
+          "nombre": "Plazo de entrega",
+          "tipo": "numero",
+          "rango": [
+            1,
+            21
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Activo",
+            "En evaluación",
+            "Preferente",
+            "Suspendido",
+            "Nuevo"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tabla",
+        "opciones": {
+          "orden": "proveedor"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "pastel",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "posiciones",
+          "texto": "rubro",
+          "funcion": "conteo",
+          "top": 5
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "quejas-y-soporte",
+    "para": "Atender quejas y tickets de soporte hasta resolverlas y medir tiempos de respuesta",
+    "palabras": [
+      "quejas",
+      "soporte",
+      "tickets",
+      "reclamos de clientes",
+      "mesa de ayuda"
+    ],
+    "seccion": {
+      "titulo": "Quejas y soporte",
+      "icono": "rayo",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "cliente",
+        "detalle": "asunto"
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "asunto",
+          "nombre": "Asunto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Producto defectuoso",
+            "Cobro duplicado",
+            "Demora en entrega",
+            "Garantía no aplicada",
+            "Mal trato en tienda"
+          ]
+        },
+        {
+          "id": "prioridad",
+          "nombre": "Prioridad",
+          "tipo": "estado",
+          "opciones": [
+            "Baja",
+            "Media",
+            "Alta",
+            "Crítica"
+          ]
+        },
+        {
+          "id": "abierto",
+          "nombre": "Abierto",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            0
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Nuevo",
+            "En análisis",
+            "En proceso",
+            "Esperando cliente",
+            "Resuelto",
+            "Cerrado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "cliente",
+          "detalle": "asunto"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas-apiladas",
+          "estado": "estado",
+          "fecha": "abierto",
+          "funcion": "conteo",
+          "meses": 6
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "radar",
+          "estado": "prioridad",
+          "funcion": "conteo"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "recordatorios",
+    "para": "Programar avisos importantes para ti o tu equipo y ver qué vence pronto",
+    "palabras": [
+      "recordatorios",
+      "avisos",
+      "no olvidar",
+      "alarmas del negocio",
+      "pendientes con fecha"
+    ],
+    "seccion": {
+      "titulo": "Recordatorios",
+      "icono": "reloj",
+      "vista": "vencimientos",
+      "opciones": {
+        "fecha": "cuando",
+        "titulo": "titulo",
+        "detalle": "para_quien",
+        "dias": 21,
+        "estado": "estado",
+        "excluir": [
+          "Listo"
+        ]
+      },
+      "campos": [
+        {
+          "id": "titulo",
+          "nombre": "Título",
+          "tipo": "texto",
+          "ejemplos": [
+            "Renovar póliza",
+            "Pagar predial",
+            "Pedir insumos",
+            "Felicitar cliente VIP",
+            "Revisar contrato"
+          ]
+        },
+        {
+          "id": "para_quien",
+          "nombre": "Para quién",
+          "tipo": "texto",
+          "ejemplos": [
+            "Gerente",
+            "Contabilidad",
+            "Todos",
+            "Bodega",
+            "Recepción"
+          ]
+        },
+        {
+          "id": "cuando",
+          "nombre": "Cuándo",
+          "tipo": "fecha",
+          "rango": [
+            -10,
+            90
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Programado",
+            "Próximo",
+            "Vencido",
+            "Listo",
+            "Pospuesto"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "cuando",
+          "titulo": "titulo",
+          "detalle": "para_quien",
+          "dias": 21,
+          "estado": "estado",
+          "excluir": [
+            "Listo"
+          ]
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "anillos",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "vencen": "cuando",
+          "dias": 7,
+          "estado": "estado",
+          "excluir": [
+            "Listo"
+          ]
+        },
+        "ancho": 12
+      }
+    ]
+  },
+  {
+    "id": "redes-sociales",
+    "para": "Organizar publicaciones en redes, fechas de salida y qué contenido ya salió",
+    "palabras": [
+      "redes sociales",
+      "publicaciones",
+      "contenido digital",
+      "calendario de posts",
+      "instagram y facebook"
+    ],
+    "seccion": {
+      "titulo": "Redes sociales",
+      "icono": "actividad",
+      "vista": "agenda",
+      "opciones": {
+        "fecha": "fecha",
+        "hora": "hora",
+        "titulo": "titulo",
+        "detalle": "red"
+      },
+      "campos": [
+        {
+          "id": "titulo",
+          "nombre": "Título",
+          "tipo": "texto",
+          "ejemplos": [
+            "Oferta fin de semana",
+            "Tips del producto",
+            "Testimonio cliente",
+            "Reel behind scenes",
+            "Sorteo mes"
+          ]
+        },
+        {
+          "id": "red",
+          "nombre": "Red",
+          "tipo": "estado",
+          "opciones": [
+            "Facebook",
+            "Instagram",
+            "TikTok",
+            "LinkedIn",
+            "YouTube"
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -30,
+            45
+          ]
+        },
+        {
+          "id": "hora",
+          "nombre": "Hora",
+          "tipo": "hora"
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Borrador",
+            "Programado",
+            "Publicado",
+            "Fallido",
+            "Archivado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "agenda",
+        "opciones": {
+          "fecha": "fecha",
+          "hora": "hora",
+          "titulo": "titulo",
+          "detalle": "red"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas-apiladas",
+          "estado": "estado",
+          "fecha": "fecha",
+          "funcion": "conteo",
+          "meses": 3
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras",
+          "estado": "red",
+          "funcion": "conteo"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "referidos",
+    "para": "Dar seguimiento a clientes que refieren otros y las recompensas que les corresponden",
+    "palabras": [
+      "referidos",
+      "programa de referidos",
+      "recomienda y gana",
+      "clientes que refieren",
+      "bonos por referencia"
+    ],
+    "seccion": {
+      "titulo": "Referidos",
+      "icono": "usuarios",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "referente",
+          "nombre": "Referente",
+          "tipo": "texto",
+          "ejemplos": [
+            "Cliente VIP Ana",
+            "Socio comercial",
+            "Empleado ventas",
+            "Distribuidor norte",
+            "Amigo del dueño"
+          ]
+        },
+        {
+          "id": "referido",
+          "nombre": "Referido",
+          "tipo": "texto",
+          "ejemplos": [
+            "Nuevo cliente Pyme",
+            "Familiar del referente",
+            "Empresa vecina",
+            "Contacto WhatsApp",
+            "Lead feria"
+          ]
+        },
+        {
+          "id": "recompensa",
+          "nombre": "Recompensa",
+          "tipo": "dinero",
+          "rango": [
+            100,
+            5000
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -120,
+            10
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Registrado",
+            "En prueba",
+            "Compró",
+            "Recompensa pendiente",
+            "Pagada",
+            "Inválido"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tabla",
+        "opciones": {
+          "orden": "fecha"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "embudo",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "columnas",
+          "fecha": "fecha",
+          "valor": "recompensa",
+          "funcion": "suma",
+          "agrupar": "mes"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "resenas",
+    "para": "Recopilar reseñas y calificaciones de clientes para mejorar servicio y reputación",
+    "palabras": [
+      "reseñas",
+      "opiniones de clientes",
+      "calificaciones",
+      "estrellas en google",
+      "qué dicen de nosotros"
+    ],
+    "seccion": {
+      "titulo": "Reseñas",
+      "icono": "actividad",
+      "vista": "tabla",
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "canal",
+          "nombre": "Canal",
+          "tipo": "texto",
+          "ejemplos": [
+            "Google",
+            "Facebook",
+            "WhatsApp",
+            "En tienda",
+            "TripAdvisor",
+            "Mercado Libre"
+          ]
+        },
+        {
+          "id": "calificacion",
+          "nombre": "Calificación",
+          "tipo": "numero",
+          "rango": [
+            1,
+            5
+          ]
+        },
+        {
+          "id": "comentario",
+          "nombre": "Comentario",
+          "tipo": "texto",
+          "ejemplos": [
+            "Excelente atención",
+            "Llegó tarde el pedido",
+            "Muy recomendable",
+            "Precios justos",
+            "Volvería a comprar"
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -120,
+            5
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Nueva",
+            "Leída",
+            "Respondida",
+            "En seguimiento",
+            "Cerrada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tabla",
+        "opciones": {
+          "orden": "fecha"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "histograma",
+          "valor": "calificacion",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras",
+          "estado": "canal",
+          "valor": "calificacion",
+          "funcion": "promedio"
+        },
+        "ancho": 6,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "reuniones",
+    "para": "Agendar reuniones con clientes o tu equipo y ver qué viene esta semana en un solo lugar",
+    "palabras": [
+      "reuniones",
+      "junta con cliente",
+      "citas de trabajo",
+      "agenda de reuniones",
+      "calendario de juntas"
+    ],
+    "seccion": {
+      "titulo": "Reuniones",
+      "icono": "calendario",
+      "vista": "agenda",
+      "opciones": {
+        "fecha": "fecha",
+        "hora": "hora",
+        "titulo": "asunto",
+        "detalle": "participantes"
+      },
+      "campos": [
+        {
+          "id": "asunto",
+          "nombre": "Asunto",
+          "tipo": "texto",
+          "ejemplos": [
+            "Revisión de avance",
+            "Presentación propuesta",
+            "Alta de proveedor",
+            "Cierre de mes",
+            "Onboarding cliente"
+          ]
+        },
+        {
+          "id": "participantes",
+          "nombre": "Participantes",
+          "tipo": "texto",
+          "ejemplos": [
+            "Dueño y contador",
+            "Cliente ABC",
+            "Equipo ventas",
+            "Socios",
+            "Proveedor logística"
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -30,
+            60
+          ]
+        },
+        {
+          "id": "hora",
+          "nombre": "Hora",
+          "tipo": "hora"
+        },
+        {
+          "id": "lugar",
+          "nombre": "Lugar",
+          "tipo": "texto",
+          "ejemplos": [
+            "Oficina",
+            "Zoom",
+            "Sucursal norte",
+            "Cafetería centro",
+            "En sitio cliente"
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Programada",
+            "Confirmada",
+            "En curso",
+            "Realizada",
+            "Reprogramada",
+            "Cancelada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "agenda",
+        "opciones": {
+          "fecha": "fecha",
+          "hora": "hora",
+          "titulo": "asunto",
+          "detalle": "participantes"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "linea-area",
+          "fecha": "fecha",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "pastel",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "seguimientos",
+    "para": "No perder el hilo con cada cliente: qué toca hacer y cuándo volver a escribirle o llamarle",
+    "palabras": [
+      "seguimientos",
+      "dar seguimiento",
+      "próximo paso con cliente",
+      "recordar llamar",
+      "pendientes de contacto"
+    ],
+    "seccion": {
+      "titulo": "Seguimientos",
+      "icono": "actividad",
+      "vista": "vencimientos",
+      "opciones": {
+        "fecha": "proximo",
+        "titulo": "cliente",
+        "detalle": "nota",
+        "dias": 14,
+        "estado": "estado",
+        "excluir": [
+          "Hecho",
+          "Cancelado"
+        ]
+      },
+      "campos": [
+        {
+          "id": "cliente",
+          "nombre": "Cliente",
+          "tipo": "texto"
+        },
+        {
+          "id": "nota",
+          "nombre": "Nota",
+          "tipo": "texto",
+          "ejemplos": [
+            "Enviar cotización actualizada",
+            "Confirmar instalación",
+            "Pedir referencia bancaria",
+            "Recordar pago",
+            "Agendar demo"
+          ]
+        },
+        {
+          "id": "proximo",
+          "nombre": "Próximo",
+          "tipo": "fecha",
+          "rango": [
+            -15,
+            30
+          ]
+        },
+        {
+          "id": "ultimo",
+          "nombre": "Último contacto",
+          "tipo": "fecha",
+          "rango": [
+            -90,
+            0
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Pendiente",
+            "Hoy",
+            "Atrasado",
+            "Hecho",
+            "Cancelado"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "proximo",
+          "titulo": "cliente",
+          "detalle": "nota",
+          "dias": 14,
+          "estado": "estado",
+          "excluir": [
+            "Hecho",
+            "Cancelado"
+          ]
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras",
+          "estado": "estado",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "kpis",
+        "opciones": {
+          "por": "estado",
+          "vencen": "proximo",
+          "dias": 3,
+          "estado": "estado",
+          "excluir": [
+            "Hecho",
+            "Cancelado"
+          ]
+        },
+        "ancho": 12
+      }
+    ]
+  },
+  {
+    "id": "tareas",
+    "para": "Repasar qué tiene pendiente tu equipo, quién lo hace y qué prioridad tiene cada cosa",
+    "palabras": [
+      "tareas",
+      "pendientes",
+      "to-do del equipo",
+      "qué hay que hacer",
+      "lista de actividades"
+    ],
+    "seccion": {
+      "titulo": "Tareas",
+      "icono": "tablero",
+      "vista": "tablero",
+      "opciones": {
+        "por": "estado",
+        "titulo": "titulo",
+        "detalle": "responsable"
+      },
+      "campos": [
+        {
+          "id": "titulo",
+          "nombre": "Título",
+          "tipo": "texto",
+          "ejemplos": [
+            "Actualizar precios",
+            "Llamar a proveedor",
+            "Revisar inventario",
+            "Publicar oferta",
+            "Capacitar nuevo"
+          ]
+        },
+        {
+          "id": "responsable",
+          "nombre": "Responsable",
+          "tipo": "texto",
+          "ejemplos": [
+            "Ana",
+            "Bodega",
+            "Marketing",
+            "Gerencia",
+            "Soporte"
+          ]
+        },
+        {
+          "id": "prioridad",
+          "nombre": "Prioridad",
+          "tipo": "estado",
+          "opciones": [
+            "Baja",
+            "Media",
+            "Alta",
+            "Urgente"
+          ]
+        },
+        {
+          "id": "limite",
+          "nombre": "Fecha límite",
+          "tipo": "fecha",
+          "rango": [
+            -10,
+            45
+          ]
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Por hacer",
+            "En progreso",
+            "En revisión",
+            "Hecha",
+            "Bloqueada"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "tablero",
+        "opciones": {
+          "por": "estado",
+          "titulo": "titulo",
+          "detalle": "responsable"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "radar",
+          "estado": "prioridad",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "vencimientos",
+        "opciones": {
+          "fecha": "limite",
+          "titulo": "titulo",
+          "detalle": "responsable",
+          "dias": 14,
+          "estado": "estado",
+          "excluir": [
+            "Hecha"
+          ]
+        },
+        "ancho": 12,
+        "alto": 2
+      }
+    ]
+  },
+  {
+    "id": "turnos",
+    "para": "Programar turnos de trabajo y ver quién cubre cada horario en la semana",
+    "palabras": [
+      "turnos",
+      "horarios de trabajo",
+      "roster",
+      "quién trabaja mañana",
+      "cuadrante de turnos"
+    ],
+    "seccion": {
+      "titulo": "Turnos",
+      "icono": "reloj",
+      "vista": "agenda",
+      "opciones": {
+        "fecha": "fecha",
+        "hora": "inicio",
+        "titulo": "colaborador",
+        "detalle": "area"
+      },
+      "campos": [
+        {
+          "id": "colaborador",
+          "nombre": "Colaborador",
+          "tipo": "texto",
+          "ejemplos": [
+            "Ana recepción",
+            "Carlos bodega",
+            "María caja",
+            "Equipo nocturno",
+            "Reparto zona 1"
+          ]
+        },
+        {
+          "id": "area",
+          "nombre": "Área",
+          "tipo": "texto",
+          "ejemplos": [
+            "Mostrador",
+            "Cocina",
+            "Almacén",
+            "Call center",
+            "Limpieza",
+            "Seguridad"
+          ]
+        },
+        {
+          "id": "fecha",
+          "nombre": "Fecha",
+          "tipo": "fecha",
+          "rango": [
+            -14,
+            30
+          ]
+        },
+        {
+          "id": "inicio",
+          "nombre": "Inicio",
+          "tipo": "hora"
+        },
+        {
+          "id": "fin",
+          "nombre": "Fin",
+          "tipo": "hora"
+        },
+        {
+          "id": "estado",
+          "nombre": "Estado",
+          "tipo": "estado",
+          "opciones": [
+            "Programado",
+            "Confirmado",
+            "Cubierto",
+            "Cambio solicitado",
+            "Ausente"
+          ]
+        }
+      ]
+    },
+    "piezas": [
+      {
+        "vista": "agenda",
+        "opciones": {
+          "fecha": "fecha",
+          "hora": "inicio",
+          "titulo": "colaborador",
+          "detalle": "area"
+        },
+        "ancho": 8,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "barras-apiladas",
+          "estado": "estado",
+          "fecha": "fecha",
+          "funcion": "conteo",
+          "meses": 2
+        },
+        "ancho": 4,
+        "alto": 2
+      },
+      {
+        "vista": "grafico",
+        "opciones": {
+          "tipo": "pastel",
+          "estado": "area",
+          "funcion": "conteo"
+        },
+        "ancho": 4,
+        "alto": 2
+      }
+    ]
+  }
+]

@@ -1,0 +1,7552 @@
+{
+  "semillas": [
+    {
+      "id": "embudo",
+      "nombre": "Embudo de ventas",
+      "para": "Servicios profesionales, inmobiliaria, tecnología: ventas con cotización",
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "clientes",
+          "opciones": {
+            "por": "etapa"
+          }
+        },
+        {
+          "vista": "tablero",
+          "seccion": "clientes",
+          "opciones": {
+            "por": "etapa",
+            "titulo": "nombre",
+            "detalle": "telefono"
+          }
+        },
+        {
+          "vista": "grafica",
+          "seccion": "cotizaciones",
+          "opciones": {
+            "tipo": "barras",
+            "por": "estado",
+            "suma": "monto"
+          }
+        }
+      ],
+      "secciones": [
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tablero",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "etapa",
+              "nombre": "Etapa",
+              "tipo": "estado",
+              "opciones": [
+                "Nuevo",
+                "Contactado",
+                "Propuesta",
+                "Negociación",
+                "Ganado",
+                "Perdido"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha"
+            }
+          ],
+          "opciones": {
+            "por": "etapa",
+            "titulo": "nombre",
+            "detalle": "telefono"
+          }
+        },
+        {
+          "id": "seguimientos",
+          "titulo": "Seguimientos",
+          "grupo": 0,
+          "icono": "reloj",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "cuando",
+            "titulo": "quien",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "quien",
+              "nombre": "Con quién",
+              "tipo": "texto"
+            },
+            {
+              "id": "cuando",
+              "nombre": "Cuándo",
+              "tipo": "fecha"
+            },
+            {
+              "id": "nota",
+              "nombre": "Nota",
+              "tipo": "texto"
+            }
+          ]
+        },
+        {
+          "id": "cotizaciones",
+          "titulo": "Cotizaciones",
+          "grupo": 0,
+          "icono": "documento",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Borrador",
+                "Enviada",
+                "Aceptada",
+                "Rechazada"
+              ]
+            },
+            {
+              "id": "enviada",
+              "nombre": "Enviada",
+              "tipo": "fecha"
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "agenda",
+      "nombre": "Agenda y citas",
+      "para": "Salud y bienestar, spa, clínica, educación: clientes que reservan",
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "citas",
+          "opciones": {
+            "por": "estado",
+            "hoy": "fecha"
+          }
+        },
+        {
+          "vista": "agenda",
+          "seccion": "citas",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "cliente",
+            "detalle": "servicio",
+            "dias": 7
+          }
+        }
+      ],
+      "secciones": [
+        {
+          "id": "citas",
+          "titulo": "Agenda",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "cliente",
+            "detalle": "servicio",
+            "dias": 7
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "servicio",
+              "nombre": "Servicio",
+              "tipo": "texto"
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha"
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por confirmar",
+                "Confirmada",
+                "Atendida",
+                "No asistió"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "clientes",
+          "titulo": "Clientas",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "etapa",
+              "nombre": "Etapa",
+              "tipo": "estado",
+              "opciones": [
+                "Primera visita",
+                "Recurrente",
+                "Inactiva"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha"
+            }
+          ]
+        },
+        {
+          "id": "paquetes",
+          "titulo": "Paquetes y tratamientos",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "paquete"
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "paquete",
+              "nombre": "Paquete",
+              "tipo": "texto"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Iniciado",
+                "En curso",
+                "Terminado"
+              ]
+            },
+            {
+              "id": "sesiones",
+              "nombre": "Sesiones",
+              "tipo": "numero"
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "pedidos",
+      "nombre": "Pedidos y entregas",
+      "para": "Comercio, comida, encargos: pedidos que se preparan y se entregan",
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "pedidos",
+          "opciones": {
+            "por": "estado",
+            "suma": "anticipo"
+          }
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "pedidos",
+          "opciones": {
+            "fecha": "entrega",
+            "titulo": "cliente",
+            "detalle": "producto",
+            "dias": 7,
+            "estado": "estado",
+            "excluir": [
+              "Entregado"
+            ]
+          }
+        },
+        {
+          "vista": "grafica",
+          "seccion": "pedidos",
+          "opciones": {
+            "tipo": "dona",
+            "por": "estado"
+          }
+        }
+      ],
+      "secciones": [
+        {
+          "id": "pedidos",
+          "titulo": "Pedidos",
+          "grupo": 0,
+          "icono": "caja",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "producto"
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "producto",
+              "nombre": "Producto",
+              "tipo": "texto"
+            },
+            {
+              "id": "entrega",
+              "nombre": "Entrega",
+              "tipo": "fecha"
+            },
+            {
+              "id": "anticipo",
+              "nombre": "Anticipo",
+              "tipo": "dinero"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Recibido",
+                "En producción",
+                "Listo",
+                "Entregado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "etapa",
+              "nombre": "Etapa",
+              "tipo": "estado",
+              "opciones": [
+                "Nuevo",
+                "Frecuente",
+                "Mayorista"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha"
+            }
+          ]
+        },
+        {
+          "id": "inventario",
+          "titulo": "Inventario",
+          "grupo": 0,
+          "icono": "tabla",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "producto",
+              "nombre": "Producto",
+              "tipo": "texto"
+            },
+            {
+              "id": "cantidad",
+              "nombre": "Cantidad",
+              "tipo": "numero"
+            },
+            {
+              "id": "minimo",
+              "nombre": "Mínimo",
+              "tipo": "numero"
+            }
+          ]
+        },
+        {
+          "id": "proveedores",
+          "titulo": "Proveedores",
+          "grupo": 0,
+          "icono": "camion",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Proveedor",
+              "tipo": "texto"
+            },
+            {
+              "id": "producto",
+              "nombre": "Qué surte",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "membresias",
+      "nombre": "Membresías",
+      "para": "Gimnasios, spas con membresía, academias, suscripciones",
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "miembros",
+          "opciones": {
+            "por": "estado",
+            "vencen": "vence",
+            "dias": 7,
+            "estado": "estado",
+            "excluir": [
+              "Cancelada"
+            ]
+          }
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "miembros",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "nombre",
+            "detalle": "plan",
+            "dias": 30,
+            "estado": "estado",
+            "excluir": [
+              "Cancelada"
+            ]
+          }
+        },
+        {
+          "vista": "grafica",
+          "seccion": "miembros",
+          "opciones": {
+            "tipo": "linea",
+            "fecha": "alta"
+          }
+        }
+      ],
+      "secciones": [
+        {
+          "id": "miembros",
+          "titulo": "Miembros",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "plan",
+              "nombre": "Plan",
+              "tipo": "texto"
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha"
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Activa",
+                "Pausada",
+                "Cancelada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vencimientos",
+          "titulo": "Vencimientos",
+          "grupo": 0,
+          "icono": "reloj",
+          "vista": "vencimientos",
+          "fuente": "miembros",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "nombre",
+            "detalle": "plan",
+            "dias": 30,
+            "estado": "estado",
+            "excluir": [
+              "Cancelada"
+            ]
+          }
+        },
+        {
+          "id": "pagos",
+          "titulo": "Pagos",
+          "grupo": 1,
+          "icono": "tarjeta",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "miembro",
+              "nombre": "Miembro",
+              "tipo": "texto"
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero"
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha"
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "proyectos",
+      "nombre": "Proyectos y campañas",
+      "para": "Agencias, estudios creativos, tecnología: proyectos con propuesta",
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "cotizaciones",
+          "opciones": {
+            "por": "estado",
+            "suma": "monto"
+          }
+        },
+        {
+          "vista": "tablero",
+          "seccion": "proyectos",
+          "opciones": {
+            "por": "estado",
+            "titulo": "proyecto",
+            "detalle": "cliente"
+          }
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "campanas",
+          "opciones": {
+            "fecha": "fin",
+            "titulo": "campana",
+            "detalle": "cliente",
+            "dias": 14
+          }
+        }
+      ],
+      "secciones": [
+        {
+          "id": "proyectos",
+          "titulo": "Proyectos",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "proyecto",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "proyecto",
+              "nombre": "Proyecto",
+              "tipo": "texto"
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Propuesta",
+                "Aprobado",
+                "En curso",
+                "En revisión",
+                "Entregado"
+              ]
+            },
+            {
+              "id": "entrega",
+              "nombre": "Entrega",
+              "tipo": "fecha"
+            }
+          ]
+        },
+        {
+          "id": "cotizaciones",
+          "titulo": "Cotizaciones",
+          "grupo": 0,
+          "icono": "documento",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Enviada",
+                "Aceptada",
+                "Rechazada"
+              ]
+            },
+            {
+              "id": "enviada",
+              "nombre": "Enviada",
+              "tipo": "fecha"
+            }
+          ]
+        },
+        {
+          "id": "campanas",
+          "titulo": "Campañas activas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "campana",
+              "nombre": "Campaña",
+              "tipo": "texto"
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "inicio",
+              "nombre": "Inicio",
+              "tipo": "fecha"
+            },
+            {
+              "id": "fin",
+              "nombre": "Fin",
+              "tipo": "fecha"
+            },
+            {
+              "id": "presupuesto",
+              "nombre": "Presupuesto",
+              "tipo": "dinero"
+            }
+          ]
+        },
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "etapa",
+              "nombre": "Etapa",
+              "tipo": "estado",
+              "opciones": [
+                "Prospecto",
+                "Activo",
+                "Pausado"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha"
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "simple",
+      "nombre": "Simple",
+      "para": "Quien empieza o quiere lo mínimo: clientes y tareas",
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "clientes",
+          "opciones": {
+            "por": "etapa"
+          }
+        },
+        {
+          "vista": "tablero",
+          "seccion": "tareas",
+          "opciones": {
+            "por": "estado",
+            "titulo": "tarea"
+          }
+        }
+      ],
+      "secciones": [
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "etapa",
+              "nombre": "Etapa",
+              "tipo": "estado",
+              "opciones": [
+                "Nuevo",
+                "En contacto",
+                "Interesado",
+                "Cliente"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha"
+            }
+          ]
+        },
+        {
+          "id": "tareas",
+          "titulo": "Tareas",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "tarea"
+          },
+          "campos": [
+            {
+              "id": "tarea",
+              "nombre": "Tarea",
+              "tipo": "texto"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por hacer",
+                "En curso",
+                "Hecho"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    }
+  ],
+  "biblioteca": [
+    {
+      "id": "agencia-marketing",
+      "nombre": "Agencia de marketing",
+      "para": "Agencias de marketing: clientes, campañas en curso y entregables por publicar",
+      "asignacion": {
+        "rubros": [
+          "agencia",
+          "servicios"
+        ],
+        "ciclos": [
+          "cotizacion",
+          "recurrente",
+          "mezcla"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "reportes",
+          "cotizaciones"
+        ],
+        "negocios": [
+          "Agencia de marketing",
+          "Estudio de redes sociales",
+          "Agencia de pauta digital",
+          "Consultora de contenido"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "campanas",
+          "opciones": {
+            "por": "estado",
+            "suma": "presupuesto"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "grafico",
+          "seccion": "campanas",
+          "opciones": {
+            "tipo": "gantt"
+          },
+          "ancho": 12,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "entregables",
+          "opciones": {
+            "fecha": "entrega",
+            "titulo": "pieza",
+            "detalle": "cliente",
+            "dias": 7,
+            "estado": "estado",
+            "excluir": [
+              "Publicado"
+            ]
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "entregables",
+          "opciones": {
+            "tipo": "dona"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Contacto",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "marca",
+              "nombre": "Marca",
+              "tipo": "texto",
+              "ejemplos": [
+                "Café Luna",
+                "Dental Sonrisa",
+                "Panadería La Espiga",
+                "Moda Ixchel",
+                "Gimnasio Norte",
+                "Clínica Vida"
+              ]
+            },
+            {
+              "id": "sector",
+              "nombre": "Sector",
+              "tipo": "texto",
+              "ejemplos": [
+                "Restaurantes",
+                "Comercio",
+                "Salud",
+                "Educación",
+                "Bienestar",
+                "Servicios profesionales"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Prospecto",
+                "Activo",
+                "En pausa",
+                "Cerrado"
+              ]
+            },
+            {
+              "id": "mensualidad",
+              "nombre": "Mensualidad",
+              "tipo": "dinero",
+              "rango": [
+                1500,
+                12000
+              ]
+            }
+          ]
+        },
+        {
+          "id": "campanas",
+          "titulo": "Campañas",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "campana",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "campana",
+              "nombre": "Campaña",
+              "tipo": "texto",
+              "ejemplos": [
+                "Lanzamiento de verano",
+                "Redes del mes",
+                "Promoción 2x1",
+                "Ofertas de fin de año",
+                "Captación de prospectos",
+                "Recompra"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "canal",
+              "nombre": "Canal",
+              "tipo": "texto",
+              "ejemplos": [
+                "Instagram",
+                "Facebook",
+                "Google Ads",
+                "TikTok",
+                "YouTube",
+                "WhatsApp"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Propuesta",
+                "Aprobada",
+                "Activa",
+                "En pausa",
+                "Cerrada"
+              ]
+            },
+            {
+              "id": "inicio",
+              "nombre": "Inicio",
+              "tipo": "fecha",
+              "rango": [
+                -45,
+                20
+              ]
+            },
+            {
+              "id": "fin",
+              "nombre": "Fin",
+              "tipo": "fecha",
+              "rango": [
+                -10,
+                90
+              ]
+            },
+            {
+              "id": "presupuesto",
+              "nombre": "Presupuesto",
+              "tipo": "dinero",
+              "rango": [
+                3000,
+                40000
+              ]
+            }
+          ]
+        },
+        {
+          "id": "entregables",
+          "titulo": "Entregables",
+          "grupo": 0,
+          "icono": "documento",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "entrega",
+            "titulo": "pieza",
+            "detalle": "cliente",
+            "dias": 14,
+            "estado": "estado",
+            "excluir": [
+              "Publicado"
+            ]
+          },
+          "campos": [
+            {
+              "id": "pieza",
+              "nombre": "Pieza",
+              "tipo": "texto",
+              "ejemplos": [
+                "Video corto de producto",
+                "Carrusel de consejos",
+                "Historia del día",
+                "Anuncio para pauta",
+                "Página de campaña",
+                "Informe mensual"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "campana",
+              "nombre": "Campaña",
+              "tipo": "texto",
+              "ejemplos": [
+                "Lanzamiento de verano",
+                "Redes del mes",
+                "Promoción 2x1",
+                "Ofertas de fin de año",
+                "Captación de prospectos",
+                "Recompra"
+              ]
+            },
+            {
+              "id": "responsable",
+              "nombre": "Responsable",
+              "tipo": "texto",
+              "ejemplos": [
+                "Ana López",
+                "Carlos Pérez",
+                "Sofía Ramírez",
+                "Diego Morales",
+                "Camila Ortiz",
+                "Jorge Méndez"
+              ]
+            },
+            {
+              "id": "entrega",
+              "nombre": "Entrega",
+              "tipo": "fecha",
+              "rango": [
+                -5,
+                21
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por hacer",
+                "En diseño",
+                "En revisión",
+                "Aprobado",
+                "Publicado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "clinica-dental",
+      "nombre": "Clínica dental",
+      "para": "Consultorios y clínicas dentales: agenda de citas, tratamientos en curso y pacientes",
+      "asignacion": {
+        "rubros": [
+          "salud",
+          "servicios"
+        ],
+        "ciclos": [
+          "recurrente",
+          "rapida"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "contactos",
+          "reportes",
+          "equipo"
+        ],
+        "negocios": [
+          "Consultorio dental familiar",
+          "Clínica de ortodoncia",
+          "Centro de implantes",
+          "Odontopediatría"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "citas",
+          "opciones": {
+            "por": "estado",
+            "hoy": "fecha"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "agenda",
+          "seccion": "citas",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "paciente",
+            "detalle": "motivo",
+            "dias": 7
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "citas",
+          "opciones": {
+            "tipo": "dona"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "tablero",
+          "seccion": "tratamientos",
+          "opciones": {
+            "por": "estado",
+            "titulo": "paciente",
+            "detalle": "tratamiento"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "tratamientos",
+          "opciones": {
+            "tipo": "columnas"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "citas",
+          "titulo": "Citas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "paciente",
+            "detalle": "motivo",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "paciente",
+              "nombre": "Paciente",
+              "tipo": "texto",
+              "ejemplos": [
+                "María González",
+                "Carlos Pérez",
+                "Ana Martínez",
+                "Luis Herrera",
+                "Sofía Ramírez",
+                "Diego Castillo"
+              ]
+            },
+            {
+              "id": "motivo",
+              "nombre": "Motivo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Limpieza",
+                "Dolor muela",
+                "Revisión ortodoncia",
+                "Extracción",
+                "Blanqueamiento",
+                "Urgencia"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -2,
+                21
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "doctor",
+              "nombre": "Doctor",
+              "tipo": "texto",
+              "ejemplos": [
+                "Dra. Martínez",
+                "Dr. López",
+                "Dra. Hernández",
+                "Dr. Ramírez",
+                "Dra. Morales",
+                "Dr. Castillo"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por confirmar",
+                "Confirmada",
+                "En consulta",
+                "Atendida",
+                "No asistió"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tratamientos",
+          "titulo": "Tratamientos",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "paciente",
+            "detalle": "tratamiento"
+          },
+          "campos": [
+            {
+              "id": "paciente",
+              "nombre": "Paciente",
+              "tipo": "texto",
+              "ejemplos": [
+                "María González",
+                "Carlos Pérez",
+                "Ana Martínez",
+                "Luis Herrera",
+                "Sofía Ramírez",
+                "Diego Castillo"
+              ]
+            },
+            {
+              "id": "tratamiento",
+              "nombre": "Tratamiento",
+              "tipo": "texto",
+              "ejemplos": [
+                "Ortodoncia brackets",
+                "Implante unitario",
+                "Endodoncia",
+                "Corona cerámica",
+                "Carillas",
+                "Periodoncia"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Presupuesto",
+                "Aceptado",
+                "En curso",
+                "Pausado",
+                "Finalizado"
+              ]
+            },
+            {
+              "id": "inicio",
+              "nombre": "Inicio",
+              "tipo": "fecha",
+              "rango": [
+                -90,
+                14
+              ]
+            },
+            {
+              "id": "sesiones",
+              "nombre": "Sesiones",
+              "tipo": "numero",
+              "rango": [
+                1,
+                24
+              ]
+            },
+            {
+              "id": "total",
+              "nombre": "Total",
+              "tipo": "dinero",
+              "rango": [
+                800,
+                45000
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pacientes",
+          "titulo": "Pacientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "ultima",
+              "nombre": "Última visita",
+              "tipo": "fecha",
+              "rango": [
+                -365,
+                0
+              ]
+            },
+            {
+              "id": "tipo",
+              "nombre": "Tipo",
+              "tipo": "estado",
+              "opciones": [
+                "Nuevo",
+                "Recurrente",
+                "Inactivo"
+              ]
+            },
+            {
+              "id": "notas",
+              "nombre": "Notas",
+              "tipo": "texto",
+              "ejemplos": [
+                "Alérgico a anestesia X",
+                "Bruxismo",
+                "Embarazo",
+                "Menor de edad",
+                "Pago en cuotas",
+                "Seguro dental"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "constructora",
+      "nombre": "Constructora",
+      "para": "Constructoras y contratistas: obras en curso, avances de obra y proveedores",
+      "asignacion": {
+        "rubros": [
+          "servicios",
+          "inmobiliaria",
+          "otro"
+        ],
+        "ciclos": [
+          "cotizacion",
+          "mezcla",
+          "recurrente"
+        ],
+        "objetivos": [
+          "cotizaciones",
+          "seguimientos",
+          "reportes",
+          "equipo"
+        ],
+        "negocios": [
+          "Constructora residencial",
+          "Empresa de remodelaciones",
+          "Contratista de obras civiles"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "tablero",
+          "seccion": "obras",
+          "opciones": {
+            "por": "estado",
+            "titulo": "obra",
+            "detalle": "cliente"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "obras",
+          "opciones": {
+            "fecha": "entrega",
+            "titulo": "obra",
+            "detalle": "ubicacion",
+            "dias": 21,
+            "estado": "estado",
+            "excluir": [
+              "Entregada"
+            ]
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "kpis",
+          "seccion": "obras",
+          "opciones": {
+            "por": "estado",
+            "suma": "presupuesto"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "grafico",
+          "seccion": "obras",
+          "opciones": {
+            "tipo": "barras",
+            "agrupar": "estado",
+            "valor": "presupuesto",
+            "funcion": "suma"
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "avances",
+          "opciones": {
+            "tipo": "linea-area",
+            "fecha": "fecha",
+            "valor": "porcentaje",
+            "funcion": "promedio"
+          },
+          "ancho": 6,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "obras",
+          "titulo": "Obras",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "obra",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "obra",
+              "nombre": "Obra",
+              "tipo": "texto",
+              "ejemplos": [
+                "Casa Los Pinos",
+                "Edificio Centro",
+                "Bodega industrial",
+                "Remodelación oficinas",
+                "Ampliación local",
+                "Fraccionamiento etapa 2"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "ubicacion",
+              "nombre": "Ubicación",
+              "tipo": "texto",
+              "ejemplos": [
+                "Zona 10",
+                "Carretera al Atlántico",
+                "Condado Naranjo",
+                "Antigua Guatemala",
+                "Mixco",
+                "Villa Nueva"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Cotización",
+                "Preparación",
+                "En obra",
+                "Acabados",
+                "Entregada"
+              ]
+            },
+            {
+              "id": "entrega",
+              "nombre": "Entrega",
+              "tipo": "fecha",
+              "rango": [
+                -10,
+                120
+              ]
+            },
+            {
+              "id": "presupuesto",
+              "nombre": "Presupuesto",
+              "tipo": "dinero",
+              "rango": [
+                25000,
+                850000
+              ]
+            }
+          ]
+        },
+        {
+          "id": "avances",
+          "titulo": "Avances",
+          "grupo": 0,
+          "icono": "documento",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "obra",
+              "nombre": "Obra",
+              "tipo": "texto",
+              "ejemplos": [
+                "Casa Los Pinos",
+                "Edificio Centro",
+                "Bodega industrial",
+                "Remodelación oficinas",
+                "Ampliación local",
+                "Fraccionamiento etapa 2"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -365,
+                0
+              ]
+            },
+            {
+              "id": "porcentaje",
+              "nombre": "Avance %",
+              "tipo": "numero",
+              "rango": [
+                5,
+                100
+              ]
+            },
+            {
+              "id": "actividad",
+              "nombre": "Actividad",
+              "tipo": "texto",
+              "ejemplos": [
+                "Cimentación",
+                "Estructura",
+                "Instalaciones",
+                "Enchapes",
+                "Pintura",
+                "Entrega llaves"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Reportado",
+                "Revisado",
+                "Aprobado",
+                "Con observaciones"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "proveedores",
+          "titulo": "Proveedores",
+          "grupo": 0,
+          "icono": "camion",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Proveedor",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "material",
+              "nombre": "Material",
+              "tipo": "texto",
+              "ejemplos": [
+                "Cemento y agregados",
+                "Acero estructural",
+                "Block y ladrillo",
+                "Tubería PVC",
+                "Cable eléctrico",
+                "Pintura y recubrimientos"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Activo",
+                "En evaluación",
+                "Preferido",
+                "Suspendido"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "consultorio-medico",
+      "nombre": "Consultorio médico general",
+      "para": "Consultorios de medicina general: pacientes, citas del día y seguimientos pendientes",
+      "asignacion": {
+        "rubros": [
+          "salud"
+        ],
+        "ciclos": [
+          "rapida",
+          "recurrente"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "contactos",
+          "reportes"
+        ],
+        "negocios": [
+          "Consultorio de familia",
+          "Clínica de barrio",
+          "Centro de atención primaria"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "citas",
+          "opciones": {
+            "por": "estado",
+            "hoy": "fecha"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "agenda",
+          "seccion": "citas",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "cliente",
+            "detalle": "motivo",
+            "dias": 7
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "citas",
+          "opciones": {
+            "tipo": "dona"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "seguimientos",
+          "opciones": {
+            "fecha": "proxima",
+            "titulo": "cliente",
+            "detalle": "motivo",
+            "dias": 14,
+            "estado": "estado",
+            "excluir": [
+              "Cerrado"
+            ]
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "pacientes",
+          "opciones": {
+            "tipo": "columnas"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "pacientes",
+          "titulo": "Pacientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "edad",
+              "nombre": "Edad",
+              "tipo": "numero",
+              "rango": [
+                1,
+                95
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Activo",
+                "En tratamiento",
+                "Control periódico",
+                "Inactivo"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha",
+              "rango": [
+                -365,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "citas",
+          "titulo": "Citas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "cliente",
+            "detalle": "motivo",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Paciente",
+              "tipo": "texto"
+            },
+            {
+              "id": "motivo",
+              "nombre": "Motivo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Control general",
+                "Dolor abdominal",
+                "Chequeo anual",
+                "Renovar receta",
+                "Curación",
+                "Certificado médico"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -3,
+                21
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por confirmar",
+                "Confirmada",
+                "En consulta",
+                "Atendida",
+                "No asistió"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "seguimientos",
+          "titulo": "Seguimientos",
+          "grupo": 0,
+          "icono": "reloj",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "proxima",
+            "titulo": "cliente",
+            "detalle": "motivo",
+            "dias": 30,
+            "estado": "estado",
+            "excluir": [
+              "Cerrado"
+            ]
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Paciente",
+              "tipo": "texto"
+            },
+            {
+              "id": "motivo",
+              "nombre": "Motivo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Control presión",
+                "Resultados de laboratorio",
+                "Seguimiento diabetes",
+                "Postoperatorio",
+                "Vacunación",
+                "Referencia especialista"
+              ]
+            },
+            {
+              "id": "proxima",
+              "nombre": "Próxima cita",
+              "tipo": "fecha",
+              "rango": [
+                -2,
+                45
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Pendiente",
+                "Agendado",
+                "Cerrado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "despacho-abogados",
+      "nombre": "Despacho de abogados",
+      "para": "Despachos de abogados: casos en trámite, audiencias próximas y honorarios por cobrar",
+      "asignacion": {
+        "rubros": [
+          "servicios"
+        ],
+        "ciclos": [
+          "cotizacion",
+          "recurrente"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "cotizaciones",
+          "reportes"
+        ],
+        "negocios": [
+          "Despacho de abogados",
+          "Bufete familiar",
+          "Estudio jurídico laboral",
+          "Abogado independiente"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "casos",
+          "opciones": {
+            "por": "estado",
+            "suma": "honorarios"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "tablero",
+          "seccion": "casos",
+          "opciones": {
+            "por": "estado",
+            "titulo": "asunto",
+            "detalle": "cliente"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "casos",
+          "opciones": {
+            "tipo": "embudo"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "agenda",
+          "seccion": "audiencias",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "asunto",
+            "detalle": "juzgado",
+            "dias": 14
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "honorarios",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "cliente",
+            "detalle": "concepto",
+            "dias": 15,
+            "estado": "estado",
+            "excluir": [
+              "Pagado"
+            ]
+          },
+          "ancho": 6,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "casos",
+          "titulo": "Casos",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "asunto",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "asunto",
+              "nombre": "Asunto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Divorcio de mutuo acuerdo",
+                "Despido injustificado",
+                "Cobro de deuda",
+                "Contrato de arrendamiento",
+                "Pensión de alimentos",
+                "Constitución de sociedad"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "materia",
+              "nombre": "Materia",
+              "tipo": "texto",
+              "ejemplos": [
+                "Civil",
+                "Familiar",
+                "Laboral",
+                "Mercantil",
+                "Penal",
+                "Administrativo"
+              ]
+            },
+            {
+              "id": "abogado",
+              "nombre": "Abogado",
+              "tipo": "texto",
+              "ejemplos": [
+                "Lic. Ana López",
+                "Lic. Carlos Pérez",
+                "Lic. Sofía Ramírez",
+                "Lic. Diego Morales",
+                "Lic. Camila Ortiz",
+                "Lic. Jorge Méndez"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Consulta",
+                "En trámite",
+                "Audiencia",
+                "Sentencia",
+                "Cerrado"
+              ]
+            },
+            {
+              "id": "apertura",
+              "nombre": "Apertura",
+              "tipo": "fecha",
+              "rango": [
+                -180,
+                5
+              ]
+            },
+            {
+              "id": "honorarios",
+              "nombre": "Honorarios",
+              "tipo": "dinero",
+              "rango": [
+                1500,
+                25000
+              ]
+            }
+          ]
+        },
+        {
+          "id": "audiencias",
+          "titulo": "Audiencias",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "asunto",
+            "detalle": "juzgado",
+            "dias": 21
+          },
+          "campos": [
+            {
+              "id": "asunto",
+              "nombre": "Asunto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Divorcio de mutuo acuerdo",
+                "Despido injustificado",
+                "Cobro de deuda",
+                "Contrato de arrendamiento",
+                "Pensión de alimentos",
+                "Constitución de sociedad"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "juzgado",
+              "nombre": "Juzgado",
+              "tipo": "texto",
+              "ejemplos": [
+                "Juzgado civil",
+                "Juzgado de paz",
+                "Tribunal laboral",
+                "Juzgado de familia",
+                "Centro de mediación",
+                "Sala civil"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -3,
+                30
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por preparar",
+                "Programada",
+                "Reprogramada",
+                "Celebrada",
+                "Cerrada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "honorarios",
+          "titulo": "Honorarios",
+          "grupo": 0,
+          "icono": "tarjeta",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "cliente",
+            "detalle": "concepto",
+            "dias": 30,
+            "estado": "estado",
+            "excluir": [
+              "Pagado"
+            ]
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "concepto",
+              "nombre": "Concepto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Anticipo",
+                "Consulta",
+                "Escrito",
+                "Audiencia",
+                "Éxito del caso",
+                "Gastos del tribunal"
+              ]
+            },
+            {
+              "id": "asunto",
+              "nombre": "Asunto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Divorcio de mutuo acuerdo",
+                "Despido injustificado",
+                "Cobro de deuda",
+                "Contrato de arrendamiento",
+                "Pensión de alimentos",
+                "Constitución de sociedad"
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                400,
+                12000
+              ]
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha",
+              "rango": [
+                -10,
+                40
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por facturar",
+                "Facturado",
+                "Vencido",
+                "Pagado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "escuela-academia",
+      "nombre": "Escuela o academia",
+      "para": "Escuelas, academias y centros de capacitación: alumnos inscritos, cursos activos y cobro de mensualidades",
+      "asignacion": {
+        "rubros": [
+          "educacion",
+          "servicios"
+        ],
+        "ciclos": [
+          "recurrente",
+          "mezcla"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "contactos",
+          "reportes",
+          "equipo"
+        ],
+        "negocios": [
+          "Academia de idiomas",
+          "Escuela de música",
+          "Centro de computación",
+          "Preparatoria con cursos extra"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "alumnos",
+          "opciones": {
+            "por": "estado",
+            "vencen": "proximo",
+            "dias": 7,
+            "estado": "estado",
+            "excluir": [
+              "Baja"
+            ]
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "pagos",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "alumno",
+            "detalle": "concepto",
+            "dias": 14,
+            "estado": "estado",
+            "excluir": [
+              "Pagado"
+            ]
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "alumnos",
+          "opciones": {
+            "tipo": "dona"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "tablero",
+          "seccion": "cursos",
+          "opciones": {
+            "por": "estado",
+            "titulo": "curso",
+            "detalle": "nivel"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "cursos",
+          "opciones": {
+            "tipo": "columnas"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "alumnos",
+          "titulo": "Alumnos",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "curso",
+              "nombre": "Curso",
+              "tipo": "texto",
+              "ejemplos": [
+                "Inglés intermedio",
+                "Piano nivel 1",
+                "Excel avanzado",
+                "Matemáticas bachillerato",
+                "Robótica junior",
+                "Francés básico"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Activo",
+                "Moroso",
+                "Pausa",
+                "Baja",
+                "Egresado"
+              ]
+            },
+            {
+              "id": "inscripcion",
+              "nombre": "Inscripción",
+              "tipo": "fecha",
+              "rango": [
+                -400,
+                0
+              ]
+            },
+            {
+              "id": "proximo",
+              "nombre": "Próximo pago",
+              "tipo": "fecha",
+              "rango": [
+                -10,
+                30
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cursos",
+          "titulo": "Cursos",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "curso",
+            "detalle": "nivel"
+          },
+          "campos": [
+            {
+              "id": "curso",
+              "nombre": "Curso",
+              "tipo": "texto",
+              "ejemplos": [
+                "Inglés intermedio",
+                "Piano nivel 1",
+                "Excel avanzado",
+                "Matemáticas bachillerato",
+                "Robótica junior",
+                "Francés básico"
+              ]
+            },
+            {
+              "id": "nivel",
+              "nombre": "Nivel",
+              "tipo": "texto",
+              "ejemplos": [
+                "Básico",
+                "Intermedio",
+                "Avanzado",
+                "Infantil",
+                "Teens",
+                "Adultos"
+              ]
+            },
+            {
+              "id": "horario",
+              "nombre": "Horario",
+              "tipo": "texto",
+              "ejemplos": [
+                "Lun y Mié 4pm",
+                "Mar y Jue 6pm",
+                "Sáb 9am",
+                "Lun a Vie 7am",
+                "Virtual martes",
+                "Sáb 11am"
+              ]
+            },
+            {
+              "id": "cupo",
+              "nombre": "Cupo",
+              "tipo": "numero",
+              "rango": [
+                8,
+                25
+              ]
+            },
+            {
+              "id": "inscritos",
+              "nombre": "Inscritos",
+              "tipo": "numero",
+              "rango": [
+                0,
+                25
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por iniciar",
+                "En curso",
+                "Completo",
+                "Finalizado"
+              ]
+            },
+            {
+              "id": "mensualidad",
+              "nombre": "Mensualidad",
+              "tipo": "dinero",
+              "rango": [
+                350,
+                2800
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pagos",
+          "titulo": "Pagos",
+          "grupo": 0,
+          "icono": "caja",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "alumno",
+              "nombre": "Alumno",
+              "tipo": "texto",
+              "ejemplos": [
+                "Valentina Cruz",
+                "Mateo Flores",
+                "Isabella Ruiz",
+                "Santiago Mejía",
+                "Camila Ortiz",
+                "Sebastián Vásquez"
+              ]
+            },
+            {
+              "id": "concepto",
+              "nombre": "Concepto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Mensualidad marzo",
+                "Inscripción",
+                "Material didáctico",
+                "Examen certificación",
+                "Mensualidad abril",
+                "Recargo mora"
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                200,
+                3500
+              ]
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha",
+              "rango": [
+                -15,
+                30
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Pendiente",
+                "Pagado",
+                "Vencido",
+                "Condonado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "ferreteria-materiales",
+      "nombre": "Ferretería y materiales",
+      "para": "Ferreterías y tiendas de materiales: ventas del día, stock bajo y créditos por cobrar",
+      "asignacion": {
+        "rubros": [
+          "comercio"
+        ],
+        "ciclos": [
+          "rapida",
+          "recurrente",
+          "mezcla"
+        ],
+        "objetivos": [
+          "reportes",
+          "seguimientos",
+          "contactos"
+        ],
+        "negocios": [
+          "Ferretería de barrio",
+          "Tienda de materiales de construcción",
+          "Distribuidora de pintura y herramientas",
+          "Depósito de cemento y agregados"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "ventas",
+          "opciones": {
+            "por": "estado",
+            "suma": "total",
+            "hoy": "fecha"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "tablero",
+          "seccion": "ventas",
+          "opciones": {
+            "por": "estado",
+            "titulo": "producto",
+            "detalle": "cliente"
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "inventario",
+          "opciones": {
+            "tipo": "barras",
+            "agrupar": "estado",
+            "valor": "cantidad",
+            "funcion": "suma"
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "creditos",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "cliente",
+            "detalle": "concepto",
+            "dias": 10,
+            "estado": "estado",
+            "excluir": [
+              "Pagado",
+              "Cancelado"
+            ]
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "ventas",
+          "opciones": {
+            "tipo": "linea",
+            "fecha": "fecha",
+            "valor": "total",
+            "funcion": "suma"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "ventas",
+          "titulo": "Ventas",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "producto",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "producto",
+              "nombre": "Producto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Cemento gris 42.5",
+                "Varilla 3/8\"",
+                "Pintura blanca 1 gal",
+                "Taladro percutor",
+                "Tubería PVC 1/2\"",
+                "Block 15x20x40"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "cantidad",
+              "nombre": "Cantidad",
+              "tipo": "numero",
+              "rango": [
+                1,
+                80
+              ]
+            },
+            {
+              "id": "total",
+              "nombre": "Total",
+              "tipo": "dinero",
+              "rango": [
+                50,
+                8500
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Cotizada",
+                "Pagada",
+                "Crédito",
+                "Entregada",
+                "Cancelada"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -120,
+                2
+              ]
+            }
+          ]
+        },
+        {
+          "id": "inventario",
+          "titulo": "Inventario",
+          "grupo": 0,
+          "icono": "caja",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "producto",
+              "nombre": "Producto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Cemento gris 42.5",
+                "Arena de río",
+                "Pintura látex",
+                "Broca concreta",
+                "Cable THW 12",
+                "Llave stillson 14\""
+              ]
+            },
+            {
+              "id": "cantidad",
+              "nombre": "Cantidad",
+              "tipo": "numero",
+              "rango": [
+                0,
+                200
+              ]
+            },
+            {
+              "id": "minimo",
+              "nombre": "Mínimo",
+              "tipo": "numero",
+              "rango": [
+                5,
+                30
+              ]
+            },
+            {
+              "id": "costo",
+              "nombre": "Costo",
+              "tipo": "dinero",
+              "rango": [
+                5,
+                1500
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Disponible",
+                "Bajo",
+                "Agotado",
+                "Pedido"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "creditos",
+          "titulo": "Créditos",
+          "grupo": 0,
+          "icono": "tarjeta",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "cliente",
+            "detalle": "concepto",
+            "dias": 30,
+            "estado": "estado",
+            "excluir": [
+              "Pagado",
+              "Cancelado"
+            ]
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "concepto",
+              "nombre": "Concepto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Material obra casa",
+                "Herramientas taller",
+                "Pintura local",
+                "Cemento remesa",
+                "Pedido constructor",
+                "Compra quincenal"
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                200,
+                12000
+              ]
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha",
+              "rango": [
+                -10,
+                45
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Pendiente",
+                "Parcial",
+                "Vencido",
+                "Pagado",
+                "Cancelado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "firma-contable",
+      "nombre": "Firma contable",
+      "para": "Contadores y firmas contables: clientes, declaraciones y vencimientos fiscales",
+      "asignacion": {
+        "rubros": [
+          "servicios"
+        ],
+        "ciclos": [
+          "recurrente",
+          "cotizacion"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "reportes"
+        ],
+        "negocios": [
+          "Despacho contable",
+          "Contador independiente",
+          "Firma de impuestos",
+          "Asesoría fiscal"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "declaraciones",
+          "opciones": {
+            "por": "estado",
+            "suma": "monto",
+            "vencen": "vence",
+            "dias": 15,
+            "estado": "estado",
+            "excluir": [
+              "Presentada",
+              "Pagada"
+            ]
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "tablero",
+          "seccion": "declaraciones",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "tipo"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "declaraciones",
+          "opciones": {
+            "tipo": "dona"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "obligaciones",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "obligacion",
+            "detalle": "cliente",
+            "dias": 15,
+            "estado": "estado",
+            "excluir": [
+              "Presentada"
+            ]
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "declaraciones",
+          "opciones": {
+            "tipo": "barras"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "empresa",
+              "nombre": "Empresa",
+              "tipo": "texto"
+            },
+            {
+              "id": "regimen",
+              "nombre": "Régimen",
+              "tipo": "texto",
+              "ejemplos": [
+                "Régimen general",
+                "Pequeño contribuyente",
+                "Régimen simplificado",
+                "Persona física",
+                "Asociación",
+                "Régimen de confianza"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Prospecto",
+                "Activo",
+                "En cierre",
+                "Moroso",
+                "Baja"
+              ]
+            },
+            {
+              "id": "honorario",
+              "nombre": "Honorario",
+              "tipo": "dinero",
+              "rango": [
+                400,
+                6000
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha",
+              "rango": [
+                -400,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "declaraciones",
+          "titulo": "Declaraciones",
+          "grupo": 0,
+          "icono": "documento",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "tipo"
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "tipo",
+              "nombre": "Tipo",
+              "tipo": "texto",
+              "ejemplos": [
+                "IVA mensual",
+                "Renta anual",
+                "Retenciones",
+                "Pago provisional",
+                "Informativa",
+                "Impuesto de planilla"
+              ]
+            },
+            {
+              "id": "periodo",
+              "nombre": "Periodo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Enero 2026",
+                "Febrero 2026",
+                "Marzo 2026",
+                "Primer trimestre",
+                "Año 2025",
+                "Abril 2026"
+              ]
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha",
+              "rango": [
+                -15,
+                45
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                500,
+                40000
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por preparar",
+                "En revisión",
+                "Con observaciones",
+                "Presentada",
+                "Pagada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "obligaciones",
+          "titulo": "Vencimientos fiscales",
+          "grupo": 0,
+          "icono": "reloj",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "obligacion",
+            "detalle": "cliente",
+            "dias": 30,
+            "estado": "estado",
+            "excluir": [
+              "Presentada"
+            ]
+          },
+          "campos": [
+            {
+              "id": "obligacion",
+              "nombre": "Obligación",
+              "tipo": "texto",
+              "ejemplos": [
+                "IVA del mes",
+                "Renta anual",
+                "Retenciones",
+                "Seguro social",
+                "Impuesto municipal",
+                "Declaración informativa"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "periodo",
+              "nombre": "Periodo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Enero 2026",
+                "Febrero 2026",
+                "Marzo 2026",
+                "Primer trimestre",
+                "Año 2025",
+                "Abril 2026"
+              ]
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha",
+              "rango": [
+                -10,
+                60
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                300,
+                25000
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Próxima",
+                "En preparación",
+                "Presentada",
+                "Vencida"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "fotografia-eventos",
+      "nombre": "Fotografía y eventos",
+      "para": "Estudios de foto y organizadores: sesiones, eventos próximos y pagos pendientes",
+      "asignacion": {
+        "rubros": [
+          "servicios",
+          "agencia"
+        ],
+        "ciclos": [
+          "cotizacion",
+          "mezcla",
+          "recurrente"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "cotizaciones",
+          "reportes",
+          "equipo"
+        ],
+        "negocios": [
+          "Estudio fotográfico",
+          "Fotógrafo de bodas",
+          "Organizador de eventos",
+          "Productora de video social"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "agenda",
+          "seccion": "eventos",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "evento",
+            "detalle": "cliente",
+            "dias": 21
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "tablero",
+          "seccion": "sesiones",
+          "opciones": {
+            "por": "estado",
+            "titulo": "sesion",
+            "detalle": "cliente"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "kpis",
+          "seccion": "sesiones",
+          "opciones": {
+            "por": "estado",
+            "suma": "anticipo"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "grafico",
+          "seccion": "pagos",
+          "opciones": {
+            "tipo": "linea-area",
+            "fecha": "fecha",
+            "valor": "monto",
+            "funcion": "suma"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "sesiones",
+          "opciones": {
+            "tipo": "pastel",
+            "agrupar": "paquete"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "sesiones",
+          "titulo": "Sesiones",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "sesion",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "sesion",
+              "nombre": "Sesión",
+              "tipo": "texto",
+              "ejemplos": [
+                "Retrato familiar",
+                "Quinceañera",
+                "Producto e-commerce",
+                "Maternity",
+                "Graduación",
+                "Corporativo"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -5,
+                45
+              ]
+            },
+            {
+              "id": "anticipo",
+              "nombre": "Anticipo",
+              "tipo": "dinero",
+              "rango": [
+                100,
+                1500
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Cotizada",
+                "Reservada",
+                "Realizada",
+                "Editando",
+                "Entregada"
+              ]
+            },
+            {
+              "id": "paquete",
+              "nombre": "Paquete",
+              "tipo": "texto",
+              "ejemplos": [
+                "Básico 1h",
+                "Premium 3h",
+                "All day",
+                "Estudio + exteriores",
+                "Con video",
+                "Álbum impreso"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "eventos",
+          "titulo": "Eventos",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "evento",
+            "detalle": "cliente",
+            "dias": 21
+          },
+          "campos": [
+            {
+              "id": "evento",
+              "nombre": "Evento",
+              "tipo": "texto",
+              "ejemplos": [
+                "Boda jardín",
+                "XV años salón",
+                "Lanzamiento marca",
+                "Cumpleaños 50",
+                "Conferencia anual",
+                "Baby shower"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -7,
+                60
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "lugar",
+              "nombre": "Lugar",
+              "tipo": "texto",
+              "ejemplos": [
+                "Salón Vista Real",
+                "Hotel Intercontinental",
+                "Jardín Los Pinos",
+                "Plaza Central",
+                "Casa particular",
+                "Centro de convenciones"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por confirmar",
+                "Confirmado",
+                "En curso",
+                "Cerrado",
+                "Cancelado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pagos",
+          "titulo": "Pagos",
+          "grupo": 0,
+          "icono": "tarjeta",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "concepto",
+              "nombre": "Concepto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Anticipo boda",
+                "Saldo sesión",
+                "Paquete álbum",
+                "Video highlight",
+                "Horas extra",
+                "Retoque adicional"
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                150,
+                8000
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -180,
+                15
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Pendiente",
+                "Parcial",
+                "Pagado",
+                "Vencido"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "gimnasio",
+      "nombre": "Gimnasio",
+      "para": "Gimnasios y estudios fitness: membresías activas, clases grupales y renovaciones",
+      "asignacion": {
+        "rubros": [
+          "servicios",
+          "comercio"
+        ],
+        "ciclos": [
+          "recurrente",
+          "rapida"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "contactos",
+          "reportes",
+          "equipo"
+        ],
+        "negocios": [
+          "Gimnasio de barrio",
+          "Estudio de yoga y pilates",
+          "CrossFit box",
+          "Centro de entrenamiento personal"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "membresias",
+          "opciones": {
+            "por": "estado",
+            "vencen": "vence",
+            "dias": 7,
+            "estado": "estado",
+            "excluir": [
+              "Cancelada"
+            ]
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "membresias",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "nombre",
+            "detalle": "plan",
+            "dias": 14,
+            "estado": "estado",
+            "excluir": [
+              "Cancelada"
+            ]
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "membresias",
+          "opciones": {
+            "tipo": "dona"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "agenda",
+          "seccion": "clases",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "clase",
+            "detalle": "entrenador",
+            "dias": 7
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "membresias",
+          "opciones": {
+            "tipo": "linea-area",
+            "fecha": "alta",
+            "valor": "monto",
+            "funcion": "suma"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "membresias",
+          "titulo": "Membresías",
+          "grupo": 0,
+          "icono": "tarjeta",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "plan",
+              "nombre": "Plan",
+              "tipo": "texto",
+              "ejemplos": [
+                "Mensual básico",
+                "Mensual plus",
+                "Trimestral",
+                "Anual",
+                "Pareja",
+                "Estudiante"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Activa",
+                "Pausada",
+                "Por vencer",
+                "Cancelada"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha",
+              "rango": [
+                -400,
+                0
+              ]
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha",
+              "rango": [
+                -5,
+                45
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                250,
+                4500
+              ]
+            }
+          ]
+        },
+        {
+          "id": "clases",
+          "titulo": "Clases",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "clase",
+            "detalle": "entrenador",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "clase",
+              "nombre": "Clase",
+              "tipo": "texto",
+              "ejemplos": [
+                "Spinning",
+                "Funcional",
+                "Yoga",
+                "Zumba",
+                "CrossFit WOD",
+                "Box"
+              ]
+            },
+            {
+              "id": "entrenador",
+              "nombre": "Entrenador",
+              "tipo": "texto",
+              "ejemplos": [
+                "Carlos M.",
+                "Ana R.",
+                "Luis P.",
+                "María G.",
+                "Diego S.",
+                "Paola V."
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -7,
+                14
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "cupo",
+              "nombre": "Cupo",
+              "tipo": "numero",
+              "rango": [
+                8,
+                30
+              ]
+            },
+            {
+              "id": "inscritos",
+              "nombre": "Inscritos",
+              "tipo": "numero",
+              "rango": [
+                0,
+                30
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Programada",
+                "En curso",
+                "Completa",
+                "Cancelada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "visitas",
+          "titulo": "Visitas y prueba",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "nombre",
+            "detalle": "interes"
+          },
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "interes",
+              "nombre": "Interés",
+              "tipo": "texto",
+              "ejemplos": [
+                "Pérdida de peso",
+                "Ganar masa",
+                "Rehabilitación",
+                "Clases grupales",
+                "Entrenador personal",
+                "Plan familiar"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Visita",
+              "tipo": "fecha",
+              "rango": [
+                -14,
+                7
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Agendada",
+                "Asistió",
+                "Interesado",
+                "Inscrito",
+                "No interesado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "hotel-hostal",
+      "nombre": "Hotel y hostal",
+      "para": "Hoteles y hostales: reservas, habitaciones disponibles y huéspedes en casa",
+      "asignacion": {
+        "rubros": [
+          "servicios",
+          "comercio"
+        ],
+        "ciclos": [
+          "rapida",
+          "recurrente"
+        ],
+        "objetivos": [
+          "contactos",
+          "reportes",
+          "seguimientos"
+        ],
+        "negocios": [
+          "Hotel boutique",
+          "Hostal turístico",
+          "Posada familiar"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "reservas",
+          "opciones": {
+            "por": "estado",
+            "suma": "total",
+            "hoy": "llegada"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "tablero",
+          "seccion": "habitaciones",
+          "opciones": {
+            "por": "estado",
+            "titulo": "numero",
+            "detalle": "tipo"
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "reservas",
+          "opciones": {
+            "fecha": "salida",
+            "titulo": "cliente",
+            "detalle": "habitacion",
+            "dias": 5,
+            "estado": "estado",
+            "excluir": [
+              "Finalizada",
+              "Cancelada"
+            ]
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "reservas",
+          "opciones": {
+            "tipo": "barras",
+            "agrupar": "habitacion",
+            "valor": "total",
+            "funcion": "suma"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "huespedes",
+          "opciones": {
+            "tipo": "pastel",
+            "agrupar": "procedencia"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "reservas",
+          "titulo": "Reservas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "habitacion"
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Huésped",
+              "tipo": "texto"
+            },
+            {
+              "id": "habitacion",
+              "nombre": "Habitación",
+              "tipo": "texto",
+              "ejemplos": [
+                "101",
+                "102",
+                "201 doble",
+                "302 suite",
+                "Dormitorio A",
+                "Dormitorio B"
+              ]
+            },
+            {
+              "id": "llegada",
+              "nombre": "Llegada",
+              "tipo": "fecha",
+              "rango": [
+                -2,
+                30
+              ]
+            },
+            {
+              "id": "salida",
+              "nombre": "Salida",
+              "tipo": "fecha",
+              "rango": [
+                0,
+                14
+              ]
+            },
+            {
+              "id": "total",
+              "nombre": "Total",
+              "tipo": "dinero",
+              "rango": [
+                25,
+                450
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Confirmada",
+                "En casa",
+                "Por salir",
+                "Finalizada",
+                "Cancelada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "habitaciones",
+          "titulo": "Habitaciones",
+          "grupo": 0,
+          "icono": "tabla",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "numero",
+              "nombre": "Número",
+              "tipo": "texto",
+              "ejemplos": [
+                "101",
+                "102",
+                "201",
+                "202",
+                "301",
+                "302"
+              ]
+            },
+            {
+              "id": "tipo",
+              "nombre": "Tipo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Individual",
+                "Doble",
+                "Triple",
+                "Suite",
+                "Dormitorio compartido",
+                "Familiar"
+              ]
+            },
+            {
+              "id": "capacidad",
+              "nombre": "Capacidad",
+              "tipo": "numero",
+              "rango": [
+                1,
+                6
+              ]
+            },
+            {
+              "id": "tarifa",
+              "nombre": "Tarifa noche",
+              "tipo": "dinero",
+              "rango": [
+                18,
+                180
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Disponible",
+                "Ocupada",
+                "Limpieza",
+                "Mantenimiento",
+                "Fuera de servicio"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "huespedes",
+          "titulo": "Huéspedes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "procedencia",
+              "nombre": "Procedencia",
+              "tipo": "texto",
+              "ejemplos": [
+                "Ciudad de Guatemala",
+                "Antigua",
+                "El Salvador",
+                "México",
+                "Europa",
+                "Estados Unidos"
+              ]
+            },
+            {
+              "id": "visitas",
+              "nombre": "Visitas",
+              "tipo": "numero",
+              "rango": [
+                1,
+                20
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "En casa",
+                "Reserva futura",
+                "Frecuente",
+                "Inactivo"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "inmobiliaria",
+      "nombre": "Inmobiliaria",
+      "para": "Agencias inmobiliarias: catálogo de propiedades, visitas agendadas y prospectos en seguimiento",
+      "asignacion": {
+        "rubros": [
+          "inmobiliaria",
+          "servicios"
+        ],
+        "ciclos": [
+          "cotizacion",
+          "mezcla"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "contactos",
+          "cotizaciones",
+          "reportes"
+        ],
+        "negocios": [
+          "Agencia de casas y departamentos",
+          "Corredor de terrenos",
+          "Desarrolladora con inventario",
+          "Rentas vacacionales"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "prospectos",
+          "opciones": {
+            "por": "etapa"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "tablero",
+          "seccion": "propiedades",
+          "opciones": {
+            "por": "estado",
+            "titulo": "propiedad",
+            "detalle": "ubicacion"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "propiedades",
+          "opciones": {
+            "tipo": "embudo"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "agenda",
+          "seccion": "visitas",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "propiedad",
+            "detalle": "prospecto",
+            "dias": 7
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "prospectos",
+          "opciones": {
+            "tipo": "barras",
+            "agrupar": "interes",
+            "valor": "presupuesto",
+            "funcion": "suma"
+          },
+          "ancho": 6,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "propiedades",
+          "titulo": "Propiedades",
+          "grupo": 0,
+          "icono": "tabla",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "propiedad",
+              "nombre": "Propiedad",
+              "tipo": "texto",
+              "ejemplos": [
+                "Casa en Condominio Vista Real",
+                "Depto. 2 hab. Zona 14",
+                "Terreno 500 m² Carretera",
+                "Local comercial Centro",
+                "Bodega industrial",
+                "Casa de playa"
+              ]
+            },
+            {
+              "id": "tipo",
+              "nombre": "Tipo",
+              "tipo": "estado",
+              "opciones": [
+                "Casa",
+                "Departamento",
+                "Terreno",
+                "Local",
+                "Bodega",
+                "Otro"
+              ]
+            },
+            {
+              "id": "operacion",
+              "nombre": "Operación",
+              "tipo": "estado",
+              "opciones": [
+                "Venta",
+                "Renta",
+                "Renta vacacional"
+              ]
+            },
+            {
+              "id": "precio",
+              "nombre": "Precio",
+              "tipo": "dinero",
+              "rango": [
+                350000,
+                4500000
+              ]
+            },
+            {
+              "id": "ubicacion",
+              "nombre": "Ubicación",
+              "tipo": "texto",
+              "ejemplos": [
+                "Zona 10",
+                "Antigua Guatemala",
+                "Fraijanes",
+                "Mixco",
+                "Puerto San José",
+                "Carretera a El Salvador"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Disponible",
+                "Reservada",
+                "En negociación",
+                "Vendida",
+                "Rentada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "visitas",
+          "titulo": "Visitas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "propiedad",
+            "detalle": "prospecto",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "propiedad",
+              "nombre": "Propiedad",
+              "tipo": "texto",
+              "ejemplos": [
+                "Casa en Condominio Vista Real",
+                "Depto. 2 hab. Zona 14",
+                "Terreno 500 m² Carretera",
+                "Local comercial Centro",
+                "Bodega industrial",
+                "Casa de playa"
+              ]
+            },
+            {
+              "id": "prospecto",
+              "nombre": "Prospecto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Elena Torres",
+                "Miguel Sandoval",
+                "Patricia Ríos",
+                "Fernando Aguilar",
+                "Gabriela León",
+                "Ricardo Méndez"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -3,
+                21
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "agente",
+              "nombre": "Agente",
+              "tipo": "texto",
+              "ejemplos": [
+                "Roberto L.",
+                "Sofía M.",
+                "Jorge H.",
+                "Lucía P.",
+                "Andrés C.",
+                "Valeria N."
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Agendada",
+                "Confirmada",
+                "Realizada",
+                "Reprogramada",
+                "Cancelada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "prospectos",
+          "titulo": "Prospectos",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tablero",
+          "opciones": {
+            "por": "etapa",
+            "titulo": "nombre",
+            "detalle": "interes"
+          },
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "interes",
+              "nombre": "Interés",
+              "tipo": "texto",
+              "ejemplos": [
+                "Casa familiar 3 hab.",
+                "Depto. cerca del trabajo",
+                "Terreno para construir",
+                "Local para negocio",
+                "Renta anual",
+                "Inversión"
+              ]
+            },
+            {
+              "id": "presupuesto",
+              "nombre": "Presupuesto",
+              "tipo": "dinero",
+              "rango": [
+                400000,
+                3500000
+              ]
+            },
+            {
+              "id": "etapa",
+              "nombre": "Etapa",
+              "tipo": "estado",
+              "opciones": [
+                "Nuevo",
+                "Contactado",
+                "Visitó",
+                "Negociación",
+                "Cierre",
+                "Perdido"
+              ]
+            },
+            {
+              "id": "proximo",
+              "nombre": "Próximo contacto",
+              "tipo": "fecha",
+              "rango": [
+                -7,
+                30
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "organizacion-sin-lucro",
+      "nombre": "Organización sin fines de lucro",
+      "para": "ONG y fundaciones: donantes, donaciones recibidas y voluntarios activos",
+      "asignacion": {
+        "rubros": [
+          "otro",
+          "servicios"
+        ],
+        "ciclos": [
+          "recurrente",
+          "mezcla"
+        ],
+        "objetivos": [
+          "contactos",
+          "seguimientos",
+          "reportes",
+          "equipo"
+        ],
+        "negocios": [
+          "Fundación social",
+          "Asociación comunitaria",
+          "ONG de apoyo educativo"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "donaciones",
+          "opciones": {
+            "por": "estado",
+            "suma": "monto"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "tablero",
+          "seccion": "donaciones",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "campana"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "donaciones",
+          "opciones": {
+            "tipo": "dona"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "tabla",
+          "seccion": "voluntarios",
+          "opciones": {},
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "donantes",
+          "opciones": {
+            "tipo": "columnas"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "donantes",
+          "titulo": "Donantes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "tipo",
+              "nombre": "Tipo",
+              "tipo": "estado",
+              "opciones": [
+                "Persona",
+                "Empresa",
+                "Institución",
+                "Anónimo recurrente"
+              ]
+            },
+            {
+              "id": "interes",
+              "nombre": "Interés",
+              "tipo": "texto",
+              "ejemplos": [
+                "Educación",
+                "Salud",
+                "Medio ambiente",
+                "Alimentación",
+                "Vivienda",
+                "Niñez"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha",
+              "rango": [
+                -400,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "donaciones",
+          "titulo": "Donaciones",
+          "grupo": 0,
+          "icono": "caja",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "campana"
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Donante",
+              "tipo": "texto"
+            },
+            {
+              "id": "campana",
+              "nombre": "Campaña",
+              "tipo": "texto",
+              "ejemplos": [
+                "Navidad solidaria",
+                "Becas escolares",
+                "Emergencia inundación",
+                "Comedores",
+                "Reforestación",
+                "Apoyo médico"
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                50,
+                25000
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -60,
+                0
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Prometida",
+                "Recibida",
+                "En proceso",
+                "Aplicada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "voluntarios",
+          "titulo": "Voluntarios",
+          "grupo": 0,
+          "icono": "equipo",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "rol",
+              "nombre": "Rol",
+              "tipo": "texto",
+              "ejemplos": [
+                "Logística",
+                "Capacitación",
+                "Recaudación",
+                "Comunicación",
+                "Terreno",
+                "Administración"
+              ]
+            },
+            {
+              "id": "disponibilidad",
+              "nombre": "Disponibilidad",
+              "tipo": "texto",
+              "ejemplos": [
+                "Sábados",
+                "Entre semana",
+                "Fines de semana",
+                "Mañanas",
+                "Tardes",
+                "Eventos puntuales"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Activo",
+                "En pausa",
+                "Nuevo",
+                "Inactivo"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "restaurante",
+      "nombre": "Restaurante",
+      "para": "Restaurantes y cocinas: pedidos a domicilio, reservas de mesa y clientes frecuentes",
+      "asignacion": {
+        "rubros": [
+          "comercio",
+          "servicios"
+        ],
+        "ciclos": [
+          "rapida",
+          "recurrente",
+          "mezcla"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "contactos",
+          "reportes"
+        ],
+        "negocios": [
+          "Restaurante de comida corrida",
+          "Pizzería con delivery",
+          "Cafetería con reservas",
+          "Marisquería a domicilio"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "pedidos",
+          "opciones": {
+            "por": "estado",
+            "suma": "total",
+            "hoy": "entrega"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "tablero",
+          "seccion": "pedidos",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "platillo"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "agenda",
+          "seccion": "reservas",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "cliente",
+            "detalle": "personas",
+            "dias": 7
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "pedidos",
+          "opciones": {
+            "tipo": "barras",
+            "agrupar": "platillo",
+            "valor": "total",
+            "funcion": "suma"
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "clientes",
+          "opciones": {
+            "tipo": "linea-area"
+          },
+          "ancho": 6,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "pedidos",
+          "titulo": "Pedidos a domicilio",
+          "grupo": 0,
+          "icono": "caja",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "cliente",
+            "detalle": "platillo"
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "platillo",
+              "nombre": "Platillo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Pizza familiar",
+                "Enchiladas verdes",
+                "Parrillada mixta",
+                "Pasta alfredo",
+                "Tacos al pastor",
+                "Sopa de mariscos"
+              ]
+            },
+            {
+              "id": "direccion",
+              "nombre": "Dirección",
+              "tipo": "texto",
+              "ejemplos": [
+                "Colonia Centro #12",
+                "Zona 4 torre B",
+                "Residencial Las Flores",
+                "Av. Reforma 45",
+                "Condado Naranjo",
+                "Carretera a El Salvador km 8"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Recibido",
+                "En cocina",
+                "En camino",
+                "Entregado",
+                "Cancelado"
+              ]
+            },
+            {
+              "id": "entrega",
+              "nombre": "Entrega",
+              "tipo": "fecha",
+              "rango": [
+                -1,
+                2
+              ]
+            },
+            {
+              "id": "total",
+              "nombre": "Total",
+              "tipo": "dinero",
+              "rango": [
+                80,
+                850
+              ]
+            }
+          ]
+        },
+        {
+          "id": "reservas",
+          "titulo": "Reservas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "cliente",
+            "detalle": "personas",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                0,
+                21
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "personas",
+              "nombre": "Personas",
+              "tipo": "numero",
+              "rango": [
+                2,
+                12
+              ]
+            },
+            {
+              "id": "mesa",
+              "nombre": "Mesa",
+              "tipo": "texto",
+              "ejemplos": [
+                "Terraza 3",
+                "Salón 5",
+                "Barra 2",
+                "Privado A",
+                "Jardín 1",
+                "Ventana 4"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por confirmar",
+                "Confirmada",
+                "En mesa",
+                "Finalizada",
+                "No llegó"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "preferencia",
+              "nombre": "Preferencia",
+              "tipo": "texto",
+              "ejemplos": [
+                "Sin picante",
+                "Vegetariano",
+                "Sin gluten",
+                "Extra queso",
+                "Para llevar frecuente",
+                "Celebraciones"
+              ]
+            },
+            {
+              "id": "tipo",
+              "nombre": "Tipo",
+              "tipo": "estado",
+              "opciones": [
+                "Nuevo",
+                "Frecuente",
+                "Corporativo"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha",
+              "rango": [
+                -365,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "salon-belleza-barberia",
+      "nombre": "Salón y barbería",
+      "para": "Salones de belleza y barberías: agenda del día, servicios y clientas que regresan",
+      "asignacion": {
+        "rubros": [
+          "servicios",
+          "comercio"
+        ],
+        "ciclos": [
+          "rapida",
+          "recurrente"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "contactos",
+          "reportes",
+          "equipo"
+        ],
+        "negocios": [
+          "Barbería de barrio",
+          "Salón de uñas y pestañas",
+          "Spa urbano con citas",
+          "Peluquería unisex"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "citas",
+          "opciones": {
+            "por": "estado",
+            "hoy": "fecha",
+            "suma": "precio"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "agenda",
+          "seccion": "citas",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "cliente",
+            "detalle": "servicio",
+            "dias": 7
+          },
+          "ancho": 12,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "citas",
+          "opciones": {
+            "tipo": "calendario"
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "servicios",
+          "opciones": {
+            "tipo": "pastel"
+          },
+          "ancho": 6,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "citas",
+          "titulo": "Agenda de citas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "cliente",
+            "detalle": "servicio",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "servicio",
+              "nombre": "Servicio",
+              "tipo": "texto",
+              "ejemplos": [
+                "Corte caballero",
+                "Tinte completo",
+                "Manicure gel",
+                "Barba y contorno",
+                "Alisado",
+                "Peinado evento"
+              ]
+            },
+            {
+              "id": "estilista",
+              "nombre": "Estilista",
+              "tipo": "texto",
+              "ejemplos": [
+                "Ana R.",
+                "Luis M.",
+                "Karla S.",
+                "Diego P.",
+                "María V.",
+                "Roberto L."
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -60,
+                30
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "precio",
+              "nombre": "Precio",
+              "tipo": "dinero",
+              "rango": [
+                80,
+                1200
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por confirmar",
+                "Confirmada",
+                "En silla",
+                "Terminada",
+                "No llegó"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "servicios",
+          "titulo": "Servicios",
+          "grupo": 0,
+          "icono": "tabla",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "servicio",
+              "nombre": "Servicio",
+              "tipo": "texto",
+              "ejemplos": [
+                "Corte dama",
+                "Corte caballero",
+                "Tinte raíz",
+                "Depilación ceja",
+                "Pedicure spa",
+                "Tratamiento keratina"
+              ]
+            },
+            {
+              "id": "categoria",
+              "nombre": "Categoría",
+              "tipo": "estado",
+              "opciones": [
+                "Corte",
+                "Color",
+                "Uñas",
+                "Barba",
+                "Tratamiento",
+                "Evento"
+              ]
+            },
+            {
+              "id": "duracion",
+              "nombre": "Duración (min)",
+              "tipo": "numero",
+              "rango": [
+                15,
+                180
+              ]
+            },
+            {
+              "id": "precio",
+              "nombre": "Precio",
+              "tipo": "dinero",
+              "rango": [
+                60,
+                2500
+              ]
+            },
+            {
+              "id": "activo",
+              "nombre": "Disponible",
+              "tipo": "estado",
+              "opciones": [
+                "Sí",
+                "Temporalmente no",
+                "Retirado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "ultima",
+              "nombre": "Última visita",
+              "tipo": "fecha",
+              "rango": [
+                -180,
+                0
+              ]
+            },
+            {
+              "id": "frecuencia",
+              "nombre": "Frecuencia",
+              "tipo": "estado",
+              "opciones": [
+                "Nueva",
+                "Cada mes",
+                "Esporádica",
+                "Inactiva"
+              ]
+            },
+            {
+              "id": "preferencia",
+              "nombre": "Preferencia",
+              "tipo": "texto",
+              "ejemplos": [
+                "Sin amoníaco",
+                "Solo con Ana",
+                "Corte bajo fade",
+                "Uñas cortas",
+                "Recordar cumpleaños",
+                "Pago transferencia"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "seguros",
+      "nombre": "Seguros",
+      "para": "Agencias y corredores de seguros: pólizas activas, renovaciones y siniestros",
+      "asignacion": {
+        "rubros": [
+          "servicios",
+          "otro"
+        ],
+        "ciclos": [
+          "recurrente",
+          "mezcla",
+          "cotizacion"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "reportes",
+          "contactos",
+          "equipo"
+        ],
+        "negocios": [
+          "Agencia de seguros general",
+          "Corredor de autos y hogar",
+          "Asesor de seguros de vida",
+          "Broker de seguros empresariales"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "vencimientos",
+          "seccion": "renovaciones",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "poliza",
+            "detalle": "cliente",
+            "dias": 45,
+            "estado": "estado",
+            "excluir": [
+              "Renovada",
+              "No renovó"
+            ]
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "tablero",
+          "seccion": "polizas",
+          "opciones": {
+            "por": "estado",
+            "titulo": "poliza",
+            "detalle": "cliente"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "kpis",
+          "seccion": "polizas",
+          "opciones": {
+            "por": "estado",
+            "suma": "prima"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "grafico",
+          "seccion": "polizas",
+          "opciones": {
+            "tipo": "embudo"
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "siniestros",
+          "opciones": {
+            "tipo": "barras",
+            "agrupar": "tipo",
+            "valor": "monto",
+            "funcion": "suma"
+          },
+          "ancho": 6,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "polizas",
+          "titulo": "Pólizas",
+          "grupo": 0,
+          "icono": "documento",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "poliza",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "poliza",
+              "nombre": "Póliza",
+              "tipo": "texto",
+              "ejemplos": [
+                "AUTO-4412",
+                "HOGAR-2210",
+                "VIDA-8891",
+                "SALUD-3340",
+                "EMP-1102",
+                "RC-5567"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "ramo",
+              "nombre": "Ramo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Automóvil",
+                "Hogar",
+                "Vida",
+                "Salud",
+                "Empresarial",
+                "Responsabilidad civil"
+              ]
+            },
+            {
+              "id": "prima",
+              "nombre": "Prima",
+              "tipo": "dinero",
+              "rango": [
+                200,
+                15000
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Cotización",
+                "Activa",
+                "En mora",
+                "Suspendida",
+                "Cancelada"
+              ]
+            },
+            {
+              "id": "inicio",
+              "nombre": "Inicio",
+              "tipo": "fecha",
+              "rango": [
+                -365,
+                30
+              ]
+            }
+          ]
+        },
+        {
+          "id": "renovaciones",
+          "titulo": "Renovaciones",
+          "grupo": 0,
+          "icono": "reloj",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "poliza",
+            "detalle": "cliente",
+            "dias": 45,
+            "estado": "estado",
+            "excluir": [
+              "Renovada",
+              "No renovó"
+            ]
+          },
+          "campos": [
+            {
+              "id": "poliza",
+              "nombre": "Póliza",
+              "tipo": "texto",
+              "ejemplos": [
+                "AUTO-4412",
+                "HOGAR-2210",
+                "VIDA-8891",
+                "SALUD-3340",
+                "EMP-1102",
+                "RC-5567"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha",
+              "rango": [
+                -5,
+                60
+              ]
+            },
+            {
+              "id": "prima",
+              "nombre": "Prima",
+              "tipo": "dinero",
+              "rango": [
+                250,
+                18000
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por avisar",
+                "Contactado",
+                "En negociación",
+                "Renovada",
+                "No renovó"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "siniestros",
+          "titulo": "Siniestros",
+          "grupo": 0,
+          "icono": "actividad",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "poliza",
+              "nombre": "Póliza",
+              "tipo": "texto",
+              "ejemplos": [
+                "AUTO-4412",
+                "HOGAR-2210",
+                "VIDA-8891",
+                "SALUD-3340",
+                "EMP-1102",
+                "RC-5567"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "tipo",
+              "nombre": "Tipo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Choque ligero",
+                "Robo parcial",
+                "Daño por agua",
+                "Incendio",
+                "Gastos médicos",
+                "Responsabilidad tercero"
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                500,
+                50000
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -60,
+                0
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Reportado",
+                "En peritaje",
+                "Aprobado",
+                "Pagado",
+                "Rechazado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "software-saas",
+      "nombre": "Software y SaaS",
+      "para": "Empresas de software: cuentas activas, demos agendadas y renovaciones de suscripción",
+      "asignacion": {
+        "rubros": [
+          "tecnologia",
+          "servicios"
+        ],
+        "ciclos": [
+          "recurrente",
+          "cotizacion",
+          "mezcla"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "reportes",
+          "integraciones",
+          "equipo"
+        ],
+        "negocios": [
+          "Plataforma SaaS B2B",
+          "Software a medida con soporte",
+          "Distribuidor de licencias en la nube"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "tablero",
+          "seccion": "cuentas",
+          "opciones": {
+            "por": "estado",
+            "titulo": "empresa",
+            "detalle": "plan"
+          },
+          "ancho": 8,
+          "alto": 3
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "renovaciones",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "empresa",
+            "detalle": "plan",
+            "dias": 45,
+            "estado": "estado",
+            "excluir": [
+              "Renovada",
+              "Perdida"
+            ]
+          },
+          "ancho": 4,
+          "alto": 3
+        },
+        {
+          "vista": "agenda",
+          "seccion": "demos",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "empresa",
+            "detalle": "producto",
+            "dias": 14
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "demos",
+          "opciones": {
+            "tipo": "embudo"
+          },
+          "ancho": 3,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "cuentas",
+          "opciones": {
+            "tipo": "linea-area",
+            "fecha": "alta"
+          },
+          "ancho": 3,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "cuentas",
+          "titulo": "Cuentas",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "empresa",
+            "detalle": "plan"
+          },
+          "campos": [
+            {
+              "id": "empresa",
+              "nombre": "Empresa",
+              "tipo": "texto"
+            },
+            {
+              "id": "contacto",
+              "nombre": "Contacto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Ana López",
+                "Carlos Méndez",
+                "María Ruiz",
+                "Pedro Soto",
+                "Laura Vega",
+                "Diego Campos"
+              ]
+            },
+            {
+              "id": "plan",
+              "nombre": "Plan",
+              "tipo": "texto",
+              "ejemplos": [
+                "Básico",
+                "Profesional",
+                "Empresa",
+                "Anual",
+                "Mensual",
+                "Enterprise"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Prueba",
+                "Activa",
+                "En riesgo",
+                "Pausada",
+                "Cancelada"
+              ]
+            },
+            {
+              "id": "mrr",
+              "nombre": "MRR",
+              "tipo": "dinero",
+              "rango": [
+                29,
+                2500
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha",
+              "rango": [
+                -330,
+                0
+              ]
+            },
+            {
+              "id": "renovacion",
+              "nombre": "Renovación",
+              "tipo": "fecha",
+              "rango": [
+                -15,
+                90
+              ]
+            }
+          ]
+        },
+        {
+          "id": "demos",
+          "titulo": "Demos",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "empresa",
+            "detalle": "producto",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "empresa",
+              "nombre": "Empresa",
+              "tipo": "texto"
+            },
+            {
+              "id": "producto",
+              "nombre": "Producto",
+              "tipo": "texto",
+              "ejemplos": [
+                "CRM",
+                "Facturación",
+                "Inventario",
+                "Portal clientes",
+                "App móvil",
+                "Módulo reportes"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -7,
+                21
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Agendada",
+                "Realizada",
+                "Reprogramada",
+                "No asistió",
+                "Convertida"
+              ]
+            },
+            {
+              "id": "responsable",
+              "nombre": "Responsable",
+              "tipo": "texto",
+              "ejemplos": [
+                "Ventas norte",
+                "Ventas centro",
+                "Soporte comercial",
+                "Gerencia",
+                "Partner canal",
+                "Inside sales"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "renovaciones",
+          "titulo": "Renovaciones",
+          "grupo": 0,
+          "icono": "reloj",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "vence",
+            "titulo": "empresa",
+            "detalle": "plan",
+            "dias": 45,
+            "estado": "estado",
+            "excluir": [
+              "Renovada",
+              "Perdida"
+            ]
+          },
+          "campos": [
+            {
+              "id": "empresa",
+              "nombre": "Empresa",
+              "tipo": "texto"
+            },
+            {
+              "id": "plan",
+              "nombre": "Plan",
+              "tipo": "texto",
+              "ejemplos": [
+                "Básico anual",
+                "Pro mensual",
+                "Empresa anual",
+                "Add-on usuarios",
+                "Soporte premium",
+                "Paquete completo"
+              ]
+            },
+            {
+              "id": "vence",
+              "nombre": "Vence",
+              "tipo": "fecha",
+              "rango": [
+                -5,
+                60
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                199,
+                18000
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por renovar",
+                "En negociación",
+                "Renovada",
+                "Perdida"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "taller-mecanico",
+      "nombre": "Taller mecánico",
+      "para": "Talleres de autos y motos: órdenes de trabajo, repuestos y clientes que vuelven",
+      "asignacion": {
+        "rubros": [
+          "servicios",
+          "comercio"
+        ],
+        "ciclos": [
+          "cotizacion",
+          "recurrente"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "cotizaciones",
+          "reportes"
+        ],
+        "negocios": [
+          "Taller de autos",
+          "Taller de motos",
+          "Centro de servicio rápido de aceite",
+          "Taller de enderezado y pintura"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "tablero",
+          "seccion": "ordenes",
+          "opciones": {
+            "por": "estado",
+            "titulo": "vehiculo",
+            "detalle": "cliente"
+          },
+          "ancho": 8,
+          "alto": 3
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "ordenes",
+          "opciones": {
+            "fecha": "entrega",
+            "titulo": "vehiculo",
+            "detalle": "servicio",
+            "dias": 7,
+            "estado": "estado",
+            "excluir": [
+              "Entregado"
+            ]
+          },
+          "ancho": 4,
+          "alto": 3
+        },
+        {
+          "vista": "grafico",
+          "seccion": "ordenes",
+          "opciones": {
+            "tipo": "barras",
+            "agrupar": "servicio",
+            "valor": "total",
+            "funcion": "suma"
+          },
+          "ancho": 6,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "clientes",
+          "opciones": {
+            "tipo": "linea-area"
+          },
+          "ancho": 6,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "ordenes",
+          "titulo": "Órdenes de trabajo",
+          "grupo": 0,
+          "icono": "tablero",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "vehiculo",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "vehiculo",
+              "nombre": "Vehículo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Toyota Hilux 2018",
+                "Honda Civic 2015",
+                "Nissan Sentra 2020",
+                "Mazda 3 2017",
+                "Yamaha FZ 2021",
+                "Kia Picanto 2019"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "servicio",
+              "nombre": "Servicio",
+              "tipo": "texto",
+              "ejemplos": [
+                "Cambio de aceite",
+                "Frenos",
+                "Alineación y balanceo",
+                "Diagnóstico",
+                "Cambio de embrague",
+                "Afinamiento"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Recibido",
+                "Diagnóstico",
+                "Esperando repuesto",
+                "En reparación",
+                "Listo",
+                "Entregado"
+              ]
+            },
+            {
+              "id": "entrega",
+              "nombre": "Entrega",
+              "tipo": "fecha",
+              "rango": [
+                -3,
+                10
+              ]
+            },
+            {
+              "id": "total",
+              "nombre": "Total",
+              "tipo": "dinero",
+              "rango": [
+                150,
+                6000
+              ]
+            }
+          ]
+        },
+        {
+          "id": "clientes",
+          "titulo": "Clientes",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "tipo",
+              "nombre": "Tipo",
+              "tipo": "estado",
+              "opciones": [
+                "Nuevo",
+                "Frecuente",
+                "Flota"
+              ]
+            },
+            {
+              "id": "alta",
+              "nombre": "Alta",
+              "tipo": "fecha",
+              "rango": [
+                -330,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "repuestos",
+          "titulo": "Repuestos",
+          "grupo": 0,
+          "icono": "caja",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "repuesto",
+              "nombre": "Repuesto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Filtro de aceite",
+                "Pastillas de freno",
+                "Bujías",
+                "Batería 12V",
+                "Llanta 15\"",
+                "Faja de distribución"
+              ]
+            },
+            {
+              "id": "cantidad",
+              "nombre": "Cantidad",
+              "tipo": "numero",
+              "rango": [
+                0,
+                40
+              ]
+            },
+            {
+              "id": "minimo",
+              "nombre": "Mínimo",
+              "tipo": "numero",
+              "rango": [
+                2,
+                10
+              ]
+            },
+            {
+              "id": "costo",
+              "nombre": "Costo",
+              "tipo": "dinero",
+              "rango": [
+                20,
+                1200
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "tienda-en-linea",
+      "nombre": "Tienda en línea",
+      "para": "Tiendas online y e-commerce: pedidos por preparar, envíos en ruta y devoluciones",
+      "asignacion": {
+        "rubros": [
+          "comercio",
+          "tecnologia"
+        ],
+        "ciclos": [
+          "rapida",
+          "mezcla"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "reportes",
+          "integraciones",
+          "contactos"
+        ],
+        "negocios": [
+          "Tienda de ropa online",
+          "Marketplace de productos locales",
+          "Tienda de electrónicos",
+          "Boutique con envíos a domicilio"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "tablero",
+          "seccion": "pedidos",
+          "opciones": {
+            "por": "estado",
+            "titulo": "pedido",
+            "detalle": "cliente"
+          },
+          "ancho": 8,
+          "alto": 3
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "envios",
+          "opciones": {
+            "fecha": "entrega",
+            "titulo": "pedido",
+            "detalle": "destino",
+            "dias": 7,
+            "estado": "estado",
+            "excluir": [
+              "Entregado",
+              "Devuelto"
+            ]
+          },
+          "ancho": 4,
+          "alto": 3
+        },
+        {
+          "vista": "grafico",
+          "seccion": "pedidos",
+          "opciones": {
+            "tipo": "linea-area",
+            "fecha": "fecha",
+            "valor": "total",
+            "funcion": "suma"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "devoluciones",
+          "opciones": {
+            "tipo": "pastel",
+            "agrupar": "motivo"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "pedidos",
+          "titulo": "Pedidos",
+          "grupo": 0,
+          "icono": "caja",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "pedido",
+            "detalle": "cliente"
+          },
+          "campos": [
+            {
+              "id": "pedido",
+              "nombre": "Pedido",
+              "tipo": "texto",
+              "ejemplos": [
+                "PED-1042",
+                "PED-1043",
+                "PED-1044",
+                "PED-1045",
+                "PED-1046",
+                "PED-1047"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "producto",
+              "nombre": "Producto",
+              "tipo": "texto",
+              "ejemplos": [
+                "Camisa linen M",
+                "Auriculares BT",
+                "Zapatillas 40",
+                "Set cocina 5 pzs",
+                "Mochila urbana",
+                "Lámpara LED"
+              ]
+            },
+            {
+              "id": "total",
+              "nombre": "Total",
+              "tipo": "dinero",
+              "rango": [
+                15,
+                450
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Nuevo",
+                "Pagado",
+                "Preparando",
+                "Enviado",
+                "Entregado",
+                "Cancelado"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -120,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "id": "envios",
+          "titulo": "Envíos",
+          "grupo": 0,
+          "icono": "camion",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "entrega",
+            "titulo": "pedido",
+            "detalle": "destino",
+            "dias": 10,
+            "estado": "estado",
+            "excluir": [
+              "Entregado",
+              "Devuelto"
+            ]
+          },
+          "campos": [
+            {
+              "id": "pedido",
+              "nombre": "Pedido",
+              "tipo": "texto",
+              "ejemplos": [
+                "PED-1042",
+                "PED-1043",
+                "PED-1044",
+                "PED-1045",
+                "PED-1046",
+                "PED-1047"
+              ]
+            },
+            {
+              "id": "destino",
+              "nombre": "Destino",
+              "tipo": "texto",
+              "ejemplos": [
+                "Zona 10",
+                "Mixco",
+                "Antigua",
+                "Quetzaltenango",
+                "Escuintla",
+                "Villa Nueva"
+              ]
+            },
+            {
+              "id": "paqueteria",
+              "nombre": "Paquetería",
+              "tipo": "texto",
+              "ejemplos": [
+                "Cargo Express",
+                "Forza",
+                "Guatex",
+                "Propio",
+                "Uber Connect",
+                "Motorizado"
+              ]
+            },
+            {
+              "id": "entrega",
+              "nombre": "Entrega",
+              "tipo": "fecha",
+              "rango": [
+                -3,
+                12
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Por recoger",
+                "En tránsito",
+                "En ruta",
+                "Entregado",
+                "Devuelto"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "devoluciones",
+          "titulo": "Devoluciones",
+          "grupo": 0,
+          "icono": "reloj",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "pedido",
+              "nombre": "Pedido",
+              "tipo": "texto",
+              "ejemplos": [
+                "PED-1038",
+                "PED-1039",
+                "PED-1040",
+                "PED-1041",
+                "PED-1035",
+                "PED-1036"
+              ]
+            },
+            {
+              "id": "motivo",
+              "nombre": "Motivo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Talla incorrecta",
+                "Producto dañado",
+                "No es lo esperado",
+                "Llegó tarde",
+                "Color distinto",
+                "Defecto de fábrica"
+              ]
+            },
+            {
+              "id": "monto",
+              "nombre": "Monto",
+              "tipo": "dinero",
+              "rango": [
+                15,
+                350
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -20,
+                2
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Solicitada",
+                "En revisión",
+                "Aprobada",
+                "Reembolso",
+                "Rechazada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "transporte-mensajeria",
+      "nombre": "Transporte y mensajería",
+      "para": "Empresas de envíos y mensajería: paquetes en ruta, rutas del día y repartidores",
+      "asignacion": {
+        "rubros": [
+          "servicios",
+          "comercio",
+          "otro"
+        ],
+        "ciclos": [
+          "rapida",
+          "recurrente"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "reportes",
+          "equipo",
+          "integraciones"
+        ],
+        "negocios": [
+          "Mensajería urbana",
+          "Paquetería regional",
+          "Courier express",
+          "Reparto de última milla"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "envios",
+          "opciones": {
+            "por": "estado",
+            "suma": "tarifa",
+            "hoy": "entrega"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "tablero",
+          "seccion": "envios",
+          "opciones": {
+            "por": "estado",
+            "titulo": "guia",
+            "detalle": "destino"
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "rutas",
+          "opciones": {
+            "fecha": "salida",
+            "titulo": "ruta",
+            "detalle": "zona",
+            "dias": 5,
+            "estado": "estado",
+            "excluir": [
+              "Completada",
+              "Cancelada"
+            ]
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "envios",
+          "opciones": {
+            "tipo": "embudo"
+          },
+          "ancho": 3,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "repartidores",
+          "opciones": {
+            "tipo": "barras",
+            "agrupar": "nombre",
+            "valor": "entregas",
+            "funcion": "suma"
+          },
+          "ancho": 3,
+          "alto": 2
+        },
+        {
+          "vista": "tabla",
+          "seccion": "repartidores",
+          "opciones": {},
+          "ancho": 6,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "envios",
+          "titulo": "Envíos",
+          "grupo": 0,
+          "icono": "camion",
+          "vista": "tablero",
+          "opciones": {
+            "por": "estado",
+            "titulo": "guia",
+            "detalle": "destino"
+          },
+          "campos": [
+            {
+              "id": "guia",
+              "nombre": "Guía",
+              "tipo": "texto",
+              "ejemplos": [
+                "GT-88201",
+                "GT-88202",
+                "GT-88203",
+                "GT-88204",
+                "GT-88205",
+                "GT-88206"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Cliente",
+              "tipo": "texto"
+            },
+            {
+              "id": "destino",
+              "nombre": "Destino",
+              "tipo": "texto",
+              "ejemplos": [
+                "Zona 4",
+                "Mixco",
+                "Amatitlán",
+                "Escuintla",
+                "Cobán",
+                "Puerto Barrios"
+              ]
+            },
+            {
+              "id": "tarifa",
+              "nombre": "Tarifa",
+              "tipo": "dinero",
+              "rango": [
+                25,
+                450
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Recibido",
+                "En bodega",
+                "En ruta",
+                "Entregado",
+                "Incidencia"
+              ]
+            },
+            {
+              "id": "entrega",
+              "nombre": "Entrega",
+              "tipo": "fecha",
+              "rango": [
+                -2,
+                8
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rutas",
+          "titulo": "Rutas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "salida",
+            "titulo": "ruta",
+            "detalle": "zona",
+            "dias": 7,
+            "estado": "estado",
+            "excluir": [
+              "Completada",
+              "Cancelada"
+            ]
+          },
+          "campos": [
+            {
+              "id": "ruta",
+              "nombre": "Ruta",
+              "tipo": "texto",
+              "ejemplos": [
+                "Norte AM",
+                "Sur PM",
+                "Centro express",
+                "Occidente",
+                "Interior día 1",
+                "Última milla zona 10"
+              ]
+            },
+            {
+              "id": "zona",
+              "nombre": "Zona",
+              "tipo": "texto",
+              "ejemplos": [
+                "Zona 1-4",
+                "Mixco-San Juan",
+                "Carretera al Pacífico",
+                "Quetzaltenango",
+                "Petén",
+                "Costa Sur"
+              ]
+            },
+            {
+              "id": "salida",
+              "nombre": "Salida",
+              "tipo": "fecha",
+              "rango": [
+                -3,
+                10
+              ]
+            },
+            {
+              "id": "paquetes",
+              "nombre": "Paquetes",
+              "tipo": "numero",
+              "rango": [
+                5,
+                80
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Programada",
+                "En curso",
+                "Completada",
+                "Cancelada"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "repartidores",
+          "titulo": "Repartidores",
+          "grupo": 0,
+          "icono": "equipo",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "nombre",
+              "nombre": "Nombre",
+              "tipo": "texto"
+            },
+            {
+              "id": "telefono",
+              "nombre": "Teléfono",
+              "tipo": "texto"
+            },
+            {
+              "id": "vehiculo",
+              "nombre": "Vehículo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Moto Honda",
+                "Panel Nissan",
+                "Camioneta Hilux",
+                "Bicicleta eléctrica",
+                "Moto TVS",
+                "Van Ford"
+              ]
+            },
+            {
+              "id": "entregas",
+              "nombre": "Entregas hoy",
+              "tipo": "numero",
+              "rango": [
+                0,
+                35
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Disponible",
+                "En ruta",
+                "Descanso",
+                "Fuera de servicio"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    },
+    {
+      "id": "veterinaria",
+      "nombre": "Veterinaria",
+      "para": "Clínicas veterinarias: citas del día, expediente de mascotas y vacunas por vencer",
+      "asignacion": {
+        "rubros": [
+          "salud",
+          "servicios"
+        ],
+        "ciclos": [
+          "rapida",
+          "recurrente"
+        ],
+        "objetivos": [
+          "seguimientos",
+          "contactos",
+          "reportes"
+        ],
+        "negocios": [
+          "Clínica veterinaria",
+          "Consultorio de mascotas",
+          "Hospital veterinario",
+          "Veterinaria de barrio"
+        ]
+      },
+      "inicio": [
+        {
+          "vista": "kpis",
+          "seccion": "citas",
+          "opciones": {
+            "por": "estado",
+            "suma": "costo",
+            "hoy": "fecha"
+          },
+          "ancho": 12
+        },
+        {
+          "vista": "agenda",
+          "seccion": "citas",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "mascota",
+            "detalle": "motivo",
+            "dias": 7
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "citas",
+          "opciones": {
+            "tipo": "calor-hora"
+          },
+          "ancho": 4,
+          "alto": 2
+        },
+        {
+          "vista": "vencimientos",
+          "seccion": "vacunas",
+          "opciones": {
+            "fecha": "proxima",
+            "titulo": "mascota",
+            "detalle": "vacuna",
+            "dias": 21,
+            "estado": "estado",
+            "excluir": [
+              "Aplicada"
+            ]
+          },
+          "ancho": 8,
+          "alto": 2
+        },
+        {
+          "vista": "grafico",
+          "seccion": "vacunas",
+          "opciones": {
+            "tipo": "dona"
+          },
+          "ancho": 4,
+          "alto": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "citas",
+          "titulo": "Citas",
+          "grupo": 0,
+          "icono": "calendario",
+          "vista": "agenda",
+          "opciones": {
+            "fecha": "fecha",
+            "hora": "hora",
+            "titulo": "mascota",
+            "detalle": "motivo",
+            "dias": 14
+          },
+          "campos": [
+            {
+              "id": "mascota",
+              "nombre": "Mascota",
+              "tipo": "texto",
+              "ejemplos": [
+                "Luna (perra)",
+                "Milo (gato)",
+                "Rocky (perro)",
+                "Nala (gata)",
+                "Coco (conejo)",
+                "Kiwi (ave)"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Dueño",
+              "tipo": "texto"
+            },
+            {
+              "id": "motivo",
+              "nombre": "Motivo",
+              "tipo": "texto",
+              "ejemplos": [
+                "Consulta general",
+                "Vacunación",
+                "Desparasitación",
+                "Control",
+                "Herida",
+                "Chequeo dental"
+              ]
+            },
+            {
+              "id": "veterinario",
+              "nombre": "Veterinario",
+              "tipo": "texto",
+              "ejemplos": [
+                "Dra. Paz",
+                "Dr. Morales",
+                "Dra. León",
+                "Dr. Ortiz",
+                "Dra. Rojas",
+                "Dr. Méndez"
+              ]
+            },
+            {
+              "id": "fecha",
+              "nombre": "Fecha",
+              "tipo": "fecha",
+              "rango": [
+                -2,
+                14
+              ]
+            },
+            {
+              "id": "hora",
+              "nombre": "Hora",
+              "tipo": "hora"
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Agendada",
+                "En sala",
+                "En consulta",
+                "Atendida",
+                "No asistió"
+              ]
+            },
+            {
+              "id": "costo",
+              "nombre": "Costo",
+              "tipo": "dinero",
+              "rango": [
+                150,
+                2500
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mascotas",
+          "titulo": "Mascotas",
+          "grupo": 0,
+          "icono": "usuarios",
+          "vista": "tabla",
+          "campos": [
+            {
+              "id": "mascota",
+              "nombre": "Mascota",
+              "tipo": "texto",
+              "ejemplos": [
+                "Luna (perra)",
+                "Milo (gato)",
+                "Rocky (perro)",
+                "Nala (gata)",
+                "Coco (conejo)",
+                "Kiwi (ave)"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Dueño",
+              "tipo": "texto"
+            },
+            {
+              "id": "especie",
+              "nombre": "Especie",
+              "tipo": "texto",
+              "ejemplos": [
+                "Perro",
+                "Gato",
+                "Ave",
+                "Conejo",
+                "Hámster",
+                "Reptil"
+              ]
+            },
+            {
+              "id": "raza",
+              "nombre": "Raza",
+              "tipo": "texto",
+              "ejemplos": [
+                "Mestizo",
+                "Labrador",
+                "Siamés",
+                "Caniche",
+                "Persa",
+                "Criollo"
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Sana",
+                "En observación",
+                "En tratamiento",
+                "Hospitalizada"
+              ]
+            },
+            {
+              "id": "ultima",
+              "nombre": "Última visita",
+              "tipo": "fecha",
+              "rango": [
+                -180,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vacunas",
+          "titulo": "Vacunas",
+          "grupo": 0,
+          "icono": "reloj",
+          "vista": "vencimientos",
+          "opciones": {
+            "fecha": "proxima",
+            "titulo": "mascota",
+            "detalle": "vacuna",
+            "dias": 30,
+            "estado": "estado",
+            "excluir": [
+              "Aplicada"
+            ]
+          },
+          "campos": [
+            {
+              "id": "mascota",
+              "nombre": "Mascota",
+              "tipo": "texto",
+              "ejemplos": [
+                "Luna (perra)",
+                "Milo (gato)",
+                "Rocky (perro)",
+                "Nala (gata)",
+                "Coco (conejo)",
+                "Kiwi (ave)"
+              ]
+            },
+            {
+              "id": "cliente",
+              "nombre": "Dueño",
+              "tipo": "texto"
+            },
+            {
+              "id": "vacuna",
+              "nombre": "Vacuna",
+              "tipo": "texto",
+              "ejemplos": [
+                "Rabia",
+                "Parvovirus",
+                "Moquillo",
+                "Triple felina",
+                "Leptospirosis",
+                "Bordetella"
+              ]
+            },
+            {
+              "id": "proxima",
+              "nombre": "Próxima",
+              "tipo": "fecha",
+              "rango": [
+                -20,
+                50
+              ]
+            },
+            {
+              "id": "estado",
+              "nombre": "Estado",
+              "tipo": "estado",
+              "opciones": [
+                "Programada",
+                "Por vencer",
+                "Vencida",
+                "Aplicada"
+              ]
+            },
+            {
+              "id": "costo",
+              "nombre": "Costo",
+              "tipo": "dinero",
+              "rango": [
+                80,
+                600
+              ]
+            }
+          ]
+        },
+        {
+          "id": "actividad",
+          "titulo": "Historial",
+          "grupo": 1,
+          "icono": "actividad",
+          "vista": "feed"
+        },
+        {
+          "id": "equipo",
+          "titulo": "Equipo",
+          "grupo": 1,
+          "icono": "equipo",
+          "vista": "equipo"
+        },
+        {
+          "id": "automatizaciones",
+          "titulo": "Automatizaciones",
+          "grupo": 2,
+          "icono": "rayo",
+          "vista": "interruptores"
+        }
+      ]
+    }
+  ]
+}
