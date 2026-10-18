@@ -1,6 +1,8 @@
 """Banco F2 (D28): ficha, tarjeta y campos editables por chat, con la IA real. Cada caso verifica el ESTADO final
 (no solo qué herramienta llamó) y que la respuesta no afirme algo que no pasó."""
 import json, time, urllib.request, re
+import os
+CHAT = os.environ.get("BASE", "http://localhost:5190") + os.environ.get("RUTA_CHAT", "/api/lab/chat")  # D61: el mismo banco mide el laboratorio o el CRM
 E = {"vista":"inicio","bloques":[{"uid":"b0","vista":"kpis","seccion":"miembros","opciones":{"por":"estado"},"ancho":12,"alto":1},
  {"uid":"b1","vista":"vencimientos","seccion":"miembros","opciones":{"fecha":"vence","titulo":"nombre","dias":30},"ancho":6,"alto":2},
  {"uid":"b2","vista":"grafica","seccion":"miembros","opciones":{"tipo":"linea","fecha":"alta"},"ancho":6,"alto":2}]}
@@ -28,7 +30,7 @@ CASOS = [  # (texto, verificación del estado final, descripción)
 ok = 0; tiempos = []
 for texto, verif, desc in CASOS:
     a = time.time()
-    d = json.load(urllib.request.urlopen(urllib.request.Request("http://localhost:5190/api/lab/chat", data=json.dumps({"plantilla":"membresias","estado":E,"texto":texto}).encode(), headers={"Content-Type":"application/json"}), timeout=120))
+    d = json.load(urllib.request.urlopen(urllib.request.Request(CHAT, data=json.dumps({"plantilla":"membresias","estado":E,"texto":texto}).encode(), headers={"Content-Type":"application/json"}), timeout=120))
     t = time.time() - a; tiempos.append(t)
     bien = bool(verif(d)); ok += bien
     print(f"{'✓' if bien else '✗'} {t:4.1f}s | {desc} | {texto}\n     hizo: {[c['herramienta'] for c in d['cambios']] or '—'}{'  FALLOS:'+str(d['fallos'])[:200] if d['fallos'] else ''}\n     dijo: {d['respuesta'][:200]}")

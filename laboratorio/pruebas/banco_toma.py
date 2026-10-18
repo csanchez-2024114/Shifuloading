@@ -2,11 +2,13 @@
 Verifica el ESTADO por paso (fase de la ficha, bloques anotados y bloques construidos), no solo lo que dice la IA.
 Uso: python3 laboratorio/pruebas/banco_toma.py [repeticiones=1]"""
 import json, sys, time, urllib.request
+import os
+CHAT = os.environ.get("BASE", "http://localhost:5190") + os.environ.get("RUTA_CHAT", "/api/lab/chat")  # D61: el mismo banco mide el laboratorio o el CRM
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 E = {"vista": "inicio", "bloques": [{"uid": "b0", "vista": "kpis", "seccion": "miembros", "opciones": {"por": "estado"}, "ancho": 12, "alto": 1}]}
 def pide(est, txt, h):
     a = time.time()
-    d = json.load(urllib.request.urlopen(urllib.request.Request("http://localhost:5190/api/lab/chat", data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, "historial": h}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
+    d = json.load(urllib.request.urlopen(urllib.request.Request(CHAT, data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, "historial": h}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
     est2 = d["estado"] if (d["cambios"] or d.get("estadoCambio")) else est
     return est2, h + [{"de": "yo", "t": txt}, {"de": "shifu", "t": d["respuesta"]}], d, time.time() - a
 toma = lambda e: e.get("toma") or {}

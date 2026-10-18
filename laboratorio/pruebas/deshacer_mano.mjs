@@ -16,7 +16,7 @@ let e = { vista: 'miembros', bloques: B }
 e = aMano(e, 'agregar_registro', { seccion: 'miembros', valores: { nombre: 'Rosa Gómez', plan: 'Mensual' } }, 'agregó «Rosa Gómez» a Miembros')
 e = aMano(e, 'editar_registro', { seccion: 'miembros', registro: 'Rosa Gómez', valores: { plan: 'Anual' } }, 'editó «Rosa Gómez» en Miembros')
 e = aMano(e, 'borrar_registro', { seccion: 'miembros', registro: 'Carlos Pérez' }, 'borró «Carlos Pérez» de Miembros')
-const pide = async (estado, texto) => (await fetch('http://localhost:5190/api/lab/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plantilla: 'membresias', estado, texto, muestra }) })).json()
+const pide = async (estado, texto) => (await fetch((process.env.BASE || 'http://localhost:5190') + (process.env.RUTA_CHAT || '/api/lab/chat'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plantilla: 'membresias', estado, texto, muestra }) })).json()
 const CASOS = [
   ['deshaz lo último (el borrado a mano)', 'deshaz eso', (d) => nombres(d.estado).includes('Carlos Pérez') && plan(d.estado, 'Rosa Gómez') === 'Anual'],
   ['deshacer uno anterior por lo que dice', 'deshaz lo que le cambié a Rosa', (d) => plan(d.estado, 'Rosa Gómez') === 'Mensual' && !nombres(d.estado).includes('Carlos Pérez')],
