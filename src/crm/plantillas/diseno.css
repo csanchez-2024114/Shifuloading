@@ -5,3 +5,6 @@
  * toda la tabla). Un margen al final del desplazamiento: lo que se desvanece es ese margen, no un registro. */
 .mc-diseno .pl-tabla::after { content: ''; display: block; height: 28px; }
 @media (max-width: 700px) { .mc-diseno .pl-tabla::after { display: none; } }
+/* Elegir piezas en táctil (D39): la barra «Editar con Shifu» va abajo al centro y el botón del chat (que vive en el body,
+ * encima de la página) la tapaba. Mientras se elige, el chat se aparta; «Editar con Shifu» lo vuelve a abrir. */
+body:has(.pl.eligiendo) .mc-chat { visibility: hidden; }

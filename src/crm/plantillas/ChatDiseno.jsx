@@ -3,7 +3,7 @@
  * - «Quitar ejemplos» mientras el CRM tenga registros de ejemplo (D56: son datos, por eso se confirma);
  * - «Cambios»: los últimos puntos de deshacer (§3/§4: crm.puntos) con «Deshacer» en cada uno y «Deshacer lo último».
  * Todo cambio va por `aplicar` de CrmPage (setCrm + aviso si falla): aquí no se guarda nada por cuenta propia. */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LuChevronDown, LuChevronUp, LuHistory, LuUndo2, LuX } from 'react-icons/lu'
 import { crm as api } from '../../api'
 import { soltarPiezas, usePiezas } from './seleccion'
@@ -68,9 +68,19 @@ export default function ChatDiseno({ crm, aplicar }) {
     if (ok) setHecho(`Quité ${ejemplos} ${ejemplos === 1 ? 'registro' : 'registros'} de ejemplo. Si te arrepientes, lo deshaces en «Cambios».`)
   }
 
+  // El consejo de la cámara del chat (CrmPage) flota justo sobre el campo de texto: con este bloque debajo, se sube su alto.
+  const caja = useRef(null)
+  useEffect(() => {
+    const el = caja.current, panel = el?.closest('.mc-chat-panel')
+    if (!el || !panel || typeof ResizeObserver === 'undefined') return undefined
+    const medir = () => panel.style.setProperty('--mcd-alto', `${el.offsetHeight}px`)
+    const ro = new ResizeObserver(medir); ro.observe(el); medir()
+    return () => { ro.disconnect(); panel.style.removeProperty('--mcd-alto') }
+  }, [])
+
   const ultimo = puntos[0]
   return (
-    <div className="mcd">
+    <div className="mcd" ref={caja}>
       {abierta && puntos.length > 0 && (
         <div className="mcd-lista" role="region" aria-label="Cambios que se pueden deshacer">
           <header><b>Cambios</b><small>Deshacer uno devuelve solo lo que ese cambio tocó.</small>

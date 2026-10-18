@@ -1,6 +1,9 @@
 /* Lo del sistema de diseño dentro del chat de Shifu (ChatDiseno, D61). El chat vive en el body, fuera de .mc/.pl:
  * usa las variables del chat (crm.css / crm-extra.css: --linea, --tx, --tx2, --card, --panel, --verde, --ink). */
 .mcd { position: relative; display: grid; }
+/* El consejo de la cámara (crm-captura.css) va sobre este bloque y no encima; con algo abierto o elegido, se va (como con una foto). */
+.mc-chat-panel .mc-consejo { bottom: calc(70px + var(--mcd-alto, 0px)); }
+.mc-chat-panel:has(.mcd-piezas, .mcd-lista, .mcd-ejemplos.confirmando) .mc-consejo { display: none; }
 .mcd > * { border-top: 1px solid var(--linea); }
 
 .mcd-barra { display: flex; align-items: center; gap: 6px; padding: 6px 10px; }
