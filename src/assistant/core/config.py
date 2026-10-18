@@ -108,6 +108,9 @@ class Settings:
     effect_approval: bool = False
     # S1: cabeceras Host aceptadas (TrustedHostMiddleware). Con AUTH_ENABLED=0 solo pueden ser locales.
     trusted_hosts: tuple[str, ...] = ("localhost", "127.0.0.1")
+    # S5 (parcial): largo máximo de un mensaje en /chat. Alto a propósito para no cortar usos actuales (~12k tokens);
+    # 0 = sin tope. El presupuesto por usuario y el rate limit quedan para después.
+    max_message_chars: int = 50000
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -174,6 +177,7 @@ class Settings:
             memory_require_quote=_bool("MEMORY_REQUIRE_QUOTE"),
             url_filter_always=_bool("URL_FILTER_ALWAYS"),
             effect_approval=_bool("EFFECT_APPROVAL"),
+            max_message_chars=_num("MAX_MESSAGE_CHARS", "50000"),
             trusted_hosts=tuple(h.strip().lower() for h in (os.getenv("TRUSTED_HOSTS") or "localhost,127.0.0.1")
                                 .split(",") if h.strip()),
         )

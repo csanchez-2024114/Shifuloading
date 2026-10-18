@@ -228,6 +228,9 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     @app.post("/chat")
     def chat(body: ChatIn, request: Request):
+        if settings.max_message_chars and len(body.message) > settings.max_message_chars:
+            raise HTTPException(413, tr("http.message_too_long", profile, max=f"{settings.max_message_chars:,}"
+                                        .replace(",", tr("format.thousands_sep", profile))))
         user_id = body.user_id
         if auth:  # el user_id sale de la sesión, nunca del navegador
             user = _changing(request)

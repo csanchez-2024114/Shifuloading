@@ -394,3 +394,23 @@ def test_direcciones_de_loopback():
         assert is_loopback_server(local), local
     for lejano in (("192.168.1.5", 8000), ("0.0.0.0", 8000), ("10.0.0.1", 80), ("2001:db8::1", 80), None):
         assert not is_loopback_server(lejano), lejano
+
+
+# --------------------------------------------------------------------------- S5 parcial: MAX_MESSAGE_CHARS
+
+
+def test_max_message_chars_alto_por_defecto_y_413_al_pasarlo():
+    from fastapi.testclient import TestClient
+
+    from assistant.packs.i18n.es import MESSAGE_TOO_LONG_MSG
+
+    assert _settings().max_message_chars == 50000
+    c = TestClient(_app(max_message_chars=10))
+    r = c.post("/chat", json={"message": "x" * 11, "thread_id": uid("largo")})
+    assert r.status_code == 413 and r.json() == {"detail": MESSAGE_TOO_LONG_MSG.format(max="10")}
+    assert c.post("/chat", json={"message": "x" * 10, "thread_id": uid("largo")}).status_code == 200
+    sin_tope = TestClient(_app(max_message_chars=0))
+    assert sin_tope.post("/chat", json={"message": "x" * 60000, "thread_id": uid("largo")}).status_code == 200
+    grande = TestClient(_app(max_message_chars=50000))
+    r = grande.post("/chat", json={"message": "x" * 50001, "thread_id": uid("largo")})
+    assert r.status_code == 413 and "50.000 caracteres" in r.json()["detail"]  # separador del catálogo

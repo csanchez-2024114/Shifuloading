@@ -37,6 +37,7 @@ REQUIRED_TEXTS = (
     "startup.same_db", "startup.app_db_required",
     "startup.non_local_hosts",    # AUTH_ENABLED=0 con TRUSTED_HOSTS no locales; {hosts}
     "http.not_loopback",          # AUTH_ENABLED=0 y la conexión no llegó por loopback
+    "http.message_too_long",      # MAX_MESSAGE_CHARS; {max}
 )
 
 

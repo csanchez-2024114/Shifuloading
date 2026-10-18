@@ -654,6 +654,7 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "URL_FILTER_ALWAYS": ("url_filter_always", False),
     "EFFECT_APPROVAL": ("effect_approval", False),
     "TRUSTED_HOSTS": ("trusted_hosts", ["localhost", "127.0.0.1"]),
+    "MAX_MESSAGE_CHARS": ("max_message_chars", 50000),
 }
 
 

@@ -16,6 +16,7 @@ NON_LOCAL_HOSTS_MSG = ("Sin cuentas (AUTH_ENABLED=0) la app solo puede atender e
                        "localhost,127.0.0.1.")
 NOT_LOOPBACK_MSG = ("Sin cuentas (AUTH_ENABLED=0) la app solo atiende conexiones locales. Ábrela en "
                     "http://localhost o activa AUTH_ENABLED=1.")
+MESSAGE_TOO_LONG_MSG = "El mensaje es demasiado largo: el máximo es {max} caracteres (MAX_MESSAGE_CHARS)."
 STREAM_ERROR_MSG = "Algo falló al generar la respuesta. Inténtalo de nuevo."
 TURN_TIME_MSG = ("\n\n⚠️ Detuve este mensaje: superó el tiempo máximo de {seconds} s por mensaje (TURN_MAX_SECONDS). "
                  "Lo que alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.")
@@ -112,5 +113,6 @@ TEXTS = {
     "startup.same_db": SAME_DB_MSG,
     "startup.non_local_hosts": NON_LOCAL_HOSTS_MSG,
     "http.not_loopback": NOT_LOOPBACK_MSG,
+    "http.message_too_long": MESSAGE_TOO_LONG_MSG,
     "startup.app_db_required": APP_DB_REQUIRED_MSG,
 }
