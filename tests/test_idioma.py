@@ -24,6 +24,7 @@ def _spanish(text: str) -> list[str]:
 def _model_texts(make_settings) -> dict[str, str]:
     from assistant import agent, memory, tools
     from assistant.bigtool_agent import BIGTOOL_PROMPT, build_registry
+    from assistant.profiles.default import tools as default_tools
 
     s = make_settings(enable_hitl_demo=True, bigtool_demo_tools=True)
     texts = {
@@ -39,7 +40,7 @@ def _model_texts(make_settings) -> dict[str, str]:
                                        memory.revise(InMemoryStore(), "u", "k", "x", "", [])]),
         "calculator errors": " | ".join(tools.calculadora.invoke({"expression": e}) for e in ("1/0", "2+", "__import__('os')")),
         "current_datetime error": tools.fecha_hora.invoke({"time_zone": "Nowhere/Nada"}),
-        "send_simulated_email": tools.enviar_email_simulado.invoke({"recipient": "a@b.c", "subject": "x", "body": "y"}),
+        "send_simulated_email": default_tools.enviar_email_simulado.invoke({"recipient": "a@b.c", "subject": "x", "body": "y"}),
     }
     llm = fake_llm("x")
     todas = tools.build_tools(llm, s, search_fn=FakeSearch()) + list(build_registry(llm, s, InMemoryStore()).values())

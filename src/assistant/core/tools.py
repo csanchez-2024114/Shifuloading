@@ -19,7 +19,7 @@ from langchain_openai import ChatOpenAI
 
 from assistant.core import memory
 from assistant.core import citations
-from assistant.core.agent import OLD_TOOL_NAMES, Context
+from assistant.core.agent import Context
 from assistant.core.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -227,17 +227,6 @@ def make_actualizar_recuerdo(verifier=None) -> BaseTool:
                              thread_id=thread_id, verifier=verifier)
 
     return actualizar_recuerdo
-
-
-# --------------------------------------------------------------------------- HITL demo
-
-
-@tool("send_simulated_email")
-def enviar_email_simulado(recipient: str, subject: str, body: str) -> str:
-    """Sends an email (SIMULATED: nothing is actually sent). Requires human approval
-    before it runs.
-    """
-    return f"Simulated email sent to {recipient} with subject {subject!r} ({len(body)} characters)."
 
 
 # --------------------------------------------------------------------------- búsqueda web
@@ -536,6 +525,9 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
 def earlier_research(messages, tool_name: str = "deep_research") -> str | None:
     """Resultado de una investigación anterior del hilo si el mensaje actual es un seguimiento breve que no pide
     investigar de nuevo; None en otro caso. Evita relanzar la investigación (en la prueba larga, H13 gastó 240k)."""
+    from assistant.core.profile import active_profile
+
+    legacy = active_profile().legacy_tool_names  # hilos viejos: nombres antiguos de las herramientas
     messages = messages or []
     idx = max((i for i, m in enumerate(messages) if getattr(m, "type", None) == "human"
                and (m.additional_kwargs or {}).get("lc_source") != memory.SUMMARY_SOURCE), default=None)
@@ -545,7 +537,7 @@ def earlier_research(messages, tool_name: str = "deep_research") -> str | None:
     if len(text) > FOLLOW_UP_MAX_CHARS or _RESEARCH_AGAIN.search(text):
         return None
     previous = [m for m in messages[:idx] if getattr(m, "type", None) == "tool"
-                and OLD_TOOL_NAMES.get(m.name, m.name) == tool_name  # hilos viejos: investigador_profundo
+                and legacy.get(m.name, m.name) == tool_name
                 and not str(m.content).startswith("Not run:")]
     return str(previous[-1].content)[:_RAW_FINDINGS_CHARS] if previous else None
 

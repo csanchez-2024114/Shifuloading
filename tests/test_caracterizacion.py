@@ -56,6 +56,14 @@ def _ser(value):
     return None
 
 
+# Constantes que el refactor núcleo/perfiles sacó de su módulo: se leen de su nuevo hogar con la MISMA clave, así el
+# JSON de la huella no cambia y el valor debe ser idéntico. (Las claves de un módulo que solo la importaba también.)
+MOVED_CONSTANTS = {
+    "agent.OLD_TOOL_NAMES": "assistant.profiles.default.policies",
+    "tools.OLD_TOOL_NAMES": "assistant.profiles.default.policies",
+    "bigtool_agent.OLD_TOOL_NAMES": "assistant.profiles.default.policies",
+}
+
 CONST_MODULES = ("agent", "tools", "memory", "context", "citations", "auth", "bigtool_agent", "extra_tools",
                  "tool_spec", "config", "appdata", "server")
 
@@ -75,6 +83,9 @@ def _constants() -> dict:
             s = _ser(value)
             if s is not None:
                 out[f"{name}.{attr}"] = s
+    for key, module in MOVED_CONSTANTS.items():
+        assert key not in out, f"{key} sigue en su módulo viejo: quítalo de MOVED_CONSTANTS"
+        out[key] = _ser(getattr(importlib.import_module(module), key.split(".", 1)[1]))
     return out
 
 
@@ -517,7 +528,7 @@ def test_fecha_hora_con_zonas():
 
 
 def test_email_simulado_no_envia_nada():
-    from assistant.tools import enviar_email_simulado
+    from assistant.profiles.default.tools import enviar_email_simulado
 
     assert enviar_email_simulado.invoke({"recipient": "a@b.com", "subject": "Hola", "body": "12345"}) == (
         "Simulated email sent to a@b.com with subject 'Hola' (5 characters).")

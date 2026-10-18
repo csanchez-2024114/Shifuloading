@@ -105,7 +105,7 @@ def test_la_interfaz_muestra_etiquetas_en_espanol_para_nombres_viejos_y_nuevos()
 
 
 def test_todas_las_herramientas_se_llaman_en_ingles(make_settings):
-    from assistant.agent import OLD_TOOL_NAMES
+    from assistant.profiles.default.policies import OLD_TOOL_NAMES
     from assistant.bigtool_agent import build_registry
     from assistant.tools import build_tools
     from conftest import fake_llm

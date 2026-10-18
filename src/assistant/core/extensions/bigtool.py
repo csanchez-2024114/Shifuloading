@@ -35,8 +35,8 @@ from langgraph_bigtool import create_agent as create_bigtool_agent
 from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 
 from assistant.core import memory
-from assistant.core.agent import (OLD_TOOL_NAMES, history_landing, landing_due, landing_note, mark_no_tools,
-                             rename_old_tools, system_prompt_text)
+from assistant.core.agent import (history_landing, landing_due, landing_note, mark_no_tools, rename_old_tools,
+                                  system_prompt_text)
 from assistant.core.config import Settings
 from assistant.core.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.core.tools import (
@@ -256,8 +256,12 @@ class RegistroTolerante(dict):
     (herramienta renombrada) se resuelve a la actual; uno que ya no existe da None y PromptedModel lo descarta, en vez
     de un KeyError que rompería el hilo."""
 
+    def __init__(self, *args, legacy=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.legacy = legacy or {}  # nombres antiguos del perfil: antiguo -> actual
+
     def __missing__(self, key):
-        return self.get(OLD_TOOL_NAMES.get(key))
+        return self.get(self.legacy.get(key))
 
 
 class PromptedModel:
@@ -284,7 +288,7 @@ class PromptedModel:
         landing = self.model.bind_tools(list(unicas.values()), **{**kwargs, "tool_choice": "none"})
 
         def prompt(msgs):
-            msgs = rename_old_tools(msgs)
+            msgs = rename_old_tools(msgs, None if self.profile is None else self.profile.legacy_tool_names)
             system = system_prompt_text(self.settings, self.profile) + BIGTOOL_PROMPT
             counter = landing_due(self.cap, [SystemMessage(system), *msgs])
             note = f"\n\n{landing_note(counter, self.cap)}" if counter else ""
@@ -304,9 +308,12 @@ class PromptedModel:
 
 def build_bigtool_agent(model, settings: Settings, checkpointer=None, memories_store=None,
                         embeddings=None, search_fn: Callable = web_search, checker=None, profile=None):
+    from assistant.core.profile import active_profile
+
+    profile = profile or active_profile()
     registry = build_registry(model, settings, memories_store, search_fn, checkpointer=checkpointer, checker=checker,
                               profile=profile)
     index = build_tool_index(registry, settings, embeddings)
-    builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap, settings, profile), RegistroTolerante(registry), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
+    builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap, settings, profile), RegistroTolerante(registry, legacy=profile.legacy_tool_names), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
                                    retrieve_tools_function=make_retrieve_tools(registry))
     return builder.compile(checkpointer=checkpointer, store=index)

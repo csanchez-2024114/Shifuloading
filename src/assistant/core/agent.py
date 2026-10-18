@@ -248,35 +248,32 @@ def _continue_cut(request):
                             system_message=SystemMessage(content=f"{system}\n\n{CONTINUE_NOTE}".strip()))
 
 
-# Nombres anteriores (en español) de las herramientas. Los hilos guardados antes del cambio los tienen en su
-# historial (llamadas y resultados) y bigtool en selected_tool_ids.
-OLD_TOOL_NAMES = {"buscar_web": "web_search", "calculadora": "calculator", "fecha_hora": "current_datetime",
-                  "guardar_recuerdo": "save_memory", "buscar_recuerdos": "search_memories",
-                  "actualizar_recuerdo": "update_memory", "investigador_profundo": "deep_research",
-                  "enviar_email_simulado": "send_simulated_email"}
-
-
-def rename_old_tools(messages) -> list:
-    """Copia de los mensajes con los nombres antiguos de herramientas cambiados por los actuales, para que el modelo
-    no vea llamadas a herramientas que ya no existen. No toca el historial guardado."""
+def rename_old_tools(messages, legacy=None) -> list:
+    """Copia de los mensajes con los nombres antiguos de herramientas (`legacy`: antiguo -> actual; None = los del
+    perfil activo) cambiados por los actuales, para que el modelo no vea llamadas a herramientas que ya no existen.
+    No toca el historial guardado."""
+    names = active_profile().legacy_tool_names if legacy is None else legacy
     out = []
     for m in messages:
-        if isinstance(m, AIMessage) and any(c.get("name") in OLD_TOOL_NAMES for c in m.tool_calls):
-            calls = [{**c, "name": OLD_TOOL_NAMES.get(c["name"], c["name"])} for c in m.tool_calls]
+        if isinstance(m, AIMessage) and any(c.get("name") in names for c in m.tool_calls):
+            calls = [{**c, "name": names.get(c["name"], c["name"])} for c in m.tool_calls]
             content = m.content
             if isinstance(content, list):  # Responses API: también hay bloques function_call con el nombre
-                content = [{**b, "name": OLD_TOOL_NAMES[b["name"]]} if isinstance(b, dict) and b.get("name")
-                           in OLD_TOOL_NAMES else b for b in content]
+                content = [{**b, "name": names[b["name"]]} if isinstance(b, dict) and b.get("name")
+                           in names else b for b in content]
             m = m.model_copy(update={"tool_calls": calls, "content": content})
-        elif isinstance(m, ToolMessage) and m.name in OLD_TOOL_NAMES:
-            m = m.model_copy(update={"name": OLD_TOOL_NAMES[m.name]})
+        elif isinstance(m, ToolMessage) and m.name in names:
+            m = m.model_copy(update={"name": names[m.name]})
         out.append(m)
     return out
 
 
-@wrap_model_call
-def _nombres_antiguos(request, handler):
-    return handler(request.override(messages=rename_old_tools(request.messages)))
+def _make_nombres_antiguos(legacy):
+    @wrap_model_call
+    def _nombres_antiguos(request, handler):
+        return handler(request.override(messages=rename_old_tools(request.messages, legacy)))
+
+    return _nombres_antiguos
 
 
 @wrap_model_call
@@ -686,7 +683,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
     middleware = [
         MedidorContexto(base, prune_age),  # primero: sus after_model/after_agent corren al final
         _make_system_prompt(settings, profile),
-        _nombres_antiguos,
+        _make_nombres_antiguos(profile.legacy_tool_names),
         _razonamiento,
         LimiteLlamadas(),
         AterrizajeSuave(settings.turn_token_cap),
