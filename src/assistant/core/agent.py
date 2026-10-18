@@ -38,7 +38,7 @@ from assistant.core.i18n import tr
 from assistant.core.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
                                prune_tool_results)
 from assistant.core.memory import DUPLICATE_PREFIX, SUMMARY_SOURCE, memory_policy
-from assistant.core.profile import active_profile
+from assistant.core.profile import active_profile, current_profile, profile_scope
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class Context:
 def necesita_clasificador(mensaje: str, intents=None) -> bool:
     """False solo para mensajes cortos sin señales de trabajo ("hola", "gracias"). Las señales (dígitos, operadores,
     código, verbos de trabajo) son reglas del perfil (`intents`; None = las del perfil activo)."""
-    rules = intents or active_profile().intents
+    rules = intents or current_profile().intents
     texto = _strip_accents(mensaje.strip().lower())
     if len(texto) > rules.short_message_chars or rules.classifier_signal.search(texto):
         return True
@@ -82,14 +82,15 @@ def _strip_accents(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
 
 
-def elegir_esfuerzo(settings: Settings, mensaje: str, elegido: str | None, classify) -> tuple[str | None, str]:
+def elegir_esfuerzo(settings: Settings, mensaje: str, elegido: str | None, classify,
+                    intents=None) -> tuple[str | None, str]:
     """(esfuerzo, origen). origen: "manual" (selector de la UI), "auto" (clasificador) o "regla" (mensaje corto).
     Con MODEL_CALL_LIMIT>0 no hay esfuerzo (tope fijo)."""
     if settings.model_call_limit > 0:
         return None, "fijo"
     if elegido in ESFUERZOS:
         return elegido, "manual"
-    if not necesita_clasificador(mensaje):
+    if not necesita_clasificador(mensaje, intents):
         return ESFUERZO_SIN_CLASIFICAR, "regla"
     return classify(settings, mensaje), "auto"
 
@@ -225,7 +226,7 @@ def _continue_cut(request):
     aviso (en español, para el usuario) y CONTINUE_NOTE. Prueba real: rehízo el script entero en vez de continuarlo."""
     msgs = request.messages
     if (len(msgs) < 2 or msgs[-1].type != "human"
-            or not active_profile().intents.continue_request.match(_content_text(msgs[-1]))):
+            or not current_profile().intents.continue_request.match(_content_text(msgs[-1]))):
         return request
     i = next((k for k in range(len(msgs) - 2, -1, -1) if isinstance(msgs[k], AIMessage)), None)
     if i is None or not msgs[i].additional_kwargs.get("cut"):
@@ -242,7 +243,7 @@ def rename_old_tools(messages, legacy=None) -> list:
     """Copia de los mensajes con los nombres antiguos de herramientas (`legacy`: antiguo -> actual; None = los del
     perfil activo) cambiados por los actuales, para que el modelo no vea llamadas a herramientas que ya no existen.
     No toca el historial guardado."""
-    names = active_profile().legacy_tool_names if legacy is None else legacy
+    names = current_profile().legacy_tool_names if legacy is None else legacy
     out = []
     for m in messages:
         if isinstance(m, AIMessage) and any(c.get("name") in names for c in m.tool_calls):
@@ -528,12 +529,13 @@ def compact_thread(agent, thread_id: str, settings: Settings) -> dict | None:
     """Compactación manual ("Compactar ahora"). Devuelve el registro, o None si no había nada que resumir.
     ValueError: el agente no compacta (bigtool). RuntimeError: el hilo tiene un turno en pausa (aprobación)."""
     compactor = getattr(agent, "compactor", None)
+    profile = getattr(agent, "profile", None)
     if compactor is None:
-        raise ValueError(tr("agent.compact_unsupported"))
+        raise ValueError(tr("agent.compact_unsupported", profile))
     config = run_config(thread_id, settings)
     state = agent.get_state(config)
     if state.interrupts:
-        raise RuntimeError(tr("agent.compact_pending"))
+        raise RuntimeError(tr("agent.compact_pending", profile))
     values = state.values or {}
     messages = values.get("messages") or []
     human = next((m for m in reversed(messages) if m.type == "human"
@@ -554,7 +556,8 @@ def _on_tool_error(exc: Exception, request) -> str:
 
 
 def system_prompt_text(settings: Settings | None = None, profile=None) -> str:
-    """Prompt del perfil (el activo si no se pasa) + su política de memoria + fecha local."""
+    """Prompt del perfil (el del turno o el activo si no se pasa) + su política de memoria + fecha local."""
+    profile = profile or current_profile()
     # Fecha local en cada llamada: el modelo no la sabe y la búsqueda web va en UTC.
     now = datetime.now().astimezone()
     policy = memory_policy(settings.memory_save_policy if settings else "strict",
@@ -588,7 +591,7 @@ def evidence_tools(profile=None) -> tuple[str, ...]:
     """Herramientas cuyo resultado es evidencia para ANSWER_VERIFY: las marcadas evidence=True en el perfil."""
     from assistant.core.profile import active_profile
 
-    return tuple(name for name, policy in (profile or active_profile()).tool_policies.items() if policy.evidence)
+    return tuple(name for name, policy in (profile or current_profile()).tool_policies.items() if policy.evidence)
 
 
 _EVIDENCE_CHARS = 12000
@@ -1056,8 +1059,15 @@ def _close_aborted_turn(agent, config, note: str) -> None:
 
 def stream_events(agent, payload, thread_id: str, user_id: str, settings: Settings,
                   esfuerzo: str | None = None, origen: str = "auto", observer=None) -> Iterator[dict]:
-    """Eventos SSE de un turno. `observer` (TURN_METRICS): recibe la fila de métricas del turno al terminar, sin
-    contenido de mensajes; sin él, los eventos son exactamente los mismos."""
+    """Eventos SSE de un turno, con el perfil del agente como perfil del turno (textos, reglas, léxico, tarjeta).
+    `observer` (TURN_METRICS): recibe la fila de métricas del turno al terminar, sin contenido de mensajes; sin él,
+    los eventos son exactamente los mismos."""
+    with profile_scope(getattr(agent, "profile", None)):
+        yield from _observed(agent, payload, thread_id, user_id, settings, esfuerzo, origen, observer)
+
+
+def _observed(agent, payload, thread_id: str, user_id: str, settings: Settings, esfuerzo, origen,
+              observer) -> Iterator[dict]:
     events = _stream_events(agent, payload, thread_id, user_id, settings, esfuerzo, origen)
     if observer is None:
         yield from events

@@ -558,9 +558,9 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
 def earlier_research(messages, tool_name: str = "deep_research") -> str | None:
     """Resultado de una investigación anterior del hilo si el mensaje actual es un seguimiento breve que no pide
     investigar de nuevo; None en otro caso. Evita relanzar la investigación (en la prueba larga, H13 gastó 240k)."""
-    from assistant.core.profile import active_profile
+    from assistant.core.profile import current_profile
 
-    profile = active_profile()
+    profile = current_profile()
     legacy = profile.legacy_tool_names  # hilos viejos: nombres antiguos de las herramientas
     rules = profile.intents  # qué es un seguimiento breve y qué pide investigar de nuevo
     messages = messages or []
@@ -590,9 +590,9 @@ def research_needs_confirmation(messages) -> bool:
                   and (m.additional_kwargs or {}).get("lc_source") != memory.SUMMARY_SOURCE), None)
     text = memory._normalize(human.text if human is not None and isinstance(human.content, str) else str(
         getattr(human, "content", "")))
-    from assistant.core.profile import active_profile
+    from assistant.core.profile import current_profile
 
-    explicit = active_profile().intents.explicit_research  # el usuario pide investigar en ESTE mensaje
+    explicit = current_profile().intents.explicit_research  # el usuario pide investigar en ESTE mensaje
     return not explicit.search(text) and earlier_research(messages) is None
 
 

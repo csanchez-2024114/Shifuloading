@@ -6,7 +6,9 @@ Este refactor solo reorganiza. Todo lo de aquí abajo es un **cambio de comporta
 
 bigtool ya tiene `read_file` y `search_in_file`, la regla de archivos en `PromptedModel` y la cita literal obligatoria en hilos con adjuntos (`test_archivos_bigtool.py`). Se quitó el bloqueo `FILES_ENABLED`+`USE_BIGTOOL`. Corrección de lo anotado en la Fase 2: bigtool no "recibía las herramientas de archivos sin la regla"; no las recibía en absoluto, porque su registro no parte de `base_tools`.
 
-## Tarea siguiente: que todo lea el perfil pasado a `build_agent`, no solo `AGENT_PROFILE`
+## Hecho en la Fase 4: que todo lea el perfil pasado a `build_agent`, no solo `AGENT_PROFILE`
+
+Resuelto con un perfil del turno (`profile.current_profile()` / `profile_scope`), que `stream_events` fija con el perfil del agente; test de dos perfiles en el mismo proceso en `tests/test_dos_perfiles.py`. Lo de abajo queda como registro de lo que leía el perfil activo.
 
 Hoy, pasar `profile=` a `build_agent`, `build_tools`, `create_app` o `system_prompt_text` decide el prompt, las herramientas, las aprobaciones, las herramientas-evidencia y los nombres antiguos del middleware. Pero hay piezas que leen siempre el perfil **activo** (`active_profile()`, es decir, `AGENT_PROFILE`), aunque se haya pasado otro:
 - **reglas de intención:**

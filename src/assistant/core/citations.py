@@ -105,9 +105,9 @@ def keep_supported(text: str, evidence: str, strict_query: bool = False) -> tupl
 
 def drop_sources_section(text: str) -> str:
     """Quita las secciones de fuentes: desde su encabezado hasta el siguiente encabezado markdown o el final."""
-    from assistant.core.profile import active_profile
+    from assistant.core.profile import current_profile
 
-    heading = active_profile().intents.sources_heading  # "## Fuentes", "**Sources:**"... (regla del perfil)
+    heading = current_profile().intents.sources_heading  # "## Fuentes", "**Sources:**"... (regla del perfil)
     while m := heading.search(text):
         nxt = _HEADING.search(text, m.end())
         text = text[:m.start()] + (text[nxt.start():] if nxt else "")

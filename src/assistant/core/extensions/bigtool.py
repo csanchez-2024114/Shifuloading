@@ -161,7 +161,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
             return FOLLOW_UP_MSG.format(previous=previous)
         if research_needs_confirmation(messages):  # bigtool no tiene middleware: misma tarjeta, vía interrupt()
             answer = interrupt({"action_requests": [{"name": "deep_research", "args": {"task": task},
-                                                     "description": tr("tools.deep_research_confirm")}],
+                                                     "description": tr("tools.deep_research_confirm", profile)}],
                                 "review_configs": [{"action_name": "deep_research",
                                                     "allowed_decisions": ["approve", "reject"]}]})
             decision = ((answer or {}).get("decisions") or [{}])[0] if isinstance(answer, dict) else {}
@@ -300,4 +300,6 @@ def build_bigtool_agent(model, settings: Settings, checkpointer=None, memories_s
     index = build_tool_index(registry, settings, embeddings)
     builder = create_bigtool_agent(PromptedModel(model, settings.turn_token_cap, settings, profile), RegistroTolerante(registry, legacy=profile.legacy_tool_names), limit=RETRIEVE_LIMIT, namespace_prefix=NAMESPACE,
                                    retrieve_tools_function=make_retrieve_tools(registry))
-    return builder.compile(checkpointer=checkpointer, store=index)
+    agent = builder.compile(checkpointer=checkpointer, store=index)
+    agent.profile = profile  # stream_events lo fija como perfil del turno
+    return agent

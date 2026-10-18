@@ -70,7 +70,7 @@ class TextCatalog(Mapping):
 
 def tr(key: str, profile=None, **values) -> str:
     """Texto `key` del perfil (el activo si no se pasa), con `values` aplicados con str.format si se dan."""
-    from assistant.core.profile import active_profile  # perezoso: profile importa este módulo
+    from assistant.core.profile import current_profile  # perezoso: profile importa este módulo
 
-    text = (profile or active_profile()).texts[key]
+    text = (profile or current_profile()).texts[key]
     return text.format(**values) if values else text

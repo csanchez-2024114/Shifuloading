@@ -259,7 +259,8 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         payload = {"messages": [{"role": "user", "content": body.message}]}
         if settings.files_enabled and body.file_ids:
             payload = {"messages": [_message_with_files(body, user_id)]}
-        esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify)
+        esfuerzo, origen = agent_mod.elegir_esfuerzo(settings, body.message, body.effort, classify,
+                                                     (getattr(agent, "profile", None) or profile).intents)
         return sse_response(sse(payload, body.thread_id, user_id, esfuerzo, origen))
 
     @app.post("/resume")

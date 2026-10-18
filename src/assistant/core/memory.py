@@ -99,9 +99,9 @@ def memory_namespace(user_id: str) -> tuple[str, str, str]:
 
 def _lexicon():
     """Léxico de la memoria del perfil activo (sujeto, palabras vacías, temas, raíz)."""
-    from assistant.core.profile import active_profile
+    from assistant.core.profile import current_profile
 
-    return active_profile().lexicon
+    return current_profile().lexicon
 
 
 def neutral_fact(text: str) -> str:
