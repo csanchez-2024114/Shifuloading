@@ -2,7 +2,7 @@
 - assistant.core no importa assistant.packs ni assistant.profiles (el núcleo carga el perfil por nombre, en
   core/profile.py, sin importarlo);
 - assistant.packs no importa assistant.profiles;
-- un perfil no importa otro perfil.
+- un perfil no importa otro perfil (tampoco los perfiles de prueba de tests/profiles/, cargados por ruta con puntos).
 Cuenta todos los imports: los de nivel de módulo, los de dentro de funciones, los relativos y
 importlib.import_module/__import__ con un literal; cada nombre se resuelve por los alias de _compat (un nombre viejo
 como assistant.extra_tools es en realidad assistant.packs.tools.utilities). Sin red ni Mongo."""
@@ -12,14 +12,15 @@ from pathlib import Path
 from assistant import _compat
 
 SRC = Path(__file__).resolve().parents[1] / "src"
+TEST_PROFILES = Path(__file__).resolve().parent / "profiles"  # paquete `profiles` (tests/ va en sys.path)
 PKG = SRC / "assistant"
 WHITELIST: set[tuple[str, str]] = set()  # (archivo relativo a src/, nombre real) permitidos; vacío = modo estricto
 # el único sitio del núcleo que nombra a los perfiles: un prefijo para cargarlos por nombre, no un import
 PROFILE_LOADER = "assistant/core/profile.py"
 
 
-def _module_name(path: Path) -> str:
-    parts = list(path.relative_to(SRC).with_suffix("").parts)
+def _module_name(path: Path, root: Path = SRC) -> str:
+    parts = list(path.relative_to(root).with_suffix("").parts)
     return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
 
 
@@ -52,11 +53,11 @@ def imported_names(source: str, module: str, is_package: bool = False) -> list[t
     return found
 
 
-def _violations(layer: str, forbidden) -> list[str]:
+def _violations(layer: str, forbidden, base: Path = PKG, root: Path = SRC) -> list[str]:
     out = []
-    for path in sorted((PKG / layer).rglob("*.py")):
-        rel = path.relative_to(SRC).as_posix()
-        module = _module_name(path)
+    for path in sorted((base / layer).rglob("*.py")):
+        rel = path.relative_to(root).as_posix()
+        module = _module_name(path, root)
         for line, name in imported_names(path.read_text(encoding="utf-8-sig"), module, path.name == "__init__.py"):
             if rel == PROFILE_LOADER and name.rstrip(".") == "assistant.profiles":
                 continue
@@ -88,6 +89,20 @@ def test_un_perfil_no_importa_otro_perfil():
 
     malos = _violations("profiles", otro_perfil)
     assert not malos, malos
+
+
+def test_un_perfil_de_prueba_no_importa_otro_perfil():
+    def otro_perfil(mod, n):
+        if _is_layer(n, "assistant.profiles"):
+            return True  # un perfil de tests/profiles/ nunca es de assistant.profiles: cualquiera es otro
+        return _is_layer(n, "profiles") and n.count(".") >= 1 and n.split(".")[1] != mod.split(".")[1]
+
+    assert sorted(p.name for p in TEST_PROFILES.iterdir() if (p / "__init__.py").is_file()) == ["minimal"]
+    malos = _violations("profiles", otro_perfil, base=TEST_PROFILES.parent, root=TEST_PROFILES.parent)
+    assert not malos, malos
+    assert otro_perfil("profiles.minimal", "assistant.profiles.default") and otro_perfil("profiles.minimal",
+                                                                                         "profiles.otro.tools")
+    assert not otro_perfil("profiles.minimal", "profiles.minimal.tools")
 
 
 def test_el_detector_marca_imports_prohibidos():
