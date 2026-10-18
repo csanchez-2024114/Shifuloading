@@ -479,6 +479,16 @@ export function consultarDatos(plantillaBase, estado, args = {}, muestra = {}) {
   return consultar({ ...c, args, muestra })
 }
 
+/** Punto de guardado (estilo saver de Alan): la foto de ANTES y qué cambió (lo mide el código), para que deshacer revierta
+ * solo lo de ese pedido. Lo usan el chat y lo que la persona hace a mano (D56). */
+export function conPunto(antes, despues, texto) {
+  const previos = antes.puntos || []
+  const { puntos: _p, ...foto } = antes
+  const cambio = ['bloques', 'marca', 'estructura', 'datos'].filter((c) => JSON.stringify(foto[c] ?? null) !== JSON.stringify(despues[c] ?? null))
+  if (!cambio.length) return despues
+  return { ...despues, puntos: [...previos, { n: (previos.at(-1)?.n || 0) + 1, antes_de: String(texto).slice(0, 80), hora: new Date().toISOString().slice(11, 16), cambio, foto }].slice(-10) }
+}
+
 export function ejecutar(plantilla, estado, nombre, args = {}, contexto = {}) {
   if (HERR_DATOS.has(nombre)) {
     const c = contextoDatos(plantilla, estado, args, contexto.muestra); if (c.error) return { estado, ok: false, resultado: c.error }

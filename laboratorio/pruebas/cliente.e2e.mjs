@@ -118,8 +118,44 @@ for (const s of menu || []) {
 // ── Una ficha (si hay registros) ──
 await js(`document.querySelector('.mc-menu button[data-seccion]:not([data-seccion=inicio])')?.click()`); await esp(900)
 if (await tocar('.pl-tabla-fila:not(.pl-tabla-cab), .pl-tarjeta, .pl-cita')) { await esp(1200); await paso('ficha', await js(`document.querySelector('.pl-ficha h2, .fi-cab h2, [class*=ficha] h2')?.textContent || 'sin ficha'`)); await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`); await esp(800) }
-// ── «Agregar»: no hay formulario, abre el chat con el pedido empezado (D50) ──
-if (await js(`(() => { const b = document.querySelector('.mc-cab .btn-pildora'); b?.click(); return !!b })()`)) { await esp(900); await paso('agregar-abre-chat', await js(`document.querySelector('.mc-chat-panel input[aria-label="Mensaje para Shifu"]')?.value || '(sin texto)'`)) }
+// ── «o pídeselo a Shifu»: abre el chat con el pedido empezado (el formulario se prueba en «datos a mano») ──
+if (await clicTexto('o pídeselo a Shifu', '.mc-cab button')) { await esp(900); await paso('agregar-abre-chat', await js(`document.querySelector('.mc-chat-panel input[aria-label="Mensaje para Shifu"]')?.value || '(sin texto)'`)) }
+// ── Datos a mano (D56): agregar con el formulario, abrir la ficha, editar, eliminar (con confirmación) ──
+{
+  const sec = await js(`document.querySelector('.mc-menu button[data-seccion]:not([data-seccion=inicio])')?.dataset.seccion`)
+  if (movil) { await js(`document.querySelector('.mc-menu-btn, [aria-label*=menú i]')?.click()`); await esp(300) }
+  await js(`document.querySelector('.mc-menu button[data-seccion="${sec}"]')?.click()`); await esp(900)
+  const cuantos = () => js(`(document.querySelector('.mc-cab p')?.textContent.match(/[\\d.,]+/) || ['0'])[0]`)
+  const n0 = await cuantos()
+  await clicTexto('Agregar', '.mc-cab button'); await esp(600)
+  // Llena como una persona: el primer campo (el nombre), fechas, horas, números y una opción en cada lista.
+  await js(`(() => { const f = document.querySelector('.mc-main .mc-form-registro'); if (!f) return
+    const pon = (el, v) => { const p = Object.getPrototypeOf(el); Object.getOwnPropertyDescriptor(p, 'value').set.call(el, v); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })) }
+    f.querySelectorAll('input, select').forEach((el, i) => pon(el, i === 0 ? 'Prueba Manual' : el.tagName === 'SELECT' ? el.options[1]?.value || '' : el.type === 'date' ? new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10) : el.type === 'time' ? '09:30' : el.inputMode === 'decimal' ? '250' : 'dato de prueba')) })()`)
+  await paso('mano-formulario', await js(`document.querySelector('.mc-form-titulo')?.textContent || '(sin formulario)'`))
+  await js(`document.querySelector('.mc-main .mc-form-registro button[type=submit]')?.click()`); await esp(1200)
+  const n1 = await cuantos()
+  await paso('mano-agregado', `${n0} → ${n1} registros · error: ${await js(`document.querySelector('.mc-form-error')?.textContent || 'ninguno'`)}`)
+  if (n1 === n0) eventos.push(`${ts()}s A MANO: agregar no sumó un registro (${n0} → ${n1})`)
+  // Abrir su ficha y editar un campo de texto o número.
+  await js(`(() => { const el = [...document.querySelectorAll('.pl-seccion *')].find((x) => x.children.length === 0 && x.textContent.trim() === 'Prueba Manual'); el?.closest('[role=button], button, tr, .pl-tabla-fila, .pl-tarjeta, .pl-cita, li')?.setAttribute('data-prueba', '1') })()`)
+  // Al agregar se abre la ficha del registro nuevo (así se ve qué quedó guardado); si no, se busca en la lista.
+  if (await js(`document.querySelector('.pl-ficha-cab h2')?.textContent === 'Prueba Manual'`) || await tocar('[data-prueba]')) {
+    await esp(1200)
+    await clicTexto('Editar', '.pl-ficha-acc button'); await esp(500)
+    await js(`(() => { const f = document.querySelector('.pl-ficha .mc-form-registro'); const el = f?.querySelector('input:not([type=date]):not([type=time])'); if (!el) return; Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value').set.call(el, 'Prueba Editada'); el.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+    await js(`document.querySelector('.pl-ficha .mc-form-registro button[type=submit]')?.click()`); await esp(900)
+    const titulo = await js(`document.querySelector('.pl-ficha-cab h2')?.textContent || ''`)
+    await paso('mano-editado', titulo)
+    if (titulo !== 'Prueba Editada') eventos.push(`${ts()}s A MANO: editar no cambió el nombre («${titulo}»)`)
+    await clicTexto('Eliminar', '.pl-ficha-acc button'); await esp(400)
+    await paso('mano-confirmar', await js(`document.querySelector('.pl-ficha .mc-fila-confirma span')?.textContent || '(sin confirmación)'`))
+    await clicTexto('Sí, eliminar', '.pl-ficha button'); await esp(1200)
+    const n2 = await cuantos()
+    await paso('mano-eliminado', `${n1} → ${n2} registros · ficha ${await js(`!!document.querySelector('.pl-ficha')`) ? 'abierta' : 'cerrada'}`)
+    if (n2 !== n0) eventos.push(`${ts()}s A MANO: eliminar no dejó la cuenta como al principio (${n0} → ${n2})`)
+  } else eventos.push(`${ts()}s A MANO: no encontré «Prueba Manual» en la pestaña para abrir su ficha`)
+}
 // ── Elegir una pieza para el chat: doble clic en PC, mantener presionado en el celular (D39) ──
 await js(`document.querySelector('.mc-menu button[data-seccion=inicio]')?.click()`); await esp(1000)
 if (await tocar('.pl-inicio .pl-bloque', movil ? { largo: true } : { doble: true })) { await esp(900); await paso('elegir-pieza', await js(`document.querySelector('.lab-piezas, .sel-barra, [class*=seleccion]')?.textContent?.slice(0, 80) || '(no se marcó)'`)) }
@@ -191,6 +227,6 @@ if (cuadros.length) {
 }
 writeFileSync(join(dir, 'llamadas.json'), JSON.stringify([...llamadas.values()]))
 writeFileSync(join(dir, 'informe.json'), JSON.stringify({ tamano: `${w}x${h}`, conIA, pasos, conversacion, eventos }, null, 1))
-console.log(`\n${pasos.length} pasos · ${eventos.filter((e) => /EXCEPCIÓN|error|GUARDAR/.test(e)).length} errores · ${pasos.filter((p) => p.desbordeX || p.fuera.length).length} pasos con algo fuera de pantalla · video: ${join(dir, 'recorrido.mp4')}`)
+console.log(`\n${pasos.length} pasos · ${eventos.filter((e) => /EXCEPCIÓN|error|GUARDAR|A MANO/.test(e)).length} errores · ${pasos.filter((p) => p.desbordeX || p.fuera.length).length} pasos con algo fuera de pantalla · video: ${join(dir, 'recorrido.mp4')}`)
 for (const e of eventos.slice(0, 12)) console.log('  ', e)
 ws.close(); ch.kill()

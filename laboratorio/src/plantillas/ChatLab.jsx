@@ -174,7 +174,7 @@ export default function ChatLab({ tema, plantilla, estadoActual, onEstado, secci
     window.addEventListener('lab-piezas', llegan); return () => window.removeEventListener('lab-piezas', llegan)
   }, [])
   const soltarPiezas = () => window.dispatchEvent(new Event('lab-piezas-usadas'))
-  // «Agregar» de una pestaña (D50: no hay formularios): abre el chat con el pedido empezado, listo para completar.
+  // «o pídeselo a Shifu» junto a «Agregar» (D56): abre el chat con el pedido empezado, listo para completar.
   useEffect(() => {
     const escribir = (e) => { setAbierto(true); setTxt(String(e.detail || '')); setTimeout(() => { const c = campo.current; if (c) { c.focus(); c.setSelectionRange(c.value.length, c.value.length) } }, 50) }
     window.addEventListener('lab-escribir', escribir); return () => window.removeEventListener('lab-escribir', escribir)

@@ -128,7 +128,7 @@ export default function ExperienciaPage() {
           <section className="pantalla foco entra-der exp-centro">
             <ShifuAvatar size={96} />
             <h1>Tu CRM, armado para tu negocio</h1>
-            <p className="sub">Contesta unas preguntas, crea tu cuenta y Shifu arma tu CRM. Después lo cambias todo hablando con Shifu: cada pestaña es un cuaderno en blanco.</p>
+            <p className="sub">Contesta unas preguntas, crea tu cuenta y Shifu arma tu CRM. Después cambias el diseño hablando con Shifu, y tus datos los llevas a mano o pidiéndoselo: cada pestaña es un cuaderno en blanco.</p>
             <div className="acciones"><button type="button" className="btn-pildora btn-grande brief-seguir" onClick={() => setPaso('cuestionario')}>Empezar</button></div>
           </section>
         )}

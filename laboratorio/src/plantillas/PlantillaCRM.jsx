@@ -17,7 +17,9 @@ import ChatLab, { GUION, GUION_TOMA } from './ChatLab'
 import Recorrido, { pasosDe } from './Recorrido'
 import { fijarRegion } from './regional'
 import { tokensDeMarca, cargarFuentes } from './marca'
-import { plantillaEfectiva, acomodar } from './edicion'
+import { plantillaEfectiva, acomodar, ejecutar, conPunto } from './edicion'
+import { FormRegistro } from './manual'
+import { campoTitulo } from './valores'
 import { Grafico, GRAFICOS } from './graficos'
 import '@base/crm.css'
 import '@base/crm-extra.css'
@@ -147,6 +149,17 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
   }
   const ultimo = useRef(inicial || null) // el último estado aplicado (puede no haberse dibujado todavía por la transición)
   const estadoParaIA = () => ultimo.current || ({ vista, marca, estructura, datos: misDatos, bloques: bloques.map(({ nuevo: _n, ...b }) => b), toma: ultimo.current?.toma })
+  // Datos a mano (D56): pasa por el MISMO código que el chat (valida fechas, montos, opciones) y deja su punto de deshacer,
+  // así «deshaz» también lo revierte y queda guardado. Devuelve el error (texto) o null; tras agregar, onNuevo(id del registro).
+  const aMano = (nombre, args, que, onNuevo) => {
+    const antes = estadoParaIA()
+    const r = ejecutar(plantillaBase, antes, nombre, args, { muestra, confirmado: true })
+    if (!r.ok) return r.resultado
+    aplicarEstado(conPunto(antes, r.estado, `A mano: ${que}`))
+    if (onNuevo) { const nuevos = Object.values(r.estado.datos?.nuevos || {}).flat(), viejos = new Set(Object.values(antes.datos?.nuevos || {}).flat().map((x) => x.id)); const n = nuevos.find((x) => !viejos.has(x.id)); if (n) onNuevo(n.id) }
+    return null
+  }
+  const [agregando, setAgregando] = useState(null) // id de la sección con el formulario de agregar abierto
   const errores = validarPlantilla(plantilla)
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const actual = porId[vista]
@@ -166,7 +179,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
     return (
       <div className="pl-sombra">
         <div className="pl-sombra-forma" aria-hidden="true" inert="">{dibujarCon(s, nombreVista, opciones, fantasma)}</div>
-        <p className="pl-sombra-msg"><b>Todavía no hay datos</b><span>Dile a Shifu qué agregar en {s.titulo} y aparece aquí.</span></p>
+        <p className="pl-sombra-msg"><b>Todavía no hay datos</b><span>Usa «Agregar» en {s.titulo} o díselo a Shifu, y aparece aquí.</span></p>
       </div>
     )
   }
@@ -221,9 +234,15 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
             <>
               <div className="mc-cab">
                 <div><h1>{actual.titulo}</h1>{(actual.campos || actual.fuente) && <p>{registrosDe(actual, datos).length ? `${registrosDe(actual, datos).length.toLocaleString('es')} registros.` : 'Todavía no hay registros.'}</p>}</div>
-                {/* No hay formularios (D50): «Agregar» abre el chat listo para decir qué agregar. */}
-                {actual.campos && <button type="button" className="btn-pildora" onClick={() => window.dispatchEvent(new CustomEvent('lab-escribir', { detail: `Agrega a ${actual.titulo}: ` }))}>Agregar</button>}
+                {/* Datos a mano (D56): «Agregar» abre el formulario; también se le puede pedir a Shifu. */}
+                {actual.campos && <div className="pl-agregar"><button type="button" className="btn-pildora" onClick={() => setAgregando(agregando === actual.id ? null : actual.id)}>Agregar</button>
+                  <button type="button" className="mc-link" onClick={() => window.dispatchEvent(new CustomEvent('lab-escribir', { detail: `Agrega a ${actual.titulo}: ` }))}>o pídeselo a Shifu</button></div>}
               </div>
+              {agregando === actual.id && actual.campos && (() => {
+                const cs = camposDe(actual, porId), ct = campoTitulo(actual, cs)
+                return <FormRegistro key={actual.id} titulo={`Agregar a ${actual.titulo}`} campos={cs} obligatorio={ct} guardar="Agregar" onCancelar={() => setAgregando(null)}
+                  onGuardar={(vals) => { const err = aMano('agregar_registro', { seccion: actual.id, valores: vals }, `agregó «${vals[ct.id]}» a ${actual.titulo}`, (id) => setTimeout(() => abrirFicha(actual.id, id), 50)); if (!err) setAgregando(null); return err }} />
+              })()}
               {/* Pestaña con lienzo propio (D49): varias piezas como el inicio; sin lienzo, su vista de siempre. */}
               {actual.pagina ? (
                 actual.pagina.length ? (
@@ -242,7 +261,7 @@ export default function PlantillaCRM({ plantilla: plantillaBase, datos: datosBas
         </main>
       </div>
       {barraSeleccion}
-      {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} desdeOrigen={abierta.transicion} />}
+      {abierta && <Ficha plantilla={plantilla} datos={datos} seccionId={abierta.seccion} registroId={abierta.registro} onCerrar={cerrarFicha} onAbrir={abrirFicha} desdeOrigen={abierta.transicion} onDato={aMano} />}
       {enRecorrido && vista === 'inicio' && <Recorrido pasos={pasosDe(plantilla, bloques, porId)} onSaltar={() => { setEnRecorrido(false); onFinRecorrido?.() }} onTerminar={() => { setEnRecorrido(false); onFinRecorrido?.(); onBorrarEjemplos?.() }} />}
       <ChatLab contexto={{ plantilla, bloques, marca, toma: ultimo.current?.toma, vista, datos }} guion={demo === 'toma' ? GUION_TOMA : demo ? GUION : null} tema={tema} plantilla={plantilla} estadoActual={estadoParaIA} muestra={muestra} onEstado={aplicarEstado} inicial={chatInicial} onMensajes={(m) => onGuardar?.('chat', m)} seccionActual={actual?.titulo || 'Inicio'} onAbierto={(a) => conTransicion(() => setChatAbierto(a))} abiertoInicial={!recorrido} /* durante el recorrido el chat espera cerrado: abierto tapaba las piezas que señala (prueba de cliente) */ />
     </div>

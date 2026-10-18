@@ -3,7 +3,7 @@
 import { createServer } from 'vite'
 import assert from 'node:assert/strict'
 const v = await createServer({ configFile: 'laboratorio/vite.config.js', server: { middlewareMode: true, hmr: false }, logLevel: 'error' })
-const { ejecutar, consultarDatos, datosActuales, describirPantalla, etiquetaCambio, creadoSinDecir } = await v.ssrLoadModule('/src/plantillas/edicion.js')
+const { ejecutar, consultarDatos, datosActuales, describirPantalla, etiquetaCambio, creadoSinDecir, conPunto } = await v.ssrLoadModule('/src/plantillas/edicion.js')
 const { plantillaPorId } = await v.ssrLoadModule('/src/plantillas/semillas.js')
 const { datosEjemplo } = await v.ssrLoadModule('/src/plantillas/datosEjemplo.js')
 const p = plantillaPorId('membresias')
@@ -58,6 +58,14 @@ caso('procedencia (D54): con dos «Ana», editar a «Ana López» si la persona 
   assert.ok(ejecutar(p, dos, 'borrar_registro', { seccion: 'miembros', registro: 'Ana López' }, { ...ctx, dichos: 'borra a ana lopez' }).ok, 'sin acentos ni mayúsculas')
   assert.ok(!ejecutar(p, dos, 'borrar_registro', { seccion: 'miembros', registro: 'Ana López' }, { ...ctx, dichos: 'borra a Ana' }).ok)
   assert.ok(ejecutar(p, E, 'editar_registro', { seccion: 'miembros', registro: 'Carlos Pérez', valores: { plan: 'Anual' } }, { ...ctx, dichos: 'a Carlos ponle plan anual' }).ok, 'una sola persona con ese nombre: basta el nombre de pila')
+})
+caso('a mano (D56): los valores del formulario (fecha ISO, hora, monto en texto) pasan por el mismo código y dejan punto de deshacer', () => {
+  const r = ejecutar(p, E, 'agregar_registro', { seccion: 'pagos', valores: { miembro: 'Rosa Gómez', monto: '1,250.50', fecha: '2026-10-30' } }, { ...ctx, confirmado: true })
+  assert.ok(r.ok, r.resultado)
+  const conP = conPunto(E, r.estado, 'A mano: agregó «Rosa Gómez» a Pagos')
+  assert.equal(conP.puntos.length, 1); assert.deepEqual(conP.puntos[0].cambio, ['datos']); assert.equal(conP.puntos[0].antes_de, 'A mano: agregó «Rosa Gómez» a Pagos')
+  assert.equal(conPunto(E, E, 'nada').puntos, undefined, 'sin cambio no hay punto')
+  const nuevo = r.estado.datos.nuevos.pagos[0].valores; assert.equal(nuevo.monto, 1250.5); assert.equal(nuevo.fecha, '2026-10-30')
 })
 caso('agregar sin el nombre: no inventa, pide el dato', () => {
   const r = ejecutar(p, E, 'agregar_registro', { seccion: 'miembros', valores: { plan: 'Anual' } }, ctx)

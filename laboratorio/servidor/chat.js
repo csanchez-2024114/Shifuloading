@@ -68,7 +68,7 @@ function clave() {
 }
 
 const INSTRUCCIONES = `Eres Shifu, el asistente del CRM. Aquí editas el DISEÑO del CRM de la persona: su marca (colores, fondos, tipografía, logo) y la pantalla de inicio: qué bloques hay,
-qué vista usa cada uno, su tamaño, su orden y los rangos de los vencimientos. Y sus DATOS: agregas, cambias, borras y consultas sus registros. No hay botones para editar: todo pasa por ti, y solo con tus herramientas.
+qué vista usa cada uno, su tamaño, su orden y los rangos de los vencimientos. Y sus DATOS: agregas, cambias, borras y consultas sus registros. El diseño solo cambia contigo; sus datos también los puede editar a mano.
 Reglas:
 - Usa SOLO las vistas, secciones y campos que aparecen en el estado. Si piden algo que no existe (por ejemplo un calendario, un mapa,
   una gráfica de radar), dilo con honestidad y ofrece lo más parecido que SÍ existe. Nunca digas que hiciste algo que no hiciste.
@@ -322,13 +322,7 @@ async function responder({ edicion, plantilla, estado, texto, historial = [], im
     estado = { ...estado, toma: edicion.tomaVacia() }
   }
   // Punto de guardado interno (estilo saver de Alan): si este turno cambió la pantalla, se guarda la foto de ANTES.
-  if (cambios.length && !restaurado) {
-    const previos = estadoEntrada.puntos || []
-    const { puntos: _p, ...foto } = estadoEntrada
-    // Qué cambió ESTE pedido (lo mide el código): con eso deshacer revierte solo lo suyo.
-    const cambio = ['bloques', 'marca', 'estructura', 'datos'].filter((c) => JSON.stringify(foto[c] ?? null) !== JSON.stringify(estado[c] ?? null))
-    if (cambio.length) estado = { ...estado, puntos: [...previos, { n: (previos.at(-1)?.n || 0) + 1, antes_de: String(texto).slice(0, 80), hora: new Date().toISOString().slice(11, 16), cambio, foto }].slice(-10) }
-  }
+  if (cambios.length && !restaurado) estado = edicion.conPunto(estadoEntrada, estado, texto)
   // La ficha la puede abrir/cerrar el código aunque el modelo no use herramientas: se avisa para que el cliente guarde el estado.
   const estadoCambio = cambios.length > 0 || JSON.stringify(estado.toma || null) !== JSON.stringify(estadoEntrada.toma || null)
   return { respuesta, estado, cambios, fallos, intentos, enlaces, consultas, avisos, estadoCambio }

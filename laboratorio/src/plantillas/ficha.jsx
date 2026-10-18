@@ -2,13 +2,15 @@
  * lo que hay de él: sus datos en grupos (los define la persona por chat con cambiar_ficha), lo relacionado de otras
  * secciones y su línea de tiempo. Todo sale de los registros: nada escrito a mano. Panel a la derecha; en móvil, pantalla
  * completa. Se cierra con Esc, con la X o tocando fuera. */
-import { useEffect, useRef } from 'react'
-import { LuX, LuClock, LuLink } from 'react-icons/lu'
+import { useEffect, useRef, useState } from 'react'
+import { LuX, LuClock, LuLink, LuPencil, LuTrash2 } from 'react-icons/lu'
 import { ver } from './vistas'
 import { camposDe } from './validar'
 import { registrosDe } from './datosEjemplo'
 import { fichaDe } from './edicion'
 import { region } from './regional'
+import { campoTitulo } from './valores'
+import { FormRegistro, ConfirmaBorrar } from './manual'
 
 const COLORES = ['#7c5cff', '#22d3a6', '#f5a623', '#f0587a', '#5b8cff', '#a3e635', '#ec4899', '#14b8a6']
 const ES_TEXTO = (c) => !['estado', 'fecha', 'hora', 'numero', 'dinero'].includes(c.tipo)
@@ -40,8 +42,12 @@ export function relacionadosDe(plantilla, datos, seccion, r) {
   return out
 }
 
-export default function Ficha({ plantilla, datos, seccionId, registroId, onCerrar, onAbrir, desdeOrigen = false }) {
+export default function Ficha({ plantilla, datos, seccionId, registroId, onCerrar, onAbrir, desdeOrigen = false, onDato }) {
   const panel = useRef(null)
+  // Datos a mano (D56): editar y eliminar este registro; el diseño de la ficha sigue solo por chat.
+  const [editando, setEditando] = useState(false)
+  const [borrando, setBorrando] = useState(false)
+  useEffect(() => { setEditando(false); setBorrando(false) }, [seccionId, registroId])
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const sec = porId[seccionId]
   const campos = sec ? camposDe(sec, porId) : []
@@ -70,9 +76,30 @@ export default function Ficha({ plantilla, datos, seccionId, registroId, onCerra
             <h2>{tituloRegistro(sec, campos, r)}</h2>
             {estado && r.valores[estado.id] && <em className="pl-pildora" style={{ '--c': COLORES[Math.max(0, estado.opciones.indexOf(r.valores[estado.id])) % COLORES.length] }}>{r.valores[estado.id]}</em>}
           </div>
+          {onDato && !editando && (
+            <div className="pl-ficha-acc">
+              <button type="button" className="mc-link" onClick={() => { setBorrando(false); setEditando(true) }}><LuPencil aria-hidden="true" /> Editar</button>
+              <button type="button" className="mc-link" onClick={() => setBorrando(true)}><LuTrash2 aria-hidden="true" /> Eliminar</button>
+            </div>
+          )}
           <button type="button" className="pl-ficha-cerrar" onClick={onCerrar} aria-label="Cerrar ficha"><LuX /></button>
         </header>
-        {f.grupos.map((g) => (
+        {borrando && (
+          <ConfirmaBorrar que={tituloRegistro(sec, campos, r)} onNo={() => setBorrando(false)}
+            onSi={() => { if (!onDato('borrar_registro', { seccion: sec.id, registro: r.id }, `borró «${tituloRegistro(sec, campos, r)}» de ${sec.titulo}`)) onCerrar() }} />
+        )}
+        {editando && (
+          <FormRegistro titulo={`Editar ${tituloRegistro(sec, campos, r)}`} campos={campos} inicial={r.valores} obligatorio={campoTitulo(sec, campos)} onCancelar={() => setEditando(false)}
+            onGuardar={(vals) => {
+              // Solo lo que cambió: así el punto de deshacer y la línea de cambios dicen exactamente eso.
+              const cambios = Object.fromEntries(Object.entries(vals).filter(([k, v]) => String(v) !== String(r.valores[k] ?? '')))
+              if (!Object.keys(cambios).length) { setEditando(false); return null }
+              const err = onDato('editar_registro', { seccion: sec.id, registro: r.id, valores: cambios }, `editó «${tituloRegistro(sec, campos, r)}» en ${sec.titulo}`)
+              if (!err) setEditando(false)
+              return err
+            }} />
+        )}
+        {!editando && f.grupos.map((g) => (
           <section key={g.titulo} className="pl-ficha-grupo">
             <h3>{g.titulo}</h3>
             <dl>{g.campos.map((id) => <div key={id}><dt>{porCampo[id].nombre}</dt><dd>{ver(porCampo[id].tipo, r.valores[id])}</dd></div>)}</dl>

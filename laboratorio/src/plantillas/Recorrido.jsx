@@ -24,7 +24,7 @@ export function pasosDe(plantilla, bloques, porId) {
   }
   const secciones = plantilla.secciones.filter((x) => x.campos).map((x) => x.titulo)
   pasos.push({ sel: '.mc-menu', texto: `En el menú están tus secciones: ${secciones.join(', ')}. Cada una se puede cambiar.` })
-  pasos.push({ sel: '.mc-chat-panel, .mc-chat-btn', texto: 'Y aquí estoy yo. Todo se hace hablándome: tus datos («agrega a María López») y cualquier cambio de diseño (colores, logo, otra gráfica, secciones).' })
+  pasos.push({ sel: '.mc-chat-panel, .mc-chat-btn', texto: 'Y aquí estoy yo. El diseño lo cambias hablándome (colores, logo, otra gráfica, secciones). Tus datos, a mano con «Agregar» y tocando un registro, o pidiéndomelos («agrega a María López»).' })
   pasos.push({ sel: null, final: true, texto: 'Eso es todo. ¿Borro los datos de ejemplo para que empieces con los tuyos? Las vistas quedarán en gris hasta tu primer registro.' })
   return pasos
 }
