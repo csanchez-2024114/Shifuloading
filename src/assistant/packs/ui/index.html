@@ -278,6 +278,11 @@ textarea#input:disabled { opacity: .6; }
 .chip.file button { border: 0; background: none; color: inherit; cursor: pointer; font-size: .9rem; padding: 0 2px; }
 .chip.file.err { background: var(--warn-bg, #fde8e8); }
 .row.user .files { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+/* FEEDBACK_ENABLED: 👍/👎 bajo la respuesta (solo si GET /feedback/config responde) */
+.feedback { display: flex; gap: 4px; margin: 2px 0 0 4px; }
+.feedback button { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; cursor: pointer;
+  padding: 2px 10px; font-size: .9rem; opacity: .75; }
+.feedback button[aria-pressed="true"] { opacity: 1; background: var(--chip-bg); border-color: currentColor; }
 .hint { text-align: center; font-size: .75rem; color: var(--muted); padding: 0 12px 6px; }
 @media (max-width: 560px) {
   header h1 { display: none; }
@@ -704,6 +709,10 @@ textarea#input:disabled { opacity: .6; }
     fileInput.value = "";
   };
   function clearPending() { files.pending = []; renderPending(); }
+  var fbEnabled = false;
+  async function checkFeedback() {
+    try { var r = await fetch("/feedback/config", { credentials: "same-origin" }); fbEnabled = r.ok; } catch (e) { /* sin feedback */ }
+  }
   async function checkFiles() {
     try { var r = await fetch("/files/config", { credentials: "same-origin" }); if (!r.ok) return;
       var cfg = await r.json(); files.enabled = true; attachBtn.hidden = false;
@@ -1069,6 +1078,26 @@ textarea#input:disabled { opacity: .6; }
     Array.prototype.forEach.call(spinning, function (c) { c.classList.remove("running"); var s = c.querySelector(".spin"); if (s) s.remove(); });
     if (!this.bubble.children.length) this.row.remove();
   };
+  // 👍/👎 del último turno de esta respuesta (run_id del evento "run"); se puede cambiar de opinión
+  AssistantBubble.prototype.feedback = function (runId) {
+    if (this.fbBox) this.fbBox.remove();
+    var box = el("div", "feedback"), btns = [];
+    box.setAttribute("role", "group"); box.setAttribute("aria-label", "¿Te sirvió esta respuesta?");
+    [[1, "👍", "Me sirvió"], [-1, "👎", "No me sirvió"]].forEach(function (o) {
+      var b = el("button", null, o[1]);
+      b.type = "button"; b.title = o[2]; b.setAttribute("aria-label", o[2]); b.setAttribute("aria-pressed", "false");
+      b.onclick = async function () {
+        try {
+          var r = await apiFetch("/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ run_id: runId, score: o[0], user_id: userId() }) });
+          if (!r.ok) { b.title = "No se pudo guardar (" + r.status + ")"; return; }
+          btns.forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        } catch (e) { b.title = "No se pudo guardar"; }
+      };
+      btns.push(b); box.appendChild(b);
+    });
+    this.fbBox = box; this.row.appendChild(box);
+  };
   AssistantBubble.prototype.approval = function (ev, onDecide) {
     this.hideDots(); this.closeSeg();
     var card = el("div", "approval");
@@ -1200,12 +1229,14 @@ textarea#input:disabled { opacity: .6; }
           break;
         case "error": bubble.error(ev.message || "Error desconocido"); break;
         case "done": gotDone = true; break;
+        case "run": bubble.runId = ev.run_id; break;  // TRACE_METADATA: id del turno para el feedback
       }
     });
     state.streaming = false;
     if (body.thread_id === state.threadId) loadContext(body.thread_id);  // totales y gasto del turno
     if (memEl.classList.contains("open")) loadMemories();  // por si guardó un recuerdo en este turno
     if (!state.pending) bubble.finish(); else bubble.live = false;
+    if (!state.pending && fbEnabled && bubble.runId && gotDone) bubble.feedback(bubble.runId);
     if (state.newQueued) { bubble.finish(); openNewThread(); return; }  // clic en "Nueva conversación" durante el turno
     updateControls();
     if (!inputEl.disabled) inputEl.focus({ preventScroll: true });
@@ -1573,7 +1604,7 @@ textarea#input:disabled { opacity: .6; }
   (async function boot() {
     var me = null;
     try { var r = await fetch("/auth/me", { credentials: "same-origin" }); if (r.ok) me = await r.json(); } catch (e) { /* ignore */ }
-    checkFiles();
+    checkFiles(); checkFeedback();
     if (!me || !me.auth_enabled) { initLocal(); return; }
     state.auth.enabled = true;
     document.body.classList.add("auth-on");
