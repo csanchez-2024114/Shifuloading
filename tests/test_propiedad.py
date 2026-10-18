@@ -132,7 +132,7 @@ def test_logout_corta_el_acceso(app_ab):
 
 
 def test_login_endpoint_generico_y_bloqueo(make_settings):
-    from assistant.auth import LOCKED_ERROR, LOGIN_ERROR
+    from assistant.packs.i18n.es import LOCKED_ERROR, LOGIN_ERROR
 
     app, *_ = _app(make_settings)
     _login(app, "ana@ejemplo.com")

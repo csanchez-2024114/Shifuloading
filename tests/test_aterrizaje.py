@@ -104,7 +104,9 @@ def test_aterrizaje_suave_en_bigtool(make_settings, mongo_checkpointer):
 def test_avisos_al_usuario_sin_marcadores_de_markdown():
     from assistant import agent
 
-    avisos = {"LIMIT_MSG": agent.LIMIT_MSG, "CUT_NOTE": agent.CUT_NOTE,
+    from assistant.packs.i18n import es
+
+    avisos = {"LIMIT_MSG": es.LIMIT_MSG, "CUT_NOTE": es.CUT_NOTE,
               "TURN_CAP_MSG": agent.turn_cap_msg(45000)}
     crudo = re.compile(r"(^|\s)(\*\*?|__?|`)\S|\S(\*\*?|__?|`)($|[\s.,;:!?])")
     assert not {k: v for k, v in avisos.items() if crudo.search(v)}, "aviso con marcadores de markdown"
@@ -129,7 +131,8 @@ def test_respuesta_final_que_cruza_el_tope_no_se_aborta(make_settings, mongo_che
 
 def test_pasado_el_tope_no_verifica_y_la_respuesta_queda_no_verificada(make_settings, mongo_checkpointer):
     """Prueba real: con TURN_TOKEN_CAP=4000 el turno aterrizó y aun así ANSWER_VERIFY gastó otra llamada (2.794)."""
-    from assistant.agent import UNVERIFIED_NOTE, build_agent, get_history
+    from assistant.agent import build_agent, get_history
+    from assistant.packs.i18n.es import UNVERIFIED_NOTE
     from assistant.tools import build_tools
     from test_memoria_avanzada import recorder
 

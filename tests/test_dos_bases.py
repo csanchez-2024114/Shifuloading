@@ -27,7 +27,8 @@ def appdata(request):
 
 def test_arranque_exige_bases_distintas(make_settings):
     from assistant.config import ConfigError
-    from assistant.memory import SAME_DB_MSG, app_startup, same_database
+    from assistant.memory import app_startup, same_database
+    from assistant.packs.i18n.es import SAME_DB_MSG
 
     assert same_database("mongodb+srv://u:clave@cl.mongodb.net/", "ai", "mongodb+srv://otro:x@CL.mongodb.net", "ai")
     assert not same_database("mongodb+srv://u:p@cl.mongodb.net", "ai", "mongodb+srv://u:p@cl.mongodb.net", "app")

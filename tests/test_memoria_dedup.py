@@ -9,7 +9,7 @@ from conftest import fake_llm, run_turn, tool_call, uid
 
 def test_regla_de_busqueda_economica_solo_con_interruptor(make_settings):
     from assistant.agent import system_prompt_text
-    from assistant.memory import SEARCH_ECONOMY_RULE
+    from assistant.profiles.default.policies import SEARCH_ECONOMY_RULE
 
     regla = ("If the answer is already in the visible conversation or in its summary, answer directly; call "
              "search_memories only when the information is not available in this conversation.")

@@ -24,10 +24,11 @@ def _spanish(text: str) -> list[str]:
 def _model_texts(make_settings) -> dict[str, str]:
     from assistant import agent, memory, tools
     from assistant.bigtool_agent import BIGTOOL_PROMPT, build_registry
+    from assistant.profiles.default import tools as default_tools
 
     s = make_settings(enable_hitl_demo=True, bigtool_demo_tools=True)
     texts = {
-        "prompts/system.md": (ROOT / "prompts" / "system.md").read_text(encoding="utf-8-sig"),
+        "prompts/system.md": (ROOT / "src" / "assistant" / "profiles" / "default" / "prompts" / "system.md").read_text(encoding="utf-8-sig"),
         "SUMMARY_PROMPT": agent.SUMMARY_PROMPT, "VERIFY_ANSWER_PROMPT": agent.VERIFY_ANSWER_PROMPT,
         "VERIFY_MEMORY_PROMPT": memory.VERIFY_MEMORY_PROMPT, "CLASSIFIER_PROMPT": agent.CLASSIFIER_PROMPT,
         "LAST_STEP_NOTE": agent.LAST_STEP_NOTE, "REPEAT_LIMIT_MSG": agent.REPEAT_LIMIT_MSG,
@@ -39,7 +40,7 @@ def _model_texts(make_settings) -> dict[str, str]:
                                        memory.revise(InMemoryStore(), "u", "k", "x", "", [])]),
         "calculator errors": " | ".join(tools.calculadora.invoke({"expression": e}) for e in ("1/0", "2+", "__import__('os')")),
         "current_datetime error": tools.fecha_hora.invoke({"time_zone": "Nowhere/Nada"}),
-        "send_simulated_email": tools.enviar_email_simulado.invoke({"recipient": "a@b.c", "subject": "x", "body": "y"}),
+        "send_simulated_email": default_tools.enviar_email_simulado.invoke({"recipient": "a@b.c", "subject": "x", "body": "y"}),
     }
     llm = fake_llm("x")
     todas = tools.build_tools(llm, s, search_fn=FakeSearch()) + list(build_registry(llm, s, InMemoryStore()).values())
@@ -59,7 +60,7 @@ def test_el_detector_si_detecta_espanol():
 
 
 def test_system_md_pide_responder_en_el_idioma_del_usuario():
-    text = (ROOT / "prompts" / "system.md").read_text(encoding="utf-8-sig")
+    text = (ROOT / "src" / "assistant" / "profiles" / "default" / "prompts" / "system.md").read_text(encoding="utf-8-sig")
     assert ("Always reply in the same language the user writes in. Tool results are in English; never copy them "
             "verbatim to the user: explain them in the user's language.") in text
 
@@ -71,7 +72,7 @@ def test_la_interfaz_muestra_los_mensajes_de_herramientas_en_espanol():
     if not node:
         pytest.skip("node no está instalado")
     src = re.search(r"/\* TOOL-LABELS-START \*/(.*?)/\* TOOL-LABELS-END \*/",
-                    (ROOT / "static" / "index.html").read_text(encoding="utf-8"), re.S).group(1)
+                    (ROOT / "src" / "assistant" / "packs" / "ui" / "index.html").read_text(encoding="utf-8"), re.S).group(1)
     mensajes = [memory.SAVED_MSG, memory.UPDATED_MSG, memory.NO_RELEVANT_MSG, memory.NO_MEMORIES_MSG,
                 memory.NOT_FOUND_MSG, memory.remember(InMemoryStore(), "u", "x", "", [], verifier=lambda c, t: (False, "")),
                 tools.WEB_BUDGET_MSG, agent.REPEAT_LIMIT_MSG.format(name="calculator", limit=8), "No results.",

@@ -43,7 +43,8 @@ def test_registro_guarda_hash_argon2id_y_correo_normalizado(appdata):
 
 
 def test_registro_rechaza_contraseña_corta_y_correo_repetido_con_mensaje_generico(appdata):
-    from assistant.auth import PASSWORD_RULE, REGISTER_ERROR, AuthError
+    from assistant.auth import AuthError
+    from assistant.packs.i18n.es import PASSWORD_RULE, REGISTER_ERROR
 
     svc = _svc(appdata)
     with pytest.raises(AuthError) as e:
@@ -69,7 +70,8 @@ def test_login_correcto_crea_sesion_guardada_solo_como_hash(appdata):
 
 
 def test_login_incorrecto_es_generico_y_se_bloquea_tras_5_fallos(appdata):
-    from assistant.auth import LOCKED_ERROR, LOGIN_ERROR, AuthError
+    from assistant.auth import AuthError
+    from assistant.packs.i18n.es import LOCKED_ERROR, LOGIN_ERROR
 
     svc = _svc(appdata)
     svc.register("ana@ejemplo.com", "contraseña-larga-1")

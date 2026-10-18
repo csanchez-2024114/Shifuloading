@@ -9,7 +9,7 @@ import pytest
 
 from conftest import fake_llm, run_turn, tool_call, uid
 
-HTML = Path(__file__).resolve().parents[1] / "static" / "index.html"
+HTML = Path(__file__).resolve().parents[1] / "src" / "assistant" / "packs" / "ui" / "index.html"
 
 
 def _breakdown(events, end_t):

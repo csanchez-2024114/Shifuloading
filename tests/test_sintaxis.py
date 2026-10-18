@@ -70,7 +70,7 @@ def test_el_agente_la_usa_y_la_ui_la_muestra_en_espanol(settings):
     node = shutil.which("node")
     if not node:
         pytest.skip("node no está instalado")
-    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    html = (ROOT / "src" / "assistant" / "packs" / "ui" / "index.html").read_text(encoding="utf-8")
     src = "\n".join(re.search(rf"/\* {k}-START \*/(.*?)/\* {k}-END \*/", html, re.S).group(1)
                     for k in ("TOOL-LABELS", "TOOL-NAMES"))
     salidas = [fin["output"], _check("x = 1\n")]

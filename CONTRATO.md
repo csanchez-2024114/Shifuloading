@@ -8,6 +8,11 @@ Python: `.venv\Scripts\python`. Paquete instalado editable (`src/assistant`), im
 **Todo es SÍNCRONO** (MongoDBSaver es sync). Usa `agent.stream(...)` / `agent.invoke(...)`, nunca `astream`.
 Sin Docker. El servidor usa la `MONGODB_URI` de `.env` (hoy Atlas; default local `mongodb://127.0.0.1:27017`). pytest usa SIEMPRE el MongoDB local (conftest fuerza la URI). No arranques ni instales Mongo.
 
+**Rutas tras el refactor núcleo/perfiles:**
+- los módulos de abajo viven en `src/assistant/core/` (`agent.py`, `tools.py`, `memory.py`, `config.py`, `server.py`…), y bigtool en `core/extensions/bigtool.py`;
+- los nombres viejos (`assistant.agent`, `assistant.server`…) siguen funcionando como alias, con un `DeprecationWarning`;
+- el prompt y la UI son del perfil: `src/assistant/profiles/default/prompts/system.md` y `src/assistant/packs/ui/index.html`.
+
 ## Archivos y dueños
 | Archivo | Dueño |
 |---|---|
@@ -29,13 +34,13 @@ class ConfigError(Exception)        # mensaje claro para el usuario; server lo i
     mongodb_uri: str  # default "mongodb://127.0.0.1:27017"
     mongodb_db: str   # default "assistant"
     max_tokens: int   # 8000 (tope de tokens de salida por llamada, razonamiento incluido; 0 = sin tope)
-    recursion_limit: int  # 25
-    model_call_limit: int # 15 (llamadas al modelo por turno)
+    recursion_limit: int  # 100 (RECURSION_LIMIT); stream_events lo sube a max(valor, tope de llamadas del esfuerzo × 8)
+    model_call_limit: int # 0 (MODEL_CALL_LIMIT): 0 = tope por esfuerzo (5/15/EFFORT_HIGH_MAX_CALLS); >0 = tope fijo por turno
     memory_semantic: bool # False (MongoDB local no tiene Atlas Vector Search)
     enable_hitl_demo: bool # False
     @classmethod from_env() -> Settings
     def require_api_key() -> None   # ConfigError si falta
-def read_system_prompt() -> str     # lee prompts/system.md
+def read_system_prompt(profile=None) -> str  # lee profile.system_prompt_path (None = el perfil activo, AGENT_PROFILE)
 ```
 
 ## memory.py (subagente memoria)
@@ -63,7 +68,7 @@ def startup_checks(settings: Settings) -> pymongo.MongoClient
 ```
 
 ## tools.py (subagente agente)
-Herramientas con nombre en inglés (antes en español: `agent.OLD_TOOL_NAMES` guarda el mapa), todas `@tool` de `langchain.tools`. Los hilos viejos siguen funcionando: `_nombres_antiguos` reescribe los nombres antiguos del historial antes de cada llamada al modelo, bigtool usa `RegistroTolerante` (ids antiguos → actuales; ids que ya no existen se ignoran) y la UI traduce nombres viejos y nuevos a la misma etiqueta. Lo que lee el modelo va en inglés: descripciones, nombres y descripciones de parámetros y los mensajes que devuelven ("Memory saved.", "No relevant memories for this query.", "Tool error (...)"…). La UI traduce esos mensajes al mostrarlos (`toolOutputLabel` en index.html); `tests/test_idioma.py` falla si se cuela español.
+Herramientas con nombre en inglés (antes en español: el mapa es `legacy_tool_names` del perfil; en el default, `OLD_TOOL_NAMES` de `profiles/default/policies.py`), todas `@tool` de `langchain.tools`. Los hilos viejos siguen funcionando: `_nombres_antiguos` reescribe los nombres antiguos del historial antes de cada llamada al modelo, bigtool usa `RegistroTolerante` (ids antiguos → actuales; ids que ya no existen se ignoran) y la UI traduce nombres viejos y nuevos a la misma etiqueta. Lo que lee el modelo va en inglés: descripciones, nombres y descripciones de parámetros y los mensajes que devuelven ("Memory saved.", "No relevant memories for this query.", "Tool error (...)"…). La UI traduce esos mensajes al mostrarlos (`toolOutputLabel` en index.html); `tests/test_idioma.py` falla si se cuela español.
 ```python
 calculator(expression: str) -> str       # evaluación con ast (+ - * / // % **, paréntesis, math.sqrt/sin/cos/log/pi/e...), sin eval
 current_datetime(time_zone: str = "local") -> str   # fecha/hora actual ISO + día de la semana; zona IANA opcional (zoneinfo)
@@ -81,13 +86,17 @@ def web_search(query: str, settings: Settings) -> tuple[str, str]
 def make_buscar_web(settings, search_fn=web_search) -> BaseTool
     # tool "web_search(query: str)": devuelve f"[engine: {engine}]\n{texto}"; si no es la primera web_search de la
     # misma respuesta del modelo, no busca y devuelve ONE_SEARCH_MSG ("Not run: one search per step…")
-def make_investigador(model: BaseChatModel, buscar_web_tool: BaseTool) -> BaseTool
-    # tool "deep_research(task: str)": subagente = create_agent(model, [buscar_web_tool], system_prompt=<investigar con 3-5 búsquedas y devolver resumen con fuentes>)
-    # invoke({"messages":[{"role":"user","content":tarea}]}) → result["messages"][-1].text
-def build_tools(model, settings, search_fn=web_search) -> list[BaseTool]
-    # [web_search, calculator, current_datetime, check_python_syntax, save_memory, search_memories, update_memory,
-    #  deep_research]  (deep_research pide confirmación salvo petición explícita: research_needs_confirmation)
-    # + send_simulated_email si settings.enable_hitl_demo
+def make_investigador(model: BaseChatModel, settings: Settings, search_fn=web_search) -> BaseTool
+    # tool "deep_research(task: str, runtime)": si el hilo ya tiene una investigación (earlier_research), no corre y
+    # devuelve FOLLOW_UP_MSG con sus resultados; si no, investigar(investigator_model(model, settings), settings,
+    # search_fn, task, runtime.stream_writer, turn_key=...): subagente con sus propios topes
+    # (INVESTIGATOR_MAX_SEARCHES, presupuesto de búsquedas del mensaje compartido con web_search) y
+    # INVESTIGATOR_MAX_TOKENS en lugar de MAX_TOKENS; cada búsqueda interna se avisa como evento progress
+def build_tools(model, settings, search_fn=web_search, checker=None, profile=None) -> list[BaseTool]
+    # profile.build_tools(model, settings, base_tools(...)); profile=None = el perfil activo (AGENT_PROFILE)
+    # base: [web_search, calculator, current_datetime, check_python_syntax, save_memory, search_memories,
+    #  update_memory, deep_research]  (deep_research pide confirmación salvo petición explícita: research_needs_confirmation)
+    # perfil default: la base + send_simulated_email si settings.enable_hitl_demo
 ```
 
 ## agent.py (subagente agente)
@@ -98,13 +107,24 @@ def make_model(settings) -> ChatOpenAI   # ChatOpenAI(model=settings.llm_model, 
     # OBLIGATORIO use_responses_api=True: gpt-6-luna (docs oficiales) solo hace function calling en Chat Completions
     # con reasoning effort "none"; en Responses API soporta function calling + web_search hospedado.
     # Los tokens llegan como content blocks: usa token.text (no token.content) para extraer texto.
-def build_agent(model, tools, settings, checkpointer=None, store=None)
-    # create_agent(model, tools, system_prompt=read_system_prompt(), context_schema=Context,
-    #   checkpointer=checkpointer, store=store, middleware=[
-    #     ModelCallLimitMiddleware(run_limit=settings.model_call_limit, exit_behavior="end"),
-    #     ToolErrorMiddleware(on_error=lambda exc, req: f"Error en la herramienta ({type(exc).__name__}): {exc}. Intenta otra cosa."),
-    #     HumanInTheLoopMiddleware(interrupt_on={"send_simulated_email": True}),  # patrón HITL listo
+def build_agent(model, tools, settings, checkpointer=None, store=None, summarizer=None, checker=None, profile=None)
+    # summarizer/checker: modelos de la compactación y de ANSWER_VERIFY (se inyectan en tests); profile=None = el activo
+    # create_agent(model, tools, context_schema=Context, checkpointer=checkpointer, store=store, middleware=[
+    #     MedidorContexto(base, prune_age),            # primero: sus after_model/after_agent corren al final
+    #     ResumenPorTurno(...),                        # solo con MEMORY_SUMMARIZE (compactación automática)
+    #     dynamic_prompt: system_prompt_text(settings, profile),   # prompt del perfil + política de memoria + fecha
+    #     nombres antiguos (profile.legacy_tool_names),
+    #     PodaHerramientas(prune_age),                 # solo con COMPACT_PRUNE_TOOLS
+    #     razonamiento por esfuerzo,
+    #     LimiteLlamadas(), AterrizajeSuave(settings.turn_token_cap),
+    #     ToolErrorMiddleware(on_error=_on_tool_error),  # "Tool error (...)" en inglés
+    #     LimiteRepeticiones(settings.tool_repeat_limit),
+    #     HumanInTheLoopMiddleware(interrupt_on={herramientas con ToolPolicy.approval del perfil}),
+    #     #   default: send_simulated_email (True) y deep_research (aprobar/rechazar, when=research_needs_confirmation)
+    #     AvisoCorte(),
+    #     AnswerVerifier(checker, settings.turn_token_cap, evidence_tools(profile)),  # solo con ANSWER_VERIFY
     #   ])
+    # agent.compactor = ResumenPorTurno (existe siempre: botón "Compactar ahora"); agent.base_context_tokens = base
 def run_config(thread_id: str, settings) -> dict  # {"configurable": {"thread_id": thread_id}, "recursion_limit": settings.recursion_limit}
 def stream_events(agent, payload, thread_id: str, user_id: str, settings) -> Iterator[dict]
     # payload: {"messages":[{"role":"user","content": "..."}]}  o  langgraph.types.Command(resume=...)

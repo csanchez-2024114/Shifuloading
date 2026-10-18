@@ -208,7 +208,7 @@ def test_correccion_de_answer_verify_con_mismo_id_en_mongo(make_settings, mongo_
 
 
 def test_aviso_de_corte_y_reintento_con_mismo_id_en_mongo(settings, mongo_checkpointer):
-    from assistant.agent import CUT_NOTE
+    from assistant.packs.i18n.es import CUT_NOTE
 
     thread = uid()
     agent = _agent(settings, Cortado(messages=iter(["Semana 1: rodaje suave de"])), checkpointer=mongo_checkpointer)
