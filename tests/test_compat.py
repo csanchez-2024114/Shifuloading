@@ -10,15 +10,16 @@ from assistant import _compat
 
 
 def test_alias_es_el_mismo_modulo_con_su_spec_y_avisa(monkeypatch):
-    monkeypatch.setitem(_compat.ALIASES, "assistant._probe", "assistant.citations")
-    real = importlib.import_module("assistant.citations")
+    # destino que nunca se mueve (los módulos movidos ya son alias a su vez)
+    monkeypatch.setitem(_compat.ALIASES, "assistant._probe", "assistant.core")
+    real = importlib.import_module("assistant.core")
     spec, package = real.__spec__, real.__package__
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             probe = importlib.import_module("assistant._probe")
         assert probe is real
-        assert real.__spec__ is spec and real.__spec__.name == "assistant.citations" and real.__package__ == package
+        assert real.__spec__ is spec and real.__spec__.name == "assistant.core" and real.__package__ == package
         assert [w.category for w in caught] == [DeprecationWarning]
         importlib.reload(real)  # el spec restaurado permite recargar
     finally:

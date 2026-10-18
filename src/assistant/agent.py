@@ -32,9 +32,9 @@ from langgraph.config import get_config
 from langgraph.errors import GraphRecursionError
 from langgraph.runtime import Runtime
 
-from assistant import citations
-from assistant.config import Settings, read_system_prompt
-from assistant.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
+from assistant.core import citations
+from assistant.core.config import Settings, read_system_prompt
+from assistant.core.context import (MedidorContexto, PodaHerramientas, context_in_use, message_tokens, prompt_tokens,
                                prune_tool_results)
 from assistant.memory import DUPLICATE_PREFIX, SUMMARY_SOURCE, memory_policy
 

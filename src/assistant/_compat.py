@@ -11,7 +11,12 @@ import sys
 import warnings
 
 # nombre viejo -> nombre nuevo (se llena en cada paso del movimiento)
-ALIASES: dict[str, str] = {}
+ALIASES: dict[str, str] = {
+    "assistant.config": "assistant.core.config",
+    "assistant.context": "assistant.core.context",
+    "assistant.citations": "assistant.core.citations",
+    "assistant.tool_spec": "assistant.core.tool_spec",
+}
 
 
 def resolve(name: str) -> str | None:

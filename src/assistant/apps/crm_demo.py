@@ -8,7 +8,7 @@ from datetime import date
 
 from langchain_core.tools import BaseTool
 
-from assistant.tool_spec import AutoResolve, tool_spec
+from assistant.core.tool_spec import AutoResolve, tool_spec
 
 _SEED_CUSTOMERS = {
     "c-001": {"id": "c-001", "name": "Ana López", "email": "ana@example.com", "city": "Monterrey"},

@@ -14,7 +14,7 @@ from langgraph.checkpoint.mongodb import MongoDBSaver
 from langgraph.store.mongodb import MongoDBStore
 from pymongo.errors import PyMongoError
 
-from assistant.config import ConfigError, Settings
+from assistant.core.config import ConfigError, Settings
 
 logger = logging.getLogger(__name__)
 

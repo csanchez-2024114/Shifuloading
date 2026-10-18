@@ -15,11 +15,11 @@ from pydantic import BaseModel
 
 from assistant import agent as agent_mod
 from assistant import ai_data
-from assistant import context as context_mod
+from assistant.core import context as context_mod
 from assistant import memory
 from assistant.appdata import MAX_TITLE_CHARS, clean_title, thread_title
 from assistant.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
-from assistant.config import ROOT, ConfigError, Settings
+from assistant.core.config import ROOT, ConfigError, Settings
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("assistant")

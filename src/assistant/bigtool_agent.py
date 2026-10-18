@@ -38,9 +38,9 @@ from assistant import memory
 from assistant.agent import (OLD_TOOL_NAMES, history_landing, landing_due, landing_note, mark_no_tools,
                              rename_old_tools, system_prompt_text)
 from assistant.apps.crm_demo import crm_tools
-from assistant.config import Settings
+from assistant.core.config import Settings
 from assistant.extra_tools import extra_tools
-from assistant.tool_spec import expand_requirements, get_spec, validate_registry
+from assistant.core.tool_spec import expand_requirements, get_spec, validate_registry
 from assistant.tools import (
     ACTUALIZAR_RECUERDO_DOC, BUSCAR_RECUERDOS_DOC, INVESTIGADOR_DOC, calculadora, save_memory_doc,
     check_python_syntax,
