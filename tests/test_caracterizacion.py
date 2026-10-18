@@ -71,6 +71,11 @@ MOVED_CONSTANTS = {
     "agent.TURN_CAP_MSG": "assistant.packs.i18n.es",
     "tools.DEEP_RESEARCH_CONFIRM": "assistant.packs.i18n.es",
     "bigtool_agent.DEEP_RESEARCH_CONFIRM": "assistant.packs.i18n.es",
+    "auth.LOGIN_ERROR": "assistant.packs.i18n.es",
+    "auth.REGISTER_ERROR": "assistant.packs.i18n.es",
+    "auth.LOCKED_ERROR": "assistant.packs.i18n.es",
+    "auth.PASSWORD_RULE": "assistant.packs.i18n.es",
+    "memory.SAME_DB_MSG": "assistant.packs.i18n.es",
 }
 
 CONST_MODULES = ("agent", "tools", "memory", "context", "citations", "auth", "bigtool_agent", "extra_tools",

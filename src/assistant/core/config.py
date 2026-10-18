@@ -174,10 +174,9 @@ class Settings:
 
     def require_api_key(self) -> None:
         if not self.openai_api_key:
-            raise ConfigError(
-                "Falta OPENAI_API_KEY. Crea un archivo .env en la raíz del proyecto "
-                "(copia .env.example) y pon tu clave."
-            )
+            from assistant.core.i18n import tr  # perezoso: el catálogo es del perfil
+
+            raise ConfigError(tr("startup.missing_api_key"))
 
 
 DEFAULT_CONTEXT_WINDOW = 128000  # modelos sin perfil conocido en langchain

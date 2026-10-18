@@ -1,5 +1,6 @@
 """Textos al usuario en español (base de TextCatalog). Son los textos que antes vivían en el núcleo, literales: con el
 perfil por defecto nada visible cambia. Las constantes conservan el nombre que tenían en su módulo de origen."""
+from assistant.core.auth import MIN_PASSWORD_LEN
 
 # --------------------------------------------------------------------------- agente (antes en core/agent.py)
 LIMIT_MSG = "Se alcanzó el límite de llamadas al modelo para este mensaje; detuve el proceso. Escribe «continúa» para seguir."
@@ -25,6 +26,42 @@ CITATION_REMOVED_NOTE = "se eliminó una cita sin respaldo en la búsqueda: {url
 SOURCES_LABEL = "Fuentes: "
 SOURCES_RESTORED_NOTE = "se restauraron fuentes que la corrección había quitado"
 
+# --------------------------------------------------------------------------- servidor HTTP (antes en core/server.py)
+LOGIN_REQUIRED_MSG = "Inicia sesión para continuar."
+ORIGIN_FORBIDDEN_MSG = "Origen no permitido."
+CSRF_INVALID_MSG = "Falta el token CSRF o no es válido."
+THREAD_NOT_FOUND_MSG = "Conversación no encontrada."
+ACCOUNTS_DISABLED_MSG = "Las cuentas no están activadas (AUTH_ENABLED=0)."
+WRONG_PASSWORD_MSG = "La contraseña no es correcta."
+TITLE_LENGTH_MSG = "El título debe tener entre 1 y {max} caracteres."
+STORE_UNAVAILABLE_MSG = "El almacén de recuerdos no está disponible"
+MEMORY_NOT_FOUND_MSG = "Recuerdo no encontrado"
+SERVER_NEEDS_APP_DB_MSG = "AUTH_ENABLED=1 necesita la base de negocio (APP_MONGODB_URI y APP_MONGODB_DB)."
+
+# --------------------------------------------------------------------------- cuentas (antes en core/auth.py)
+# mensajes genéricos: no revelan si un correo existe
+LOGIN_ERROR = "Correo o contraseña incorrectos."
+REGISTER_ERROR = "No se pudo crear la cuenta con esos datos."
+LOCKED_ERROR = "Demasiados intentos fallidos. Espera unos minutos y vuelve a intentarlo."
+PASSWORD_RULE = f"La contraseña debe tener al menos {MIN_PASSWORD_LEN} caracteres."
+
+# --------------------------------------------------------------------------- arranque (antes en core/config.py y core/memory.py)
+MISSING_API_KEY_MSG = ("Falta OPENAI_API_KEY. Crea un archivo .env en la raíz del proyecto "
+                       "(copia .env.example) y pon tu clave.")
+MONGO_UNREACHABLE_MSG = "No pude conectar a MongoDB en {uri}. Verifica que el servicio esté corriendo"
+OPENAI_AUTH_MSG = ("OPENAI_API_KEY inválida (OpenAI rechazó la autenticación). "
+                   "Revisa la clave en tu archivo .env")
+OPENAI_CONNECTION_MSG = "No pude contactar la API de OpenAI: {error}"
+OPENAI_API_ERROR_MSG = "Error de la API de OpenAI al listar modelos: {error}"
+MODEL_NOT_FOUND_MSG = ("El modelo '{model}' no existe para tu cuenta. "
+                       "Modelos 'luna' disponibles: {available}. Ajusta LLM_MODEL en .env")
+NONE_AVAILABLE = "ninguno"
+SAME_DB_MSG = ("APP_MONGODB_URI/APP_MONGODB_DB apuntan a la misma base que la IA (AI_MONGODB_*/MONGODB_*). Deben ser "
+               "bases distintas: la de la IA nunca guarda correos, contraseñas ni datos de login, y la de negocio "
+               "nunca guarda mensajes ni recuerdos. Usa otro nombre de base (y, en Atlas, otro usuario).")
+APP_DB_REQUIRED_MSG = ("Con AUTH_ENABLED=1 hacen falta APP_MONGODB_URI y APP_MONGODB_DB (base de negocio: "
+                       "usuarios y sesiones), distintas de la base de la IA.")
+
 TEXTS = {
     "agent.limit_reached": LIMIT_MSG,
     "agent.cut_note": CUT_NOTE,
@@ -39,4 +76,27 @@ TEXTS = {
     "citations.citation_removed": CITATION_REMOVED_NOTE,
     "citations.sources_label": SOURCES_LABEL,
     "citations.sources_restored": SOURCES_RESTORED_NOTE,
+    "http.login_required": LOGIN_REQUIRED_MSG,
+    "http.origin_forbidden": ORIGIN_FORBIDDEN_MSG,
+    "http.csrf_invalid": CSRF_INVALID_MSG,
+    "http.thread_not_found": THREAD_NOT_FOUND_MSG,
+    "http.accounts_disabled": ACCOUNTS_DISABLED_MSG,
+    "http.wrong_password": WRONG_PASSWORD_MSG,
+    "http.title_length": TITLE_LENGTH_MSG,
+    "http.store_unavailable": STORE_UNAVAILABLE_MSG,
+    "http.memory_not_found": MEMORY_NOT_FOUND_MSG,
+    "http.server_needs_app_db": SERVER_NEEDS_APP_DB_MSG,
+    "auth.login_error": LOGIN_ERROR,
+    "auth.register_error": REGISTER_ERROR,
+    "auth.locked_error": LOCKED_ERROR,
+    "auth.password_rule": PASSWORD_RULE,
+    "startup.missing_api_key": MISSING_API_KEY_MSG,
+    "startup.mongo_unreachable": MONGO_UNREACHABLE_MSG,
+    "startup.openai_auth": OPENAI_AUTH_MSG,
+    "startup.openai_connection": OPENAI_CONNECTION_MSG,
+    "startup.openai_api_error": OPENAI_API_ERROR_MSG,
+    "startup.model_not_found": MODEL_NOT_FOUND_MSG,
+    "startup.none_available": NONE_AVAILABLE,
+    "startup.same_db": SAME_DB_MSG,
+    "startup.app_db_required": APP_DB_REQUIRED_MSG,
 }

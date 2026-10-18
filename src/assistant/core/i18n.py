@@ -21,6 +21,17 @@ REQUIRED_TEXTS = (
     "citations.citation_removed",      # {url}
     "citations.sources_label",
     "citations.sources_restored",
+    # servidor HTTP
+    "http.login_required", "http.origin_forbidden", "http.csrf_invalid", "http.thread_not_found",
+    "http.accounts_disabled", "http.wrong_password", "http.title_length",  # {max}
+    "http.store_unavailable", "http.memory_not_found", "http.server_needs_app_db",
+    # cuentas (genéricos: no revelan si un correo existe)
+    "auth.login_error", "auth.register_error", "auth.locked_error", "auth.password_rule",
+    # arranque
+    "startup.missing_api_key", "startup.mongo_unreachable",  # {uri}
+    "startup.openai_auth", "startup.openai_connection", "startup.openai_api_error",  # {error}
+    "startup.model_not_found", "startup.none_available",  # {model} {available}
+    "startup.same_db", "startup.app_db_required",
 )
 
 

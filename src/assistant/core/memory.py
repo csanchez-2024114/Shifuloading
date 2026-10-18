@@ -15,6 +15,7 @@ from langgraph.store.mongodb import MongoDBStore
 from pymongo.errors import PyMongoError
 
 from assistant.core.config import ConfigError, Settings
+from assistant.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,7 @@ def ping_mongo(uri: str, timeout_ms: int = 2000) -> pymongo.MongoClient:
         if client is not None:
             client.close()
         safe_uri = re.sub(r"//[^@/]+@", "//***@", uri)  # oculta usuario:contraseña
-        raise ConfigError(
-            f"No pude conectar a MongoDB en {safe_uri}. Verifica que el servicio esté corriendo"
-        ) from exc
+        raise ConfigError(tr("startup.mongo_unreachable", uri=safe_uri)) from exc
     return client
 
 
@@ -45,23 +44,17 @@ def verify_model(api_key: str, model: str) -> str:
         client = openai.OpenAI(api_key=api_key)
         ids = [m.id for m in client.models.list()]
     except openai.AuthenticationError as exc:
-        raise ConfigError(
-            "OPENAI_API_KEY inválida (OpenAI rechazó la autenticación). "
-            "Revisa la clave en tu archivo .env"
-        ) from exc
+        raise ConfigError(tr("startup.openai_auth")) from exc
     except openai.APIConnectionError as exc:
-        raise ConfigError(f"No pude contactar la API de OpenAI: {exc}") from exc
+        raise ConfigError(tr("startup.openai_connection", error=exc)) from exc
     except openai.APIError as exc:
-        raise ConfigError(f"Error de la API de OpenAI al listar modelos: {exc}") from exc
+        raise ConfigError(tr("startup.openai_api_error", error=exc)) from exc
 
     if model in ids:
         return model
     luna = sorted(i for i in ids if "luna" in i.lower())
-    disponibles = ", ".join(luna) if luna else "ninguno"
-    raise ConfigError(
-        f"El modelo '{model}' no existe para tu cuenta. "
-        f"Modelos 'luna' disponibles: {disponibles}. Ajusta LLM_MODEL en .env"
-    )
+    disponibles = ", ".join(luna) if luna else tr("startup.none_available")
+    raise ConfigError(tr("startup.model_not_found", model=model, available=disponibles))
 
 
 def build_checkpointer(client: pymongo.MongoClient, db_name: str) -> MongoDBSaver:
@@ -500,21 +493,15 @@ def same_database(ai_uri: str, ai_db: str, app_uri: str, app_db: str) -> bool:
     return _without_credentials(ai_uri) == _without_credentials(app_uri) and ai_db.strip() == app_db.strip()
 
 
-SAME_DB_MSG = ("APP_MONGODB_URI/APP_MONGODB_DB apuntan a la misma base que la IA (AI_MONGODB_*/MONGODB_*). Deben ser "
-               "bases distintas: la de la IA nunca guarda correos, contraseñas ni datos de login, y la de negocio "
-               "nunca guarda mensajes ni recuerdos. Usa otro nombre de base (y, en Atlas, otro usuario).")
-
-
 def app_startup(settings: Settings) -> pymongo.MongoClient | None:
     """Base de negocio: obligatoria con AUTH_ENABLED=1. Nunca la misma que la de la IA. Devuelve su cliente."""
     configured = bool(settings.app_mongodb_uri and settings.app_mongodb_db)
     if not configured:
         if settings.auth_enabled:
-            raise ConfigError("Con AUTH_ENABLED=1 hacen falta APP_MONGODB_URI y APP_MONGODB_DB (base de negocio: "
-                              "usuarios y sesiones), distintas de la base de la IA.")
+            raise ConfigError(tr("startup.app_db_required"))
         return None
     if same_database(settings.mongodb_uri, settings.mongodb_db, settings.app_mongodb_uri, settings.app_mongodb_db):
-        raise ConfigError(SAME_DB_MSG)
+        raise ConfigError(tr("startup.same_db"))
     return ping_mongo(settings.app_mongodb_uri)
 
 

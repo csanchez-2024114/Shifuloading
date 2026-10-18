@@ -14,18 +14,13 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
 from assistant.core.appdata.repos import AppData, DuplicateEmail
+from assistant.core.i18n import tr  # mensajes genéricos del catálogo: no revelan si un correo existe
 
 MIN_PASSWORD_LEN = 10
 MAX_PASSWORD_LEN = 256
 SESSION_COOKIE = "agente0_session"
 CSRF_HEADER = "X-CSRF-Token"
 TOUCH_EVERY = timedelta(hours=1)  # renovación deslizante: como mucho una escritura por hora y sesión
-
-# mensajes genéricos: no revelan si un correo existe
-LOGIN_ERROR = "Correo o contraseña incorrectos."
-REGISTER_ERROR = "No se pudo crear la cuenta con esos datos."
-LOCKED_ERROR = "Demasiados intentos fallidos. Espera unos minutos y vuelve a intentarlo."
-PASSWORD_RULE = f"La contraseña debe tener al menos {MIN_PASSWORD_LEN} caracteres."
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -73,14 +68,14 @@ class AuthService:
     def register(self, email: str, password: str, display_name: str = "") -> dict:
         email = normalize_email(email)
         if not _EMAIL_RE.match(email) or len(email) > 254:
-            raise AuthError(400, REGISTER_ERROR)
+            raise AuthError(400, tr("auth.register_error"))
         if not isinstance(password, str) or not MIN_PASSWORD_LEN <= len(password) <= MAX_PASSWORD_LEN:
-            raise AuthError(400, PASSWORD_RULE)
+            raise AuthError(400, tr("auth.password_rule"))
         name = " ".join((display_name or "").split())[:60] or email.split("@")[0]
         try:
             return self.data.users.create(str(uuid.uuid4()), email, name, self.ph.hash(password))
         except DuplicateEmail:
-            raise AuthError(400, REGISTER_ERROR) from None
+            raise AuthError(400, tr("auth.register_error")) from None
 
     def login(self, email: str, password: str, ip: str) -> tuple[dict, str]:
         """(usuario, token de sesión). AuthError 401 genérico o 429 si la clave (correo o IP) está bloqueada."""
@@ -88,7 +83,7 @@ class AuthService:
         now = datetime.now(timezone.utc)
         keys = [f"email:{email}", f"ip:{ip or 'desconocida'}"]
         if any((until := self.data.attempts.locked_until(k)) and until > now for k in keys):
-            raise AuthError(429, LOCKED_ERROR)
+            raise AuthError(429, tr("auth.locked_error"))
         user = self.data.users.get_by_email(email) if email else None
         ok = self._verify(user["password_hash"] if user else self._dummy, password or "")
         if not (ok and user and user.get("status") == "active"):
@@ -96,7 +91,7 @@ class AuthService:
                 self.data.attempts.record_failure(k, now)
                 if self.data.attempts.failures_since(k, now - self.window) >= self.max_fails[k.split(":", 1)[0]]:
                     self.data.attempts.lock(k, now + self.window)
-            raise AuthError(401, LOGIN_ERROR)
+            raise AuthError(401, tr("auth.login_error"))
         self.data.attempts.clear(keys[0])
         token = secrets.token_urlsafe(32)
         self.data.sessions.create(token_hash(token), user["user_id"], now + self.ttl)

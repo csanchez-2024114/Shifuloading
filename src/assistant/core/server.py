@@ -20,6 +20,7 @@ from assistant.core import memory
 from assistant.core.appdata import MAX_TITLE_CHARS, clean_title, thread_title
 from assistant.core.auth import CSRF_HEADER, SESSION_COOKIE, AuthError, AuthService, csrf_for, csrf_ok
 from assistant.core.config import ConfigError, Settings
+from assistant.core.i18n import tr
 from assistant.core.profile import active_profile
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -148,7 +149,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             log.info("MongoDB negocio: %s (db %s)", settings.app_mongodb_uri.rsplit("@", 1)[-1],
                      settings.app_mongodb_db)
     if settings.auth_enabled and appdata is None:
-        raise ConfigError("AUTH_ENABLED=1 necesita la base de negocio (APP_MONGODB_URI y APP_MONGODB_DB).")
+        raise ConfigError(tr("http.server_needs_app_db", profile))
     auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
                        settings.login_lock_minutes, settings.login_max_fails_ip) if settings.auth_enabled else None
 
@@ -161,28 +162,28 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     def _user(request: Request) -> dict:
         user = auth.session_user(_token(request))
         if user is None:
-            raise HTTPException(401, "Inicia sesión para continuar.")
+            raise HTTPException(401, tr("http.login_required", profile))
         return user
 
     def _same_origin(request: Request) -> None:
         # CSRF (1/2): las peticiones que cambian estado deben venir de esta misma página
         origin = request.headers.get("origin") or request.headers.get("referer") or ""
         if urlparse(origin).netloc != request.headers.get("host"):
-            raise HTTPException(403, "Origen no permitido.")
+            raise HTTPException(403, tr("http.origin_forbidden", profile))
 
     def _changing(request: Request) -> dict:
         """Usuario de una petición que cambia estado: mismo origen, sesión y cabecera CSRF (2/2)."""
         _same_origin(request)
         user = _user(request)
         if not csrf_ok(_token(request), request.headers.get(CSRF_HEADER)):
-            raise HTTPException(403, "Falta el token CSRF o no es válido.")
+            raise HTTPException(403, tr("http.csrf_invalid", profile))
         return user
 
     def _owned(user: dict, thread_id: str) -> dict:
         # un hilo ajeno o inexistente responde igual: 404, para no revelar que existe
         row = appdata.threads.get(thread_id)
         if row is None or row["user_id"] != user["user_id"]:
-            raise HTTPException(404, "Conversación no encontrada.")
+            raise HTTPException(404, tr("http.thread_not_found", profile))
         return row
 
     def _cookie_secure(request: Request) -> bool:
@@ -257,7 +258,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     def _require_auth():
         if not auth:
-            raise HTTPException(404, "Las cuentas no están activadas (AUTH_ENABLED=0).")
+            raise HTTPException(404, tr("http.accounts_disabled", profile))
 
     @app.post("/auth/register")
     def auth_register(body: RegisterIn, request: Request):
@@ -296,7 +297,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         _require_auth()
         user = _changing(request)
         if not auth.check_password(user, body.password):
-            raise HTTPException(401, "La contraseña no es correcta.")
+            raise HTTPException(401, tr("http.wrong_password", profile))
         uid = user["user_id"]
         threads = [t["thread_id"] for t in appdata.threads.list_for_user(uid)]
         ai_data.delete_user_ai_data(agent.checkpointer, store, uid, threads)
@@ -333,7 +334,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
         _owned(user, thread_id)
         title = clean_title(body.title)
         if title is None:
-            raise HTTPException(400, f"El título debe tener entre 1 y {MAX_TITLE_CHARS} caracteres.")
+            raise HTTPException(400, tr("http.title_length", profile, max=MAX_TITLE_CHARS))
         appdata.threads.rename(thread_id, title)
         return {"thread_id": thread_id, "title": title}
 
@@ -374,7 +375,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     def _store():
         if store is None:
-            raise HTTPException(503, "El almacén de recuerdos no está disponible")
+            raise HTTPException(503, tr("http.store_unavailable", profile))
         return store
 
     # Con AUTH_ENABLED=1 los recuerdos son los del usuario de la sesión (/me/memories); las rutas con {user_id} (texto
@@ -388,7 +389,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     def delete_my_memory(key: str, request: Request):
         _require_auth()
         if not memory.delete_memory(_store(), _changing(request)["user_id"], key):
-            raise HTTPException(404, "Recuerdo no encontrado")
+            raise HTTPException(404, tr("http.memory_not_found", profile))
         return {"deleted": key}
 
     @app.get("/memories/{user_id}")
@@ -400,7 +401,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     @app.delete("/memories/{user_id}/{key}")
     def delete_memory(user_id: str, key: str):
         if auth or not memory.delete_memory(_store(), user_id, key):
-            raise HTTPException(404, "Recuerdo no encontrado")
+            raise HTTPException(404, tr("http.memory_not_found", profile))
         return {"deleted": key}
 
     return app
