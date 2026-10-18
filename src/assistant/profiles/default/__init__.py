@@ -1,14 +1,17 @@
 """Perfil por defecto: Agente 0, asistente tipo ChatGPT. Reproduce exactamente el comportamiento anterior al refactor."""
-from assistant.core.config import ROOT
+from pathlib import Path
+
 from assistant.core.profile import AgentProfile
 from assistant.profiles.default.policies import MEMORY_POLICIES, OLD_TOOL_NAMES, SEARCH_ECONOMY_RULE, TOOL_POLICIES
 from assistant.profiles.default.tools import bigtool_tools, build_tools
 
+HERE = Path(__file__).parent
+
 PROFILE = AgentProfile(
     name="default",
     display_name="Agente 0",
-    system_prompt_path=ROOT / "prompts" / "system.md",
-    static_dir=ROOT / "static",
+    system_prompt_path=HERE / "prompts" / "system.md",  # se relee en cada mensaje
+    static_dir=HERE / "static",
     build_tools=build_tools,
     bigtool_tools=bigtool_tools,
     tool_policies=TOOL_POLICIES,

@@ -94,7 +94,7 @@ def test_la_interfaz_muestra_etiquetas_en_espanol_para_nombres_viejos_y_nuevos()
     if not node:
         pytest.skip("node no está instalado")
     src = re.search(r"/\* TOOL-NAMES-START \*/(.*?)/\* TOOL-NAMES-END \*/",
-                    (ROOT / "static" / "index.html").read_text(encoding="utf-8"), re.S).group(1)
+                    (ROOT / "src" / "assistant" / "profiles" / "default" / "static" / "index.html").read_text(encoding="utf-8"), re.S).group(1)
     nombres = ["web_search", "buscar_web", "calculator", "calculadora", "current_datetime", "fecha_hora",
                "save_memory", "guardar_recuerdo", "search_memories", "buscar_recuerdos", "update_memory",
                "actualizar_recuerdo", "deep_research", "investigador_profundo"]

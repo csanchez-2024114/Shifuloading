@@ -188,7 +188,7 @@ def test_reglas_del_prompt_y_de_save_memory():
     from assistant.memory import memory_policy
     from assistant.tools import GUARDAR_RECUERDO_DOC
 
-    texto = (Path(__file__).resolve().parents[1] / "prompts" / "system.md").read_text(encoding="utf-8-sig")
+    texto = (Path(__file__).resolve().parents[1] / "src" / "assistant" / "profiles" / "default" / "prompts" / "system.md").read_text(encoding="utf-8-sig")
     for regla in ("at most one web_search per step", "Use deep_research only when the user explicitly asks",
                   "check it with check_python_syntax", "continue exactly where it stopped"):
         assert regla in texto, regla

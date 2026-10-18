@@ -28,7 +28,7 @@ def _model_texts(make_settings) -> dict[str, str]:
 
     s = make_settings(enable_hitl_demo=True, bigtool_demo_tools=True)
     texts = {
-        "prompts/system.md": (ROOT / "prompts" / "system.md").read_text(encoding="utf-8-sig"),
+        "prompts/system.md": (ROOT / "src" / "assistant" / "profiles" / "default" / "prompts" / "system.md").read_text(encoding="utf-8-sig"),
         "SUMMARY_PROMPT": agent.SUMMARY_PROMPT, "VERIFY_ANSWER_PROMPT": agent.VERIFY_ANSWER_PROMPT,
         "VERIFY_MEMORY_PROMPT": memory.VERIFY_MEMORY_PROMPT, "CLASSIFIER_PROMPT": agent.CLASSIFIER_PROMPT,
         "LAST_STEP_NOTE": agent.LAST_STEP_NOTE, "REPEAT_LIMIT_MSG": agent.REPEAT_LIMIT_MSG,
@@ -60,7 +60,7 @@ def test_el_detector_si_detecta_espanol():
 
 
 def test_system_md_pide_responder_en_el_idioma_del_usuario():
-    text = (ROOT / "prompts" / "system.md").read_text(encoding="utf-8-sig")
+    text = (ROOT / "src" / "assistant" / "profiles" / "default" / "prompts" / "system.md").read_text(encoding="utf-8-sig")
     assert ("Always reply in the same language the user writes in. Tool results are in English; never copy them "
             "verbatim to the user: explain them in the user's language.") in text
 
@@ -72,7 +72,7 @@ def test_la_interfaz_muestra_los_mensajes_de_herramientas_en_espanol():
     if not node:
         pytest.skip("node no está instalado")
     src = re.search(r"/\* TOOL-LABELS-START \*/(.*?)/\* TOOL-LABELS-END \*/",
-                    (ROOT / "static" / "index.html").read_text(encoding="utf-8"), re.S).group(1)
+                    (ROOT / "src" / "assistant" / "profiles" / "default" / "static" / "index.html").read_text(encoding="utf-8"), re.S).group(1)
     mensajes = [memory.SAVED_MSG, memory.UPDATED_MSG, memory.NO_RELEVANT_MSG, memory.NO_MEMORIES_MSG,
                 memory.NOT_FOUND_MSG, memory.remember(InMemoryStore(), "u", "x", "", [], verifier=lambda c, t: (False, "")),
                 tools.WEB_BUDGET_MSG, agent.REPEAT_LIMIT_MSG.format(name="calculator", limit=8), "No results.",

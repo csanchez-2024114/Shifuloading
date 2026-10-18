@@ -173,8 +173,8 @@ def _huella(monkeypatch) -> dict:
         "bigtool_registry_demo": sorted(registry_demo),
         "bigtool_index_docs": {k: bigtool_agent._index_document(t) for k, t in sorted(registry_demo.items())},
         "bigtool_prompt": bigtool_agent.BIGTOOL_PROMPT,
-        "index_html_sha256": hashlib.sha256((ROOT / "static" / "index.html").read_bytes()).hexdigest(),
-        "system_md_sha256": hashlib.sha256((ROOT / "prompts" / "system.md").read_bytes()).hexdigest(),
+        "index_html_sha256": hashlib.sha256((ROOT / "src" / "assistant" / "profiles" / "default" / "static" / "index.html").read_bytes()).hexdigest(),
+        "system_md_sha256": hashlib.sha256((ROOT / "src" / "assistant" / "profiles" / "default" / "prompts" / "system.md").read_bytes()).hexdigest(),
         "constants": _constants(),
         "sse": {
             "plain": _scenario_events(s, ["Hola, ¿qué tal?"], "hola"),
