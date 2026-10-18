@@ -23,9 +23,9 @@ def build_tools(model, settings, base):
 
 def bigtool_tools(settings):
     """Extra del registro de bigtool: 31 utilidades y, con BIGTOOL_DEMO_TOOLS, las demos de math, texto y el CRM."""
-    from assistant.apps.crm_demo import crm_tools
-    from assistant.core.extensions.bigtool import _herramientas_math, _herramientas_texto
-    from assistant.extra_tools import extra_tools
+    from assistant.packs.tools.demo import _herramientas_math, _herramientas_texto
+    from assistant.packs.tools.utilities import extra_tools
+    from assistant.profiles.default.apps.crm_demo import crm_tools
 
     tools = extra_tools()
     if settings.bigtool_demo_tools:

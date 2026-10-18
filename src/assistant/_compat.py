@@ -24,6 +24,8 @@ ALIASES: dict[str, str] = {
     "assistant.tools": "assistant.core.tools",
     "assistant.server": "assistant.core.server",
     "assistant.bigtool_agent": "assistant.core.extensions.bigtool",
+    "assistant.extra_tools": "assistant.packs.tools.utilities",
+    "assistant.apps": "assistant.profiles.default.apps",
 }
 
 
