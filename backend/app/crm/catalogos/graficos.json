@@ -1,0 +1,698 @@
+{
+  "columnas": {
+    "nombre": "Columnas",
+    "familia": "Columnas y barras",
+    "requiere": [
+      {
+        "fecha": 1
+      },
+      {
+        "categoria": 1
+      }
+    ],
+    "opciones": {
+      "agrupar": {
+        "si": "fecha",
+        "entonces": "mes",
+        "si_no": {
+          "primero": [
+            "agrupar"
+          ]
+        }
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "columnas-apiladas": {
+    "nombre": "Columnas apiladas",
+    "familia": "Columnas y barras",
+    "requiere": {
+      "estado": 1,
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": "conteo",
+      "meses": 12
+    }
+  },
+  "columnas-100": {
+    "nombre": "Columnas 100 %",
+    "familia": "Columnas y barras",
+    "requiere": {
+      "estado": 1,
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": "conteo",
+      "meses": 12
+    }
+  },
+  "barras": {
+    "nombre": "Barras horizontales",
+    "familia": "Columnas y barras",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "barras-apiladas": {
+    "nombre": "Barras apiladas",
+    "familia": "Columnas y barras",
+    "requiere": [
+      {
+        "estado": 1,
+        "texto": 1
+      },
+      {
+        "estado": 1,
+        "fecha": 1
+      }
+    ],
+    "opciones": {
+      "filas": {
+        "primero": [
+          "texto"
+        ],
+        "si_no": "mes"
+      },
+      "funcion": "conteo",
+      "meses": 6
+    }
+  },
+  "barra-100": {
+    "nombre": "Barra 100 %",
+    "familia": "Columnas y barras",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "funcion": "conteo"
+    }
+  },
+  "linea": {
+    "nombre": "Línea",
+    "familia": "Líneas y áreas",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "linea-area": {
+    "nombre": "Línea con área",
+    "familia": "Líneas y áreas",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": "conteo"
+    }
+  },
+  "area-apilada": {
+    "nombre": "Área apilada",
+    "familia": "Líneas y áreas",
+    "requiere": {
+      "estado": 1,
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": "conteo",
+      "meses": 12
+    }
+  },
+  "linea-tendencia": {
+    "nombre": "Línea con tendencia",
+    "familia": "Líneas y áreas",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "ventana": 3
+    }
+  },
+  "dona": {
+    "nombre": "Dona",
+    "familia": "Circulares",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "funcion": "conteo"
+    }
+  },
+  "pastel": {
+    "nombre": "Pastel",
+    "familia": "Circulares",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "anillos": {
+    "nombre": "Anillos concéntricos",
+    "familia": "Circulares",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "funcion": "conteo"
+    }
+  },
+  "medidor": {
+    "nombre": "Medidor",
+    "familia": "Circulares",
+    "requiere": {
+      "estado": 1
+    },
+    "opciones": {
+      "objetivo": null
+    }
+  },
+  "meta": {
+    "nombre": "Anillo de meta",
+    "familia": "Circulares",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "meta": null
+    }
+  },
+  "embudo": {
+    "nombre": "Embudo",
+    "familia": "Flujo y jerarquía",
+    "requiere": {
+      "estado": 1
+    },
+    "opciones": {
+      "modo": "acumulado",
+      "excluir": []
+    }
+  },
+  "arbol": {
+    "nombre": "Mapa de árbol",
+    "familia": "Flujo y jerarquía",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "texto",
+          "estado"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "top": 12
+    }
+  },
+  "radar": {
+    "nombre": "Radar",
+    "familia": "Flujo y jerarquía",
+    "requiere": {
+      "estado3": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "clase": "estado3"
+      },
+      "funcion": "conteo"
+    }
+  },
+  "dispersion": {
+    "nombre": "Dispersión",
+    "familia": "Distribución y correlación",
+    "requiere": [
+      {
+        "medida": 2
+      },
+      {
+        "medida": 1,
+        "fecha": 1
+      }
+    ],
+    "opciones": {
+      "x": {
+        "primero": [
+          "valor2",
+          "fecha"
+        ]
+      },
+      "y": {
+        "primero": [
+          "valor"
+        ]
+      }
+    }
+  },
+  "burbujas": {
+    "nombre": "Burbujas",
+    "familia": "Distribución y correlación",
+    "requiere": {
+      "categoria": 1,
+      "medida": 1
+    },
+    "opciones": {}
+  },
+  "histograma": {
+    "nombre": "Histograma",
+    "familia": "Distribución y correlación",
+    "requiere": {
+      "medida": 1
+    },
+    "opciones": {
+      "bins": null
+    }
+  },
+  "caja": {
+    "nombre": "Caja y bigotes",
+    "familia": "Distribución y correlación",
+    "requiere": {
+      "medida": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "estado"
+        ],
+        "si_no": null
+      }
+    }
+  },
+  "calendario": {
+    "nombre": "Mapa de calor por día",
+    "familia": "Tiempo",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "semanas": 16,
+      "funcion": "conteo"
+    }
+  },
+  "cascada": {
+    "nombre": "Cascada",
+    "familia": "Tiempo",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "meses": 12
+    }
+  },
+  "kpi": {
+    "nombre": "KPI con tendencia",
+    "familia": "Tiempo",
+    "requiere": {
+      "fecha": 1
+    },
+    "html": true,
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "posiciones": {
+    "nombre": "Tabla de posiciones",
+    "familia": "Resúmenes",
+    "requiere": {
+      "texto": 1
+    },
+    "html": true,
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "texto"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "top": 5
+    }
+  },
+  "estadisticas": {
+    "nombre": "Estadísticas",
+    "familia": "Resúmenes",
+    "requiere": {
+      "medida": 1
+    },
+    "html": true,
+    "opciones": {}
+  },
+  "paleta": {
+    "nombre": "Paleta (lollipop)",
+    "familia": "Columnas y barras",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "texto",
+          "estado"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "top": 8
+    }
+  },
+  "combo": {
+    "nombre": "Columnas + acumulado",
+    "familia": "Columnas y barras",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "meses": 12
+    }
+  },
+  "pareto": {
+    "nombre": "Pareto",
+    "familia": "Columnas y barras",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "texto",
+          "estado"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "top": 10
+    }
+  },
+  "escalones": {
+    "nombre": "Escalones",
+    "familia": "Líneas y áreas",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "pendiente": {
+    "nombre": "Pendiente (mes anterior → actual)",
+    "familia": "Líneas y áreas",
+    "requiere": {
+      "fecha": 1,
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "estado",
+          "texto"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "multiples": {
+    "nombre": "Múltiplos pequeños",
+    "familia": "Líneas y áreas",
+    "requiere": {
+      "fecha": 1,
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "estado",
+          "texto"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "meses": 12
+    }
+  },
+  "waffle": {
+    "nombre": "Waffle 10 × 10",
+    "familia": "Circulares",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "agrupar"
+        ]
+      },
+      "funcion": "conteo"
+    }
+  },
+  "rosa": {
+    "nombre": "Rosa polar",
+    "familia": "Circulares",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "estado",
+          "texto"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "media-dona": {
+    "nombre": "Media dona",
+    "familia": "Circulares",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "agrupar"
+        ]
+      },
+      "funcion": "conteo"
+    }
+  },
+  "sol": {
+    "nombre": "Sol (2 niveles)",
+    "familia": "Flujo y jerarquía",
+    "requiere": {
+      "estado": 1,
+      "texto": 1
+    },
+    "opciones": {
+      "estado": {
+        "primero": [
+          "estado"
+        ]
+      },
+      "texto": {
+        "primero": [
+          "texto"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "puntos": {
+    "nombre": "Puntos por categoría",
+    "familia": "Distribución y correlación",
+    "requiere": {
+      "categoria": 1,
+      "medida": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "estado",
+          "texto"
+        ]
+      },
+      "valor": {
+        "primero": [
+          "valor"
+        ]
+      }
+    }
+  },
+  "calor-hora": {
+    "nombre": "Calor día × hora",
+    "familia": "Tiempo",
+    "requiere": {
+      "fecha": 1,
+      "hora": 1
+    },
+    "opciones": {
+      "fecha": {
+        "primero": [
+          "fecha"
+        ]
+      },
+      "hora": {
+        "primero": [
+          "hora"
+        ]
+      },
+      "funcion": "conteo"
+    }
+  },
+  "gantt": {
+    "nombre": "Línea de tiempo",
+    "familia": "Tiempo",
+    "requiere": {
+      "fecha": 2
+    },
+    "opciones": {
+      "fecha": {
+        "primero": [
+          "fecha"
+        ]
+      },
+      "fecha2": {
+        "primero": [
+          "fecha2"
+        ]
+      },
+      "texto": {
+        "primero": [
+          "texto"
+        ]
+      },
+      "estado": {
+        "primero": [
+          "estado"
+        ]
+      }
+    }
+  },
+  "bala": {
+    "nombre": "Bala contra meta",
+    "familia": "Resúmenes",
+    "requiere": {
+      "fecha": 1
+    },
+    "opciones": {
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      },
+      "meta": null
+    }
+  },
+  "progreso": {
+    "nombre": "Barras de progreso",
+    "familia": "Resúmenes",
+    "requiere": {
+      "categoria": 1
+    },
+    "opciones": {
+      "agrupar": {
+        "primero": [
+          "agrupar"
+        ]
+      },
+      "funcion": {
+        "si": "valor",
+        "entonces": "suma",
+        "si_no": "conteo"
+      }
+    }
+  },
+  "dos-kpis": {
+    "nombre": "Dos KPIs",
+    "familia": "Resúmenes",
+    "requiere": {
+      "fecha": 1,
+      "medida": 1
+    },
+    "html": true,
+    "opciones": {
+      "valor": {
+        "primero": [
+          "valor"
+        ]
+      }
+    }
+  }
+}

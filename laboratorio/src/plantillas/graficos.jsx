@@ -29,10 +29,11 @@ import {
   punto, sector, Cuenta, Svg, sinMovimiento, olvidarAnchos, etiquetasCirculo, nivelesCalor, SEPARADOR, altoTexto, Placa, anchoPlaca, ALTO_PLACA, esquinasGiradas, puntosEnSector, partirNombre,
 } from './graficos-base'
 import {
-  ACENTO, GRIS, sumaDe, fechaCorta, fechaLarga, CLASES, cumple, base, campoDe, fnDe, medirDe, tipoDe, queMide, nombre, FALTA, SIN_DATOS,
-  calcCategorias, calcMeses, calcMatriz, conTotal, conMeses, conMatriz, sumaOConteo, colorDe,
+  ACENTO, GRIS, sumaDe, fechaCorta, fechaLarga, CLASES, cumple, campoDe, fnDe, medirDe, tipoDe, queMide, nombre, FALTA, SIN_DATOS,
+  calcCategorias, calcMeses, calcMatriz, conTotal, conMeses, conMatriz, colorDe,
 } from './graficos-calculos'
 import { NUEVOS } from './graficos-nuevos'
+import { CATALOGO, F, compatibles, evaluarOpciones, opcionesPorDefecto } from './graficos-catalogo'
 import '@base/crm.css'
 import '@base/crm-extra.css'
 import './graficos.css'
@@ -1380,38 +1381,22 @@ function calcEstadisticas(regs, campos, o) {
 }
 
 // ── Catálogo ──────────────────────────────────────────────────────────────────────────────────────
-export const F = { cb: 'Columnas y barras', la: 'Líneas y áreas', ci: 'Circulares', fl: 'Flujo y jerarquía', di: 'Distribución y correlación', ti: 'Tiempo', re: 'Resúmenes' }
+// Lo puro (nombre, familia, requiere, opciones por defecto, html) vive en graficos-catalogo.js; aquí se le suma el dibujo.
+export { F, compatibles, opcionesPorDefecto }
 
-/**
- * GRAFICOS[id] = { nombre, familia, requiere, Componente, calcular, opciones, html? }
- *  - requiere: { clase: n } o lista de alternativas. Clases: estado, estado3 (≥3 opciones), fecha, hora, medida (numero|dinero),
- *    texto, categoria (estado|texto).
- *  - opciones(b, campos): opciones por defecto (b = campos elegidos solos: estado, fecha, fecha2, hora, valor, valor2, texto, agrupar).
- *  - calcular(registros, campos, o, hoy): objeto para dibujar, o texto = estado vacío.
- *  - html: se dibuja con HTML (no SVG).
- */
-export const GRAFICOS = {
-  columnas: { nombre: 'Columnas', familia: F.cb, requiere: [{ fecha: 1 }, { categoria: 1 }], Componente: Columnas,
-    opciones: (b) => ({ agrupar: b.fecha ? 'mes' : b.agrupar, funcion: sumaOConteo(b) }),
+/** Dibujo y cálculo de cada tipo del catálogo (los 16 nuevos vienen de graficos-nuevos.jsx). */
+const DIBUJO = {
+  columnas: { Componente: Columnas,
     calcular: (r, c, o, hoy) => (o.agrupar === 'mes' ? conMeses(calcMeses(r, c, o, hoy)) : conTotal(calcCategorias(r, c, o))) },
-  'columnas-apiladas': { nombre: 'Columnas apiladas', familia: F.cb, requiere: { estado: 1, fecha: 1 }, Componente: ColumnasApiladas,
-    opciones: () => ({ funcion: 'conteo', meses: 12 }), calcular: (r, c, o, hoy) => conMatriz(calcMatriz(r, c, o, hoy)) },
-  'columnas-100': { nombre: 'Columnas 100 %', familia: F.cb, requiere: { estado: 1, fecha: 1 }, Componente: (p) => <ColumnasApiladas {...p} normalizar />,
-    opciones: () => ({ funcion: 'conteo', meses: 12 }), calcular: (r, c, o, hoy) => conMatriz(calcMatriz(r, c, o, hoy)) },
-  barras: { nombre: 'Barras horizontales', familia: F.cb, requiere: { categoria: 1 }, Componente: Barras,
-    opciones: (b) => ({ funcion: sumaOConteo(b) }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o)) },
-  'barras-apiladas': { nombre: 'Barras apiladas', familia: F.cb, requiere: [{ estado: 1, texto: 1 }, { estado: 1, fecha: 1 }], Componente: BarrasApiladas,
-    opciones: (b) => ({ filas: b.texto || 'mes', funcion: 'conteo', meses: 6 }), calcular: (r, c, o, hoy) => conMatriz(calcMatriz(r, c, o, hoy, o.filas, o.top || 6)) },
-  'barra-100': { nombre: 'Barra 100 %', familia: F.cb, requiere: { categoria: 1 }, Componente: Barra100,
-    opciones: () => ({ funcion: 'conteo' }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 6)) },
-  linea: { nombre: 'Línea', familia: F.la, requiere: { fecha: 1 }, Componente: Linea,
-    opciones: (b) => ({ funcion: sumaOConteo(b) }), calcular: (r, c, o, hoy) => conMeses(calcMeses(r, c, o, hoy)) },
-  'linea-area': { nombre: 'Línea con área', familia: F.la, requiere: { fecha: 1 }, Componente: (p) => <Linea {...p} area />,
-    opciones: () => ({ funcion: 'conteo' }), calcular: (r, c, o, hoy) => conMeses(calcMeses(r, c, o, hoy)) },
-  'area-apilada': { nombre: 'Área apilada', familia: F.la, requiere: { estado: 1, fecha: 1 }, Componente: AreaApilada,
-    opciones: () => ({ funcion: 'conteo', meses: 12 }), calcular: (r, c, o, hoy) => conMatriz(calcMatriz(r, c, o, hoy)) },
-  'linea-tendencia': { nombre: 'Línea con tendencia', familia: F.la, requiere: { fecha: 1 }, Componente: (p) => <Linea {...p} tendencia />,
-    opciones: (b) => ({ funcion: sumaOConteo(b), ventana: 3 }),
+  'columnas-apiladas': { Componente: ColumnasApiladas, calcular: (r, c, o, hoy) => conMatriz(calcMatriz(r, c, o, hoy)) },
+  'columnas-100': { Componente: (p) => <ColumnasApiladas {...p} normalizar />, calcular: (r, c, o, hoy) => conMatriz(calcMatriz(r, c, o, hoy)) },
+  barras: { Componente: Barras, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o)) },
+  'barras-apiladas': { Componente: BarrasApiladas, calcular: (r, c, o, hoy) => conMatriz(calcMatriz(r, c, o, hoy, o.filas, o.top || 6)) },
+  'barra-100': { Componente: Barra100, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 6)) },
+  linea: { Componente: Linea, calcular: (r, c, o, hoy) => conMeses(calcMeses(r, c, o, hoy)) },
+  'linea-area': { Componente: (p) => <Linea {...p} area />, calcular: (r, c, o, hoy) => conMeses(calcMeses(r, c, o, hoy)) },
+  'area-apilada': { Componente: AreaApilada, calcular: (r, c, o, hoy) => conMatriz(calcMatriz(r, c, o, hoy)) },
+  'linea-tendencia': { Componente: (p) => <Linea {...p} tendencia />,
     calcular: (r, c, o, hoy) => {
       const d = conMeses(calcMeses(r, c, o, hoy))
       if (typeof d === 'string') return d
@@ -1421,55 +1406,38 @@ export const GRAFICOS = {
       return { ...d, ventana: v, pie: `${d.pieCorto} · tendencia ${t}${tl.r2 !== null ? `, r² ${fmt('numero', tl.r2)}` : ''}`,
         leyenda: [{ id: 'l:valor', nombre: d.que, color: ACENTO }, { id: 'l:mm', nombre: `Media móvil ${v} m`, color: COLORES[5] }, { id: 'l:tend', nombre: `Tendencia ${t}`, color: COLORES[2], raya: true }] }
     } },
-  dona: { nombre: 'Dona', familia: F.ci, requiere: { categoria: 1 }, Componente: (p) => <Circular {...p} dona />,
-    opciones: () => ({ funcion: 'conteo' }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o)) },
-  pastel: { nombre: 'Pastel', familia: F.ci, requiere: { categoria: 1 }, Componente: Circular,
-    opciones: (b) => ({ funcion: sumaOConteo(b) }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o)) },
-  anillos: { nombre: 'Anillos concéntricos', familia: F.ci, requiere: { categoria: 1 }, Componente: Anillos,
-    opciones: () => ({ funcion: 'conteo' }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 7)) },
-  medidor: { nombre: 'Medidor', familia: F.ci, requiere: { estado: 1 }, Componente: Medidor,
-    opciones: () => ({ objetivo: null }), calcular: (r, c, o) => calcMedidor(r, c, o) },
-  meta: { nombre: 'Anillo de meta', familia: F.ci, requiere: { fecha: 1 }, Componente: Meta,
-    opciones: (b) => ({ funcion: sumaOConteo(b), meta: null }), calcular: (r, c, o, hoy) => calcMeta(r, c, o, hoy) },
-  embudo: { nombre: 'Embudo', familia: F.fl, requiere: { estado: 1 }, Componente: Embudo,
-    opciones: () => ({ modo: 'acumulado', excluir: [] }), calcular: (r, c, o) => calcEmbudo(r, c, o) },
-  arbol: { nombre: 'Mapa de árbol', familia: F.fl, requiere: { categoria: 1 }, Componente: Arbol,
-    opciones: (b) => ({ agrupar: b.texto || b.estado, funcion: sumaOConteo(b), top: 12 }), calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 12)) },
-  radar: { nombre: 'Radar', familia: F.fl, requiere: { estado3: 1 }, Componente: Radar,
-    opciones: (b, campos) => ({ agrupar: campos.find(CLASES.estado3)?.id, funcion: 'conteo' }),
+  dona: { Componente: (p) => <Circular {...p} dona />, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o)) },
+  pastel: { Componente: Circular, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o)) },
+  anillos: { Componente: Anillos, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 7)) },
+  medidor: { Componente: Medidor, calcular: (r, c, o) => calcMedidor(r, c, o) },
+  meta: { Componente: Meta, calcular: (r, c, o, hoy) => calcMeta(r, c, o, hoy) },
+  embudo: { Componente: Embudo, calcular: (r, c, o) => calcEmbudo(r, c, o) },
+  arbol: { Componente: Arbol, calcular: (r, c, o) => conTotal(calcCategorias(r, c, o, 12)) },
+  radar: { Componente: Radar,
     calcular: (r, c, o) => { const d = conTotal(calcCategorias(r, c, o)); return typeof d === 'string' ? d : d.items.length < 3 ? 'El radar necesita 3 categorías o más' : { ...d, entero: fnDe(o) === 'conteo' } } },
-  dispersion: { nombre: 'Dispersión', familia: F.di, requiere: [{ medida: 2 }, { medida: 1, fecha: 1 }], Componente: Dispersion,
-    opciones: (b) => ({ x: b.valor2 || b.fecha, y: b.valor }), calcular: (r, c, o) => calcDispersion(r, c, o) },
-  burbujas: { nombre: 'Burbujas', familia: F.di, requiere: { categoria: 1, medida: 1 }, Componente: Burbujas,
-    opciones: () => ({}), calcular: (r, c, o) => calcBurbujas(r, c, o) },
-  histograma: { nombre: 'Histograma', familia: F.di, requiere: { medida: 1 }, Componente: Histograma,
-    opciones: () => ({ bins: null }), calcular: (r, c, o) => calcHistograma(r, c, o) },
-  caja: { nombre: 'Caja y bigotes', familia: F.di, requiere: { medida: 1 }, Componente: Caja,
-    opciones: (b) => ({ agrupar: b.estado || null }), calcular: (r, c, o) => calcCaja(r, c, o) },
-  calendario: { nombre: 'Mapa de calor por día', familia: F.ti, requiere: { fecha: 1 }, Componente: Calendario,
-    opciones: () => ({ semanas: 16, funcion: 'conteo' }), calcular: (r, c, o, hoy) => calcCalendario(r, c, o, hoy) },
-  cascada: { nombre: 'Cascada', familia: F.ti, requiere: { fecha: 1 }, Componente: Cascada,
-    opciones: (b) => ({ funcion: sumaOConteo(b), meses: 12 }), calcular: (r, c, o, hoy) => calcCascada(r, c, o, hoy) },
-  kpi: { nombre: 'KPI con tendencia', familia: F.ti, requiere: { fecha: 1 }, Componente: Kpi, html: true,
-    opciones: (b) => ({ funcion: sumaOConteo(b) }), calcular: (r, c, o, hoy) => calcKpi(r, c, o, hoy) },
-  posiciones: { nombre: 'Tabla de posiciones', familia: F.re, requiere: { texto: 1 }, Componente: Posiciones, html: true,
-    opciones: (b) => ({ agrupar: b.texto, funcion: sumaOConteo(b), top: 5 }), calcular: (r, c, o) => calcPosiciones(r, c, o) },
-  estadisticas: { nombre: 'Estadísticas', familia: F.re, requiere: { medida: 1 }, Componente: Estadisticas, html: true,
-    opciones: () => ({}), calcular: (r, c, o) => calcEstadisticas(r, c, o) },
-  ...Object.fromEntries(Object.entries(NUEVOS).map(([id, g]) => [id, { ...g, familia: F[g.familia] || g.familia }])),
+  dispersion: { Componente: Dispersion, calcular: (r, c, o) => calcDispersion(r, c, o) },
+  burbujas: { Componente: Burbujas, calcular: (r, c, o) => calcBurbujas(r, c, o) },
+  histograma: { Componente: Histograma, calcular: (r, c, o) => calcHistograma(r, c, o) },
+  caja: { Componente: Caja, calcular: (r, c, o) => calcCaja(r, c, o) },
+  calendario: { Componente: Calendario, calcular: (r, c, o, hoy) => calcCalendario(r, c, o, hoy) },
+  cascada: { Componente: Cascada, calcular: (r, c, o, hoy) => calcCascada(r, c, o, hoy) },
+  kpi: { Componente: Kpi, calcular: (r, c, o, hoy) => calcKpi(r, c, o, hoy) },
+  posiciones: { Componente: Posiciones, calcular: (r, c, o) => calcPosiciones(r, c, o) },
+  estadisticas: { Componente: Estadisticas, calcular: (r, c, o) => calcEstadisticas(r, c, o) },
+  ...NUEVOS,
 }
 
-/** Opciones que el gráfico elegiría solo para estos campos. */
-export function opcionesPorDefecto(tipo, campos = []) {
-  const b = base(campos)
-  return { ...b, ...(GRAFICOS[tipo]?.opciones?.(b, campos) || {}) }
-}
-
-/** Tipos que se pueden dibujar con los campos de una sección, con sus opciones por defecto. */
-export function compatibles(campos = []) {
-  return Object.entries(GRAFICOS).filter(([, g]) => cumple(g.requiere, campos))
-    .map(([id, g]) => ({ id, nombre: g.nombre, familia: g.familia, requiere: g.requiere, opciones: opcionesPorDefecto(id, campos) }))
-}
+/**
+ * GRAFICOS[id] = { nombre, familia, requiere, Componente, calcular, opciones, html? }
+ *  - nombre, familia, requiere, html: del catálogo puro (graficos-catalogo.js), en su mismo orden.
+ *  - opciones(b, campos): opciones por defecto (b = campos elegidos solos: estado, fecha, fecha2, hora, valor, valor2, texto, agrupar),
+ *    evaluadas desde las expresiones del catálogo.
+ *  - calcular(registros, campos, o, hoy): objeto para dibujar, o texto = estado vacío.
+ *  - html: se dibuja con HTML (no SVG).
+ */
+export const GRAFICOS = Object.fromEntries(Object.entries(CATALOGO).map(([id, g]) => [id, {
+  ...g, ...DIBUJO[id], opciones: (b, campos) => evaluarOpciones(g.opciones, b, campos),
+}]))
 
 // ── Medida, interacción y contenedor ────────────────────────────────────────────────────────────────
 /** Mide el contenedor en píxeles de layout (clientWidth/Height: no les afectan las transformaciones de las animaciones). */
