@@ -21,7 +21,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "httpx", "playwright"]  # playwright: tests de interfaz con Edge/Chrome ya instalados; se saltan si no hay
+# FILES_ENABLED: extracción de PDF, xlsx y docx, imágenes y subida multipart. Solo hacen falta con el interruptor.
+files = ["pypdf", "openpyxl", "python-docx", "Pillow", "python-multipart"]
+dev = ["pytest", "httpx", "playwright", "pypdf", "openpyxl", "python-docx", "Pillow", "python-multipart"]  # playwright: tests de interfaz con Edge/Chrome ya instalados; se saltan si no hay
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -655,6 +655,13 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "EFFECT_APPROVAL": ("effect_approval", False),
     "TRUSTED_HOSTS": ("trusted_hosts", ["localhost", "127.0.0.1"]),
     "MAX_MESSAGE_CHARS": ("max_message_chars", 50000),
+    "FILES_ENABLED": ("files_enabled", False),
+    "FILE_MAX_BYTES": ("file_max_bytes", 10000000),
+    "FILE_MAX_PER_MESSAGE": ("file_max_per_message", 5),
+    "FILE_MAX_PAGES": ("file_max_pages", 50),
+    "FILE_MAX_CHARS": ("file_max_chars", 200000),
+    "FILE_EXTRACT_TIMEOUT": ("file_extract_timeout", 20.0),
+    "FILE_IMAGE_MAX_PX": ("file_image_max_px", 1568),
 }
 
 
