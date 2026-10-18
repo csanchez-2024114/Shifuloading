@@ -307,6 +307,7 @@
    "turn_max_searches": 6,
    "turn_max_seconds": 0.0,
    "turn_token_cap": 150000,
+   "untrusted_wrap": false,
    "use_bigtool": false
   },
   "env_vars": [
@@ -369,6 +370,7 @@
    "TURN_MAX_SEARCHES",
    "TURN_MAX_SECONDS",
    "TURN_TOKEN_CAP",
+   "UNTRUSTED_WRAP",
    "USE_BIGTOOL"
   ]
  },

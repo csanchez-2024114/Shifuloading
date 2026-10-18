@@ -19,6 +19,7 @@ from langchain_openai import ChatOpenAI
 from assistant.core import memory
 from assistant.core import citations
 from assistant.core.agent import Context
+from assistant.core import untrusted
 from assistant.core.config import Settings, llm_kwargs
 
 logger = logging.getLogger(__name__)
@@ -354,7 +355,8 @@ def run_search(settings: Settings, search_fn, query: str, budget: TurnBudget | N
         if budget is not None:
             budget.searches += 1
             budget.tokens += tokens
-    return True, f"[engine: {engine}]\n{text}", tokens
+    # la primera línea sigue siendo el motor (la lee _engine_from_output); el contenido de la web va envuelto
+    return True, f"[engine: {engine}]\n{untrusted.wrap_if(settings, text)}", tokens
 
 
 ONE_SEARCH_MSG = ("Not run: one search per step. Answer with what you have or ask the user; if another search is "
@@ -544,7 +546,8 @@ def investigar(model: BaseChatModel, settings: Settings, search_fn, task: str, w
     if not found:
         final = citations.drop_sources_section(final)
         notes.append(NO_WEB_NOTE)
-    return "\n".join(notes + [final])
+    # las notas son nuestras; el resumen se escribió a partir de páginas de terceros
+    return "\n".join(notes + [untrusted.wrap_if(settings, final)])
 
 
 def earlier_research(messages, tool_name: str = "deep_research") -> str | None:

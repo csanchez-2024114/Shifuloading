@@ -91,6 +91,9 @@ class Settings:
     # P4.3: tiempo máximo de un mensaje (segundos). Al pasarlo, el turno se cierra en la siguiente frontera de paso,
     # igual que con TURN_TOKEN_CAP (una respuesta final en curso termina). 0 = apagado (default: sin cambio).
     turn_max_seconds: float = 0.0
+    # P2.1-P2.2: envuelve el contenido de la web en <untrusted_web_content> y suma una regla al prompt. Apagado por
+    # defecto: cambia lo que ve el modelo (prompt y resultados de herramientas).
+    untrusted_wrap: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -153,6 +156,7 @@ class Settings:
             llm_timeout_seconds=_num("LLM_TIMEOUT_SECONDS", "300", float),
             llm_max_retries=_num("LLM_MAX_RETRIES", "2"),
             turn_max_seconds=_num("TURN_MAX_SECONDS", "0", float),
+            untrusted_wrap=_bool("UNTRUSTED_WRAP"),
         )
 
     def context_window(self) -> int:

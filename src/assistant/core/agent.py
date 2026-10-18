@@ -560,6 +560,10 @@ def system_prompt_text(settings: Settings | None = None, profile=None) -> str:
     policy = memory_policy(settings.memory_save_policy if settings else "strict",
                            settings.memory_max_per_turn if settings else 3,
                            settings.memory_search_economy if settings else False, profile=profile)
+    if settings and settings.untrusted_wrap:  # solo con el interruptor: con el default el prompt es idéntico
+        from assistant.core.untrusted import UNTRUSTED_RULE
+
+        policy = f"{policy}\n\n{UNTRUSTED_RULE}"
     return (
         f"{read_system_prompt(profile)}\n\n{policy}\n\n"
         f"User's current local date and time: {now:%A %Y-%m-%d %H:%M} (UTC{now:%z}). "
