@@ -237,7 +237,7 @@ def sembrar(doc_base: dict, plantilla: dict | str, *, nivel: str = NIVEL, hoy: d
     personas = seccion_personas(plantilla)
     destino: dict[str, str] = {}   # id de sección de la plantilla → id en el documento
     mapas: dict[str, dict] = {}    # id en el documento → traducción de ids de campo (solo contactos)
-    cortados: set[str] = set()     # ids de campo cortados por el tope (las piezas que los nombran se quitan)
+    cortados: dict[str, set[str]] = {}  # id en el documento → ids de campo cortados por el tope (las piezas que los nombran se quitan)
     if personas:
         sec, campo_etapa = personas
         mapas["contactos"] = _sembrar_contactos(doc, sec, campo_etapa, datos.get(sec["id"]) or [], ahora)
@@ -262,7 +262,7 @@ def sembrar(doc_base: dict, plantilla: dict | str, *, nivel: str = NIVEL, hoy: d
         campos = s["campos"]
         if len(campos) > est.MAX_CAMPOS:
             logger.info("Plantilla %s: la sección %s tiene %d campos; se dejan %d", plantilla.get("id"), s["id"], len(campos), est.MAX_CAMPOS)
-            cortados |= {c["id"] for c in campos[est.MAX_CAMPOS:]}
+            cortados[PREFIJO + s["id"]] = {c["id"] for c in campos[est.MAX_CAMPOS:]}
             campos = campos[:est.MAX_CAMPOS]
         ids = {c["id"] for c in campos}
         registros = datos.get(s["id"]) or []
@@ -305,7 +305,7 @@ def sembrar(doc_base: dict, plantilla: dict | str, *, nivel: str = NIVEL, hoy: d
     inicio: list[dict] = []
     for b in plantilla.get("inicio") or []:
         sid = destino.get(b.get("seccion"))
-        if sid is None or sid in FIJAS.values() or _nombra_cortado(b.get("opciones"), cortados):
+        if sid is None or sid in FIJAS.values() or _nombra_cortado(b.get("opciones"), cortados.get(sid, set())):
             logger.info("Plantilla %s: la pieza %s de %s no tiene sección; se omite", plantilla.get("id"), b.get("vista"), b.get("seccion"))
             continue
         pieza = {**copy.deepcopy(b), "seccion": sid, "opciones": _traducir_opciones(b.get("opciones"), mapas.get(sid, {}))}
