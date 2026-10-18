@@ -74,3 +74,53 @@ def test_mundo_con_api_simulada(fake_api):
     assert "24°C, clear" in run(x.weather_forecast, place="Monterrey")
     km = run(x.distance_between_places, place_a="Monterrey", place_b="Guadalajara")
     assert "km in a straight line" in km and 600 < int(km.split(": ")[1].split(" km")[0].replace(",", "")) < 750
+
+
+def _httpx_simulado(monkeypatch, handler):
+    """httpx.get real (con next_request) sobre un transporte simulado: sin red."""
+    import httpx
+
+    def get(url, params=None, **kwargs):
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            return client.get(url, params=params, follow_redirects=kwargs.get("follow_redirects", False),
+                              headers=kwargs.get("headers"))
+
+    monkeypatch.setattr(x.httpx, "get", get)
+
+
+def test_wikipedia_rechaza_codigos_de_idioma_que_cambian_el_host(monkeypatch):
+    """S6: language va al nombre del host; un código raro no debe llegar a ninguna petición."""
+    def handler(request):
+        raise AssertionError(f"no debía pedir nada: {request.url}")
+
+    _httpx_simulado(monkeypatch, handler)
+    for malo in ("atacante.com/x?", "es.evil", "en@x", "../", "", "ES", "e"):
+        assert run(x.wikipedia_summary, topic="Monterrey", language=malo).startswith(
+            "Error: invalid Wikipedia language code"), malo
+
+
+def test_wikipedia_solo_sigue_redirecciones_del_mismo_host(monkeypatch):
+    import httpx
+
+    def handler(request):
+        if request.url.path == "/w/api.php":
+            return httpx.Response(200, json={"query": {"search": [{"title": "Monterrey"}]}})
+        if request.url.path.endswith("/summary/Monterrey"):  # redirección interna: se sigue
+            return httpx.Response(302, headers={"location": "/api/rest_v1/page/summary/Monterrey_(ciudad)"})
+        if request.url.path.endswith("/summary/Monterrey_(ciudad)"):
+            return httpx.Response(200, json={"title": "Monterrey", "extract": "Ciudad de México.",
+                                             "content_urls": {"desktop": {"page": "https://es.wikipedia.org/wiki/M"}}})
+        raise AssertionError(request.url)
+
+    _httpx_simulado(monkeypatch, handler)
+    assert run(x.wikipedia_summary, topic="Monterrey", language="es").startswith("Monterrey: Ciudad de México.")
+
+    def a_otro_host(request):
+        return httpx.Response(302, headers={"location": "https://atacante.example/robar"})
+
+    _httpx_simulado(monkeypatch, a_otro_host)
+    import pytest
+
+    # como los demás errores de red de estas herramientas, sube a ToolErrorMiddleware ("Tool error (...)")
+    with pytest.raises(ValueError, match="redirect to another host refused: atacante.example"):
+        run(x.wikipedia_summary, topic="Monterrey", language="pt-br")

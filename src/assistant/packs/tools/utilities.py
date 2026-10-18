@@ -28,6 +28,21 @@ def _get_json(url: str, params: dict | None = None) -> dict:
     return r.json()
 
 
+def _get_json_same_host(url: str, params: dict | None = None, max_redirects: int = 3) -> dict:
+    """Como _get_json, pero solo sigue redirecciones dentro del mismo host (S6): una respuesta que mande a otro
+    dominio es un error, no una petición nueva."""
+    host = httpx.URL(url).host
+    r = httpx.get(url, params=params, timeout=10, follow_redirects=False, headers={"User-Agent": _UA})
+    for _ in range(max_redirects):
+        if not r.is_redirect or r.next_request is None:
+            break
+        if r.next_request.url.host != host:
+            raise ValueError(f"redirect to another host refused: {r.next_request.url.host}")
+        r = httpx.get(r.next_request.url, timeout=10, follow_redirects=False, headers={"User-Agent": _UA})
+    r.raise_for_status()
+    return r.json()
+
+
 def _date(s: str) -> date:
     return date.fromisoformat(s.strip()[:10])
 
@@ -238,13 +253,16 @@ def weather_forecast(place: str) -> str:
 @tool
 def wikipedia_summary(topic: str, language: str = "es") -> str:
     """Short encyclopedia summary of a topic, person, place or concept from Wikipedia (language code: es, en...)."""
+    # S6: el código va al nombre del host; sin validar, "atacante.com/x?" mandaba la petición a otro dominio
+    if not re.fullmatch(r"[a-z]{2,3}(-[a-z]{2,8})*|simple", language or ""):
+        return f"Error: invalid Wikipedia language code {language!r}. Use a code such as es, en or pt-br."
     base = f"https://{language}.wikipedia.org"
-    hits = _get_json(f"{base}/w/api.php", {"action": "query", "list": "search", "srsearch": topic,
+    hits = _get_json_same_host(f"{base}/w/api.php", {"action": "query", "list": "search", "srsearch": topic,
                                            "srlimit": 1, "format": "json"})["query"]["search"]
     if not hits:
         return f"No Wikipedia article found for {topic!r}."
     title = hits[0]["title"]
-    s = _get_json(f"{base}/api/rest_v1/page/summary/{title.replace(' ', '_')}")
+    s = _get_json_same_host(f"{base}/api/rest_v1/page/summary/{title.replace(' ', '_')}")
     return f"{s.get('title', title)}: {s.get('extract', '')}\n{s.get('content_urls', {}).get('desktop', {}).get('page', '')}"
 
 
