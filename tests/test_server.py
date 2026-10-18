@@ -62,3 +62,21 @@ def test_history_thread_inexistente_vacio(client):
 def test_health(client):
     body = client.get("/health").json()
     assert body["ok"] is True and "model" in body
+
+
+def test_app_perezoso_y_configerror_sin_traceback():
+    """Importar el servidor no crea la app; al pedirla, un ConfigError se imprime como "ERROR: …" y sale con código 1,
+    sin traceback. Subproceso sin red: create_app se sustituye por uno que falla."""
+    import subprocess
+    import sys
+
+    codigo = ("import assistant.core.server as s\n"
+              "from assistant.core.config import ConfigError\n"
+              "assert 'app' not in vars(s)\n"
+              "def falla(*a, **k):\n"
+              "    raise ConfigError('mensaje claro')\n"
+              "s.create_app = falla\n"
+              "s.app\n")
+    r = subprocess.run([sys.executable, "-W", "ignore", "-c", codigo], capture_output=True, text=True)
+    assert r.returncode == 1
+    assert "ERROR: mensaje claro" in r.stderr and "Traceback" not in r.stderr
