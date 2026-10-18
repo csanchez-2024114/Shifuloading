@@ -193,7 +193,7 @@ def save_memory_doc(policy: str = "strict") -> str:
 
 
 def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: int = 0, dedup: bool = False,
-                          dedup_score: float = 0.85) -> BaseTool:
+                          dedup_score: float = 0.85, require_quote: bool = False) -> BaseTool:
     """`verifier` (MEMORY_VERIFY): (candidato, textos_usuario) -> (respaldado, cita); None = sin verificar.
     `max_per_turn` (MEMORY_MAX_PER_TURN): tope de recuerdos por mensaje; 0 = sin tope.
     `dedup` (MEMORY_DEDUP): rechaza datos equivalentes a uno existente."""
@@ -206,7 +206,8 @@ def make_guardar_recuerdo(verifier=None, policy: str = "strict", max_per_turn: i
         return memory.remember(runtime.store, runtime.context.user_id, text, evidence, texts,
                                thread_id=thread_id, verifier=verifier,
                                saved_this_turn=memory.turn_saves(messages, runtime.tool_call_id),
-                               max_per_turn=max_per_turn, dedup=dedup, dedup_score=dedup_score)
+                               max_per_turn=max_per_turn, dedup=dedup, dedup_score=dedup_score,
+                               require_quote=require_quote)
 
     return guardar_recuerdo
 
@@ -242,7 +243,7 @@ def make_buscar_recuerdos(min_score: float = 0.0) -> BaseTool:
 buscar_recuerdos = make_buscar_recuerdos()
 
 
-def make_actualizar_recuerdo(verifier=None) -> BaseTool:
+def make_actualizar_recuerdo(verifier=None, require_quote: bool = False) -> BaseTool:
     """Misma verificación que save_memory. Solo toca recuerdos del user_id del contexto."""
 
     @tool("update_memory", description=ACTUALIZAR_RECUERDO_DOC)
@@ -250,7 +251,7 @@ def make_actualizar_recuerdo(verifier=None) -> BaseTool:
         texts = memory.user_texts(runtime.state.get("messages"))
         thread_id = (runtime.config.get("configurable") or {}).get("thread_id")
         return memory.revise(runtime.store, runtime.context.user_id, id, text, evidence, texts,
-                             thread_id=thread_id, verifier=verifier)
+                             thread_id=thread_id, verifier=verifier, require_quote=require_quote)
 
     return actualizar_recuerdo
 
@@ -670,9 +671,9 @@ def base_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, c
         fecha_hora,
         check_python_syntax,
         make_guardar_recuerdo(verifier, settings.memory_save_policy, settings.memory_max_per_turn,
-                              settings.memory_dedup, settings.memory_dedup_score),
+                              settings.memory_dedup, settings.memory_dedup_score, settings.memory_require_quote),
         make_buscar_recuerdos(settings.memory_min_score),
-        make_actualizar_recuerdo(verifier),
+        make_actualizar_recuerdo(verifier, settings.memory_require_quote),
         make_investigador(model, settings, search_fn),
     ]
 

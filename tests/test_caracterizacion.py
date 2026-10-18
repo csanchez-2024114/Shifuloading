@@ -650,6 +650,7 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "LLM_MAX_RETRIES": ("llm_max_retries", 2),
     "TURN_MAX_SECONDS": ("turn_max_seconds", 0.0),
     "UNTRUSTED_WRAP": ("untrusted_wrap", False),
+    "MEMORY_REQUIRE_QUOTE": ("memory_require_quote", False),
 }
 
 

@@ -94,6 +94,10 @@ class Settings:
     # P2.1-P2.2: envuelve el contenido de la web en <untrusted_web_content> y suma una regla al prompt. Apagado por
     # defecto: cambia lo que ve el modelo (prompt y resultados de herramientas).
     untrusted_wrap: bool = False
+    # P2.3: save_memory/update_memory solo guardan si la evidencia cita literalmente lo que escribió el usuario
+    # (confidence "quoted"), sin llamar a un LLM. Apagado por defecto: hoy un recuerdo sin cita se guarda como
+    # "unverified" y el modelo recibiría otro resultado.
+    memory_require_quote: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -157,6 +161,7 @@ class Settings:
             llm_max_retries=_num("LLM_MAX_RETRIES", "2"),
             turn_max_seconds=_num("TURN_MAX_SECONDS", "0", float),
             untrusted_wrap=_bool("UNTRUSTED_WRAP"),
+            memory_require_quote=_bool("MEMORY_REQUIRE_QUOTE"),
         )
 
     def context_window(self) -> int:

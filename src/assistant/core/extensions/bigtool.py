@@ -115,7 +115,8 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
         return memory.remember(memories_store, _ctx("user_id", "anon"), text, evidence, memory.user_texts(messages),
                                thread_id=thread_id, verifier=verifier, saved_this_turn=memory.turn_saves(messages),
                                max_per_turn=settings.memory_max_per_turn, dedup=settings.memory_dedup,
-                               dedup_score=settings.memory_dedup_score)
+                               dedup_score=settings.memory_dedup_score,
+                               require_quote=settings.memory_require_quote)
 
     @tool("search_memories", description=BUSCAR_RECUERDOS_DOC)
     def buscar_recuerdos(query: str) -> str:
@@ -125,7 +126,7 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
     def actualizar_recuerdo(id: str, text: str, evidence: str = "") -> str:  # noqa: A002
         thread_id, texts = _thread_user_texts(checkpointer)
         return memory.revise(memories_store, _ctx("user_id", "anon"), id, text, evidence, texts,
-                             thread_id=thread_id, verifier=verifier)
+                             thread_id=thread_id, verifier=verifier, require_quote=settings.memory_require_quote)
 
     @tool("deep_research", description=INVESTIGADOR_DOC)
     def investigador_profundo(task: str) -> str:
