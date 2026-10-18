@@ -15,6 +15,10 @@ from app.crm.operaciones import ErrorCrm, _copia, _registrar, ahora_utc, nuevo_i
 from app.crm.secciones import ETAPAS, IDS_SECCION, titulo_seccion
 
 TIPOS_DE_CAMPO = ("texto", "numero", "fecha", "lista")  # "lista" = el valor es una de las `opciones` fijas del campo
+# Esquema 2 (sistema de diseño del laboratorio): más tipos. "estado" es el nombre del laboratorio para "lista" (opciones fijas).
+# TIPOS_DE_CAMPO se queda como estaba porque es el enum que ve el agente de Carlos (su prompt no cambia).
+TIPOS_V2 = ("texto", "numero", "dinero", "fecha", "hora", "estado", "lista")
+CON_OPCIONES = ("estado", "lista")
 MIN_OPCIONES, MAX_OPCIONES, LARGO_OPCION = 2, 8, 24
 MAX_LISTAS = 12
 MAX_CAMPOS = 15
@@ -34,7 +38,52 @@ def normalizar(doc: dict) -> dict:
     doc.setdefault("resumen_ia", None)
     for c in doc.get("contactos", []):
         c.setdefault("extra", {})
+    for k, v in esquema2_faltante(doc).items():  # esquema 2, perezoso: solo lo que falta; nunca toca registros
+        doc.setdefault(k, v)
     return doc
+
+
+# ───────── Esquema 2 (perezoso) ─────────
+
+ESQUEMA = 2
+
+
+def toma_vacia() -> dict:
+    """La toma de requisitos sin empezar (la misma forma que `tomaVacia` del laboratorio)."""
+    return {"activa": False, "fase": "juntando", "ficha": {"objetivo": "", "secciones": [], "bloques": [], "marca": {}, "restricciones": []},
+            "notas": [], "preguntadas": [], "rechazo": False}
+
+
+def inicio_por_defecto(doc: dict) -> list[dict]:
+    """Las piezas del inicio de un CRM que todavía no tiene: un resumen de los contactos por etapa (si se ven) y la tabla de la
+    primera sección propia. Los uid son fijos para que leer dos veces el mismo CRM sin guardar dé lo mismo."""
+    bloques: list[dict] = []
+    if "contactos" not in (doc.get("ocultas") or []):
+        bloques.append({"uid": "b0", "vista": "kpis", "seccion": "contactos", "opciones": {"por": "etapa"}, "ancho": 12, "alto": 1})
+    if doc.get("listas"):
+        bloques.append({"uid": f"b{len(bloques)}", "vista": "tabla", "seccion": doc["listas"][0]["id"], "opciones": {}, "ancho": 12, "alto": 2})
+    return bloques
+
+
+def esquema2_faltante(doc: dict) -> dict:
+    """Lo del esquema 2 que el documento todavía no tiene, con su valor por defecto. No cambia `doc`.
+    `inicio` solo se arma si la clave no existe: si la persona quitó todas las piezas (lista vacía), se respeta."""
+    faltan: dict[str, Any] = {}
+    if "esquema" not in doc:
+        faltan["esquema"] = ESQUEMA
+    if "plantilla" not in doc:
+        faltan["plantilla"] = None
+    if "inicio" not in doc:
+        faltan["inicio"] = inicio_por_defecto(doc)
+    if "paginas" not in doc:
+        faltan["paginas"] = {}
+    if "marca" not in doc:
+        faltan["marca"] = {}
+    if "toma" not in doc:
+        faltan["toma"] = toma_vacia()
+    if "puntos_n" not in doc:
+        faltan["puntos_n"] = 0
+    return faltan
 
 
 def _nombre(texto: Any, largo: int, que: str) -> str:
@@ -68,12 +117,14 @@ def valor_de_tipo(tipo: str, valor: Any, campo: str = "", opciones: list[str] | 
         return None
     if tipo == "texto":
         return str(valor).strip()[:200]
-    if tipo == "lista":
+    if tipo in CON_OPCIONES:  # "estado" (laboratorio) = "lista" (Carlos)
         elegida = next((o for o in opciones or [] if _igual(o, str(valor))), None)
         if elegida is None:
             raise ErrorCrm(422, f"“{campo}” solo admite: {', '.join(opciones or [])}. Recibí “{valor}”.")
         return elegida
-    if tipo == "numero":
+    if tipo == "hora":
+        return _hora(valor, campo)
+    if tipo in ("numero", "dinero"):  # dinero se guarda como número; el formato (Q, $) lo pone la pantalla
         if isinstance(valor, bool):
             raise ErrorCrm(422, f"“{campo}” debe ser un número.")
         if isinstance(valor, (int, float)):
@@ -106,6 +157,21 @@ def valor_de_tipo(tipo: str, valor: Any, campo: str = "", opciones: list[str] | 
     raise ErrorCrm(422, f"Tipo de campo desconocido: {tipo}.")
 
 
+_HORA = re.compile(r"^(\d{1,2})(?:\s*[:h.]\s*(\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?$", re.I)
+
+
+def _hora(valor: Any, campo: str) -> str:
+    """'16:30', '4:30 pm', '4pm', '9' → 'HH:MM'. Lanza ErrorCrm si no es una hora."""
+    m = _HORA.match(str(valor).strip().lower())
+    if m:
+        h, mi, ap = int(m[1]), int(m[2] or 0), m[3]
+        if ap:
+            h = h % 12 + (12 if ap == "p" else 0) if 1 <= h <= 12 else 99
+        if h <= 23 and mi <= 59:
+            return f"{h:02d}:{mi:02d}"
+    raise ErrorCrm(422, f"“{campo}” debe ser una hora (por ejemplo 16:30) y recibí “{valor}”.")
+
+
 def valores_validos(campos: list[dict], valores: dict[str, Any]) -> dict[str, Any]:
     """`valores` va por id de campo. Devuelve solo los que existen, ya convertidos. Un campo desconocido es un error, no se ignora."""
     por_id = {c["id"]: c for c in campos}
@@ -121,14 +187,14 @@ def valores_validos(campos: list[dict], valores: dict[str, Any]) -> dict[str, An
 def _campo_nuevo(nombre: Any, tipo: Any, existentes: list[dict], opciones: Any = None) -> dict:
     n = _nombre(nombre, LARGO_NOMBRE, "el nombre del campo")
     t = str(tipo or "texto").strip().lower()
-    if t not in TIPOS_DE_CAMPO:
-        raise ErrorCrm(422, f"El tipo del campo debe ser uno de: {', '.join(TIPOS_DE_CAMPO)}.")
+    if t not in TIPOS_V2:
+        raise ErrorCrm(422, f"El tipo del campo debe ser uno de: {', '.join(TIPOS_V2)}.")
     if any(_igual(c["nombre"], n) for c in existentes):
         raise ErrorCrm(422, f"Ya existe un campo llamado “{n}”.")
     if len(existentes) >= MAX_CAMPOS:
         raise ErrorCrm(422, f"Una sección admite hasta {MAX_CAMPOS} campos.")
     campo = {"id": "f_" + nuevo_id()[:8], "nombre": n, "tipo": t}
-    if t == "lista":
+    if t in CON_OPCIONES:
         campo["opciones"] = opciones_validas(opciones)
     return campo
 
@@ -477,3 +543,31 @@ def resumen_de_registro(lista: dict, registro: dict) -> str:
     """Texto corto para nombrar un registro ("Ferretería Díaz · 5555-1234")."""
     partes = [str(v) for c in lista["campos"] if (v := registro["valores"].get(c["id"])) is not None]
     return " · ".join(partes[:2]) or "(vacío)"
+
+
+# ───────── Ejemplos sembrados (esquema 2) ─────────
+
+def ejemplos_quitar(doc: dict, seccion_id: str | None = None, ahora: datetime | None = None) -> dict:
+    """Quita los registros de ejemplo (`ejemplo: true`, los que siembra una plantilla) de todas las secciones o de una.
+    Lo que la persona escribió o importó se queda. Lanza ErrorCrm si no hay ejemplos que quitar."""
+    ahora = ahora or ahora_utc()
+    out = _copia(doc)
+    quitados = 0
+    for l in out["listas"]:
+        if seccion_id in (None, l["id"]):
+            antes = len(l["registros"])
+            l["registros"] = [r for r in l["registros"] if not r.get("ejemplo")]
+            quitados += antes - len(l["registros"])
+    if seccion_id in (None, "contactos"):
+        antes = len(out["contactos"])
+        out["contactos"] = [c for c in out["contactos"] if not c.get("ejemplo")]
+        out["total_contactos"] = max(0, out["total_contactos"] - (antes - len(out["contactos"])))
+        quitados += antes - len(out["contactos"])
+    if seccion_id in (None, "desarrollo"):
+        for col, tareas in out["tareas"].items():
+            out["tareas"][col] = [t for t in tareas if not t.get("ejemplo")]
+            quitados += len(tareas) - len(out["tareas"][col])
+    if not quitados:
+        raise ErrorCrm(404, "No hay registros de ejemplo que quitar.")
+    _registrar(out, "🧹", f"Quitaste {quitados} {'registro' if quitados == 1 else 'registros'} de ejemplo", ahora)
+    return out
