@@ -132,6 +132,10 @@ TEXTS = {
     "files.not_found": "No encontré ese archivo en esta conversación.",
     "startup.metrics_need_app_db": "TURN_METRICS y FEEDBACK_ENABLED necesitan la base de negocio: configura "
                                    "APP_MONGODB_URI y APP_MONGODB_DB.",
+    "startup.feedback_needs_trace": "FEEDBACK_ENABLED=1 necesita también TRACE_METADATA=1 y TURN_METRICS=1.",
+    "feedback.bad_score": "La puntuación debe ser 1 (👍) o -1 (👎).",
+    "feedback.comment_too_long": "El comentario puede tener como máximo {max} caracteres.",
+    "feedback.not_found": "No encontré ese turno.",
     "startup.files_bigtool": "FILES_ENABLED=1 no funciona todavía con USE_BIGTOOL=1: bigtool no añade la regla de "
                              "archivos al prompt. Apaga una de las dos.",
     "startup.files_missing_deps": "FILES_ENABLED=1 necesita las dependencias de archivos (falta {module}). "

@@ -257,6 +257,15 @@ Cada `/chat` y `/resume` deja una fila en la colección `turn_metrics` de la bas
 
 `DELETE /threads/{id}` y `/auth/delete-account` borran también las filas de métricas y de feedback de ese hilo o de ese usuario.
 
+### Feedback (`FEEDBACK_ENABLED=1`; exige `TRACE_METADATA=1`, `TURN_METRICS=1` y la base de negocio, o el servidor no arranca)
+
+| Método | Ruta | Body / respuesta |
+|---|---|---|
+| GET | `/feedback/config` | `{"enabled": true, "comment_max": 1000}` (la UI lo usa para mostrar 👍/👎) |
+| POST | `/feedback` | body `{"run_id": str, "score": 1 \| -1, "comment"?: str (≤ 1000), "user_id"?: str}` → `{"ok": true, "run_id", "score"}`. **400** si `score` no es 1 o -1, o el comentario es más largo; **404** si el `run_id` no es de un turno de ese usuario. Uno por turno y usuario: el último gana |
+
+Se guarda en la colección `feedback` de la base de negocio (`turn_id`, `run_id`, `user_id`, `thread_id`, `score`, `comment`, `ts`; caduca con `METRICS_TTL_DAYS`). Con `LANGSMITH_TRACING` activo, se manda además como `create_feedback(run_id, key="user_score", score=1|0, comment)` en segundo plano; un error de LangSmith solo va al log. Con cuentas: sesión, CSRF y el `user_id` del body se ignora.
+
 `server.create_app(agent=None) -> FastAPI`: si recibe `agent`, NO hace chequeos de arranque (para tests).
 `server.app` se crea perezosamente (al pedirlo uvicorn); ahí corren `memory.startup_checks` y un `ConfigError` se imprime sin traceback y sale con código 1.
 

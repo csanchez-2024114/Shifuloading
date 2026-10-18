@@ -62,6 +62,13 @@ class RenameIn(BaseModel):
     title: str
 
 
+class FeedbackIn(BaseModel):
+    run_id: str
+    score: int                 # 1 = 👍, -1 = 👎
+    comment: str = ""
+    user_id: str = "anon"      # sin cuentas, como en /chat; con cuentas se ignora
+
+
 def _build_real_agent(settings: Settings, profile):
     """Devuelve (agente, store de recuerdos)."""
     client = memory.startup_checks(settings)
@@ -160,6 +167,10 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     if (settings.turn_metrics or settings.feedback_enabled) and appdata is None:
         raise ConfigError(profile.texts.get("startup.metrics_need_app_db") or
                           "TURN_METRICS y FEEDBACK_ENABLED necesitan la base de negocio (APP_MONGODB_URI).")
+    if settings.feedback_enabled and not (settings.trace_metadata and settings.turn_metrics):
+        # el run_id sale del evento "run" y el dueño del turno, de su fila en turn_metrics
+        raise ConfigError(profile.texts.get("startup.feedback_needs_trace") or
+                          "FEEDBACK_ENABLED necesita TRACE_METADATA=1 y TURN_METRICS=1.")
     auth = AuthService(appdata, settings.session_ttl_days, settings.login_max_fails,
                        settings.login_lock_minutes, settings.login_max_fails_ip) if settings.auth_enabled else None
 
@@ -459,6 +470,33 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     if settings.files_enabled:
         _install_file_routes(app, settings, profile, _store, _file_owner)
+
+    # ---------------------------------------------------------------- feedback (FEEDBACK_ENABLED=1)
+    if settings.feedback_enabled:
+        from assistant.core import feedback as feedback_mod
+
+        @app.get("/feedback/config")
+        def feedback_config():
+            return {"enabled": True, "comment_max": feedback_mod.COMMENT_MAX}
+
+        @app.post("/feedback")
+        def give_feedback(body: FeedbackIn, request: Request):
+            """👍/👎 de un turno propio (el run_id del evento "run"). Uno por turno y usuario: el último gana."""
+            from datetime import datetime, timezone
+
+            uid = _changing(request)["user_id"] if auth else body.user_id
+            if body.score not in (1, -1):
+                raise HTTPException(400, tr("feedback.bad_score", profile))
+            if len(body.comment) > feedback_mod.COMMENT_MAX:
+                raise HTTPException(400, tr("feedback.comment_too_long", profile, max=feedback_mod.COMMENT_MAX))
+            row = appdata.turn_metrics.get(body.run_id)
+            if row is None or row.get("user_id") != uid:  # un turno ajeno o inexistente responde igual: 404
+                raise HTTPException(404, tr("feedback.not_found", profile))
+            appdata.feedback.put({"turn_id": body.run_id, "run_id": body.run_id, "user_id": uid,
+                                  "thread_id": row.get("thread_id"), "score": body.score,
+                                  "comment": body.comment.strip(), "ts": datetime.now(timezone.utc)})
+            feedback_mod.send_to_langsmith(body.run_id, body.score, body.comment.strip())
+            return {"ok": True, "run_id": body.run_id, "score": body.score}
 
     # ---------------------------------------------------------------- métricas (TURN_METRICS=1)
     if settings.turn_metrics:
