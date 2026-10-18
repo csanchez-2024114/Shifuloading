@@ -122,6 +122,14 @@ export function desdeCrm(crm, { titulos = {}, acomodar = (bs) => bs } = {}) {
 /** ¿Hay algo del sistema de diseño en este CRM? (para mostrar «Inicio» en el menú). */
 export const tieneInicio = (crm) => Array.isArray(crm?.inicio)
 
+/** Cuántos registros de ejemplo (`ejemplo: true`, sembrados por la plantilla) hay en todo el CRM. */
+export function contarEjemplos(crm) {
+  const listas = (crm?.listas || []).reduce((n, l) => n + (l.registros || []).filter((r) => r.ejemplo).length, 0)
+  const contactos = (crm?.contactos || []).filter((c) => c.ejemplo).length
+  const tareas = Object.values(crm?.tareas || {}).flat().filter((t) => t.ejemplo).length
+  return listas + contactos + tareas
+}
+
 /** Valores de la ficha de un contacto → cambios para contactosActualizar / la fila de contactosCrear.
  * `extraActual` = los campos propios que ya tiene: se mandan todos juntos para no perder ninguno. */
 export function contactoDesdeValores(valores, extraActual = {}) {

@@ -1,0 +1,48 @@
+/* Lo del sistema de diseño dentro del chat de Shifu (ChatDiseno, D61). El chat vive en el body, fuera de .mc/.pl:
+ * usa las variables del chat (crm.css / crm-extra.css: --linea, --tx, --tx2, --card, --panel, --verde, --ink). */
+.mcd { position: relative; display: grid; }
+/* El consejo de la cámara (crm-captura.css) va sobre este bloque y no encima; con algo abierto o elegido, se va (como con una foto). */
+.mc-chat-panel .mc-consejo { bottom: calc(70px + var(--mcd-alto, 0px)); }
+.mc-chat-panel:has(.mcd-piezas, .mcd-lista, .mcd-ejemplos.confirmando) .mc-consejo { display: none; }
+.mcd > * { border-top: 1px solid var(--linea); }
+
+.mcd-barra { display: flex; align-items: center; gap: 6px; padding: 6px 10px; }
+.mcd-barra button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--linea); background: var(--panel); color: var(--tx); font: 600 12.5px var(--fuente); cursor: pointer; }
+.mcd-barra button:hover:not(:disabled) { border-color: var(--verde); }
+.mcd-barra button:disabled { opacity: .45; cursor: default; }
+.mcd-barra svg { flex: none; font-size: 14px; }
+.mcd-ver em { font-style: normal; min-width: 18px; padding: 0 5px; border-radius: 999px; background: rgba(var(--ink), .1); font-size: 11px; line-height: 18px; text-align: center; }
+.mcd-ultimo { margin-left: auto; }
+
+.mcd-lista { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 6px); z-index: 2; max-height: min(340px, 60vh); display: flex; flex-direction: column; border: 1px solid rgba(var(--ink), .14); border-radius: 16px; background: var(--card); box-shadow: 0 18px 40px rgba(0, 0, 0, .32); overflow: hidden; }
+.mcd-lista header { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center; padding: 10px 10px 8px 14px; border-bottom: 1px solid var(--linea); }
+.mcd-lista header b { font-size: 14px; }
+.mcd-lista header small { grid-column: 1; color: var(--tx2); font-size: 11.5px; line-height: 1.3; }
+.mcd-lista header button { grid-row: 1 / span 2; grid-column: 2; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(var(--ink), .08); color: var(--tx); cursor: pointer; }
+.mcd-lista ol { margin: 0; padding: 4px 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
+.mcd-lista li { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; }
+.mcd-lista li + li { border-top: 1px solid var(--linea); }
+.mcd-lista li > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.mcd-que { font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+.mcd-lista li small { color: var(--tx2); font-size: 11.5px; }
+.mcd-lista li button { flex: none; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--linea); background: transparent; color: var(--tx); font: 600 12px var(--fuente); cursor: pointer; }
+.mcd-lista li button:hover:not(:disabled) { border-color: var(--verde); color: var(--verde); }
+.mcd-lista li button:disabled { opacity: .45; }
+
+.mcd-hecho, .mcd-ejemplos { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; font-size: 12.5px; line-height: 1.35; color: var(--tx2); }
+.mcd-hecho { background: rgba(34, 211, 166, .08); }
+.mcd-hecho > svg { flex: none; color: var(--verde); }
+.mcd-hecho span, .mcd-ejemplos span { flex: 1; min-width: 0; }
+.mcd-hecho button { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(var(--ink), .1); color: var(--tx); cursor: pointer; }
+.mcd-ejemplos { background: rgba(124, 92, 255, .08); }
+.mcd-ejemplos b { color: var(--tx); font-weight: 600; }
+.mcd-ejemplos button { flex: none; min-height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--linea); background: var(--panel); color: var(--tx); font: 600 12px var(--fuente); cursor: pointer; }
+.mcd-ejemplos button.si { background: #e5484d; border-color: #e5484d; color: #fff; }
+.mcd-ejemplos.confirmando { flex-wrap: wrap; }
+.mcd-ejemplos button:disabled { opacity: .45; }
+
+/* Las piezas elegidas (como el adjunto de una captura; los chips como .lab-piezas del laboratorio). */
+.mcd-piezas { flex-wrap: wrap; row-gap: 4px; }
+.mcd-piezas .lab-piezas { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--tx); }
+.mcd-piezas .lab-piezas i { font-style: normal; padding: 2px 8px; border-radius: 999px; background: rgba(34, 211, 166, .2); font-size: 12px; }
+.mcd-piezas > span:not(.lab-piezas) { flex: 1; }

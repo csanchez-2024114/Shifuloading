@@ -85,6 +85,12 @@ export const crm = {
   tareasEliminar: (id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/tareas/${id}`) : simulado.crm.tareasEliminar(id)),
   automatizacionFijar: (id, on) => (HAY_SERVIDOR ? pedir('PUT', `/crm/automatizaciones/${id}`, { on }) : simulado.crm.automatizacionFijar(id, on)),
   seccionRenombrar: (id, nombre, anterior) => (HAY_SERVIDOR ? pedir('PUT', `/crm/secciones/${id}`, { nombre }) : simulado.crm.seccionRenombrar(id, nombre, anterior)),
+  /* Deshacer (D61, contratos §3). El CRM ya trae sus puntos en `crm.puntos`; esto los pide solos: { puntos: [{n, antesDe, hora, cambio}] }. */
+  puntos: () => (HAY_SERVIDOR ? pedir('GET', '/crm/puntos') : simulado.crm.puntos()),
+  /** Deshace el punto `n` (sin n, el último): solo lo que ese cambio tocó. Devuelve el CRM y `deshacer: { texto, deshechos }`. */
+  deshacer: (n) => (HAY_SERVIDOR ? pedir('POST', '/crm/deshacer', n == null ? {} : { n }) : simulado.crm.deshacer(n)),
+  /** Quita los registros de ejemplo (`ejemplo: true`) de todo el CRM; lo de la persona se queda. Se puede deshacer. */
+  quitarEjemplos: () => (HAY_SERVIDOR ? pedir('POST', '/crm/registros/ejemplos/quitar', {}) : simulado.crm.quitarEjemplos()),
 }
 
 /** Los avisos de la persona (campana): los que dejan las automatizaciones y el resto de la plataforma. */
