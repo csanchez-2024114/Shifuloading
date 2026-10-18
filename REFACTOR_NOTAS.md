@@ -113,3 +113,10 @@ Los tests de caracterización **fijan a propósito** el comportamiento actual de
 ## Anotado en la prueba real de la Fase 3 (2026-10-18)
 
 - **Resuelto en la Fase 4 (cosmético d):** ~~Un mensaje enviado mientras carga el historial desaparece de la pantalla.~~ Con `?thread=<id>` en la URL, `initLocal` llama a `loadHistory` (asíncrono). Si el usuario envía antes de que responda `/history`, y el servidor leyó el historial antes de guardar el turno, la respuesta vacía llama a `showEmpty()` y borra la burbuja en vivo. El turno se procesa y se guarda, pero el usuario no lo ve y lo reenvía (pasó en la prueba real: 2 528 tokens de más). Reproducido con modelo falso retrasando `get_history`. Arreglo propuesto (cosmético, sin aplicar): que `send()` invalide la carga pendiente (`state.loadSeq++`) y quite el "Cargando conversación…".
+
+## Diseño pendiente: etiquetas de herramientas por perfil (cosmético c, sin hacer)
+
+Hoy `TOOL_LABELS`, `TOOL_DONE` y `NOT_RUN` están fijos en `packs/ui/index.html`: una herramienta nueva de un perfil sale con su nombre crudo en los chips. Propuesta:
+- **Servidor:** ruta nueva `GET /profile/labels`, que devuelve el `labels.json` del `static_dir` del perfil (o `{}` si no hay), con el formato `{"nombre": {"running": "…", "done": "…", "not_run": "…"}}`. No la ve el modelo; cambia la sección `routes` de la huella, así que iría detrás de su decisión o de un interruptor.
+- **UI:** al arrancar, pedir esa ruta y mezclar lo recibido sobre las tablas fijas (las fijas ganan si el perfil no trae una herramienta). Cambia `index_html_sha256`.
+- **Tests:** un perfil de prueba con `labels.json` y un chip con su etiqueta en el navegador (modelo falso).

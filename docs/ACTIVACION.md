@@ -48,6 +48,10 @@ Validados con el modelo real el 2026-10-18 (prueba corta en `VALIDACION_E2E.md`)
 - `FEEDBACK_ENABLED=1` exige además `TRACE_METADATA=1` y `TURN_METRICS=1`.
 - El envío del feedback a LangSmith solo está probado con un cliente falso.
 
+## Candado por hilo (siempre activo, sin variable)
+
+Desde la Fase 4, un segundo `/chat` o `/resume` en un hilo con un turno en curso responde 409. **El candado vive en la memoria del proceso: vale solo con un worker de uvicorn** (como se arranca hoy: `uvicorn assistant.server:app`, sin `--workers`). Con varios workers o varias réplicas, cada proceso tiene su propio candado y dos turnos del mismo hilo podrían volver a correr a la vez: antes de escalar, hay que moverlo a Mongo (por ejemplo, un documento por hilo con `findOneAndUpdate` y caducidad).
+
 ## Cómo comparar después
 
 Con `web_search`, el costo del mismo mensaje varió hasta ±30 % (14,4k a 18,9k), por la búsqueda hospedada. En esos escenarios no se compara con un umbral de 5 %; ese umbral vale solo para los escenarios sin búsqueda.
