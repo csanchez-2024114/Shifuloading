@@ -29,7 +29,7 @@ import json
 from collections import Counter
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Callable
 
 import regex  # \p{L} igual que en JS
@@ -49,7 +49,8 @@ from app.crm.afirma import afirma_cambio, afirma_con
 from app.crm import chat as agente_chat
 from app.crm.chat import _capitaliza, _norm
 from app.crm.regional import PAISES
-from app.crm.valores import fecha_larga, parse_fecha, parse_numero
+from app.crm.secciones import OTROS_NOMBRES
+from app.crm.valores import fecha_larga, parse_fecha, parse_hora, parse_numero
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +78,35 @@ HERRAMIENTAS_CARLOS = [h for h in agente.HERRAMIENTAS if h["function"]["name"] n
 # En modo diseño las automatizaciones están en pausa: no se exponen al modelo.
 _SIN_EN_DISENO = frozenset({"activar_automatizacion"})
 HERRAMIENTAS_CARLOS_SIN_EDICION = [h for h in HERRAMIENTAS_CARLOS if h["function"]["name"] not in (NOMBRES_EDICION | _SIN_EN_DISENO)]
+# En modo diseño una cita no es una tarea (prueba del 19-oct: «cita con Ramires» quedó como tarea y volvió a mostrar «Pedidos»).
+_DESC_TAREA = ("Agrega una tarea INTERNA del negocio (un pendiente por hacer) en la columna Por hacer. Una cita, reunión, llamada o visita con "
+               "día y hora NO es tarea: va con agendar.")
+HERRAMIENTAS_CARLOS_SIN_EDICION = [{**h, "function": {**h["function"], "description": _DESC_TAREA}} if h["function"]["name"] == "agregar_tarea" else h
+                                   for h in HERRAMIENTAS_CARLOS_SIN_EDICION]
+ERROR_CITA_COMO_TAREA = "ERROR: tiene día y hora: es una cita, no una tarea."
+MAX_REPETIR = 26  # citas que puede crear una repetición (medio año de semanas)
+_DIAS_SEMANA = ("lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo")
+_CADA = ["dia", "semana", "quincena", "mes", *_DIAS_SEMANA]
+HERR_AGENDAR = {"type": "function", "function": {
+    "name": "agendar",
+    "description": "Agenda una cita, reunión, llamada o visita: queda como registro en una sección con vista agenda (ver «agendas» del estado), "
+                   "nunca como tarea. Copia el día y la hora como los dijo la persona («mañana», «el jueves», «3 de la tarde»): el código "
+                   "calcula las fechas. Si se repite («cada jueves por 3 semanas», «todos los lunes hasta diciembre») usa repetir y el código "
+                   "crea cada fecha. Si no hay ninguna agenda (o ninguna sirve), no la guardes en otro lado: pregunta si creas «Citas» "
+                   "(crear_seccion con desde=\"citas\").",
+    "parameters": {"type": "object", "properties": {
+        "seccion": {"type": "string", "description": "id de la agenda donde va (de «agendas»); si hay una sola, se puede omitir"},
+        "dia": {"type": "string", "description": "el día de la (primera) cita como lo dijo: mañana, el jueves, 30 de octubre"},
+        "hora": {"type": "string", "description": "como la dijo: 3 de la tarde, 15:00"},
+        "valores": {"type": "object", "description": "los demás campos de la agenda (id o nombre) → valor como lo dijo: con quién, motivo…",
+                    "additionalProperties": True},
+        "repetir": {"type": "object", "description": "solo si la persona dijo que se repite", "properties": {
+            "cada": {"type": "string", "enum": _CADA, "description": "dia, semana, quincena, mes o el día de la semana («cada jueves» = jueves)"},
+            "veces": {"type": "integer", "minimum": 1, "maximum": MAX_REPETIR, "description": "cuántas veces se repite («por 3 semanas» = 3)"},
+            "hasta": {"type": "string", "description": "o hasta qué día, como lo dijo"}}}},
+        "required": ["dia"]}}}
 _BORRAR = frozenset({"borrar_registro", "eliminar_contacto", "eliminar_registro"})
-_GUARDA_DATO = frozenset({"agregar_registro", "editar_registro", "agregar_contactos", "cambiar_contacto", "agregar_registros", "cambiar_registro"})
+_GUARDA_DATO = frozenset({"agregar_registro", "editar_registro", "agregar_contactos", "cambiar_contacto", "agregar_registros", "cambiar_registro", "agendar"})
 
 # Qué parte del CRM toca cada herramienta (para el deshacer selectivo y su cerco). Las del laboratorio, literal (chat.js), más las de
 # Carlos que tocan lo mismo. Lo que no está aquí cuenta como «bloques», como en el laboratorio.
@@ -88,7 +116,7 @@ CATEGORIA: dict[str, str] = {
     **{n: "estructura" for n in ("crear_seccion", "agregar_campo", "renombrar_seccion", "quitar_seccion", "cambiar_ficha", "cambiar_tarjeta",
                                  "quitar_campo", "renombrar_campo", "cambiar_opciones_estado")},
     # De Carlos
-    **{n: "datos" for n in (*ALIAS_DE_DATOS, "agregar_tarea", "cambiar_tarea", "mover_tarea", "eliminar_tarea")},
+    **{n: "datos" for n in (*ALIAS_DE_DATOS, "agregar_tarea", "cambiar_tarea", "mover_tarea", "eliminar_tarea", "agendar")},
     **{n: "estructura" for n in ("definir_etapas", "mostrar_seccion", "definir_opciones", "mover_campo")},
 }
 
@@ -115,7 +143,8 @@ Reglas:
 - Toma de diseño (estado.toma): si la persona pide diseñar o rehacer el inicio o un CRM completo, abre abrir_toma (no para cambios puntuales). Durante juntando/confirmando anota cada cosa concreta que pidan con anotar_bloque (qué ver + de qué parte; sin preguntar detalles técnicos) y el resto (objetivo, colores, letra, restricciones) con anotar_ficha, solo lo dicho en ESE mensaje; para cambiar un bloque de la ficha usa quitar_de_ficha + anotar_bloque; una pregunta por turno según instruccion_turno/FALTA. En confirmando muestra el RESUMEN y pregunta «¿Lo armo así?». No uses herramientas de pantalla hasta que el código confirme la ficha. Si charlan de otra cosa (digresión), contesta sin anotar ni cambiar la pantalla. cerrar_toma si abandonan."""
 
 INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
-- agregar_tarea: Agrega una tarea nueva en la columna Por hacer. AGENDAR una llamada, cita o recordatorio = agregar una tarea con fecha (y hora si la dieron) y, si es sobre alguien, su contacto.
+- agregar_tarea: Agrega una tarea INTERNA del negocio (un pendiente) en la columna Por hacer.
+- agendar: una cita, reunión, llamada o visita con día (y hora) va como registro en una agenda (ver «agendas»), nunca como tarea. Las repeticiones («cada jueves por 3 semanas») las calcula el código con repetir. Si no hay agenda, pregunta si creas «Citas» (crear_seccion desde="citas").
 - cambiar_tarea: Cambia el texto, la fecha, la hora o el contacto de una tarea existente (por ejemplo, reprogramarla). `fecha` vacía le quita la fecha.
 - mover_tarea: Mueve una tarea a otra columna.
 - eliminar_tarea: Pide eliminar una tarea. NO la borra: deja una confirmación pendiente y tú debes preguntar si está seguro.
@@ -132,7 +161,9 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 # Solo lo que el prompt del laboratorio no cubre y es específico de este backend (contexto JSON del CRM).
 INSTRUCCIONES_DISENO = """Más de este CRM (Python)
 - No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
-- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado."""
+- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado.
+- Secciones ocultas («oculta»: true): no se ven en el menú. Si piden guardar algo que va en una oculta (empleados → la de equipo), no lo metas en otra sección ni crees una igual: pregunta «¿la muestro o creo otra?».
+- Nunca elijas por la persona qué quitar o borrar («el que tú creas»): propón cuál y por qué, y espera su sí."""
 
 _CABECERA_ESTADO_PANTALLA = "Estado de la pantalla (JSON):\n"
 
@@ -378,6 +409,90 @@ async def revisar_sustituto_final(respuesta: str, sesion: "SesionDiseno", doc_in
         return "Eso no existe en el catálogo todavía. ¿Quieres que te proponga lo más parecido?"
 
 
+# ───────── Citas, lo que se ve y lo que nombró la persona ─────────
+
+# Para qué sirve cada sección integrada con contenido, dicho para el modelo en modo diseño (el de Carlos decía que en el tablero se
+# llevan «pedidos, proyectos y citas como tareas»: así nació la cita guardada como tarea del 19-oct).
+PARA_QUE_DISENO = {
+    "contactos": "la lista de clientes, cada uno en una etapa",
+    "desarrollo": "tareas internas del negocio (Por hacer, En curso, Hecho); las citas van en una agenda, no aquí",
+    "rrhh": "las personas que trabajan en el negocio (equipo, empleados, vendedores); guarda solo sus nombres",
+}
+
+
+def _base_nombre(t: str) -> str:
+    return " ".join(w[:-1] if len(w) > 3 and w.endswith("s") else w for w in _norm(t or "").split())
+
+
+def _parecidos(a: str, b: str) -> bool:
+    """Mismo criterio que `agente.Sesion._parecida`: igual, plural/singular, o uno contiene al otro (de 4 letras o más)."""
+    ka, kb = _base_nombre(a), _base_nombre(b)
+    if len(ka) < 3 or len(kb) < 3:
+        return False
+    return ka == kb or (len(ka) >= 4 and len(kb) >= 4 and (ka in kb or kb in ka))
+
+
+def _lista_agendas(agendas: list[dict]) -> str:
+    return ", ".join(f"{x['id']} ({x['titulo']})" for x in agendas)
+
+
+def _sin_error(texto: str) -> str:
+    return re.sub(r"^ERROR:\s*", "", texto)
+
+
+def _y(xs: list[str]) -> str:
+    xs = [f"«{x}»" for x in xs]
+    return xs[0] if len(xs) == 1 else f"{', '.join(xs[:-1])} y {xs[-1]}"
+
+
+def _mas_meses(d: date, n: int) -> date:
+    m = d.month - 1 + n
+    a, m = d.year + m // 12, m % 12 + 1
+    for dia in (d.day, 30, 29, 28):
+        try:
+            return date(a, m, min(d.day, dia))
+        except ValueError:
+            continue
+    return date(a, m, 28)
+
+
+def fechas_de_cita(inicio: date, repetir: Any, hoy: date) -> tuple[list[date], str | None]:
+    """Las fechas de una cita y sus repeticiones, calculadas por el código (el modelo solo copia lo que dijo la persona).
+    `cada` = dia | semana | quincena | mes | un día de la semana. Con un día de la semana distinto al de `inicio`, `inicio` queda como cita
+    aparte y la serie empieza el siguiente de ese día («mañana a las 3 y luego cada jueves por 3 semanas» = mañana + 3 jueves).
+    `veces` = cuántas trae la serie; `hasta` = el último día posible. Devuelve (fechas, error)."""
+    if not isinstance(repetir, dict) or not (repetir.get("cada") or repetir.get("veces") or repetir.get("hasta")):
+        return [inicio], None
+    cada = _norm(str(repetir.get("cada") or "semana"))
+    hasta = parse_fecha(repetir["hasta"], hoy) if repetir.get("hasta") else None
+    if repetir.get("hasta") and not hasta:
+        return [], f"ERROR: no entendí hasta cuándo se repite («{repetir.get('hasta')}»): pregúntale el último día."
+    try:
+        veces = int(repetir.get("veces")) if repetir.get("veces") not in (None, "") else None
+    except (TypeError, ValueError):
+        veces = None
+    if veces is None and not hasta:
+        return [], "ERROR: falta cuántas veces se repite o hasta cuándo: pregúntaselo en una línea."
+    veces = max(1, min(veces or MAX_REPETIR, MAX_REPETIR))
+    limite = date.fromisoformat(hasta) if hasta else None
+    fechas: list[date] = []
+    if cada in _DIAS_SEMANA:
+        dia = _DIAS_SEMANA.index(cada)
+        primera = inicio + timedelta(days=(dia - inicio.weekday()) % 7)
+        if primera != inicio:
+            fechas.append(inicio)
+        serie = [primera + timedelta(days=7 * k) for k in range(veces)]
+    elif cada == "mes":
+        serie = [_mas_meses(inicio, k) for k in range(veces)]
+    elif cada in ("dia", "semana", "quincena"):
+        paso = {"dia": 1, "semana": 7, "quincena": 14}[cada]
+        serie = [inicio + timedelta(days=paso * k) for k in range(veces)]
+    else:
+        return [], f"ERROR: «{repetir.get('cada')}» no es una repetición: usa {', '.join(_CADA)}."
+    fechas += [f for f in serie if limite is None or f <= limite]
+    return fechas, None
+
+
 # ───────── La sesión ─────────
 
 class SesionDiseno(agente.Sesion):
@@ -415,6 +530,9 @@ class SesionDiseno(agente.Sesion):
         self.imagen_enlace: str | None = None
         self._adjuntos_vuelta: list[dict] = []
         self._masivo_plan: dict[str, bool] | None = None
+        self._lote_secciones: list[str] = []  # las secciones que el modelo quiso quitar en la vuelta (para armar el pendiente)
+        self._pendiente_titulos: list[str] = []
+        self._pendiente_fuera: list[str] = []
 
     def _tiene_imagen(self) -> bool:
         return self.con_imagen or bool(self.imagen_enlace)
@@ -427,9 +545,11 @@ class SesionDiseno(agente.Sesion):
         """chat.js: antes de ejecutar la vuelta, cuenta los quitar_* del lote y «todas/todo» en el texto; si hace falta confirmación, ninguno pasa."""
         if self.confirmado or self._confirmado_masivo(self.texto or ""):
             self._masivo_plan = None
+            self._lote_secciones = [str((ll.get("args") or {}).get("seccion") or "") for ll in llamadas if ll.get("name") == "quitar_seccion"]
             return
         masivo_txt = bool(MASIVO.search(self.texto or ""))
-        n_sec = sum(1 for ll in llamadas if ll.get("name") == "quitar_seccion")
+        self._lote_secciones = [str((ll.get("args") or {}).get("seccion") or "") for ll in llamadas if ll.get("name") == "quitar_seccion"]
+        n_sec = len(self._lote_secciones)
         n_bloq = sum(1 for ll in llamadas if ll.get("name") == "quitar_bloque")
         n_camp = sum(1 for ll in llamadas if ll.get("name") == "quitar_campo")
         n_borr = sum(1 for ll in llamadas if ll.get("name") == "borrar_registro")
@@ -451,7 +571,8 @@ class SesionDiseno(agente.Sesion):
         """Carlos (sin alias ni nombres que ya trae edicion.js), herramientas de diseño con el mismo filtro que chat.js, toma, deshacer, datos y leer_enlace."""
         lab = [h for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer"
                and (self._tiene_imagen() or h["function"]["name"] != "usar_logo")]
-        return [*HERRAMIENTAS_CARLOS_SIN_EDICION, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *registros.HERRAMIENTAS_DATOS, edicion.HERR_ENLACE]
+        return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *registros.HERRAMIENTAS_DATOS,
+                edicion.HERR_ENLACE]
 
     def contexto(self) -> str:
         """El Estado del CRM de Carlos (hoy, contactos, tareas, equipo, automatizaciones…) más la pantalla como chat.js
@@ -479,6 +600,11 @@ class SesionDiseno(agente.Sesion):
         # «Cobros» de Carlos todavía no guarda datos: en modo diseño, quien quiere llevar cobros tiene su propia sección (crear_seccion).
         if "NO ACTIVA" in str(((base.get("secciones_integradas") or {}).get("cobros") or {}).get("para_que", "")):
             base["secciones_integradas"].pop("cobros", None)
+        for sid, para in PARA_QUE_DISENO.items():
+            if sid in (base.get("secciones_integradas") or {}):
+                base["secciones_integradas"][sid]["para_que"] = para
+        # Dónde se agenda (lo calcula el código: secciones con vista agenda). Vacío = no hay agenda: agendar lo dice.
+        base["agendas"] = [f"{x['id']} ({x['titulo']})" for x in self._agendas()]
         base.update(pantalla.describir_pantalla(self.doc, self.vista or self.abierta or "inicio", self.puntos))
         return json.dumps(base, ensure_ascii=False, default=str)
 
@@ -572,6 +698,254 @@ class SesionDiseno(agente.Sesion):
                         "que hiciste en este mensaje. Cuenta solo lo que de verdad cambió.")
         return None
 
+    # --- lo que se ve y lo que nombró la persona (el código sabe qué hay en pantalla; el modelo no elige por ella) ---
+    def _lienzo_abierto(self) -> str | None:
+        """La pestaña que se ve ahora (None = el inicio)."""
+        v = self.vista or self.abierta or "inicio"
+        return None if v == "inicio" else v
+
+    def _nombro(self, *nombres: Any) -> bool:
+        """¿La persona nombró esto (en este mensaje o en los anteriores)? Por la raíz de cada palabra, como `registros.encontrar`."""
+        return any(registros._dicha(w, self.dichos) for n in nombres for w in registros._palabras_de(n))
+
+    def _pidio_todas(self) -> bool:
+        """El mensaje anterior de la persona pidió quitar todas («borra todas las secciones») y ahora confirma."""
+        anterior = next((str(h.get("t", "")) for h in reversed(self.historial) if h.get("de") == "yo"), "")
+        return bool(MASIVO.search(anterior))
+
+    def _ultimo_de_shifu(self) -> str:
+        return next((str(h.get("t", "")) for h in reversed(self.historial) if h.get("de") != "yo"), "")
+
+    def _lo_propuso_shifu(self, *nombres: Any) -> bool:
+        """Shifu lo nombró en su último mensaje (lo propuso o lo preguntó) y la persona contesta ahora."""
+        ultimo = self._ultimo_de_shifu()
+        return bool(ultimo) and any(registros._dicha(w, ultimo) for n in nombres for w in registros._palabras_de(n))
+
+    def _se_ve_ahora(self) -> str:
+        """Las piezas del lienzo que la persona está mirando, dichas en simple (para que el modelo no invente un objetivo)."""
+        efectiva = pantalla.plantilla_efectiva(self.doc)
+        titulos = {x["id"]: x.get("titulo") for x in efectiva["secciones"]}
+        abierto = self._lienzo_abierto()
+        piezas = (self.doc.get("inicio") or []) if abierto is None else (pantalla.pagina_de(efectiva, self.doc, abierto) or [])
+        return "; ".join(f"{b.get('uid')} ({pantalla.NOMBRE_VISTA.get(b.get('vista'), b.get('vista'))} de {titulos.get(b.get('seccion'), b.get('seccion'))})"
+                         for b in piezas) or "nada"
+
+    def _titulo_abierto(self) -> str:
+        abierto = self._lienzo_abierto()
+        if abierto is None:
+            return "Inicio"
+        s = pantalla.seccion_de(pantalla.plantilla_efectiva(self.doc)["secciones"], abierto)
+        return (s or {}).get("titulo") or abierto
+
+    def _bloque_fuera_de_pantalla(self, nombre: str, args: dict) -> str | None:
+        """Una pieza que NO está en la pestaña que mira la persona solo se toca si ella nombró esa pestaña o la seleccionó. Medido
+        (banco_citas): mirando el inicio, «borra la tabla» quitaba la lista de la pestaña Miembros y decía «quité la tabla del inicio»."""
+        if nombre not in edicion.HERR_BLOQUE or nombre == "agregar_bloque" or not args.get("bloque"):
+            return None
+        uid = str(args["bloque"])
+        if uid in (self.adjunto or ""):
+            return None  # la seleccionó
+        efectiva = pantalla.plantilla_efectiva(self.doc)
+        en_inicio = any(b.get("uid") == uid for b in self.doc.get("inicio") or [])
+        donde = None if en_inicio else pantalla.lienzo_de_bloque(self.doc, uid)
+        if not en_inicio and donde is None:
+            return None  # no existe: edicion lo dice
+        sec = None if donde is None else pantalla.seccion_de(efectiva["secciones"], donde)
+        if donde is not None and sec is None:
+            return None
+        abierto = self._lienzo_abierto()
+        abierto_id = None if abierto is None else ((pantalla.seccion_de(efectiva["secciones"], abierto) or {}).get("id") or abierto)
+        aqui = None if sec is None else sec["id"]
+        if aqui == abierto_id:
+            return None
+        titulo = "Inicio" if sec is None else sec.get("titulo")
+        if self._nombro(titulo, *( [] if sec is None else [sec["id"]])):
+            return None
+        piezas = (self.doc.get("inicio") or []) if sec is None else (pantalla.pagina_de(efectiva, self.doc, sec["id"]) or [])
+        b = next((x for x in piezas if x.get("uid") == uid), {})
+        es = f" ({pantalla.NOMBRE_VISTA.get(b.get('vista'), b.get('vista'))})" if b.get("vista") else ""
+        return (f"ERROR: «{uid}»{es} está en «{titulo}», pero la persona está mirando «{self._titulo_abierto()}» y no nombró «{titulo}». "
+                f"Lo que se ve ahora: {self._se_ve_ahora()}. Si lo que pidió no está aquí, díselo con honestidad (aquí no hay eso) y pregúntale "
+                "a cuál se refiere; no toques otra pestaña sin que la nombre.")
+
+    def _no_nombro_campo(self, args: dict) -> str | None:
+        """Quitar un campo que la persona no nombró (ni aceptó cuando Shifu lo propuso) es elegir por ella (19-oct: «el que tú creas menos
+        importante» quitó Técnico). El código da los datos para proponer: cuántos registros tienen lleno cada campo."""
+        q = args.get("seccion") or args.get("destino")
+        secs = sv.secciones_de(_visible(self.doc))
+        s = pantalla.seccion_de(secs, q) or (next((x for x in secs if x["id"] == CONTACTOS), None) if _norm(str(q or "")) in ("contactos", "contacto") else None)
+        if s is None:
+            return None
+        c = next((x for x in s["campos"] if x["id"] == args.get("campo")), None) or agente.Sesion._campo(s["campos"], str(args.get("campo") or ""))
+        if c is None or self._nombro(c.get("nombre"), c["id"]) or (self.confirmado and self._lo_propuso_shifu(c.get("nombre"))):
+            return None
+        regs = sv.registros_de(_visible(self.doc), s["id"])
+        llenos = ", ".join(f"{x.get('nombre')} {sum(1 for r in regs if r['valores'].get(x['id']) not in (None, ''))}/{len(regs)}" for x in s["campos"])
+        return (f"ERROR: la persona no nombró el campo «{c.get('nombre')}»: no elijas por ella qué quitar. Propón cuál quitarías y por qué, "
+                f"y pregúntale (que responda «sí»). Para decidir, registros con cada campo lleno en {s['titulo']}: {llenos}.")
+
+    def _no_nombro_seccion(self, args: dict) -> str | None:
+        s = pantalla.seccion_de(pantalla.secciones_visibles(self.doc), args.get("seccion"))
+        if s is None or s["id"] == self.abierta or s["id"] in (self.adjunto or ""):
+            return None
+        if self._nombro(s.get("titulo"), s["id"]) or (self.confirmado and (self._lo_propuso_shifu(s.get("titulo")) or self._pidio_todas())):
+            return None
+        return (f"ERROR: la persona no nombró la pestaña «{s.get('titulo')}»: no elijas por ella qué quitar. Propón cuál quitarías y por qué, "
+                "y pregúntale (que responda «sí»).")
+
+    def _pedir_quitar_secciones(self) -> str:
+        """Borrar varias pestañas: el CÓDIGO arma la lista desde lo que se ve en el menú (lo oculto nunca entra) y la deja pendiente; el
+        «sí» ejecuta exactamente esa lista (`chat.ejecutar_pendiente`, sin la IA). Con «todo/todas», todas las que se ven; si no, las que
+        el modelo nombró y se ven."""
+        if self.pendiente and self.pendiente.get("tipo") == "secciones":
+            return self._error_pendiente_secciones()
+        if self.pendiente:
+            return "Solo puedo pedir confirmación de un borrado a la vez. Dile al usuario que primero resuelva el anterior."
+        if self._orden_de_borrar_viene_de_la_imagen():
+            return self._ORDEN_DE_LA_IMAGEN
+        visibles = pantalla.secciones_visibles(self.doc)
+        elegidas: list[dict] = []
+        fuera: list[str] = []
+        if MASIVO.search(self.texto or ""):
+            elegidas = list(visibles)
+        else:
+            for q in self._lote_secciones:
+                x = pantalla.seccion_de(visibles, q)
+                if x is None:
+                    sid = self._seccion(q)
+                    fuera.append(self._titulo(sid) if sid else q)
+                elif x not in elegidas:
+                    elegidas.append(x)
+        if not elegidas:
+            return (f"ERROR: {_y(fuera) if fuera else 'eso'} no se ve en el menú: no hay nada que quitar. Lo que se ve: "
+                    f"{_y([x['titulo'] for x in visibles])}. Díselo y pregúntale.")
+        self.pendiente = {"tipo": "secciones", "ids": [x["id"] for x in elegidas]}
+        self._pendiente_titulos = [x["titulo"] for x in elegidas]
+        self._pendiente_fuera = [f for f in fuera if f not in self._pendiente_titulos]
+        return self._error_pendiente_secciones()
+
+    def _error_pendiente_secciones(self) -> str:
+        return (f"ERROR: no quité nada todavía: quitar varias pestañas necesita su «sí». Quedó pendiente quitar exactamente: "
+                f"{_y(self._pendiente_titulos)} (lo que se ve en su menú). La pregunta la escribe el código; no llames más herramientas.")
+
+    def pregunta_pendiente(self) -> str | None:
+        """La pregunta de un borrado de pestañas pendiente, escrita por el código con la lista exacta que ejecutará el «sí»."""
+        if not self.pendiente or self.pendiente.get("tipo") != "secciones":
+            return None
+        n = len(self._pendiente_titulos)
+        cuales = "esta pestaña" if n == 1 else f"estas {n} pestañas"
+        fuera = (f" {_y(self._pendiente_fuera)} no {'se ve' if len(self._pendiente_fuera) == 1 else 'se ven'} en tu menú: no "
+                 f"{'la' if len(self._pendiente_fuera) == 1 else 'las'} cuento.") if self._pendiente_fuera else ""
+        return (f"Quitaría {cuales} que ves en tu menú: {_y(self._pendiente_titulos)}.{fuera} Las que tienen datos se borran con ellos y las "
+                "demás solo se ocultan; todo se puede deshacer. ¿Lo hago? Responde «sí» para confirmar.")
+
+    def _oculta_equivalente(self, nombre: str, args: dict) -> str | None:
+        """Crear una sección cuando ya hay una OCULTA para lo mismo duplica (19-oct: creó «Empleados» con «Equipo» oculta). El código lo
+        nota por el nombre (el que tiene en su CRM y sus otros nombres, `secciones.OTROS_NOMBRES`) y la IA pregunta. Si Shifu ya la nombró
+        en su último mensaje, la persona ya eligió."""
+        if nombre != "crear_seccion":
+            return None
+        titulo = args.get("titulo") or args.get("nombre")
+        if not titulo and args.get("desde"):
+            titulo = ((edicion._pestanas().get(str(args["desde"])) or {}).get("seccion") or {}).get("titulo")
+        if not titulo:
+            return None
+        for sid, otros in OTROS_NOMBRES.items():
+            if sid not in (self.doc.get("ocultas") or []):
+                continue
+            actual = self._titulo(sid)
+            if not any(_parecidos(str(titulo), n) for n in (actual, *otros)) or self._lo_propuso_shifu(actual):
+                continue
+            return (f"ERROR: no la creé: ya existe «{actual}», oculta en el menú ({PARA_QUE_DISENO[sid]}). Pregúntale en una línea: «¿Muestro "
+                    f"{actual} o creo otra sección «{titulo}»?». Si ya te dijo que quiere otra, vuelve a crearla; si quiere esa, usa mostrar_seccion.")
+        return None
+
+    # --- citas: registros en una agenda, con las fechas que calcula el código ---
+    def _agendas(self) -> list[dict]:
+        return [x for x in sv.secciones_de(_visible(self.doc)) if x.get("vista") == "agenda" and (x.get("opciones") or {}).get("fecha")]
+
+    def _sin_agenda(self) -> str:
+        return ("no hay ninguna agenda en este CRM. No la guardes como tarea ni en otra sección: pregúntale si creas la pestaña «Citas» "
+                "(crear_seccion con desde=\"citas\") para agendarla ahí.")
+
+    def _cita_como_tarea(self, nombre: str, args: dict) -> str | None:
+        """Algo con día Y hora es una cita: va en la agenda, no en el tablero de tareas (al escribir ahí reaparecía «Pedidos»)."""
+        if nombre == "agregar_tarea":
+            con_hora = bool(str(args.get("hora") or "").strip()) and bool(str(args.get("fecha") or "").strip())
+        elif nombre == "agregar_registro":
+            s, _ = self._seccion_datos(args.get("seccion"))
+            valores = args.get("valores") if isinstance(args.get("valores"), dict) else {}
+            con_hora = bool(s and s["id"] == TAREAS and any((registros.campo_por_clave(s["campos"], k) or {}).get("tipo") == "hora" and str(v or "").strip()
+                                                            for k, v in valores.items()))
+        else:
+            return None
+        if not con_hora:
+            return None
+        agendas = self._agendas()
+        donde = f"usa agendar (agendas: {_lista_agendas(agendas)})" if agendas else self._sin_agenda()
+        donde = donde if donde.endswith(".") else f"{donde}."
+        return f"{ERROR_CITA_COMO_TAREA} {donde[:1].upper()}{donde[1:]} Si de verdad es una tarea interna, guárdala sin hora."
+
+    def _h_agendar(self, dia: Any = None, hora: Any = None, seccion: Any = None, valores: Any = None, repetir: Any = None, **_: Any) -> str:
+        agendas = self._agendas()
+        if not agendas:
+            return "ERROR: " + self._sin_agenda()
+        if seccion:
+            s = pantalla.seccion_de(agendas, seccion)
+            if s is None:
+                otra = pantalla.seccion_de(sv.secciones_de(_visible(self.doc)), seccion)
+                que = f"«{otra['titulo']}» no es una agenda" if otra else f"no hay una agenda «{seccion}»"
+                return f"ERROR: {que}. Agendas: {_lista_agendas(agendas)}. Si ninguna sirve, pregúntale si creas «Citas»."
+        elif len(agendas) == 1:
+            s = agendas[0]
+        else:
+            return f"ERROR: hay varias agendas: {_lista_agendas(agendas)}. Pasa seccion con la que corresponda o pregúntale."
+        inicio = parse_fecha(dia, self.hoy) if dia else None
+        if not inicio:
+            return f"ERROR: no entendí el día «{dia or ''}»: hoy es {fecha_larga(self.hoy.isoformat())}; pregúntale qué día."
+        fechas, error = fechas_de_cita(date.fromisoformat(inicio), repetir, self.hoy)
+        if error:
+            return error
+        op_ = s.get("opciones") or {}
+        campo_hora = op_.get("hora") or next((c["id"] for c in s["campos"] if c.get("tipo") == "hora"), None)
+        base = {k: v for k, v in (valores.items() if isinstance(valores, dict) else []) if registros.campo_por_clave(s["campos"], k) is None
+                or registros.campo_por_clave(s["campos"], k)["id"] not in (op_["fecha"], campo_hora)}
+        sin_hora = bool(hora) and not campo_hora
+        h = parse_hora(hora) if hora and campo_hora else None
+        ct = registros.campo_titulo(s, s["campos"])
+        hechas, errores, ya = [], [], []
+        for f in fechas:
+            v = {**base, op_["fecha"]: f.isoformat(), **({campo_hora: hora} if hora and campo_hora else {})}
+            # Una cita repetida es la MISMA fecha y hora con el mismo nombre (el duplicado de `registros` mira ±3 días: con citas semanales
+            # o diarias tomaba la siguiente como copia). Lo que no es copia exacta se agrega: la serie la pidió la persona.
+            titulo = _norm(str(next((x for k, x in base.items() if (registros.campo_por_clave(s["campos"], k) or {}).get("id") == (ct or {}).get("id")), "")))
+            if any(r["valores"].get(op_["fecha"]) == f.isoformat() and (not campo_hora or r["valores"].get(campo_hora) == h)
+                   and _norm(str(r["valores"].get((ct or {}).get("id")) or "")) == titulo for r in sv.registros_de(_visible(self.doc), s["id"])):
+                ya.append(f)
+                continue
+            ok, texto, _ = self._dato("agregar_registro", {"seccion": s["id"], "valores": v}, confirmado=True)
+            if ok:
+                hechas.append(f)
+            elif not hechas and not errores:
+                return texto  # ni la primera: el error dice qué preguntar (falta con quién, un dato que no se entiende…)
+            else:
+                errores.append(f"{fecha_larga(f.isoformat())}: {_sin_error(texto)}")
+        if not hechas:
+            return f"Ya existe esa cita en {s['titulo']}: {', '.join(fecha_larga(f.isoformat()) for f in ya)}. No lo repetí; díselo."
+        cuando = ", ".join(fecha_larga(f.isoformat()) for f in hechas) + (f" a las {h}" if h else "")
+        self._etiqueta = f"agendó {len(hechas)} en {s['titulo']}: {cuando}"
+        texto = (f"Agendado en {s['titulo']} ({len(hechas)} {'cita' if len(hechas) == 1 else 'citas'}): {cuando} "
+                 f"[fechas {', '.join(f.isoformat() for f in hechas)}].")
+        if sin_hora:
+            texto += f" La hora no se guardó: {s['titulo']} no tiene campo de hora (dilo)."
+        if ya:
+            texto += f" Ya estaban (no las repetí): {', '.join(fecha_larga(f.isoformat()) for f in ya)}."
+        if errores:
+            texto += f" No se agendaron: {' | '.join(errores)}."
+        # Si antes en este turno quiso guardarla como tarea, ese «fallo» ya se resolvió aquí: no debe frenar el «agendé» (otra vuelta).
+        self.fallos = [f for f in self.fallos if not f.startswith(ERROR_CITA_COMO_TAREA)]
+        return texto
+
     # --- ejecución ---
     def ejecutar(self, nombre: str, args: dict) -> str:
         if not isinstance(args, dict):
@@ -602,6 +976,10 @@ class SesionDiseno(agente.Sesion):
         sin_piezas = toma.error_anotar_sin_piezas(nombre, self.toma_entrada, self.doc, self.texto)
         if sin_piezas:
             return sin_piezas
+        for cerco in (self._cita_como_tarea, self._oculta_equivalente, self._bloque_fuera_de_pantalla):
+            error = cerco(nombre, args)
+            if error:
+                return error
         confirmado = self.confirmado or self._confirmado_masivo(self.texto or "")
         plan = self._masivo_plan or {}
         if nombre in _BORRAR:
@@ -623,11 +1001,17 @@ class SesionDiseno(agente.Sesion):
         if nombre == "quitar_seccion":
             ya_s = sum(1 for c in self.cambios if c["herramienta"] == "quitar_seccion")
             if not confirmado and (plan.get("secciones") or ya_s >= 1 or MASIVO.search(self.texto or "")):
-                return ERROR_MASIVO_SECCIONES
+                return self._pedir_quitar_secciones()
+            error = self._no_nombro_seccion(args)
+            if error:
+                return error
         if nombre == "quitar_campo":
             ya_c = sum(1 for c in self.cambios if c["herramienta"] == "quitar_campo")
             if not confirmado and (plan.get("campos") or MASIVO.search(self.texto or "") or ya_c >= 2):
                 return ERROR_MASIVO_CAMPOS
+            error = self._no_nombro_campo(args)
+            if error:
+                return error
         if nombre not in toma.NOMBRES_TOMA:  # las de la toma lo revisan ellas mismas
             return toma.bloqueo_en_toma(self.doc, nombre, self.digresion)
         return None
@@ -715,10 +1099,17 @@ class SesionDiseno(agente.Sesion):
         if s is None:
             # Literal de edicion.js (contextoDatos). Fuera del f-string: comillas iguales anidadas no compilan en Python 3.11.
             cuales = ", ".join(f"{x['id']} ({x['titulo']})" for x in secs)
-            return None, f"ERROR: «{_js(q)}» no es una sección con registros. Secciones con registros: {cuales}."
+            equipo = ""
+            if k and self._seccion(k) == "rrhh":
+                # El equipo es una pestaña fija: guarda solo nombres (agregar_vendedor). Medido (banco_citas): sin esto proponía crear
+                # «Empleados» sin decir que «Equipo» existía oculta.
+                oculta = "rrhh" in (self.doc.get("ocultas") or [])
+                equipo = (f" «{self._titulo('rrhh')}» no lleva registros: guarda solo los nombres de quienes trabajan (agregar_vendedor)"
+                          + (", y está oculta: pregúntale si la muestras o si crea otra sección con más datos." if oculta else "."))
+            return None, f"ERROR: «{_js(q)}» no es una sección con registros. Secciones con registros: {cuales}.{equipo}"
         return s, None
 
-    def _dato(self, nombre: str, args: dict) -> tuple[bool, str, Any]:
+    def _dato(self, nombre: str, args: dict, confirmado: bool | None = None) -> tuple[bool, str, Any]:
         """Una herramienta de datos: el código decide (`registros.ejecutar_dato`) y aquí se aplica. Devuelve (ok, texto, etiqueta)."""
         s, error = self._seccion_datos(args.get("seccion"))
         if error:
@@ -730,7 +1121,8 @@ class SesionDiseno(agente.Sesion):
         # Registros idénticos (mismos valores) no se pueden distinguir: se toma el primero y el siguiente mensaje se ocupa del otro
         # (regla medida de Carlos, `Sesion._registros`: antes se preguntaba «¿cuál?» sin salida).
         unicos = regs if nombre == "agregar_registro" else _sin_identicos(regs)
-        r = registros.ejecutar_dato(nombre, s, s["campos"], unicos, args, hoy=self.hoy, pais=self.pais, confirmado=self.confirmado, dichos=self.dichos)
+        r = registros.ejecutar_dato(nombre, s, s["campos"], unicos, args, hoy=self.hoy, pais=self.pais,
+                                    confirmado=self.confirmado if confirmado is None else confirmado, dichos=self.dichos)
         if not r["ok"]:
             return False, r["resultado"], None
         texto = r["resultado"]
@@ -1076,6 +1468,9 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
         senal = sesion.senal_toma()
         if senal:
             mensajes.append(HumanMessage(content=f"[Aviso del código — toma de diseño]\n{senal}"))
+        if sesion.pregunta_pendiente() and all(ll.get("name") == "quitar_seccion" for ll in llamadas):
+            respuesta = ""  # la pregunta la escribe el código con la lista exacta: no hace falta otra vuelta del modelo
+            break
     else:
         respuesta = " ".join(ultimos)  # el modelo no terminó: se le dice a la persona lo que sí se hizo
 
@@ -1099,6 +1494,9 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
         respuesta = confirmando  # el resumen lo escribe el CÓDIGO desde la ficha real
     if (sesion.doc.get("toma") or {}).get("fase") == "construida" and any(c["herramienta"] in toma.HERRAMIENTAS_BLOQUEADAS_EN_TOMA for c in sesion.cambios):
         sesion.doc = {**sesion.doc, "toma": toma.toma_vacia()}
+    pregunta = sesion.pregunta_pendiente()
+    if pregunta:
+        respuesta = pregunta  # borrar varias pestañas: la lista que ejecutará el «sí», dicha por el código
     if sesion.pendiente and "sí" not in respuesta.lower() and "si " not in respuesta.lower():
         respuesta += " Responde “sí” para confirmar."
 

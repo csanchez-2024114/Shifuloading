@@ -36,3 +36,14 @@ def titulo_seccion(rubro: str | None, seccion_id: str, sobrescritos: dict | None
     if seccion_id in _FIJAS:
         return _FIJAS[seccion_id]
     return _SECCIONES.get(rubro or "", _SECCIONES["otro"])[_ORDEN[seccion_id]]
+
+
+# Otros nombres con los que la gente llama a lo que guarda cada sección integrada que tiene contenido (además del nombre que tenga en
+# su CRM). Sirve para que, al crear una sección nueva, el código note que ya existe una oculta para lo mismo y la IA pregunte «¿la
+# muestro o creo otra?» (prueba del 19-oct: creó «Empleados» mientras «Equipo» estaba oculta). Es catálogo, no regla de un caso:
+# cuando entre el catálogo de conceptos del CRM, sale de ahí.
+OTROS_NOMBRES = {
+    "contactos": ("Clientes", "Contactos", "Compradores", "Prospectos"),
+    "desarrollo": ("Tareas", "Pendientes"),
+    "rrhh": ("Equipo", "Empleados", "Personal", "Trabajadores", "Colaboradores", "Vendedores"),
+}

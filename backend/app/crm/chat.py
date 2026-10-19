@@ -48,8 +48,17 @@ _RE_SALUDO = re.compile(r"^(hola|buenas|hey|ayuda|que puedes)")
 _FORMA_PENDIENTE = {"contacto": ("id",), "tarea": ("id",), "lista": ("id",), "registro": ("lista", "id"), "registros": ("lista", "buscar"), "campo": ("ambito", "id")}
 
 
+MAX_SECCIONES_PENDIENTES = 20
+
+
 def sanear_pendiente(p: Any) -> dict | None:
     """El cliente reenvía `pendiente`: solo se acepta con la forma esperada y nada más."""
+    if isinstance(p, dict) and p.get("tipo") == "secciones":
+        # Borrar varias pestañas (la lista la armó el código desde lo visible): ids cortos, sin repetir, con tope.
+        ids = p.get("ids")
+        if not isinstance(ids, list) or not 0 < len(ids) <= MAX_SECCIONES_PENDIENTES or not all(isinstance(i, str) and 0 < len(i) <= 64 for i in ids):
+            return None
+        return {"tipo": "secciones", "ids": list(dict.fromkeys(ids))}
     if not isinstance(p, dict) or p.get("tipo") not in _FORMA_PENDIENTE:
         return None
     claves = _FORMA_PENDIENTE[p["tipo"]]
@@ -61,6 +70,8 @@ def sanear_pendiente(p: Any) -> dict | None:
 def ejecutar_pendiente(doc: dict, p: dict, ahora: datetime) -> tuple[dict, str]:
     """Hace el borrado que la persona confirmó. Devuelve (CRM nuevo, mensaje). Lanza ErrorCrm si ya no existe."""
     tipo = p["tipo"]
+    if tipo == "secciones":
+        return _quitar_secciones(doc, p["ids"], ahora)
     if tipo == "contacto":
         c = next((x for x in doc["contactos"] if x["id"] == p["id"]), None)
         return op.contactos_eliminar(doc, p["id"], ahora), f"Listo, eliminé a {c['n'] if c else 'ese contacto'} de tu CRM."
@@ -87,6 +98,31 @@ def ejecutar_pendiente(doc: dict, p: dict, ahora: datetime) -> tuple[dict, str]:
     campos = doc["campos_contacto"] if p["ambito"] == "contactos" else next((x["campos"] for x in doc["listas"] if x["id"] == p["ambito"]), [])
     campo = next((c for c in campos if c["id"] == p["id"]), None)
     return est.campo_eliminar(doc, p["ambito"], p["id"], ahora), f"Listo, quité el campo “{campo['nombre'] if campo else ''}”."
+
+
+def _quitar_secciones(doc: dict, ids: list[str], ahora: datetime) -> tuple[dict, str]:
+    """El «sí» a borrar varias pestañas: quita EXACTAMENTE las de la lista (la armó el código con lo que se veía), con la misma
+    herramienta que usa el chat de diseño (listas: se borran con sus registros; integradas: se ocultan; sus piezas se van del inicio).
+    Lo que ya no está o no se puede quitar se dice; nunca se quita otra."""
+    from app.crm import edicion, pantalla  # aquí: edicion depende de módulos que importan este
+
+    titulos = {s["id"]: s.get("titulo") for s in pantalla.plantilla_efectiva(doc)["secciones"]}
+    hechas, no = [], []
+    for sid in ids:
+        if sid not in titulos:
+            continue  # ya no se ve: no hay nada que quitar
+        r = edicion.ejecutar(doc, "quitar_seccion", {"seccion": sid}, {"ahora": ahora})
+        if r["ok"]:
+            doc = r["doc"]
+            hechas.append(titulos[sid])
+        else:
+            motivo = re.sub(r"^ERROR:\s*", "", r["resultado"]).rstrip(".")
+            no.append(f"«{titulos[sid]}» ({motivo})")
+    if not hechas:
+        raise op.ErrorCrm(404, "Esas pestañas ya no están.")
+    lista = ", ".join(f"«{t}»" for t in hechas)
+    return doc, f"Listo, quité {len(hechas)} {'pestaña' if len(hechas) == 1 else 'pestañas'}: {lista}. Se puede deshacer." + (
+        f" No pude quitar: {'; '.join(no)}." if no else "")
 
 
 def responder(doc: dict, crudo: str, pendiente: dict | None = None, ahora: datetime | None = None) -> dict:
