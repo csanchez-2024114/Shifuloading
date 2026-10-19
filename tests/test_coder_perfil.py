@@ -42,7 +42,7 @@ def test_herramientas_del_perfil(coder):
     assert _names(coder, **CODER) == [
         "web_search", "calculator", "current_datetime", "save_memory", "search_memories", "update_memory",
         "create_project", "list_projects", "list_project_files", "read_project_file", "write_project_file",
-        "edit_project_file", "delete_project_file", "preview_project", "list_project_versions", "diff_project_versions",
+        "edit_project_file", "delete_project_file", "add_project_asset", "preview_project", "list_project_versions", "diff_project_versions",
         "restore_project_version", "delete_project"]
     con_archivos = _names(coder, files_enabled=True, **CODER)
     assert {"read_file", "search_in_file"} <= set(con_archivos)  # leer un adjunto con especificaciones
