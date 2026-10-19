@@ -577,6 +577,8 @@ async def procesar_chat_lab(
     hoy = _hoy_default(hoy)
     doc_sem = sembrar_doc(plantilla_id, muestra, hoy=hoy)
     doc = doc_desde_lab(plantilla_id, estado_in, muestra, hoy=hoy)
+    if isinstance(cuerpo.get("brief"), dict):  # lo que la persona contó de su negocio (cuestionario): los bancos lo mandan aparte
+        doc["brief"] = {**(doc.get("brief") or {}), **cuerpo["brief"]}
     puntos = puntos_doc_desde_lab(estado_in.get("puntos") or [], plantilla_id, muestra, hoy=hoy)
     contexto = {"muestra": _muestra_norm(muestra), "vista": estado_in.get("vista") or "inicio", "seleccion": cuerpo.get("seleccion")}
     salida = await _invocar_responder(
