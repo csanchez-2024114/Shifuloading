@@ -121,6 +121,10 @@ VITE_CRM_DISENO=1 npx vite --port 5180
 
 Sin Mongo ni Redis también se puede probar con el servidor de desarrollo (todo en memoria, se pierde al apagarlo): `CRM_DISENO=1 python scripts/crm_dev_server.py --puerto 5193` y el frontend con `VITE_API_URL=http://localhost:5193/api/v1 VITE_CRM_DISENO=1 npx vite --port 5199`.
 
+## Hora del negocio
+
+Las fechas que entiende el chat («mañana», «el jueves»), las citas que ya pasaron, los recordatorios y el resumen semanal usan la hora del país que la persona eligió en el cuestionario: Guatemala `America/Guatemala`, México `America/Mexico_City`, Colombia `America/Bogota`, España `Europe/Madrid` (con horario de verano) y Estados Unidos `America/Chicago` (hora del centro, con horario de verano). Con «Otro país» o sin país se usa UTC-6 fijo, que se cambia con `CRM_UTC_OFFSET` (por ejemplo `CRM_UTC_OFFSET=-5`). En Windows las zonas vienen del paquete `tzdata`, que ya está en `requirements.txt`.
+
 ## Guardar trazas de los turnos del chat (opcional)
 
 Para revisar después qué pasó en conversaciones reales (pruebas manuales, bancos), con `CRM_TRAZA=1` cada turno del chat del CRM generativo (`CRM_DISENO=1`) deja una línea JSON en un archivo por día:

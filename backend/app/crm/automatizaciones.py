@@ -90,7 +90,7 @@ def _recordatorios(doc: dict, ahora: datetime) -> list[str]:
         return []
     final = doc["etapas"][-1]  # un contacto que ya llegó a la última etapa no necesita seguimiento
     limite = ahora - timedelta(days=DIAS_SIN_AVANCE)
-    hoy = op.hora_local(ahora).date().isoformat()
+    hoy = op.hora_local(ahora, doc).date().isoformat()
     nombres: list[str] = []
     for c in doc["contactos"]:
         if len(nombres) >= MAX_RECORDATORIOS_POR_VEZ:
@@ -106,8 +106,8 @@ def _recordatorios(doc: dict, ahora: datetime) -> list[str]:
     return nombres
 
 
-def _clave_de_semana(ahora: datetime) -> str:
-    anio, semana, _ = op.hora_local(ahora).isocalendar()
+def _clave_de_semana(ahora: datetime, doc: dict | None = None) -> str:
+    anio, semana, _ = op.hora_local(ahora, doc).isocalendar()
     return f"{anio}-W{semana:02d}"
 
 
@@ -115,14 +115,14 @@ def _resumen(doc: dict, ahora: datetime) -> tuple[bool, str | None]:
     """(¿cambió el documento?, texto del resumen si se generó uno)."""
     if not _on(doc, "resumen"):
         return False, None
-    clave = _clave_de_semana(ahora)
+    clave = _clave_de_semana(ahora, doc)
     if doc.get("ultimo_resumen") == clave:
         return False, None
     primera_vez = doc.get("ultimo_resumen") is None
     doc["ultimo_resumen"] = clave
     if primera_vez:  # se marca la semana en que se encendió: el primer resumen llega la semana siguiente
         return True, None
-    hoy = op.hora_local(ahora).date().isoformat()
+    hoy = op.hora_local(ahora, doc).date().isoformat()
     tareas = doc["tareas"]
     vencidas = sum(1 for col in ("porHacer", "enCurso") for t in tareas[col] if t.get("vence") and t["vence"] < hoy)
     if not (doc["total_contactos"] or any(tareas.values())):

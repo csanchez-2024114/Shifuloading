@@ -138,8 +138,9 @@ def _nombra_cortado(opciones: dict, cortados: set[str]) -> bool:
     return any(isinstance(v, str) and k not in _NO_SON_CAMPO and v in cortados for k, v in (opciones or {}).items())
 
 
-def _hoy(ahora: datetime) -> date:
-    return op.hora_local(ahora).date()
+def _hoy(ahora: datetime, doc: dict | None = None) -> date:
+    """El día de hoy en la hora del negocio (la zona de su país, `op.zona_de`)."""
+    return op.hora_local(ahora, doc).date()
 
 
 def sembrar(doc_base: dict, plantilla: dict | str, *, nivel: str = NIVEL, hoy: date | None = None, pais: str | None = None,
@@ -152,7 +153,7 @@ def sembrar(doc_base: dict, plantilla: dict | str, *, nivel: str = NIVEL, hoy: d
             raise KeyError(f"no existe la plantilla «{plantilla}»")
         plantilla = p
     ahora = ahora or op.ahora_utc()
-    hoy = hoy or _hoy(ahora)
+    hoy = hoy or _hoy(ahora, {"pais": pais, "brief": doc_base.get("brief")})
     doc = est.normalizar(copy.deepcopy(doc_base))
     datos = ejemplos.registros_ejemplo(plantilla, nivel, hoy, pais)
     secciones = plantilla.get("secciones") or []
@@ -321,5 +322,5 @@ async def crear_desde_cuestionario(user_id: str, brief: dict, *, modelo: Any = N
         return doc
     doc, aplicado = await diseno.ajustar_sembrado(doc, brief, modelo=modelo, ahora=ahora)
     for sid, campos in aplicado["nuevos"].items():
-        doc = ejemplos_para_campos(doc, sid, campos, hoy=_hoy(ahora))
+        doc = ejemplos_para_campos(doc, sid, campos, hoy=_hoy(ahora, doc))
     return doc

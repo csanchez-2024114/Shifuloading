@@ -11,10 +11,12 @@ Funciones puras. `region_de(pais)` devuelve los formatos de un país; un país d
 from __future__ import annotations
 
 import math
+import unicodedata
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, tzinfo
 from decimal import ROUND_HALF_UP, Context, Decimal
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.crm.valores import numero_js, texto_js
 
@@ -191,3 +193,42 @@ class Region:
 def region_de(pais: Any) -> Region:
     """Formatos de un país sin cambiar la región activa (el chat escribe montos y fechas como los ve la persona)."""
     return Region(pais)
+
+
+# ───────── Hora del negocio (punto 47) ─────────
+# La zona IANA de cada país del cuestionario. México usa la del centro (CDMX; sin horario de verano desde 2022) y Estados Unidos
+# la del centro (Chicago: igual a UTC-6 en invierno, con horario de verano): un solo país con varias zonas se resuelve con la
+# más poblada para quien usa el CRM en español, no adivinando la ciudad. «otro» o un país desconocido: la zona de respaldo.
+ZONAS: dict[str, str | None] = {
+    "gt": "America/Guatemala",
+    "mx": "America/Mexico_City",
+    "co": "America/Bogota",
+    "es": "Europe/Madrid",
+    "us": "America/Chicago",
+    "otro": None,
+}
+
+
+def _llano(s: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", s.lower()) if unicodedata.category(c) != "Mn").strip()
+
+
+def codigo_pais(valor: Any) -> str | None:
+    """El código de `PAISES` («gt», «mx»…) a partir del código o del nombre («México»). None si no es ninguno."""
+    if not isinstance(valor, str) or not valor.strip():
+        return None
+    k = _llano(valor)
+    if k in PAISES:
+        return k
+    return next((c for c, v in PAISES.items() if _llano(v["nombre"]) == k), None)
+
+
+def zona_del_pais(pais: Any, respaldo: tzinfo) -> tzinfo:
+    """La zona horaria del negocio según su país; `respaldo` si es «otro», desconocido o la base de zonas no está instalada."""
+    nombre = ZONAS.get(codigo_pais(pais) or "")
+    if not nombre:
+        return respaldo
+    try:
+        return ZoneInfo(nombre)
+    except (ZoneInfoNotFoundError, ValueError):  # sin `tzdata` (Windows sin el paquete): mejor la hora de respaldo que caerse
+        return respaldo

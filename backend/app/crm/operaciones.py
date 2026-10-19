@@ -9,7 +9,7 @@ import copy
 import os
 import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Any
 
 from app.crm.secciones import IDS_COLUMNA, IDS_SECCION, titulo_seccion
@@ -128,13 +128,27 @@ def _buscar_tarea(doc: dict, tarea_id: str) -> tuple[str, dict] | None:
     return None
 
 
-ZONA = timezone(timedelta(hours=int(os.getenv("CRM_UTC_OFFSET", "-6"))))  # hora local del negocio (Guatemala, sin horario de verano)
+# Hora local del negocio: la del país de su CRM (`regional.ZONAS`, IANA, con horario de verano donde lo hay). ZONA es el respaldo
+# para un CRM sin país conocido (o «otro»): UTC-6 fijo como siempre, ajustable con CRM_UTC_OFFSET.
+ZONA = timezone(timedelta(hours=int(os.getenv("CRM_UTC_OFFSET", "-6"))))
 _DIAS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 _MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
 
 
-def hora_local(ahora: datetime) -> datetime:
-    return (ahora if ahora.tzinfo else ahora.replace(tzinfo=timezone.utc)).astimezone(ZONA)
+def zona_de(doc: dict | None) -> tzinfo:
+    """La zona horaria del negocio: la de su país (doc.pais, brief.pais o brief.ubicacion.pais); si no hay o no se conoce, ZONA."""
+    from app.crm.regional import codigo_pais, zona_del_pais
+
+    brief = (doc or {}).get("brief") or {}
+    for p in ((doc or {}).get("pais"), brief.get("pais"), (brief.get("ubicacion") or {}).get("pais")):
+        if codigo_pais(p):
+            return zona_del_pais(p, ZONA)
+    return ZONA
+
+
+def hora_local(ahora: datetime, doc: dict | None = None) -> datetime:
+    """`ahora` (UTC; sin zona se lee como UTC) en la hora del negocio de `doc`. Sin `doc`: la zona de respaldo."""
+    return (ahora if ahora.tzinfo else ahora.replace(tzinfo=timezone.utc)).astimezone(zona_de(doc))
 
 
 def fecha_en_palabras(iso: str) -> str:
@@ -142,7 +156,7 @@ def fecha_en_palabras(iso: str) -> str:
     return f"{_DIAS[d.weekday()]} {d.day} de {_MESES[d.month - 1]} de {d.year}"
 
 
-def _cita_valida(vence: Any, hora: Any, ahora: datetime) -> tuple[str | None, str | None]:
+def _cita_valida(vence: Any, hora: Any, ahora: datetime, doc: dict | None = None) -> tuple[str | None, str | None]:
     """(fecha AAAA-MM-DD, hora HH:MM) ya validadas. La fecha no puede estar en el pasado (en hora local del negocio)."""
     from app.crm import estructura  # import tardío: estructura usa este módulo
 
@@ -157,7 +171,7 @@ def _cita_valida(vence: Any, hora: Any, ahora: datetime) -> tuple[str | None, st
         if h:
             raise ErrorCrm(422, "Una hora necesita también una fecha.")
         return None, None
-    local = hora_local(ahora)
+    local = hora_local(ahora, doc)
     if fecha < local.date().isoformat() or (fecha == local.date().isoformat() and h and h < local.strftime("%H:%M")):
         raise ErrorCrm(422, f"Esa fecha ya pasó: hoy es {fecha_en_palabras(local.date().isoformat())}. Pídele otra a la persona.")
     return fecha, h
@@ -166,7 +180,7 @@ def _cita_valida(vence: Any, hora: Any, ahora: datetime) -> tuple[str | None, st
 def tareas_crear(doc: dict, texto_tarea: str, ahora: datetime | None = None, vence: str | None = None, hora: str | None = None,
                  contacto_id: str | None = None) -> dict:
     ahora = ahora or ahora_utc()
-    fecha, h = _cita_valida(vence, hora, ahora)
+    fecha, h = _cita_valida(vence, hora, ahora, doc)
     out = _copia(doc)
     tarea: dict[str, Any] = {"id": nuevo_id(), "t": texto_tarea}
     if fecha:
@@ -197,7 +211,7 @@ def tareas_actualizar(doc: dict, tarea_id: str, cambios: dict[str, Any], ahora: 
         hora = cambios["hora"] if "hora" in cambios else tarea.get("hora")
         if "vence" in cambios and cambios["vence"] in (None, "") and "hora" not in cambios:
             hora = None  # sin fecha no tiene sentido una hora suelta
-        fecha, h = _cita_valida(vence, hora, ahora)
+        fecha, h = _cita_valida(vence, hora, ahora, doc)
         for k in ("vence", "hora"):
             tarea.pop(k, None)
         if fecha:

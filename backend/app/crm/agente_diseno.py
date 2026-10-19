@@ -402,7 +402,7 @@ class SesionDiseno(agente.Sesion):
         self.confirmado = bool(agente._AFIRMA.match(texto or ""))  # un «sí» suelto confirma (como `agregar_vendedor` de Carlos)
         # Lo que escribió la persona (este mensaje y los anteriores): un registro a cambiar o borrar debe ser uno que ELLA nombró.
         self.dichos = "\n".join([*(str(h.get("t", "")) for h in self.historial if h.get("de") == "yo"), texto or ""])
-        self.hoy: date = op.hora_local(ahora).date()
+        self.hoy: date = op.hora_local(ahora, doc).date()
         self.pais = pais_de(doc)
         self.cambios: list[dict] = []
         self.intentos: list[dict] = []
@@ -558,7 +558,7 @@ class SesionDiseno(agente.Sesion):
         jueves» con una sola tarea para mañana; afirma_sin_cambios no lo veía porque sí hubo un cambio."""
         if not self.cambios:
             return None  # sin cambios lo cubre afirma_sin_cambios
-        hoy = self.ahora.astimezone(op.ZONA) if self.ahora.tzinfo else self.ahora
+        hoy = self.ahora.astimezone(op.zona_de(self.doc)) if self.ahora.tzinfo else self.ahora
         hechos = [t for c in self.cambios for t in _textos([c.get("args"), c.get("resultado")])]
         fechas = {f for t in hechos for f in _fechas_en(t, hoy)}
         cifras = set(re.findall(r"\d+", " ".join([self.texto or "", self.adjunto, *hechos, *(str(c.get("resultado") or "") for c in self.consultas)])))

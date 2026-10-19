@@ -723,7 +723,7 @@ def contexto_crm(doc: dict, ahora: datetime) -> str:
     por_etapa = {e: sum(1 for c in doc["contactos"] if c["etapa"] == e) for e in etapas}
     campos_c = doc["campos_contacto"]
     nombres = {c["id"]: c["n"] for c in doc["contactos"]}
-    local =op.hora_local(ahora)
+    local = op.hora_local(ahora, doc)
     return json.dumps({
         "hoy": f"{op.fecha_en_palabras(local.date().isoformat())}, {local.strftime('%H:%M')} (fecha {local.date().isoformat()})",
         "negocio": (doc.get("brief") or {}).get("nombre"),
