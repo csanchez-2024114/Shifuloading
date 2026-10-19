@@ -134,6 +134,33 @@ class Settings:
     # Con 1, el error de una herramienta le llega al modelo solo con el tipo de excepción ("Tool error (KeyError).
     # ..."); el detalle (mensajes de librerías, rutas, datos) va solo al log del servidor. Apagado por defecto.
     tool_error_detail_hidden: bool = False
+    # Agente codificador (docs/CODER_PLAN.md): mini apps estáticas por usuario, servidas desde un origen aislado.
+    # Apagado por defecto: sin él no hay rutas, herramientas ni colecciones nuevas. Exige AUTH_ENABLED=1; los demás
+    # interruptores exigen CODER_ENABLED=1 (y la escritura anónima, además, DATA y SHARING).
+    coder_enabled: bool = False
+    coder_data_enabled: bool = False          # API de datos por proyecto (solo si el usuario pide base)
+    coder_sharing_enabled: bool = False       # handle, publicación por versión y rutas públicas
+    coder_public_write_enabled: bool = False  # escritura anónima de visitantes en una colección pública aparte
+    coder_sandbox_origin: str = "http://localhost:8100"  # origen aislado (otro host que la app, no solo otro puerto)
+    coder_max_file_bytes: int = 200_000
+    coder_max_files: int = 40                 # archivos por proyecto
+    coder_max_projects_per_user: int = 20
+    coder_max_user_bytes: int = 50_000_000    # archivos + recursos + datos de un usuario
+    coder_max_asset_bytes: int = 2_000_000
+    coder_max_versions: int = 100             # por proyecto; se podan las viejas, nunca la actual ni la publicada
+    coder_max_writes_per_turn: int = 12       # herramientas de escritura por mensaje
+    coder_data_max_docs: int = 1000           # por proyecto
+    coder_data_max_bytes: int = 1_000_000     # por proyecto
+    coder_data_rpm: int = 120                 # peticiones por minuto a la API de datos, por proyecto
+    coder_public_rpm_per_ip: int = 120
+    coder_public_rpm_per_project: int = 1200
+    coder_public_daily_bytes_per_project: int = 100_000_000
+    coder_max_shared_per_user: int = 5
+    coder_public_write_max_docs: int = 500    # por proyecto
+    coder_public_write_rpm: int = 5           # por visitante (IP) y minuto
+    coder_token_fail_max: int = 10            # tokens públicos inválidos por IP antes del 429
+    coder_token_fail_window_minutes: int = 15
+    coder_blocked_handles: tuple[str, ...] = ()  # handles bloqueados por el administrador
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -216,6 +243,31 @@ class Settings:
             tool_error_detail_hidden=_bool("TOOL_ERROR_DETAIL_HIDDEN"),
             trusted_hosts=tuple(h.strip().lower() for h in (os.getenv("TRUSTED_HOSTS") or "localhost,127.0.0.1")
                                 .split(",") if h.strip()),
+            coder_enabled=_bool("CODER_ENABLED"),
+            coder_data_enabled=_bool("CODER_DATA_ENABLED"),
+            coder_sharing_enabled=_bool("CODER_SHARING_ENABLED"),
+            coder_public_write_enabled=_bool("CODER_PUBLIC_WRITE_ENABLED"),
+            coder_sandbox_origin=(os.getenv("CODER_SANDBOX_ORIGIN") or "http://localhost:8100").strip().rstrip("/"),
+            coder_max_file_bytes=_num("CODER_MAX_FILE_BYTES", "200000"),
+            coder_max_files=_num("CODER_MAX_FILES", "40"),
+            coder_max_projects_per_user=_num("CODER_MAX_PROJECTS_PER_USER", "20"),
+            coder_max_user_bytes=_num("CODER_MAX_USER_BYTES", "50000000"),
+            coder_max_asset_bytes=_num("CODER_MAX_ASSET_BYTES", "2000000"),
+            coder_max_versions=_num("CODER_MAX_VERSIONS", "100"),
+            coder_max_writes_per_turn=_num("CODER_MAX_WRITES_PER_TURN", "12"),
+            coder_data_max_docs=_num("CODER_DATA_MAX_DOCS", "1000"),
+            coder_data_max_bytes=_num("CODER_DATA_MAX_BYTES", "1000000"),
+            coder_data_rpm=_num("CODER_DATA_RPM", "120"),
+            coder_public_rpm_per_ip=_num("CODER_PUBLIC_RPM_PER_IP", "120"),
+            coder_public_rpm_per_project=_num("CODER_PUBLIC_RPM_PER_PROJECT", "1200"),
+            coder_public_daily_bytes_per_project=_num("CODER_PUBLIC_DAILY_BYTES_PER_PROJECT", "100000000"),
+            coder_max_shared_per_user=_num("CODER_MAX_SHARED_PER_USER", "5"),
+            coder_public_write_max_docs=_num("CODER_PUBLIC_WRITE_MAX_DOCS", "500"),
+            coder_public_write_rpm=_num("CODER_PUBLIC_WRITE_RPM", "5"),
+            coder_token_fail_max=_num("CODER_TOKEN_FAIL_MAX", "10"),
+            coder_token_fail_window_minutes=_num("CODER_TOKEN_FAIL_WINDOW_MINUTES", "15"),
+            coder_blocked_handles=tuple(h.strip().lower() for h in (os.getenv("CODER_BLOCKED_HANDLES") or "")
+                                        .split(",") if h.strip()),
         )
 
     def context_window(self) -> int:
