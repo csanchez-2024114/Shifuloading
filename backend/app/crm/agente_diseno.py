@@ -162,7 +162,7 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 INSTRUCCIONES_DISENO = """Más de este CRM (Python)
 - No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
 - En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado.
-- Secciones ocultas («oculta»: true): no se ven en el menú. Si piden guardar algo que va en una oculta (empleados → la de equipo), no lo metas en otra sección ni crees una igual: pregunta «¿la muestro o creo otra?».
+- Secciones ocultas («oculta»: true): no se ven en el menú. Si piden guardar algo que va en una oculta (empleados → la de equipo), no lo metas en otra sección ni crees otra sección para lo mismo: pregunta «¿la muestro o creo otra?».
 - Nunca elijas por la persona qué quitar o borrar («el que tú creas»): propón cuál y por qué, y espera su sí."""
 
 _CABECERA_ESTADO_PANTALLA = "Estado de la pantalla (JSON):\n"
@@ -415,7 +415,7 @@ async def revisar_sustituto_final(respuesta: str, sesion: "SesionDiseno", doc_in
 # llevan «pedidos, proyectos y citas como tareas»: así nació la cita guardada como tarea del 19-oct).
 PARA_QUE_DISENO = {
     "contactos": "la lista de clientes, cada uno en una etapa",
-    "desarrollo": "tareas internas del negocio (Por hacer, En curso, Hecho); las citas van en una agenda, no aquí",
+    "desarrollo": "tareas internas del negocio (Por hacer, En curso, Hecho); las citas van en una agenda, no en este tablero",
     "rrhh": "las personas que trabajan en el negocio (equipo, empleados, vendedores); guarda solo sus nombres",
 }
 
@@ -758,9 +758,10 @@ class SesionDiseno(agente.Sesion):
         aqui = None if sec is None else sec["id"]
         if aqui == abierto_id:
             return None
-        if aqui is None and nombre != "quitar_bloque":
-            # Una pieza del inicio mirando una pestaña: para mover o cambiar, `edicion` ya guía a usar las piezas de esta pestaña (medido en
-            # banco_pestanas: «aquí pon arriba un resumen» lo resuelve así). Solo quitar —lo que borra— se frena aquí.
+        if aqui is None and nombre not in ("quitar_bloque", "cambiar_visual"):
+            # Mover o cambiar el tamaño de una pieza del inicio mirando una pestaña: `edicion` ya dice que no se ve aquí.
+            # `cambiar_visual` no: se reescribe antes (`_a_la_pestana_abierta`), porque el error de edicion ofrece pestana="inicio"
+            # y el modelo lo sigue (banco_pestanas: el resumen queda en el inicio). Quitar se frena aquí: borra.
             return None
         titulo = "Inicio" if sec is None else sec.get("titulo")
         if self._nombro(titulo, *( [] if sec is None else [sec["id"]])):
@@ -768,9 +769,15 @@ class SesionDiseno(agente.Sesion):
         piezas = (self.doc.get("inicio") or []) if sec is None else (pantalla.pagina_de(efectiva, self.doc, sec["id"]) or [])
         b = next((x for x in piezas if x.get("uid") == uid), {})
         es = f" ({pantalla.NOMBRE_VISTA.get(b.get('vista'), b.get('vista'))})" if b.get("vista") else ""
-        return (f"ERROR: «{uid}»{es} está en «{titulo}», pero la persona está mirando «{self._titulo_abierto()}» y no nombró «{titulo}». "
-                f"Lo que se ve ahora: {self._se_ve_ahora()}. Si lo que pidió no está aquí, díselo con honestidad (aquí no hay eso) y pregúntale "
-                "a cuál se refiere; no toques otra pestaña sin que la nombre.")
+        base = (f"ERROR: «{uid}»{es} está en «{titulo}», pero la persona está mirando «{self._titulo_abierto()}» y no nombró «{titulo}». "
+                f"Lo que se ve ahora: {self._se_ve_ahora()}. ")
+        if nombre == "quitar_bloque":
+            # No presentar esa pieza como candidata: la persona no la nombró y no se ve (19-oct: «quita el calendario» ofrecía
+            # quitar un calendario del inicio que no existe).
+            return (base + "No lo quité. No ofrezcas quitarlo ni ninguna pieza de otra pestaña: ella no la nombró. "
+                    "Si lo que pidió no está entre lo que se ve, dile que aquí no está y pregúntale a qué se refiere.")
+        return (base + "No lo cambies ni pongas pestana=\"inicio\". Si pidió una pieza en la pestaña que mira, usa agregar_bloque "
+                f"(pestana=\"{self._lienzo_abierto()}\" o sin pestana).")
 
     def _no_nombro_campo(self, args: dict) -> str | None:
         """Quitar un campo que la persona no nombró (ni aceptó cuando Shifu lo propuso) es elegir por ella (19-oct: «el que tú creas menos
@@ -950,10 +957,31 @@ class SesionDiseno(agente.Sesion):
         self.fallos = [f for f in self.fallos if not f.startswith(ERROR_CITA_COMO_TAREA)]
         return texto
 
+    def _a_la_pestana_abierta(self, nombre: str, args: dict) -> tuple[str, dict]:
+        """Cambiar la vista de una pieza del INICIO mientras se mira otra pestaña, sin haberla nombrado: la pieza nueva va en la pestaña
+        abierta. El modelo eligió la vista; el destino lo calcula el código (la misma regla que `agregar_bloque` sin pestana).
+
+        Medido en banco_pestanas («aquí pon arriba un resumen», mirando Miembros): llama `cambiar_visual` sobre b0, el resumen que ya está
+        en el inicio. El error de `edicion` dice «si pidió el inicio, pon pestana="inicio"» y el modelo lo sigue: el cambio queda en el
+        inicio y la pestaña no recibe nada (5 de 6; en la línea base, 1 de 3)."""
+        if nombre != "cambiar_visual" or not args.get("bloque") or self._lienzo_abierto() is None:
+            return nombre, args
+        uid = str(args["bloque"])
+        if uid in (self.adjunto or ""):
+            return nombre, args
+        b = next((x for x in self.doc.get("inicio") or [] if x.get("uid") == uid), None)
+        if b is None or self._nombro("Inicio"):
+            return nombre, args
+        opciones = args.get("opciones") if isinstance(args.get("opciones"), dict) and args.get("opciones") else (b.get("opciones") or {})
+        nuevo = {"pestana": self._lienzo_abierto(), "vista": args.get("vista") or b.get("vista"),
+                 "seccion": args.get("seccion") or b.get("seccion"), "opciones": opciones}
+        return "agregar_bloque", nuevo
+
     # --- ejecución ---
     def ejecutar(self, nombre: str, args: dict) -> str:
         if not isinstance(args, dict):
             args = {}
+        nombre, args = self._a_la_pestana_abierta(nombre, args)
         self.acciones += 1
         if self.acciones > agente.MAX_ACCIONES:
             resultado = "Se alcanzó el límite de acciones por mensaje. Dile al usuario que continúe en otro mensaje."

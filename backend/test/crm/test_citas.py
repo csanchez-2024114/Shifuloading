@@ -161,7 +161,39 @@ async def test_mirando_una_pestana_un_bloque_del_inicio_no_se_toca_si_no_lo_nomb
     r = await agente.responder(memb, "quita el calendario de aquí", [], AHORA, False, modelo=modelo, seccion="Miembros")
     res = _resultados(modelo)[0]
     assert res.startswith("ERROR: «b1» (por vencer) está en «Inicio», pero la persona está mirando «Miembros»") and "p_l_miembros (lista de Miembros)" in res
+    assert "No ofrezcas quitarlo" in res  # no hay calendario: no se ofrece quitar el bloque del inicio
     assert r["cambios"] == []
+
+
+def _kpis_en(doc, pid):
+    efectiva = pantalla.plantilla_efectiva(doc)
+    return [b for b in (pantalla.pagina_de(efectiva, doc, pid) or []) if b.get("vista") == "kpis"]
+
+
+@pytest.mark.asyncio
+async def test_el_resumen_pedido_mirando_una_pestana_no_se_cambia_en_el_inicio(memb):
+    """banco_pestanas: «aquí pon arriba un resumen» llama cambiar_visual sobre b0 (el del inicio), a veces con pestana="inicio".
+    La pieza queda en la pestaña abierta; el inicio no se toca."""
+    from test_agente_diseno import ModeloFalso
+    from app.crm import agente
+    modelo = ModeloFalso(dice("", llamar("cambiar_visual", bloque="b0", vista="kpis", pestana="inicio", opciones={"por": "estado"})),
+                         dice("Listo, puse el resumen en Miembros."))
+    r = await agente.responder(memb, "aquí pon arriba un resumen por estado", [], AHORA, False, modelo=modelo, seccion="Miembros")
+    assert [c["herramienta"] for c in r["cambios"]] == ["agregar_bloque"]
+    assert r["cambios"][0]["args"]["pestana"] == "l_miembros"
+    assert _kpis_en(r["doc"], "l_miembros") and [b["vista"] for b in r["doc"]["inicio"]] == ["kpis", "vencimientos"]
+    assert r["fallos"] == []
+
+
+@pytest.mark.asyncio
+async def test_si_nombra_el_inicio_cambiar_visual_si_lo_toca(memb):
+    from test_agente_diseno import ModeloFalso
+    from app.crm import agente
+    modelo = ModeloFalso(dice("", llamar("cambiar_visual", bloque="b0", vista="tabla", pestana="inicio")), dice("Listo, el del inicio ahora es una lista."))
+    r = await agente.responder(memb, "en el inicio cambia el resumen por una lista", [], AHORA, False, modelo=modelo, seccion="Miembros")
+    assert [c["herramienta"] for c in r["cambios"]] == ["cambiar_visual"]
+    assert [b["vista"] for b in r["doc"]["inicio"]] == ["tabla", "vencimientos"]
+    assert not _kpis_en(r["doc"], "l_miembros")
 
 
 # ───────── 9: no elige sola qué quitar ─────────
