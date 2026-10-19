@@ -2,6 +2,7 @@
 import json
 
 from app.crm import conceptos
+from app.crm import plantillas
 from app.crm.generador import generar
 from datetime import datetime, timezone
 
@@ -37,11 +38,35 @@ def test_humanizar_estado_quita_jerga_de_claves():
     }
     h = conceptos.humanizar_estado_modelo(raw)
     assert "secciones_integradas" not in h and "secciones_propias" not in h
-    assert h["secciones_del_menu"]["Clientes"]["sirve_para"] == "x"
+    assert h["secciones_del_menu"]["contactos"]["nombre"] == "Clientes"
+    assert h["secciones_del_menu"]["contactos"]["sirve_para"] == "x"
     assert h["tablas_del_negocio"][0]["nombre"] == "Ventas"
-    assert h["secciones"][0]["graficas_disponibles"] == ["Dona"]
+    assert h["secciones"][0]["id"] == "l_ventas"
+    assert h["secciones"][0]["graficas_disponibles"] == ["dona (Dona)"]
+    assert h["plantillas_de_pestana"] == ["membresias (miembros, planes)"]
     assert "pestanas_base" not in h
+    assert h["bloques"][0].get("vista") == "kpis"
     assert h["bloques"][0].get("tipo_de_pieza") == "resumen con cifras"
+    assert h["bloques"][0].get("seccion") == "miembros"
+    assert h["bloques"][0].get("id") == "b0"
+
+
+def test_humanizar_bloque_grafico_conserva_tipo_y_graficas():
+    raw = {
+        "secciones": [{"id": "miembros", "titulo": "Miembros", "graficos_posibles": ["dona (Dona)", "linea (Línea)"]}],
+        "bloques": [
+            {
+                "id": "b1",
+                "vista": "grafico",
+                "seccion": "miembros",
+                "opciones": {"tipo": "dona", "por": "estado"},
+            }
+        ],
+    }
+    h = conceptos.humanizar_estado_modelo(raw)
+    assert h["bloques"][0]["vista"] == "grafico"
+    assert h["bloques"][0]["opciones"]["tipo"] == "dona"
+    assert h["secciones"][0]["graficas_disponibles"] == ["dona (Dona)", "linea (Línea)"]
 
 
 def test_humanizar_resultado_herramienta():
@@ -65,6 +90,13 @@ def test_sugerir_graficas_max_tres():
     sec_wrap = {"id": sec["id"], "titulo": sec["nombre"], "campos": sec["campos"]}
     sug = conceptos.sugerir_graficas(doc, sec_wrap, 3)
     assert 1 <= len(sug) <= 3
+
+
+def test_resolver_tipo_grafico_por_nombre_visible():
+    assert plantillas.resolver_tipo_grafico("dona") == "dona"
+    assert plantillas.resolver_tipo_grafico("Dona") == "dona"
+    assert plantillas.resolver_tipo_grafico("DÓNA") == "dona"
+    assert plantillas.resolver_tipo_grafico("no-existe") is None
 
 
 def test_bloque_prompt_incluye_linea_por_concepto():

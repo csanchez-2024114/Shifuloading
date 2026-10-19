@@ -215,20 +215,25 @@ def masivo_destruye_registros(texto: str) -> bool:
 
 
 def humanizar_estado_modelo(estado: dict) -> dict:
-    """Textos del JSON de contexto en lenguaje de la persona (ids solo donde la herramienta los exige)."""
+    """Renombra claves del contexto a lenguaje de la persona sin quitar los ids que exigen las herramientas (vista, seccion, graficas id+nombre)."""
     from app.crm import pantalla
 
     out = dict(estado)
     integradas = out.pop("secciones_integradas", None)
     if integradas is not None:
         out["secciones_del_menu"] = {
-            (info.get("nombre") or sid): {"oculta_en_menu": info.get("oculta"), "sirve_para": info.get("para_que")}
+            sid: {
+                "nombre": info.get("nombre") or sid,
+                "oculta_en_menu": info.get("oculta"),
+                "sirve_para": info.get("para_que"),
+            }
             for sid, info in integradas.items()
         }
     propias = out.pop("secciones_propias", None)
     if propias is not None:
         out["tablas_del_negocio"] = [
             {
+                **({"id": p["id"]} if p.get("id") else {}),
                 "nombre": p.get("nombre"),
                 "campos": p.get("campos"),
                 "cuantos_registros": p.get("total_registros"),
@@ -239,37 +244,21 @@ def humanizar_estado_modelo(estado: dict) -> dict:
     titulos = {s.get("id"): s.get("titulo") or s.get("id") for s in out.get("secciones") or []}
     for sec in out.get("secciones") or []:
         if "graficos_posibles" in sec:
-            sec["graficas_disponibles"] = [
-                g.split(" (", 1)[1].rstrip(")") if " (" in g else g for g in sec["graficos_posibles"]
-            ]
-            del sec["graficos_posibles"]
-        sid = sec.get("id")
-        tit = sec.get("titulo") or titulos.get(sid) or sid
-        if tit:
-            sec["pestana"] = tit
-        if sid and str(sid).startswith(("l_", "p_")):
-            sec["id_para_herramientas"] = sid
-            sec.pop("id", None)
+            sec["graficas_disponibles"] = sec.pop("graficos_posibles")
     if "pestanas_base" in out:
-        out["plantillas_de_pestana"] = [
-            p[p.index("(") + 1 :].rstrip(")") if "(" in p else p for p in out.pop("pestanas_base")
-        ]
+        out["plantillas_de_pestana"] = out.pop("pestanas_base")
     nombre_vista = pantalla.NOMBRE_VISTA
     for bloque in out.get("bloques") or []:
         v = bloque.get("vista")
         if isinstance(v, str) and v in nombre_vista:
             bloque["tipo_de_pieza"] = nombre_vista[v]
-            bloque.pop("vista", None)
         sec = bloque.get("seccion")
-        if sec in titulos:
-            bloque["de_la_pestana"] = titulos[sec]
-            bloque.pop("seccion", None)
+        if sec in titulos and not bloque.get("titulo_seccion"):
+            bloque["titulo_seccion"] = titulos[sec]
     for pieza in out.get("piezas_que_se_ven_ahora") or []:
-        pieza.pop("id", None)
         v = pieza.get("vista")
         if isinstance(v, str) and v in nombre_vista:
             pieza["tipo_de_pieza"] = nombre_vista[v]
-            pieza.pop("vista", None)
     if out.get("grafico"):
         out["grafico"] = out["grafico"].replace("graficos_posibles", "graficas_disponibles de esa pestaña")
     return out

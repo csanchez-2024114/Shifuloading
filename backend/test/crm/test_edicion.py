@@ -195,6 +195,13 @@ def test_usar_logo_guarda_el_id_y_devuelve_la_imagen_para_guardarla(doc):
     assert ejecutar(r3["doc"], "restablecer_marca", {})["doc"]["marca"] == {}
 
 
+def test_agregar_grafico_acepta_nombre_visible(doc):
+    r = ejecutar(doc, "agregar_bloque", {"seccion": "miembros", "vista": "grafico", "opciones": {"tipo": "Dona"}})
+    assert r["ok"], r["resultado"]
+    graficos = [b for b in r["doc"]["inicio"] if b.get("vista") == "grafico"]
+    assert graficos and (graficos[-1].get("opciones") or {}).get("tipo") == "dona"
+
+
 def test_no_cambia_el_documento_que_recibe(doc):
     antes = copy.deepcopy(doc)
     for nombre, args in [("agregar_bloque", {"seccion": "miembros", "vista": "tabla"}), ("cambiar_marca", {"primario": "#000000"}),

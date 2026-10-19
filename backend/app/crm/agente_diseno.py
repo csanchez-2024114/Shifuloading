@@ -206,7 +206,7 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 # Solo lo que el prompt del laboratorio no cubre y es específico de este backend (contexto JSON del CRM).
 INSTRUCCIONES_DISENO = """Más de este CRM (Python)
 - No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
-- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el nombre/id de pestaña que aparece en el Estado (campo pestana o id_para_herramientas).
+- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id/título de pestaña que aparece en el Estado (campo id o titulo en secciones).
 
 - Secciones ocultas («oculta_en_menu»: true): no se ven en el menú. Si piden guardar algo que va en una oculta (empleados → la de equipo), no lo metas en otra sección ni crees otra sección para lo mismo: pregunta «¿la muestro o creo otra?».
 - Nunca elijas por la persona qué quitar o borrar («el que tú creas»): propón cuál y por qué, y espera su sí."""

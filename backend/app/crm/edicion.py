@@ -270,7 +270,10 @@ def _ejecutar_sin(doc: dict, nombre: str, args: dict, ctx: dict) -> tuple[dict, 
         if vista == "grafico":
             graficos = plantillas.graficos()
             posibles = [g["id"] for g in plantillas.compatibles(campos)]
-            tipo = opciones.get("tipo", FALTA)
+            tipo_raw = opciones.get("tipo", FALTA)
+            tipo = (plantillas.resolver_tipo_grafico(tipo_raw) or tipo_raw) if isinstance(tipo_raw, str) else tipo_raw
+            if isinstance(tipo, str) and tipo != tipo_raw:
+                opciones = {**opciones, "tipo": tipo}
             if not isinstance(tipo, str) or tipo not in graficos:
                 errores.append(f"el gráfico «{js(tipo)}» no existe. Con {s['titulo']} se pueden: {', '.join(posibles)}.")
             elif tipo not in posibles:

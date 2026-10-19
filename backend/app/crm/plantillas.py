@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import copy
 import json
+import unicodedata
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,25 @@ def pestanas() -> list[dict]:
 def graficos() -> dict[str, dict]:
     """{tipo: {nombre, familia, requiere, opciones, html?}} en el orden de `compatibles()`."""
     return _leer("graficos")
+
+
+def _clave_grafico(s: str) -> str:
+    s = unicodedata.normalize("NFD", (s or "").lower())
+    return "".join(c for c in s if unicodedata.category(c) != "Mn")
+
+
+def resolver_tipo_grafico(tipo: str | None) -> str | None:
+    """Id del catálogo a partir del id o del nombre visible (sin distinguir mayúsculas ni acentos)."""
+    if not tipo or not isinstance(tipo, str):
+        return None
+    g = graficos()
+    if tipo in g:
+        return tipo
+    clave = _clave_grafico(tipo)
+    for tid, info in g.items():
+        if _clave_grafico(tid) == clave or _clave_grafico(info.get("nombre") or "") == clave:
+            return tid
+    return None
 
 
 def vistas() -> dict[str, dict]:

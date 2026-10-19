@@ -26,6 +26,8 @@ from typing import Any, Callable, Iterable
 
 import regex  # \p{L} igual que en JS
 
+from app.crm import plantillas
+
 ANCHOS_COL = [3, 4, 6, 8, 12]
 ALTO_MAX = 4
 VISTAS_INICIO = ["kpis", "tablero", "agenda", "vencimientos", "grafico", "tabla", "calendario_mes", "tablero_dinero", "cifra", "atencion",
@@ -527,7 +529,10 @@ def _validar_valor_ficha(cat: Catalogo, campo: str, valor: Any) -> tuple[bool, A
         campos = _campos_de(s, por_id)
         if vista == "grafico":
             posibles = [g["id"] for g in cat.compatibles(campos)]
-            tipo = op.get("tipo") if isinstance(op, dict) else None
+            tipo_raw = op.get("tipo") if isinstance(op, dict) else None
+            tipo = (plantillas.resolver_tipo_grafico(tipo_raw) or tipo_raw) if isinstance(tipo_raw, str) else tipo_raw
+            if isinstance(tipo, str) and tipo != tipo_raw and isinstance(op, dict):
+                op = {**op, "tipo": tipo}
             if not _verdad(tipo) or tipo not in cat.graficos:
                 return False, f"falta opciones.tipo de gráfico válido (posibles con {s['titulo']}: {', '.join(posibles)})."
             if tipo not in posibles:
@@ -628,7 +633,8 @@ def ejecutar_toma(doc: dict, nombre: str, args: dict | None, cat: Catalogo, text
                                                                            **({"suma": dinero["id"]} if dinero and dinero.get("tipo") == "dinero" else {})}}
         elif que == "grafica":
             pedido_arg = args.get("grafico")
-            pedido = pedido_arg if _verdad(pedido_arg) and pedido_arg in posibles else None
+            resuelto = plantillas.resolver_tipo_grafico(str(pedido_arg)) if _verdad(pedido_arg) else None
+            pedido = resuelto if resuelto and resuelto in posibles else None
             if _verdad(pedido_arg) and not pedido:
                 return no(f"«{_js_str(pedido_arg)}» no se puede con {sec['titulo']}. Posibles: {', '.join(posibles)}.")
             tipo = pedido or ("dona" if estado_c and "dona" in posibles else (posibles[0] if posibles else None))
