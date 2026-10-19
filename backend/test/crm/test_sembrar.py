@@ -183,22 +183,22 @@ def test_quitar_ejemplos_deja_solo_lo_de_la_persona():
 
 
 def test_los_topes_de_carlos_cortan_en_orden_y_quitan_las_piezas_huerfanas(monkeypatch, caplog):
-    campos = [{"id": f"c{i}", "nombre": f"Campo {i}", "tipo": "texto"} for i in range(17)]
+    campos = [{"id": f"c{i}", "nombre": f"Campo {i}", "tipo": "texto"} for i in range(est.MAX_CAMPOS + 2)]
     secciones = [{"id": f"s{i}", "titulo": f"Sección {i}", "grupo": 0, "icono": "tabla", "vista": "tabla", "campos": campos[:3]} for i in range(14)]
     secciones[0]["campos"] = campos
     p = {"id": "grande", "secciones": secciones, "inicio": [
         {"vista": "tabla", "seccion": "s0", "opciones": {"titulo": "c0"}},
-        {"vista": "grafico", "seccion": "s0", "opciones": {"tipo": "barras", "agrupar": "c16"}},  # nombra un campo que se corta
+        {"vista": "grafico", "seccion": "s0", "opciones": {"tipo": "barras", "agrupar": f"c{est.MAX_CAMPOS + 1}"}},  # nombra un campo que se corta
         {"vista": "tabla", "seccion": "s13", "opciones": {}},  # una sección que no cabe
     ]}
     monkeypatch.setattr(est, "MAX_REGISTROS", 5)
     with caplog.at_level("INFO"):
         doc = sembrar.sembrar(_base(), p, hoy=HOY, ahora=AHORA)
     assert [l["id"] for l in doc["listas"]] == [f"l_s{i}" for i in range(12)]
-    assert [c["id"] for c in doc["listas"][0]["campos"]] == [f"c{i}" for i in range(15)]
+    assert [c["id"] for c in doc["listas"][0]["campos"]] == [f"c{i}" for i in range(est.MAX_CAMPOS)]
     assert all(len(l["registros"]) == 5 for l in doc["listas"])
     assert [(b["uid"], b["seccion"]) for b in doc["inicio"]] == [("b0", "l_s0")]
-    assert "tope de 12 listas" in caplog.text and "se dejan 15" in caplog.text
+    assert "tope de 12 listas" in caplog.text and f"se dejan {est.MAX_CAMPOS}" in caplog.text
 
 
 # ───────── El ajuste de la IA, dentro del cerco ─────────

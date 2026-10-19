@@ -38,7 +38,7 @@ import time
 from datetime import datetime
 from typing import Any
 
-from app.crm import estructura, plantillas, secciones_v
+from app.crm import estructura, plantillas, secciones_v, topes
 from app.crm import operaciones as op
 from app.crm import toma as tm
 from app.crm.lienzo import ALTO_MAX, ANCHO_COMPLETO, ANCHOS_COL, VISTAS_INICIO, acomodar, ajustar_ancho, ubicacion, ubicar, ubicar_todo
@@ -51,7 +51,7 @@ from app.crm.validar import TIPOS_CAMPO, campos_de, normalizar_opciones, revisar
 
 HERR_BLOQUE = frozenset(["agregar_bloque", "quitar_bloque", "mover_bloque", "cambiar_tamano", "cambiar_visual", "cambiar_rangos"])
 VISTAS_SECCION = ("tabla", "tablero", "agenda", "vencimientos")
-MAX_CAMPOS_SECCION = 8
+MAX_CAMPOS_SECCION = topes.CAMPOS_POR_SECCION  # el mismo tope que `estructura` (antes 8 aquí y 15 allá)
 _FIJOS_CONTACTO = ("nombre", "detalle", "canal", "etapa", "responsable")
 _HUELLA_GRAFICO = ("tipo", "por", "agrupar", "valor", "fecha", "estado", "x", "y")
 
@@ -396,7 +396,7 @@ def _ejecutar_sin(doc: dict, nombre: str, args: dict, ctx: dict) -> tuple[dict, 
         if sec.get("virtual") == "tareas":
             return no(f"«{sec['titulo']}» no admite campos nuevos: sus campos son fijos ({lista_de_campos(sec)}).")
         if sec.get("virtual") != "contactos" and len(sec["campos"]) >= MAX_CAMPOS_SECCION:
-            return no(f"«{sec['titulo']}» ya tiene 8 campos (el máximo).")
+            return no(f"«{sec['titulo']}» ya tiene {MAX_CAMPOS_SECCION} campos (el máximo).")
         candidata = {**efectiva, "secciones": [{**x, "campos": [*x["campos"], c]} if x is sec else x for x in secciones]}
         errores = validar_plantilla(candidata)
         if errores:

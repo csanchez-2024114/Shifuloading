@@ -21,7 +21,7 @@ Reglas de traducción (plantilla → documento):
   a `contactos` con los ids de campo traducidos. En cualquier otro caso (una agenda, unos pedidos, unos miembros…) es una lista.
 - Las integradas de Carlos que la plantilla no usa se ocultan (cobros, desarrollo, importar y, si no son las personas, contactos):
   no se borran, aparecen cuando se necesitan, igual que en `diseno`.
-- Topes de Carlos (`estructura`): hasta 12 listas, 15 campos por lista y 2000 registros por lista. Si una plantilla se pasa, se
+- Topes (`topes`, los mismos de `estructura`): hasta 12 listas, 20 campos por lista y 2000 registros por lista. Si una plantilla se pasa, se
   corta en el orden de la plantilla (lo primero se queda) y se deja en el log; las piezas que nombran algo cortado se quitan.
 - `inicio` = las piezas de la plantilla con uid `b0`, `b1`… y el tamaño de `conTamano` + `acomodar` del laboratorio (lienzo.jsx y
   edicion.js, portados abajo; `acomodar` se verifica con `test/crm/fixtures/lab/acomodar.json`).

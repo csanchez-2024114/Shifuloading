@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from app.crm.operaciones import ErrorCrm, _copia, _registrar, ahora_utc, nuevo_id
+from app.crm import topes
 from app.crm.secciones import ETAPAS, IDS_SECCION, titulo_seccion
 
 TIPOS_DE_CAMPO = ("texto", "numero", "fecha", "lista")  # "lista" = el valor es una de las `opciones` fijas del campo
@@ -20,9 +21,9 @@ TIPOS_DE_CAMPO = ("texto", "numero", "fecha", "lista")  # "lista" = el valor es 
 TIPOS_V2 = ("texto", "numero", "dinero", "fecha", "hora", "estado", "lista")
 CON_OPCIONES = ("estado", "lista")
 MIN_OPCIONES, MAX_OPCIONES, LARGO_OPCION = 2, 8, 24
-MAX_LISTAS = 12
-MAX_CAMPOS = 15
-MAX_REGISTROS = 2000
+MAX_LISTAS = topes.SECCIONES_PROPIAS        # los topes viven en `topes` (un solo lugar); estos nombres quedan como alias
+MAX_CAMPOS = topes.CAMPOS_POR_SECCION
+MAX_REGISTROS = topes.REGISTROS_POR_SECCION
 MIN_ETAPAS, MAX_ETAPAS = 2, 8
 LARGO_NOMBRE = 28
 LARGO_ETAPA = 24

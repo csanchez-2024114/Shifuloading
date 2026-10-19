@@ -12,10 +12,11 @@ import uuid
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Any
 
+from app.crm import topes
 from app.crm.secciones import IDS_COLUMNA, IDS_SECCION, titulo_seccion
 
 MAX_EVENTOS = 30
-MAX_CONTACTOS = 5000  # tope por CRM mientras los contactos vivan dentro del mismo documento
+MAX_CONTACTOS = topes.CONTACTOS  # tope por CRM mientras los contactos vivan dentro del mismo documento (ver `topes`)
 
 
 class ErrorCrm(Exception):

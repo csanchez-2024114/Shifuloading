@@ -31,6 +31,10 @@ DIFERENCIAS: dict[tuple[str, int], tuple[bool, str, str, bool]] = {
         True, f"Campo «Plan» quitado de «Miembros» con sus datos (se puede deshacer). {_ASI}",
         "Igual que arriba: el laboratorio lo frena porque «plan» lo usa un bloque del inicio por defecto de la plantilla, que no está en "
         "pantalla. En el CRM se quita (con estructura.campo_eliminar, que borra sus valores) y se limpia de la ficha y la tarjeta.", False),
+    ("agregar campos hasta el máximo", 4): (
+        True, f"Campo «Nota» (texto) agregado a «Miembros». {_ASI}",
+        "Tope único de campos por sección (`topes.CAMPOS_POR_SECCION` = 20, punto 48): el laboratorio sigue con 8. Con 8, en la prueba "
+        "manual el chat quitó «Técnico» a un taller para poder agregar «Estado». El tope de 20 se prueba en test_topes.py.", False),
 }
 
 
