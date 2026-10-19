@@ -37,7 +37,9 @@ import regex  # \p{L} igual que en JS
 
 from app.crm import adjuntos
 from app.crm import agente
+from app.crm import conceptos
 from app.crm import edicion
+from app.crm.diseno import resumen_del_brief
 from app.crm import estructura as est
 from app.crm import operaciones as op
 from app.crm import traza
@@ -149,7 +151,10 @@ Reglas:
 - Para decir DÓNDE quedó algo usa solo "donde_se_ve" / "Así se ve ahora" de los resultados; si no quedó donde pidieron, muévelo o ajusta anchos.
 - Si la persona pega un enlace (Notion, Drive, su web, una imagen o PDF), ábrelo con leer_enlace y usa lo que encuentres. Para branding usa los colores MEDIDOS (los que te da el código) y di de dónde salió cada uno; si no se midió ninguno y los tomas de la imagen o de lo que sabes de esa marca, dilo así ("no encontré colores en tu página; tomé el verde que se ve en tu imagen").
 - "Muéstrame / abre / ver X" es navegar: usa abrir_seccion y nada más.
-- Responde en español neutro de "tú" (nunca "vos": nada de "querés" o "tenés"), corto (1-3 líneas), cálido, sin tecnicismos: nunca digas uid, b1, kpis, vista, opciones, columnas ni números de ancho/alto. Di "el resumen", "la gráfica", "más chico", "a la derecha".
+- Responde en español neutro de "tú" (nunca "vos": nada de "querés" o "tenés"), corto (1-3 líneas), cálido, sin tecnicismos: nunca digas uid, b1, kpis, vista, opciones, columnas ni números de ancho/alto. Di "el resumen", "la gráfica", "más chico", "a la derecha". Nunca digas "propia", "integrada", nombres de herramientas ni ids internos.
+- Casi todo se puede deshacer: haz cambios de diseño y datos directo, sin pedir "¿confirmas?" ni "¿estás seguro?". Solo pide un "sí" explícito antes de borrar muchos registros de una vez o algo irreversible.
+- Si preguntas algo, ofrece 2 o 3 opciones concretas y marca cuál recomiendas; si la persona responde solo "sí", "dale" u "ok", cuenta como que aceptó la recomendada.
+- Si preguntan qué gráficas pueden poner, propón solo 2 o 3 (con una recomendada), no listes decenas. Si la sección no tiene datos, avisa y ofrece cargar o importar antes de poner la gráfica.
 - Deshacer (pedidos_anteriores): cada pedido que cambió algo queda en la lista con lo que dijo la persona y qué cambió. Si quiere anular algo ("eso no", "como estaba antes", "deshaz lo del color", "deshaz también la dona"), usa deshacer con el número del PEDIDO que quiere anular (el código revierte solo lo que ese pedido cambió) y di qué deshiciste. Para deshacer SIEMPRE usa deshacer, no quites ni cambies bloques a mano. Si la lista está vacía, no hay nada que deshacer: dilo.
 - Toma de diseño (estado.toma): si la persona pide diseñar o rehacer el inicio o un CRM completo, abre abrir_toma (no para cambios puntuales). Durante juntando/confirmando anota cada cosa concreta que pidan con anotar_bloque (qué ver + de qué parte; sin preguntar detalles técnicos) y el resto (objetivo, colores, letra, restricciones) con anotar_ficha, solo lo dicho en ESE mensaje; para cambiar un bloque de la ficha usa quitar_de_ficha + anotar_bloque; una pregunta por turno según instruccion_turno/FALTA. En confirmando muestra el RESUMEN y pregunta «¿Lo armo así?». No uses herramientas de pantalla hasta que el código confirme la ficha. Si charlan de otra cosa (digresión), contesta sin anotar ni cambiar la pantalla. cerrar_toma si abandonan."""
 
@@ -160,9 +165,9 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 - mover_tarea: Mueve una tarea a otra columna.
 - eliminar_tarea: Pide eliminar una tarea. NO la borra: deja una confirmación pendiente y tú debes preguntar si está seguro.
 - definir_etapas: Cambia las etapas del proceso de venta (de 2 a 8). Los contactos que estaban en una etapa que se conserva siguen ahí; los demás pasan a la etapa del mismo lugar.
-- mostrar_seccion: Vuelve a mostrar en el menú una sección integrada que estaba oculta.
+- mostrar_seccion: Vuelve a mostrar en el menú una pestaña del CRM que estaba oculta.
 - definir_opciones: Convierte un campo que YA existe en una lista de opciones fijas (por ejemplo Estado = pendiente, realizado, cancelado), o cambia las opciones de una lista. Se conservan sus datos. Úsala en vez de quitar y volver a crear el campo.
-- mover_campo: Cambia el LUGAR de un campo en los contactos o en una sección propia (por ejemplo, ponerlo al principio). `posicion`: "inicio", "final" o un número (1 es el primero).
+- mover_campo: Cambia el LUGAR de un campo en los contactos o en una tabla del menú (por ejemplo, ponerlo al principio). `posicion`: "inicio", "final" o un número (1 es el primero).
 - recordar: Guarda UN dato duradero que la persona te dijo sobre cómo quiere que la trates o sobre su negocio (por ejemplo “prefiere que le hablen de usted”, “vende los fines de semana”). Una frase corta. Nunca datos de sus clientes, contraseñas, tarjetas ni identificaciones.
 - agregar_vendedor: Agrega una persona nueva al equipo de ventas. Si ya es un contacto (cliente), primero confirma con la persona y luego repite con confirmado=true.
 - recordar_ciudad / buscar_en_internet: Guarda la ciudad del negocio (clima y datos locales) cuando te la digan; busca en internet información general que no está en el CRM (clima, noticias…), sin datos de clientes.
@@ -172,18 +177,20 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 # Solo lo que el prompt del laboratorio no cubre y es específico de este backend (contexto JSON del CRM).
 INSTRUCCIONES_DISENO = """Más de este CRM (Python)
 - No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
-- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado.
-- Secciones ocultas («oculta»: true): no se ven en el menú. Si piden guardar algo que va en una oculta (empleados → la de equipo), no lo metas en otra sección ni crees otra sección para lo mismo: pregunta «¿la muestro o creo otra?».
+- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el nombre/id de pestaña que aparece en el Estado (campo pestana o id_para_herramientas).
+
+- Secciones ocultas («oculta_en_menu»: true): no se ven en el menú. Si piden guardar algo que va en una oculta (empleados → la de equipo), no lo metas en otra sección ni crees otra sección para lo mismo: pregunta «¿la muestro o creo otra?».
 - Nunca elijas por la persona qué quitar o borrar («el que tú creas»): propón cuál y por qué, y espera su sí."""
 
 _CABECERA_ESTADO_PANTALLA = "Estado de la pantalla (JSON):\n"
 
 
-def prompt_sistema(persona: str | None, aviso_toma: str, contexto_json: str) -> str:
-    """Mismo orden que `chat.js` L137: instrucciones + extras + aviso del código + estado."""
+def prompt_sistema(persona: str | None, aviso_toma: str, contexto_json: str, conceptos_txt: str) -> str:
+    """Mismo orden que `chat.js` L137: instrucciones + extras + aviso del código + conceptos + estado."""
     sobre = f"\n\n{persona}" if persona else ""
     del_codigo = f"\n\n[Aviso del código]\n{aviso_toma}" if aviso_toma else ""
-    return (f"{INSTRUCCIONES_LAB}\n\n{INSTRUCCIONES_CARLOS_EXTRA}\n\n{INSTRUCCIONES_DISENO}{sobre}{del_codigo}\n\n"
+    cat = f"\n\n{conceptos_txt}" if conceptos_txt else ""
+    return (f"{INSTRUCCIONES_LAB}\n\n{INSTRUCCIONES_CARLOS_EXTRA}\n\n{INSTRUCCIONES_DISENO}{sobre}{del_codigo}{cat}\n\n"
             f"{_CABECERA_ESTADO_PANTALLA}{contexto_json}")
 
 # chat.js, literales.
@@ -621,7 +628,8 @@ class SesionDiseno(agente.Sesion):
             self._masivo_plan = None
             self._lote_secciones = [str((ll.get("args") or {}).get("seccion") or "") for ll in llamadas if ll.get("name") == "quitar_seccion"]
             return
-        masivo_txt = bool(MASIVO.search(self.texto or ""))
+        masivo_txt = conceptos.masivo_destruye_registros(self.texto or "")
+        masivo_bloques = bool(MASIVO.search(self.texto or ""))
         self._lote_secciones = [str((ll.get("args") or {}).get("seccion") or "") for ll in llamadas if ll.get("name") == "quitar_seccion"]
         n_sec = len(self._lote_secciones)
         n_bloq = sum(1 for ll in llamadas if ll.get("name") == "quitar_bloque")
@@ -635,7 +643,7 @@ class SesionDiseno(agente.Sesion):
         # se frena en _cerco con ya>=2, no aquí contando el lote entero.
         self._masivo_plan = {
             "secciones": masivo_txt or (n_sec + ya_s) >= 2,
-            "bloques": masivo_txt,
+            "bloques": masivo_bloques,
             "campos": masivo_txt or (n_camp + ya_c) >= 3,
             "registros": masivo_txt or todos_borr,
         }
@@ -687,7 +695,7 @@ class SesionDiseno(agente.Sesion):
             # pestaña (4 de 4). Mismo contenido y orden de claves; solo el nombre.
             pant = {("bloques_del_inicio_no_se_ven_ahora" if k == "bloques" else k): v for k, v in pant.items()}
         base.update(pant)
-        return json.dumps(base, ensure_ascii=False, default=str)
+        return json.dumps(conceptos.humanizar_estado_modelo(base), ensure_ascii=False, default=str)
 
     def solo_toma(self) -> bool:
         t = self.doc.get("toma") or {}
@@ -1120,7 +1128,7 @@ class SesionDiseno(agente.Sesion):
                 return error
         if nombre == "quitar_campo":
             ya_c = sum(1 for c in self.cambios if c["herramienta"] == "quitar_campo")
-            if not confirmado and (plan.get("campos") or MASIVO.search(self.texto or "") or ya_c >= 2):
+            if not confirmado and (plan.get("campos") or conceptos.masivo_destruye_registros(self.texto or "") or ya_c >= 2):
                 return ERROR_MASIVO_CAMPOS
             error = self._no_nombro_campo(args)
             if error:
@@ -1173,7 +1181,7 @@ class SesionDiseno(agente.Sesion):
             if r.get("vista"):
                 self.vista = r["vista"]
             self._etiqueta = r.get("etiqueta")
-        return r["resultado"]
+        return conceptos.humanizar_resultado_herramienta(r["resultado"], self.doc)
 
     @staticmethod
     def es_fallo(resultado: str) -> bool:
@@ -1211,7 +1219,7 @@ class SesionDiseno(agente.Sesion):
             s = next((x for x in secs if x["id"] == sid), None) or next((x for x in secs if _norm(x["titulo"]) == _norm(k)), None)
         if s is None:
             # Literal de edicion.js (contextoDatos). Fuera del f-string: comillas iguales anidadas no compilan en Python 3.11.
-            cuales = ", ".join(f"{x['id']} ({x['titulo']})" for x in secs)
+            cuales = ", ".join(f"«{x['titulo']}»" for x in secs)
             equipo = ""
             if k and self._seccion(k) == "rrhh":
                 # El equipo es una pestaña fija: guarda solo nombres (agregar_vendedor). Medido (banco_citas): sin esto proponía crear
@@ -1530,7 +1538,8 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
     if prep["construir"]:
         return _construir(doc_turno)
 
-    sesion = SesionDiseno(doc_turno, ahora, texto, bool(imagen), historial=historial, puntos=puntos, digresion=prep["digresion"],
+    texto_turno = texto or ""
+    sesion = SesionDiseno(doc_turno, ahora, texto_turno, bool(imagen), historial=historial, puntos=puntos, digresion=prep["digresion"],
                           toma_entrada=bool((doc.get("toma") or {}).get("activa")))
     sesion.abierta = pestana_abierta(doc_turno, seccion)
     doc_inicial = sesion.doc
@@ -1543,9 +1552,15 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
         adjunto = f"{adjunto or ''}\n{nota_col}"
     sesion.adjunto = adjunto or ""
     sesion._columnas_fuera = fuera
-    mensajes = agente._mensajes(doc, texto, historial, ahora, con_captura, imagen, seccion, persona, adjunto)
-    aviso_toma = "\n".join(x for x in (prep["aviso"], prep["digresion"] and toma.AVISO_DIGRESION) if x)
-    mensajes[0] = SystemMessage(content=prompt_sistema(persona, aviso_toma, sesion.contexto()))
+    brief = doc_turno.get("brief") or {}
+    persona_brief = f"Lo que contó de su negocio:\n{resumen_del_brief(brief)}" if brief.get("que_vendes") or brief.get("nombre") else None
+    persona_final = "\n\n".join(x for x in (persona, persona_brief) if x) or None
+    vista_ctx = seccion or (doc_turno.get("vista") if isinstance(doc_turno.get("vista"), str) else None) or "inicio"
+    avisos_codigo = conceptos.avisos_turno(doc_turno, texto_turno, historial, sesion.abierta or vista_ctx)
+    mensajes = agente._mensajes(doc, texto_turno, historial, ahora, con_captura, imagen, seccion, persona_final, adjunto)
+    aviso_toma = "\n".join(x for x in (prep["aviso"], prep["digresion"] and toma.AVISO_DIGRESION, *avisos_codigo) if x)
+    conceptos_txt = conceptos.bloque_para_prompt(texto_turno, None)
+    mensajes[0] = SystemMessage(content=prompt_sistema(persona_final, aviso_toma, sesion.contexto(), conceptos_txt))
 
     respuesta = ""
     ultimos: list[str] = []

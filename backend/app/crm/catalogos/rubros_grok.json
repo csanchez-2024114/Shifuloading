@@ -1,0 +1,1510 @@
+{
+ "rubros": [
+  {
+   "rubro": "Venta y reparación de tecnología",
+   "kpis": [
+    "Ventas del día",
+    "Reparaciones en curso",
+    "Equipos listos sin entregar",
+    "Garantías por vencer",
+    "Repuestos bajo el mínimo",
+    "Ticket promedio"
+   ],
+   "graficas": [
+    {
+     "tipo": "columnas",
+     "que_muestra": "Ventas de equipos y accesorios por semana",
+     "por_que": "El dueño compara semanas con columnas, sin leer una tabla."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Servicios de reparación que más entran (pantalla, batería, software)",
+     "por_que": "Así decide qué repuesto comprar y qué servicio promover."
+    },
+    {
+     "tipo": "dona",
+     "que_muestra": "Órdenes por estado: recibida, en reparación, lista, entregada",
+     "por_que": "En un vistazo se ve si el taller está atascado o al día."
+    },
+    {
+     "tipo": "kpi",
+     "que_muestra": "Ingreso del periodo y si subió o bajó contra el anterior",
+     "por_que": "Es la cifra grande que un dueño no técnico revisa cada mañana."
+    },
+    {
+     "tipo": "posiciones",
+     "que_muestra": "Repuestos que más se consumen",
+     "por_que": "Una lista corta de los que se acaban evita decir que no hay pieza."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "vencimientos",
+    "grafico",
+    "tabla",
+    "cifra",
+    "atencion"
+   ],
+   "secciones": [
+    {
+     "nombre": "Ventas",
+     "campos_clave": [
+      "cliente",
+      "equipo",
+      "total",
+      "estado",
+      "fecha"
+     ]
+    },
+    {
+     "nombre": "Reparaciones",
+     "campos_clave": [
+      "cliente",
+      "equipo",
+      "falla",
+      "tecnico",
+      "estado",
+      "entrega"
+     ]
+    },
+    {
+     "nombre": "Repuestos",
+     "campos_clave": [
+      "pieza",
+      "cantidad",
+      "minimo",
+      "costo"
+     ]
+    },
+    {
+     "nombre": "Garantías",
+     "campos_clave": [
+      "cliente",
+      "equipo",
+      "vence",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "equipo"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si cantidad del repuesto es menor o igual al mínimo, alertar stock bajo.",
+    "Si la fecha de entrega ya pasó y el estado no es Entregada, alertar orden atrasada.",
+    "Si el estado es Lista desde hace más de 3 días, alertar equipo sin recoger.",
+    "Si la garantía vence en 7 días o menos y no está cerrada, avisar al cliente.",
+    "Si una cotización lleva más de 5 días en Enviada, recordar seguimiento."
+   ],
+   "fuentes_o_razon": "No hay plantilla propia. Se tomó el patrón de órdenes y repuestos de taller-mecanico, el stock de ferreteria-materiales y la cotización de la semilla embudo. Lo demás es conocimiento general de tiendas de celulares y cómputo en Guatemala y Latinoamérica (garantía, repuesto, entrega); no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Restaurante y comida",
+   "kpis": [
+    "Ventas del día",
+    "Pedidos en cocina",
+    "Ticket promedio",
+    "Reservas de hoy",
+    "Pedidos a domicilio abiertos",
+    "Platillos vendidos hoy"
+   ],
+   "graficas": [
+    {
+     "tipo": "barras",
+     "que_muestra": "Platillos ordenados por dinero vendido",
+     "por_que": "La plantilla restaurante ya usa barras por platillo; se ve qué sale y qué no."
+    },
+    {
+     "tipo": "linea",
+     "que_muestra": "Ventas día a día",
+     "por_que": "Una línea muestra si la semana va mejor o peor que la pasada."
+    },
+    {
+     "tipo": "calor-hora",
+     "que_muestra": "Pedidos por día de la semana y hora",
+     "por_que": "El dueño ve la hora pico para cocina y reparto sin un reporte."
+    },
+    {
+     "tipo": "dona",
+     "que_muestra": "Pedidos por estado: recibido, en cocina, en camino, entregado",
+     "por_que": "El tablero dice quién falta; la dona dice cuántos hay en cada paso."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Ventas por canal: local, para llevar y domicilio",
+     "por_que": "En la región el domicilio pesa y conviene verlo aparte del salón."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "agenda",
+    "grafico",
+    "cifra",
+    "calendario_mes",
+    "atencion"
+   ],
+   "secciones": [
+    {
+     "nombre": "Pedidos a domicilio",
+     "campos_clave": [
+      "cliente",
+      "platillo",
+      "total",
+      "estado",
+      "entrega"
+     ]
+    },
+    {
+     "nombre": "Reservas",
+     "campos_clave": [
+      "cliente",
+      "fecha",
+      "hora",
+      "personas",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "ultima_visita"
+     ]
+    },
+    {
+     "nombre": "Insumos",
+     "campos_clave": [
+      "insumo",
+      "cantidad",
+      "minimo",
+      "unidad"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si la cantidad del insumo es menor o igual al mínimo, alertar para comprar.",
+    "Si hay reserva hoy y el estado sigue sin confirmar, pedir confirmación.",
+    "Si un pedido lleva más de 40 minutos en cocina, alertar atraso.",
+    "Si un cliente frecuente no pide desde hace 21 días, sugerir contacto.",
+    "Si un platillo no tiene ventas en 14 días, marcarlo como candidato a quitar."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla restaurante (kpis, tablero de pedidos, agenda de reservas, barras por platillo). Insumos, hora pico y canal son conocimiento general de comedores, pizzerías y cocinas con delivery en la región; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Tienda de ropa",
+   "kpis": [
+    "Ventas del día",
+    "Prendas apartadas",
+    "Piezas bajo el mínimo",
+    "Saldo por cobrar",
+    "Prendas sin movimiento",
+    "Ticket promedio"
+   ],
+   "graficas": [
+    {
+     "tipo": "barras",
+     "que_muestra": "Prendas o modelos que más dinero dejan",
+     "por_que": "El dueño entiende una barra de lo más vendido mejor que un ranking técnico."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Ventas por semana",
+     "por_que": "Sirve para ver quincena, temporada y días flojos."
+    },
+    {
+     "tipo": "dona",
+     "que_muestra": "Ventas por línea: dama, caballero, niño u otra",
+     "por_que": "Muestra en qué línea está el dinero de la tienda."
+    },
+    {
+     "tipo": "posiciones",
+     "que_muestra": "Tallas que más salen",
+     "por_que": "Evita reponer la talla que no se vende y quedarse sin la que sí."
+    },
+    {
+     "tipo": "kpi",
+     "que_muestra": "Venta del mes contra la meta",
+     "por_que": "Una cifra con flecha de subida o bajada basta para el cierre del día."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "tabla",
+    "grafico",
+    "vencimientos",
+    "cifra",
+    "tablero_dinero"
+   ],
+   "secciones": [
+    {
+     "nombre": "Ventas",
+     "campos_clave": [
+      "prenda",
+      "talla",
+      "cliente",
+      "total",
+      "estado",
+      "fecha"
+     ]
+    },
+    {
+     "nombre": "Inventario",
+     "campos_clave": [
+      "prenda",
+      "talla",
+      "color",
+      "cantidad",
+      "minimo",
+      "costo"
+     ]
+    },
+    {
+     "nombre": "Apartados",
+     "campos_clave": [
+      "cliente",
+      "prenda",
+      "anticipo",
+      "saldo",
+      "vence",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Créditos",
+     "campos_clave": [
+      "cliente",
+      "saldo",
+      "vence",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "ultima_compra"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si cantidad es menor o igual al mínimo de esa talla, alertar reposición.",
+    "Si un apartado vence en 3 días y el saldo sigue pendiente, avisar al cliente.",
+    "Si un crédito está vencido y el estado no es Pagado, alertar cobro.",
+    "Si una prenda no se vende en 60 días y hay existencia, marcarla para oferta.",
+    "Si el anticipo es mayor que cero y el saldo es cero, pasar el apartado a entregado."
+   ],
+   "fuentes_o_razon": "No hay plantilla de ropa. Se reutilizó el patrón de ferreteria-materiales (venta, inventario con mínimo y crédito) y el de tienda-en-linea (pedido y entrega). Talla, apartado y fiado son conocimiento general de boutiques y tiendas de ropa en Guatemala y Latinoamérica; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Ferretería",
+   "kpis": [
+    "Ventas del día",
+    "Crédito por cobrar",
+    "Productos bajo el mínimo",
+    "Cotizaciones abiertas",
+    "Clientes con saldo vencido",
+    "Ticket promedio"
+   ],
+   "graficas": [
+    {
+     "tipo": "linea",
+     "que_muestra": "Ventas por día",
+     "por_que": "La plantilla ferreteria-materiales ya pone una línea de totales."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Existencia contra el mínimo, lo más bajo primero",
+     "por_que": "La misma plantilla usa barras de inventario para ver qué reponer."
+    },
+    {
+     "tipo": "dona",
+     "que_muestra": "Ventas por estado: cotizada, pagada, crédito, entregada",
+     "por_que": "Separa de un vistazo lo cobrado de lo fiado."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Ventas por semana",
+     "por_que": "El mostrador y la obra se mueven por semana, no por un reporte largo."
+    },
+    {
+     "tipo": "posiciones",
+     "que_muestra": "Productos que más se venden",
+     "por_que": "Cemento, varilla, pintura y tornillo se reponen por lo que más sale."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "grafico",
+    "vencimientos",
+    "tabla",
+    "cifra",
+    "tablero_dinero",
+    "atencion"
+   ],
+   "secciones": [
+    {
+     "nombre": "Ventas",
+     "campos_clave": [
+      "producto",
+      "cliente",
+      "cantidad",
+      "total",
+      "estado",
+      "fecha"
+     ]
+    },
+    {
+     "nombre": "Inventario",
+     "campos_clave": [
+      "producto",
+      "cantidad",
+      "minimo",
+      "costo"
+     ]
+    },
+    {
+     "nombre": "Créditos",
+     "campos_clave": [
+      "cliente",
+      "concepto",
+      "saldo",
+      "vence",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "saldo"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si cantidad es menor o igual al mínimo, alertar stock bajo.",
+    "Si el crédito vence en 10 días o menos y el estado no es Pagado ni Cancelado, avisar cobro.",
+    "Si la fecha de vencimiento ya pasó y sigue impago, marcarlo vencido.",
+    "Si una cotización lleva más de 7 días sin pasar a Pagada o Entregada, recordar seguimiento.",
+    "Si el mismo producto está en cero, bloquear la venta o pedir compra al proveedor."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla ferreteria-materiales: ventas del día, tablero, barras de inventario, vencimientos de crédito y línea de ventas. El criterio de reposición y fiado de barrio es conocimiento general; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Salón de belleza y barbería",
+   "kpis": [
+    "Citas de hoy",
+    "Ingreso del día",
+    "Citas sin confirmar",
+    "Inasistencias del mes",
+    "Clientes que no regresan",
+    "Servicio más pedido"
+   ],
+   "graficas": [
+    {
+     "tipo": "calendario",
+     "que_muestra": "Citas por día",
+     "por_que": "La plantilla salon-belleza-barberia ya usa el mapa de calor por día."
+    },
+    {
+     "tipo": "pastel",
+     "que_muestra": "Ingreso o citas por tipo de servicio",
+     "por_que": "La plantilla parte los servicios en pastel, fácil de leer en el local."
+    },
+    {
+     "tipo": "calor-hora",
+     "que_muestra": "Citas por día y hora",
+     "por_que": "Muestra sábado y hora pico para no dejar sillas vacías ni dobles citas."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Ingreso por semana",
+     "por_que": "El dueño ve si el mes va por encima o por debajo de lo habitual."
+    },
+    {
+     "tipo": "kpi",
+     "que_muestra": "Citas de hoy y cuántas ya se atendieron",
+     "por_que": "Es lo primero que se mira al abrir el salón."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "agenda",
+    "grafico",
+    "calendario_mes",
+    "cifra",
+    "tabla",
+    "atencion",
+    "equipo"
+   ],
+   "secciones": [
+    {
+     "nombre": "Agenda de citas",
+     "campos_clave": [
+      "cliente",
+      "servicio",
+      "fecha",
+      "hora",
+      "precio",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Servicios",
+     "campos_clave": [
+      "servicio",
+      "precio",
+      "duracion"
+     ]
+    },
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "ultimo_servicio",
+      "ultima_visita"
+     ]
+    },
+    {
+     "nombre": "Productos de uso",
+     "campos_clave": [
+      "producto",
+      "cantidad",
+      "minimo"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si la cita es hoy y sigue sin confirmar, pedir confirmación por teléfono.",
+    "Si la hora de la cita ya pasó y el estado no es Atendida ni Cancelada, contar inasistencia.",
+    "Si la última visita fue hace más de 45 días, sugerir que regrese.",
+    "Si dos citas del mismo profesional se cruzan en hora y duración, alertar choque.",
+    "Si el tinte, cera u otro producto está en el mínimo o debajo, alertar compra."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla salon-belleza-barberia (kpis del día, agenda, calendario y pastel de servicios) y a la semilla agenda. Hora pico, inasistencia y producto de uso son conocimiento general de barberías y salones de barrio; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Clínica y consultorio",
+   "kpis": [
+    "Citas de hoy",
+    "Pacientes atendidos",
+    "Inasistencias del mes",
+    "Seguimientos pendientes",
+    "Ingreso del día",
+    "Cupo de la agenda"
+   ],
+   "graficas": [
+    {
+     "tipo": "dona",
+     "que_muestra": "Citas por tipo de consulta o tratamiento",
+     "por_que": "consultorio-medico y clinica-dental ya abren con una dona."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Citas por semana",
+     "por_que": "Ambas plantillas usan columnas para ver si la agenda se llena."
+    },
+    {
+     "tipo": "calendario",
+     "que_muestra": "Días con más citas",
+     "por_que": "Se ve la semana cargada antes de aceptar otra cita."
+    },
+    {
+     "tipo": "medidor",
+     "que_muestra": "Porcentaje de la agenda de hoy ya ocupado",
+     "por_que": "Un medidor dice si aún hay cupo, sin contar fila por fila."
+    },
+    {
+     "tipo": "linea",
+     "que_muestra": "Inasistencias por semana",
+     "por_que": "Las faltas se notan en la línea y se pueden confirmar antes."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "agenda",
+    "grafico",
+    "vencimientos",
+    "calendario_mes",
+    "cifra",
+    "atencion"
+   ],
+   "secciones": [
+    {
+     "nombre": "Pacientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "motivo",
+      "ultima_visita"
+     ]
+    },
+    {
+     "nombre": "Citas",
+     "campos_clave": [
+      "paciente",
+      "fecha",
+      "hora",
+      "motivo",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Seguimientos",
+     "campos_clave": [
+      "paciente",
+      "cuando",
+      "nota",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Tratamientos",
+     "campos_clave": [
+      "paciente",
+      "tratamiento",
+      "sesiones",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Cobros",
+     "campos_clave": [
+      "paciente",
+      "concepto",
+      "monto",
+      "estado",
+      "fecha"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si la cita es hoy y no está confirmada, recordar confirmación.",
+    "Si la hora ya pasó y el estado no es Atendida ni Cancelada, contar inasistencia.",
+    "Si un seguimiento vence hoy o está vencido y no está cerrado, mostrarlo en atención.",
+    "Si un tratamiento tiene sesiones pendientes y no hay cita futura, sugerir agendar.",
+    "Si un cobro de la consulta sigue pendiente al cerrar el día, alertar saldo."
+   ],
+   "fuentes_o_razon": "Alineado a consultorio-medico (pacientes, citas, seguimientos) y clinica-dental (citas, tratamientos, dona y columnas). El cobro del día y el cupo de agenda son conocimiento general de consultorios pequeños; no se consultó una fuente externa. No incluye datos clínicos sensibles más allá de lo operativo."
+  },
+  {
+   "rubro": "Gimnasio",
+   "kpis": [
+    "Membresías activas",
+    "Por vencer en 7 días",
+    "Asistencias de hoy",
+    "Mensualidades vencidas",
+    "Clases de hoy",
+    "Altas del mes"
+   ],
+   "graficas": [
+    {
+     "tipo": "dona",
+     "que_muestra": "Socios por estado: activa, por vencer, vencida, congelada",
+     "por_que": "La plantilla gimnasio abre con una dona de membresías."
+    },
+    {
+     "tipo": "meta",
+     "que_muestra": "Socios activos contra la meta del mes",
+     "por_que": "El anillo de meta se entiende sin saber leer una gráfica."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Asistencias por semana",
+     "por_que": "Bajar la asistencia avisa antes de que se caigan las renovaciones."
+    },
+    {
+     "tipo": "calendario",
+     "que_muestra": "Clases y visitas por día",
+     "por_que": "Se ve qué días el salón de clases se llena."
+    },
+    {
+     "tipo": "linea",
+     "que_muestra": "Altas y bajas de socios por mes",
+     "por_que": "La línea dice si el gimnasio crece o solo repone los que se van."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "vencimientos",
+    "agenda",
+    "grafico",
+    "calendario_mes",
+    "cifra",
+    "tabla"
+   ],
+   "secciones": [
+    {
+     "nombre": "Membresías",
+     "campos_clave": [
+      "socio",
+      "plan",
+      "vence",
+      "estado",
+      "mensualidad"
+     ]
+    },
+    {
+     "nombre": "Clases",
+     "campos_clave": [
+      "clase",
+      "fecha",
+      "hora",
+      "cupo",
+      "inscritos"
+     ]
+    },
+    {
+     "nombre": "Visitas y prueba",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "fecha",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Pagos",
+     "campos_clave": [
+      "socio",
+      "monto",
+      "vence",
+      "estado"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si la membresía vence en 7 días o menos, alertar renovación.",
+    "Si la fecha de pago ya pasó y el estado no es Pagado, marcar moroso.",
+    "Si inscritos de una clase llegan al cupo, avisar que está llena.",
+    "Si un socio activo no registra asistencia en 14 días, sugerir contacto.",
+    "Si una visita de prueba no pasó a membresía en 7 días, recordar seguimiento."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla gimnasio (membresías, vencimientos, dona, agenda de clases y visitas de prueba) y a la semilla membresias (pagos). La meta de socios y la asistencia son conocimiento general de gimnasios de barrio; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Academia y escuela",
+   "kpis": [
+    "Alumnos activos",
+    "Mensualidades vencidas",
+    "Cobrado del mes",
+    "Cursos con cupo libre",
+    "Inasistencias de hoy",
+    "Inscripciones del mes"
+   ],
+   "graficas": [
+    {
+     "tipo": "dona",
+     "que_muestra": "Alumnos por estado de pago",
+     "por_que": "La plantilla escuela-academia usa dona para ver quién está al día."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Cobros por mes",
+     "por_que": "La plantilla ya grafica columnas de pagos."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Alumnos por curso",
+     "por_que": "Se ve qué grupo está lleno y cuál no cubre."
+    },
+    {
+     "tipo": "meta",
+     "que_muestra": "Cobro del mes contra la meta",
+     "por_que": "La mensualidad es la cifra que la dirección mira primero."
+    },
+    {
+     "tipo": "calendario",
+     "que_muestra": "Asistencia o clases por día",
+     "por_que": "Un mapa por día muestra huecos y días con muchas faltas."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "vencimientos",
+    "tablero",
+    "grafico",
+    "tabla",
+    "calendario_mes",
+    "cifra",
+    "matriz",
+    "atencion"
+   ],
+   "secciones": [
+    {
+     "nombre": "Alumnos",
+     "campos_clave": [
+      "alumno",
+      "telefono",
+      "curso",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Cursos",
+     "campos_clave": [
+      "curso",
+      "horario",
+      "cupo",
+      "inscritos",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Pagos",
+     "campos_clave": [
+      "alumno",
+      "concepto",
+      "monto",
+      "vence",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Asistencia",
+     "campos_clave": [
+      "alumno",
+      "fecha",
+      "estado"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si el pago vence en 5 días o menos y no está Pagado, avisar cobro.",
+    "Si la fecha ya pasó y el estado no es Pagado, marcar mensualidad vencida.",
+    "Si inscritos llegan al cupo del curso, cerrar inscripciones de ese grupo.",
+    "Si un alumno falta 3 veces en el mes, alertar a la dirección.",
+    "Si un alumno activo no tiene pago del mes en curso, listarlo en atención."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla escuela-academia (alumnos, cursos, pagos, kpis, vencimientos, dona y columnas). La asistencia diaria es conocimiento general de academias y colegios pequeños; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Agencia y servicios profesionales",
+   "kpis": [
+    "Prospectos en negociación",
+    "Cotizaciones enviadas",
+    "Monto por cobrar",
+    "Proyectos en curso",
+    "Entregas de esta semana",
+    "Cierres del mes"
+   ],
+   "graficas": [
+    {
+     "tipo": "embudo",
+     "que_muestra": "Prospectos por etapa, de nuevo a ganado",
+     "por_que": "La semilla embudo es la forma más clara de ver dónde se atasca la venta."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Cotizaciones por estado y su monto",
+     "por_que": "Se ve cuánto está en borrador, enviado, aceptado o rechazado."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Ingresos cobrados por mes",
+     "por_que": "El dueño separa lo vendido de lo que ya entró a caja."
+    },
+    {
+     "tipo": "kpi",
+     "que_muestra": "Cotizaciones aceptadas contra las enviadas",
+     "por_que": "Es un porcentaje simple de cierre, calculable con conteos."
+    },
+    {
+     "tipo": "posiciones",
+     "que_muestra": "Clientes o proyectos que más dinero mueven",
+     "por_que": "Una agencia chica vive de pocos clientes; conviene verlos arriba."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "grafico",
+    "vencimientos",
+    "tabla",
+    "cifra",
+    "tablero_dinero",
+    "franjas"
+   ],
+   "secciones": [
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "etapa",
+      "alta"
+     ]
+    },
+    {
+     "nombre": "Cotizaciones",
+     "campos_clave": [
+      "cliente",
+      "monto",
+      "estado",
+      "enviada"
+     ]
+    },
+    {
+     "nombre": "Proyectos",
+     "campos_clave": [
+      "proyecto",
+      "cliente",
+      "estado",
+      "entrega"
+     ]
+    },
+    {
+     "nombre": "Entregables",
+     "campos_clave": [
+      "pieza",
+      "proyecto",
+      "vence",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Seguimientos",
+     "campos_clave": [
+      "quien",
+      "cuando",
+      "nota"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si una cotización lleva más de 7 días en Enviada, recordar seguimiento.",
+    "Si un entregable vence en 3 días y no está Publicado ni Entregado, alertar.",
+    "Si la fecha de seguimiento es hoy o ya pasó y no hay nota de cierre, mostrarlo en vencimientos.",
+    "Si un prospecto lleva más de 14 días en la misma etapa y no es Ganado ni Perdido, pedir el siguiente paso.",
+    "Si el monto aceptado del mes es menor que la meta, mostrar cuánto falta."
+   ],
+   "fuentes_o_razon": "Mezcla de la semilla embudo, la semilla proyectos y la plantilla agencia-marketing (clientes, campañas, entregables y vencimientos). No se usó el gantt de esa plantilla porque una barra y un embudo se leen más fácil. El resto es conocimiento general de agencias y despachos pequeños; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Inmobiliaria",
+   "kpis": [
+    "Propiedades disponibles",
+    "Visitas de la semana",
+    "Prospectos en seguimiento",
+    "Cierres del mes",
+    "Comisiones por cobrar",
+    "Días en catálogo"
+   ],
+   "graficas": [
+    {
+     "tipo": "embudo",
+     "que_muestra": "Prospectos de contacto a cierre",
+     "por_que": "La plantilla inmobiliaria ya usa embudo para el seguimiento."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Propiedades por zona o tipo",
+     "por_que": "La plantilla compara con barras dónde está el inventario."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Visitas por semana",
+     "por_que": "Sin visitas no hay cierre; la columna lo muestra antes que el mes termine."
+    },
+    {
+     "tipo": "dona",
+     "que_muestra": "Propiedades en venta y en renta",
+     "por_que": "Son dos negocios en el mismo catálogo y conviene ver el peso de cada uno."
+    },
+    {
+     "tipo": "kpi",
+     "que_muestra": "Comisiones cobradas del mes contra la meta",
+     "por_que": "Es la cifra que el corredor mira, no el precio de lista."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "grafico",
+    "agenda",
+    "tabla",
+    "vencimientos",
+    "cifra",
+    "tablero_dinero"
+   ],
+   "secciones": [
+    {
+     "nombre": "Propiedades",
+     "campos_clave": [
+      "propiedad",
+      "zona",
+      "tipo",
+      "precio",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Visitas",
+     "campos_clave": [
+      "propiedad",
+      "cliente",
+      "fecha",
+      "hora",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Prospectos",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "interes",
+      "etapa"
+     ]
+    },
+    {
+     "nombre": "Cierres",
+     "campos_clave": [
+      "propiedad",
+      "cliente",
+      "comision",
+      "estado",
+      "fecha"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si una visita es mañana y no está confirmada, recordar confirmación.",
+    "Si una propiedad lleva más de 60 días en Disponible, marcarla para revisar precio.",
+    "Si un prospecto no tiene visita ni seguimiento en 10 días, alertar contacto frío.",
+    "Si el cierre está en Comisión pendiente, mostrarlo en dinero por cobrar.",
+    "Si hay dos visitas a la misma propiedad a la misma hora, alertar cruce."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla inmobiliaria (propiedades, visitas, prospectos, embudo y barras). Días en catálogo y comisión por cobrar son conocimiento general de corredores pequeños; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Taller mecánico",
+   "kpis": [
+    "Órdenes abiertas",
+    "Entregas de hoy",
+    "Órdenes atrasadas",
+    "Repuestos bajo el mínimo",
+    "Ingreso del día",
+    "Ticket promedio"
+   ],
+   "graficas": [
+    {
+     "tipo": "barras",
+     "que_muestra": "Servicios que más dinero dejan",
+     "por_que": "La plantilla taller-mecanico ya usa barras por servicio."
+    },
+    {
+     "tipo": "dona",
+     "que_muestra": "Órdenes por estado: recibida, en proceso, lista, entregada",
+     "por_que": "El tablero es la fila; la dona es el conteo de cada bahía."
+    },
+    {
+     "tipo": "linea",
+     "que_muestra": "Ingresos por semana",
+     "por_que": "Se ve si el taller está lleno de trabajo que sí se cobra."
+    },
+    {
+     "tipo": "posiciones",
+     "que_muestra": "Repuestos que más se usan",
+     "por_que": "Aceite, filtros y frenos se acaban si no se ven en una lista corta."
+    },
+    {
+     "tipo": "kpi",
+     "que_muestra": "Órdenes entregadas hoy contra las prometidas para hoy",
+     "por_que": "Es la promesa que el cliente viene a cobrar al mostrador."
+    }
+   ],
+   "vistas": [
+    "tablero",
+    "vencimientos",
+    "kpis",
+    "grafico",
+    "tabla",
+    "atencion",
+    "cifra",
+    "equipo"
+   ],
+   "secciones": [
+    {
+     "nombre": "Órdenes de trabajo",
+     "campos_clave": [
+      "vehiculo",
+      "cliente",
+      "servicio",
+      "estado",
+      "entrega",
+      "total"
+     ]
+    },
+    {
+     "nombre": "Repuestos",
+     "campos_clave": [
+      "repuesto",
+      "cantidad",
+      "minimo",
+      "costo"
+     ]
+    },
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "vehiculo",
+      "ultima_visita"
+     ]
+    },
+    {
+     "nombre": "Cobros",
+     "campos_clave": [
+      "cliente",
+      "orden",
+      "saldo",
+      "estado"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si la fecha de entrega ya pasó y el estado no es Entregada, alertar atraso.",
+    "Si el repuesto está en el mínimo o debajo, impedir cerrar la orden sin compra.",
+    "Si el estado es Lista desde hace más de 2 días, avisar que el vehículo no se ha recogido.",
+    "Si el saldo de la orden es mayor que cero al marcarla entregada, alertar cobro pendiente.",
+    "Si el mismo vehículo vuelve por el mismo servicio antes de 30 días, marcar posible garantía."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla taller-mecanico (tablero de órdenes, vencimiento de entrega, barras por servicio, repuestos y clientes). Cobro al entregar y garantía de retorno son conocimiento general de talleres de autos y motos; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Transporte y mensajería",
+   "kpis": [
+    "Paquetes en ruta",
+    "Entregados hoy",
+    "Atrasados",
+    "Tarifa del día",
+    "Repartidores activos",
+    "Incidencias abiertas"
+   ],
+   "graficas": [
+    {
+     "tipo": "embudo",
+     "que_muestra": "Envíos de recibido a entregado",
+     "por_que": "La plantilla transporte-mensajeria usa embudo para ver en qué paso se quedan."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Entregas por repartidor",
+     "por_que": "La plantilla ya compara repartidores con barras."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Envíos por día",
+     "por_que": "Se ve si el día está por encima de la capacidad de las motos."
+    },
+    {
+     "tipo": "calendario",
+     "que_muestra": "Entregas prometidas por día",
+     "por_que": "Un mapa diario muestra los días que ya están llenos."
+    },
+    {
+     "tipo": "kpi",
+     "que_muestra": "Entregados hoy contra los que vencían hoy",
+     "por_que": "Es la cifra de cumplimiento que el dueño puede explicar sin un reporte."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "vencimientos",
+    "grafico",
+    "tabla",
+    "agenda",
+    "atencion",
+    "franjas",
+    "equipo"
+   ],
+   "secciones": [
+    {
+     "nombre": "Envíos",
+     "campos_clave": [
+      "guia",
+      "cliente",
+      "destino",
+      "tarifa",
+      "estado",
+      "entrega"
+     ]
+    },
+    {
+     "nombre": "Rutas",
+     "campos_clave": [
+      "ruta",
+      "fecha",
+      "repartidor",
+      "paradas",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Repartidores",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "entregas",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Incidencias",
+     "campos_clave": [
+      "guia",
+      "motivo",
+      "estado",
+      "fecha"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si la entrega prometida ya pasó y el estado no es Entregado ni Cancelado, alertar atraso.",
+    "Si un envío pasa a Incidencia, contarlo aparte de los entregados.",
+    "Si un repartidor tiene más paradas que su tope del día, avisar ruta llena.",
+    "Si un paquete lleva más de un día en Recibido sin pasar a En ruta, alertar bodega.",
+    "Si la tarifa es cero en un envío que no es cortesía, pedir corrección antes de cerrar."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla transporte-mensajeria (envíos, rutas, repartidores, kpis, tablero, embudo y barras). El tope de paradas y la incidencia son conocimiento general de mensajería urbana; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Lavandería y planchado",
+   "kpis": [
+    "Prendas recibidas hoy",
+    "Listas para entregar",
+    "Atrasadas",
+    "Ingreso del día",
+    "Kilos o piezas en proceso",
+    "Clientes que repiten en el mes"
+   ],
+   "graficas": [
+    {
+     "tipo": "dona",
+     "que_muestra": "Órdenes por estado: recibida, lavando, planchando, lista, entregada",
+     "por_que": "El dueño necesita ver en qué paso está la ropa, no una hoja larga."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Prendas o kilos recibidos por día",
+     "por_que": "Así se ve si el sábado rebasa la capacidad de las máquinas."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Ingreso por servicio: lavado, planchado, tintorería",
+     "por_que": "Muestra qué servicio deja el dinero del local."
+    },
+    {
+     "tipo": "calendario",
+     "que_muestra": "Entregas prometidas por día",
+     "por_que": "Evita prometer para un día que ya está lleno."
+    },
+    {
+     "tipo": "kpi",
+     "que_muestra": "Piezas entregadas hoy contra las prometidas para hoy",
+     "por_que": "Es la cola de la tarde, cuando el cliente pasa a recoger."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "vencimientos",
+    "grafico",
+    "tabla",
+    "agenda",
+    "cifra",
+    "atencion"
+   ],
+   "secciones": [
+    {
+     "nombre": "Órdenes",
+     "campos_clave": [
+      "cliente",
+      "servicio",
+      "piezas",
+      "total",
+      "estado",
+      "entrega"
+     ]
+    },
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "ultima_orden"
+     ]
+    },
+    {
+     "nombre": "Servicios",
+     "campos_clave": [
+      "servicio",
+      "precio",
+      "unidad"
+     ]
+    },
+    {
+     "nombre": "Entregas",
+     "campos_clave": [
+      "cliente",
+      "piezas",
+      "entrega",
+      "estado"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si la fecha de entrega es hoy y el estado no es Lista ni Entregada, alertar que no va a alcanzar.",
+    "Si está Lista desde hace más de 5 días, avisar ropa sin recoger.",
+    "Si piezas es cero o el total es cero, no cerrar la orden.",
+    "Si el mismo cliente deja ropa al menos 3 veces en 30 días, marcarlo frecuente.",
+    "Si las piezas en proceso de hoy superan el cupo diario guardado, avisar capacidad llena."
+   ],
+   "fuentes_o_razon": "No hay plantilla de lavandería. Se usó la semilla pedidos (pedido, estado y entrega) y la vista de vencimientos. Pieza, kilo, planchado y ropa sin recoger son conocimiento general de lavanderías de barrio en la región; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "Distribuidora y mayoreo",
+   "kpis": [
+    "Ventas del día",
+    "Cartera vencida",
+    "Pedidos por surtir",
+    "Productos bajo el mínimo",
+    "Clientes sin compra en 30 días",
+    "Venta por ruta"
+   ],
+   "graficas": [
+    {
+     "tipo": "linea",
+     "que_muestra": "Ventas por día",
+     "por_que": "La misma línea de la ferretería sirve para ver la caja del mayoreo."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Ventas por ruta o por vendedor",
+     "por_que": "El dueño compara rutas como compara productos: la barra más larga es la que jala."
+    },
+    {
+     "tipo": "dona",
+     "que_muestra": "Ventas de contado contra crédito",
+     "por_que": "En mayoreo el fiado puede ser mayor que la caja del día."
+    },
+    {
+     "tipo": "posiciones",
+     "que_muestra": "Clientes que más compran",
+     "por_que": "Pocos clientes suelen concentrar el volumen; conviene verlos arriba."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Cobros de cartera por semana",
+     "por_que": "Separa lo vendido de lo que de verdad se recuperó."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "tablero_dinero",
+    "vencimientos",
+    "grafico",
+    "tabla",
+    "cifra",
+    "atencion"
+   ],
+   "secciones": [
+    {
+     "nombre": "Pedidos",
+     "campos_clave": [
+      "cliente",
+      "ruta",
+      "total",
+      "estado",
+      "entrega"
+     ]
+    },
+    {
+     "nombre": "Inventario",
+     "campos_clave": [
+      "producto",
+      "cantidad",
+      "minimo",
+      "costo"
+     ]
+    },
+    {
+     "nombre": "Créditos",
+     "campos_clave": [
+      "cliente",
+      "saldo",
+      "vence",
+      "estado"
+     ]
+    },
+    {
+     "nombre": "Rutas",
+     "campos_clave": [
+      "ruta",
+      "vendedor",
+      "fecha",
+      "clientes"
+     ]
+    },
+    {
+     "nombre": "Clientes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "ruta",
+      "ultima_compra",
+      "limite_credito"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si cantidad es menor o igual al mínimo, alertar quiebre antes de la ruta.",
+    "Si el saldo vence hoy o ya venció y no está Pagado, alertar cartera.",
+    "Si el pedido nuevo más el saldo supera el límite de crédito, frenar el despacho.",
+    "Si la última compra fue hace más de 30 días, marcar cliente frío de esa ruta.",
+    "Si un pedido sigue en Por surtir y la entrega es hoy, alertar bodega."
+   ],
+   "fuentes_o_razon": "No hay plantilla solo de mayoreo. ferreteria-materiales ya nombra distribuidoras de pintura y trae venta, stock y crédito. Ruta, límite de crédito y cliente frío son conocimiento general de distribuidoras de abarrotes y materiales; no se consultó una fuente externa."
+  },
+  {
+   "rubro": "ONG",
+   "kpis": [
+    "Donaciones del mes",
+    "Donantes activos",
+    "Voluntarios activos",
+    "Meta de la campaña",
+    "Compromisos pendientes",
+    "Aportes recurrentes"
+   ],
+   "graficas": [
+    {
+     "tipo": "dona",
+     "que_muestra": "Donaciones por estado: comprometida, recibida, aplicada",
+     "por_que": "La plantilla organizacion-sin-lucro ya usa dona en donaciones."
+    },
+    {
+     "tipo": "columnas",
+     "que_muestra": "Donaciones recibidas por mes",
+     "por_que": "La plantilla grafica columnas para ver si el año se sostiene."
+    },
+    {
+     "tipo": "meta",
+     "que_muestra": "Lo recaudado contra la meta de la campaña",
+     "por_que": "El anillo dice cuánto falta sin armar un informe."
+    },
+    {
+     "tipo": "barras",
+     "que_muestra": "Donaciones por campaña o programa",
+     "por_que": "Se ve qué causa está recibiendo el dinero."
+    },
+    {
+     "tipo": "linea",
+     "que_muestra": "Donantes que aportan cada mes",
+     "por_que": "La línea muestra si la base recurrente crece o se apaga."
+    }
+   ],
+   "vistas": [
+    "kpis",
+    "tablero",
+    "grafico",
+    "tabla",
+    "cifra",
+    "vencimientos"
+   ],
+   "secciones": [
+    {
+     "nombre": "Donantes",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "tipo",
+      "ultima_donacion"
+     ]
+    },
+    {
+     "nombre": "Donaciones",
+     "campos_clave": [
+      "donante",
+      "campana",
+      "monto",
+      "estado",
+      "fecha"
+     ]
+    },
+    {
+     "nombre": "Voluntarios",
+     "campos_clave": [
+      "nombre",
+      "telefono",
+      "estado",
+      "disponibilidad"
+     ]
+    },
+    {
+     "nombre": "Campañas",
+     "campos_clave": [
+      "campana",
+      "meta",
+      "recaudado",
+      "vence",
+      "estado"
+     ]
+    }
+   ],
+   "consejos_con_datos": [
+    "Si una donación está Comprometida y la fecha ya pasó, alertar que no se recibió.",
+    "Si recaudado es menor que la meta y la campaña vence en 15 días, mostrar cuánto falta.",
+    "Si un donante recurrente no aporta en el mes en curso, sugerir contacto.",
+    "Si un voluntario está Activo y no tiene actividad en 30 días, marcarlo inactivo.",
+    "Si el monto es cero, no contar esa fila como donación recibida."
+   ],
+   "fuentes_o_razon": "Alineado a la plantilla organizacion-sin-lucro (donantes, donaciones, voluntarios, kpis, tablero, dona y columnas). La meta de campaña y el aporte recurrente son conocimiento general de fundaciones pequeñas; no se consultó una fuente externa."
+  }
+ ],
+ "combinaciones": [
+  {
+   "rubros": [
+    "Restaurante y comida",
+    "Lavandería y planchado"
+   ],
+   "como_combinar": "Un solo padrón de clientes y un ingreso del día que suma ambos negocios. Pedidos de comida y órdenes de ropa van en secciones distintas, con su propio tablero y su propia fecha de entrega. No se mezcla el insumo de cocina con la prenda del cliente. El inicio muestra citas o reservas de mesas junto a la ropa que sale hoy."
+  },
+  {
+   "rubros": [
+    "Tienda de ropa",
+    "Lavandería y planchado"
+   ],
+   "como_combinar": "Clientes compartidos, pero el inventario de venta (talla, color, costo) separado de la ropa recibida para lavar o planchar. Apartados y créditos de la tienda no se confunden con la orden de planchado. El ingreso del día suma ventas y servicios; las alertas de stock no aplican a las prendas de los clientes."
+  },
+  {
+   "rubros": [
+    "Ferretería",
+    "Distribuidora y mayoreo"
+   ],
+   "como_combinar": "Un solo inventario y un mínimo de reposición. La venta de mostrador y el pedido de ruta comparten productos, con un campo de canal o lista. El crédito, el límite y la ruta solo aplican al mayoreo. La caja del día suma ambos; la cartera vencida se ve aparte del contado."
+  },
+  {
+   "rubros": [
+    "Distribuidora y mayoreo",
+    "Transporte y mensajería"
+   ],
+   "como_combinar": "El pedido de mayoreo, al pasar a despachado, crea el envío con el mismo cliente y la misma fecha prometida. El tablero del pedido muestra si ya se surtió; el tablero del envío muestra si ya se entregó. Un atraso de entrega alerta en los dos lados sin duplicar el saldo ni el inventario."
+  }
+ ]
+}

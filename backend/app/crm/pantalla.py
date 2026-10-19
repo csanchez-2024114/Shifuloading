@@ -339,3 +339,16 @@ def etiqueta_cambio(c: dict) -> str | None:
         "construir_desde_ficha": "armó tu inicio nuevo",
     }
     return textos.get(c.get("herramienta"))
+
+
+def asi_se_ve_legible(bs: list[dict], titulos_seccion: dict[str, str] | None = None) -> str:
+    """Misma información que `edicion.asi_se_ve`, con nombres de pieza y pestaña (para el modelo en modo diseño)."""
+    u = ubicar(bs)
+    titulos = titulos_seccion or {}
+    partes: list[str] = []
+    for b in bs:
+        v = NOMBRE_VISTA.get(b.get("vista") or "", b.get("vista") or "pieza")
+        sec = titulos.get(b.get("seccion") or "", b.get("seccion") or "")
+        pieza = f"{v} de «{sec}»" if sec else v
+        partes.append(f"{pieza} → {ubicacion(u.get(b.get('uid')))}")
+    return "; ".join(partes)

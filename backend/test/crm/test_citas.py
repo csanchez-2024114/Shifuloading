@@ -96,7 +96,7 @@ def test_el_estado_dice_donde_se_agenda_y_para_que_es_el_tablero(agenda):
     import json
     c = json.loads(s.contexto())
     assert c["agendas"] == ["l_citas (Agenda)"]
-    assert "las citas van en una agenda" in c["secciones_integradas"]["desarrollo"]["para_que"]
+    assert any("las citas van en una agenda" in (v["sirve_para"] or "") for v in c["secciones_del_menu"].values())
     nombres = {h["function"]["name"]: h for h in s.herramientas()}
     assert "agendar" in nombres and "agendar" in nombres["agregar_tarea"]["function"]["description"]
 

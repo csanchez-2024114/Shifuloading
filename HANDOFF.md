@@ -1,90 +1,78 @@
-# HANDOFF — frente diagnóstico (rama `etapa1/diagnostico`, worktree `wt-diagnostico`)
+# Handoff — worktree `wt-conceptos` (rama `etapa1/conceptos`)
 
-No se corrieron los bancos con IA real: no hay clave y no se creó `backend/.env`. Pytest con modelo falso: **17878 passed, 1 skipped** (`test/crm`, 19-oct). La línea base que sí existe es `documentos/mediciones/2026-10-19_linea_base/` (banco2 15/16, datos 61/63, pestañas 20/27).
+## Revisión del revisor (commit `452e8b3`) — ajustes hechos
 
-## Qué cerré
+Se **mantienen**: `conceptos.json`, `conceptos.py` (línea por concepto + detalle al detectar), brief en contexto, aviso de sección vacía, sugerencia 2–3 gráficas (`plantillas.compatibles` + `rubros_grok.json`), reglas del prompt (incl. «sí/dale/ok» = acepta la recomendada).
 
-### 15 — «calendario» ofrece en vez de actuar (3/3 en pestañas)
+Se **quitaron** los tres parches de palabras (método de Alan):
 
-**Causa (evidencia).** En las tres corridas de `pestanas.txt` el modelo no llamó herramientas (`hizo: []`, `fallos: []`) y dijo «No hay vista de calendario…». El prompt copiado de `chat.js` ponía como ejemplo de lo que no existe «un calendario, un mapa, una gráfica de radar». En el estado, `calendario_mes` es una vista (`VISTAS_INICIO`) y `calendario` / `radar` son tipos de gráfico. El ejemplo contradecía el catálogo.
+| Parche quitado | Sustitución |
+|----------------|-------------|
+| `sin_jerga` / `_JERGA_SUBS` | `humanizar_estado_modelo()` en el JSON de contexto (`secciones_del_menu`, `tablas_del_negocio`, `graficas_disponibles`, `plantillas_de_pestana`, tipos de pieza legibles) y `humanizar_resultado_herramienta()` + `pantalla.asi_se_ve_legible()` en resultados de edición; mensajes de error de datos solo con títulos visibles; instrucciones del prompt sin «propia/integrada». |
+| `texto_tras_afirmacion` | Eliminado; el turno usa el texto real del usuario; solo queda la regla en `INSTRUCCIONES_LAB` (línea «sí/dale/ok»). |
+| `masivo_destruye_bloques` | Cerco de bloques otra vez con `MASIVO.search` como en `david` (`planificar_cerco_masivo` y `quitar_bloque`). Se conserva `masivo_destruye_registros` para secciones/campos/registros (punto 20). |
 
-**Arreglo.** El prompt ya no nombra ejemplos viejos: lo que existe es lo que está en el estado (`vistas` y `graficos_posibles`). No es una lista de palabras del caso.
+## Puntos cerrados (LISTA_PENDIENTES 19-oct)
 
-**Prueba.** `test_el_prompt_no_niega_lo_que_el_catalogo_tiene`. No re-medido con IA real. El agente anterior anotó en el diff que, sin el ejemplo, el caso pasaba 3/3; esa traza no está en este worktree y no la repetí.
+| # | Qué | Cómo (tras ajuste revisor) |
+|---|-----|----------------------------|
+| **19** | La IA sabe qué es cada cosa | Catálogo + `bloque_para_prompt` / `_detectar` (sin cambio). |
+| **20** | Confirmar según riesgo | `masivo_destruye_registros` + instrucciones de confirmación masiva; bloques con cerco `david`. |
+| **7** | «Sí» suelto acepta la recomendada | Solo prompt (`INSTRUCCIONES_LAB`); historial del chat. |
+| **8** | Sin jerga interna | Origen: contexto y resultados de herramientas humanizados (no regex en la respuesta). |
+| **12** | El negocio pesa más que la plantilla | `resumen_del_brief` + aviso en `avisos_turno`. |
+| **13** | Gráfica sobre sección vacía | `avisos_turno` si 0 registros. |
+| **14** | Solo 2–3 gráficas | `sugerir_graficas` + aviso (nombres sin ids técnicos en el aviso). |
 
-### 16 — CSV por el chat descarta una columna sin avisar
+## Archivos tocados (commit nuevo)
 
-**Causa (evidencia).** `leer_adjunto` devolvía el CSV tal cual (`test_csv_tal_cual`: el texto no pierde celdas). No había columnas medidas. Al guardar, `campo_por_clave` solo ve las claves que el modelo manda; una columna que no es campo y que el modelo no copia no aparece en «Sin llenar» ni en un error. El chat podía meter las filas sin decir qué quedó fuera.
+- `backend/app/crm/conceptos.py`
+- `backend/app/crm/agente_diseno.py`
+- `backend/app/crm/pantalla.py` (`asi_se_ve_legible`)
+- `backend/test/crm/test_conceptos.py`
+- `backend/test/crm/test_agente_diseno.py`
 
-**Arreglo.** El código lee los títulos (coma, punto y coma o tab; una coma entre comillas sigue siendo una celda) y los compara con los campos con el mismo emparejamiento que al guardar. Si una columna no es campo, el aviso se lo dice al modelo y, si la respuesta no la nombra, el código agrega: «No guardé la columna «…». ¿La agrego?». El texto del archivo se sigue entregando entero.
+Sin cambios en `conceptos.json` ni `banco_conceptos.py` en este commit.
 
-**Prueba.** `test_csv_con_punto_y_coma_y_comas_entre_comillas_no_pierde_columnas`, `test_csv_sin_titulos_no_inventa_columnas`, `test_columna_que_no_es_campo_se_dice_aunque_el_modelo_no_la_nombre`.
+## Pruebas (verificado en este worktree)
 
-### 17 — «cuánto me paga cada miembro en promedio» (banco2)
+```bash
+cd backend && MONGO_URI=mongodb://x:1 SECRET_KEY=prueba-local-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx OPENAI_API_KEY=sk-falso \
+  /Users/josueboror/CURSOR/HyperShifu/HyperShifu-crm-agent/backend/.venv/bin/python -m pytest test/crm -q -p no:cacheprovider
+```
 
-**Causa (evidencia).** `banco2.txt`: `ERROR: la vista «estadisticas» no existe` y la respuesta ofrece barras. El prompt decía que esas cifras van en un bloque `"estadisticas"`. `estadisticas` es un tipo de gráfico (`vista "grafico"`, `opciones.tipo`), no una vista. Con solo «no existe», el modelo se rendía.
+- **Resultado:** `17878 passed`, `1 skipped`, **1 failed** (`test_reloj.py::test_el_programador_llama_al_reloj_del_crm_y_si_falla_sigue` — falta `ENCRYPTION_KEY` al importar workers; no relacionado con conceptos).
+- Tests de conceptos: 8 en `test_conceptos.py` (humanización + catálogo/gráficas).
 
-**Arreglo.** El prompt dice la forma real de la herramienta. Si piden un tipo de gráfico como vista, el error explica cómo pedirlo (`edicion.py`). El estado no cambia.
+## Banco con IA real (revisor)
 
-**Prueba.** El caso de paridad «agregar: gráfico que no existe…» paso 3 (vista `radar`) espera ese texto. No re-medido con IA real.
+No corrido aquí (sin clave OpenAI).
 
-### 18 — los 7 fallos de pestañas (20/27), uno por uno
-
-Son 3 casos, no 7 causas. 3+1+3 = 7.
-
-1. **Calendario, 3/3.** Es el punto 15.
-2. **«aquí pon arriba un resumen por estado», 1/3.** La corrida que falla tiene `fallos: ['… «b1» es un bloque del INICIO …']` y la respuesta pregunta si lo pone también en Miembros. Con la pestaña abierta, la clave `bloques` eran los del inicio. **Arreglo:** esa clave pasa a `bloques_del_inicio_no_se_ven_ahora` (mismo contenido). Prueba: `test_con_pestana_abierta_los_bloques_del_inicio_cambian_de_nombre`. Las otras 2 corridas de la base ya pasaban; falta la IA real para ver si el 1/3 se cierra.
-3. **«dona y nube de palabras», 3/3.** `hizo: []`. La regla decía: si piden un tipo que no existe, no agregues nada todavía. La nube no existe y la dona sí, y no se hacía ninguna. **Arreglo:** lo que no existe no se agrega y se pregunta; lo que sí existe en el mismo pedido se hace en el turno. El cerco de sustituto ya no deshace una pieza cuyo tipo o vista está en el pedido (el id o el nombre del catálogo): «agregué la dona; lo más parecido a la nube…» deja la dona. Pruebas: `test_el_sustituto_no_deshace_la_pieza_que_si_pidieron`, `test_negar_otra_cosa_no_niega_la_dona_pedida`. No re-medido con IA real.
-
-## Qué no cerré
-
-### 17 — los 2 fallos de `banco_datos` (1 de 3 cada uno)
-
-No encontré una causa determinista. No la inventé.
-
-- **«¿qué miembros vencen en los próximos 7 días?»** (tercera corrida): `consultas=[]`, `fallos=[]`. Apuntó al bloque de vencimientos que ya está en el inicio y preguntó si listaba los nombres. Las otras dos corridas consultaron y pasaron. El verificador, a propósito, no corrige una pregunta sin acciones (`agente.py`, `_ES_PREGUNTA`): empujar ahí metería otra llamada al modelo en preguntas que ya salen en una («¿qué tengo?»).
-- **«agrega una gráfica de dona por estado»** (tercera corrida): `hizo: []`. Preguntó dónde y de qué tamaño. Las otras dos la agregaron. No hubo error de herramienta. Un gancho de «no preguntes» chocaría con casos que deben preguntar («agrega a Pedro Ruiz»).
-
-## Archivos
-
-- `backend/app/crm/agente_diseno.py` — prompt, nombre de los bloques del inicio, cerco de sustituto, aviso de columnas
-- `backend/app/crm/edicion.py` — error cuando un tipo de gráfico se pide como vista
-- `backend/app/crm/adjuntos.py` — títulos del CSV/TSV/xlsx y texto de lo que no entró
-- `backend/app/crm/agente.py`, `backend/app/routes/crm/crmRoutes.py` — pasan las columnas al agente de diseño
-- `backend/test/crm/test_prompt_diseno.py`, `test_agente_piezas.py`, `test_adjuntos.py`, `test_herramientas_paridad.py`
-
-## Cómo correr los bancos (lo hace el revisor)
-
-Desde este worktree, con la clave en el entorno del servidor (no está en el repo). Puerto sugerido **5204** (en los handoffs, 5202 es citas y 5203 es memoria).
+1. Servidor lab (puerto libre, p. ej. 5190):
 
 ```bash
 cd backend && CRM_DISENO=1 CRM_LAB_ADAPTER=1 \
-  /Users/josueboror/CURSOR/HyperShifu/HyperShifu-crm-agent/backend/.venv/bin/python \
-  scripts/crm_dev_server.py --puerto 5204
+  MONGO_URI=mongodb://x:1 SECRET_KEY=prueba-local-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx OPENAI_API_KEY=<real> \
+  /Users/josueboror/CURSOR/HyperShifu/HyperShifu-crm-agent/backend/.venv/bin/python scripts/crm_dev_server.py --puerto 5190
 ```
 
-En otra terminal, desde la raíz del worktree:
+2. Desde la raíz del worktree:
 
 ```bash
-export BASE=http://localhost:5204 RUTA_CHAT=/api/v1/crm/lab/chat
-PY=/Users/josueboror/CURSOR/HyperShifu/HyperShifu-crm-agent/backend/.venv/bin/python
-$PY laboratorio/pruebas/banco2.py
-$PY laboratorio/pruebas/banco_deshacer.py 3
-$PY laboratorio/pruebas/banco_toma.py 1
-$PY laboratorio/pruebas/banco_ficha.py
-$PY laboratorio/pruebas/banco_datos.py 3
-$PY laboratorio/pruebas/banco_pestanas.py 3
+BASE=http://localhost:5190 RUTA_CHAT=/api/v1/crm/lab/chat \
+  python3 laboratorio/pruebas/banco_conceptos.py
 ```
 
-Guardar las salidas en `~/CURSOR/HyperShifu/documentos/mediciones/2026-10-19_diagnostico/`. Comparar con la línea base. Lo que este frente toca y hay que mirar: banco2 el caso del promedio (base 15/16), banco_datos los dos casos de arriba (base 61/63; si fallan 1 de 3, repetir), banco_pestanas calendario, pieza en la pestaña abierta y dona+nube (base 20/27). No agregué casos nuevos a los bancos.
+3. Bancos base (regresión): `banco2.py`, `banco_deshacer.py 3`, `banco_toma.py 1`, `banco_ficha.py`, `banco_datos.py 3`, `banco_pestanas.py 3` con la misma `BASE`/`RUTA_CHAT`. Guardar en `documentos/mediciones/2026-10-19_conceptos/`.
 
-Pytest de este frente (hace falta `ENCRYPTION_KEY` y `SECRETS_ENCRYPTION_KEY` falsos: el test del reloj importa el cifrado; no leí ningún `.env`):
+## Commits en la rama
 
-```bash
-cd backend && MONGO_URI=mongodb://x:1 SECRET_KEY=prueba-local-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
-  OPENAI_API_KEY=sk-falso ENCRYPTION_KEY=prueba-local-cifrado SECRETS_ENCRYPTION_KEY=prueba-local-secretos \
-  /Users/josueboror/CURSOR/HyperShifu/HyperShifu-crm-agent/backend/.venv/bin/python \
-  -m pytest test/crm -q -p no:cacheprovider
-```
+- `1206c5f` — Banco de conceptos y brief en adaptador lab.
+- `452e8b3` — Catálogo y reglas (revisado: quedan parches prohibidos fuera).
+- *(pendiente de commit)* — Quitar parches de palabras; jerga en el origen; cerco bloques como `david`.
 
-Resultado real: **17878 passed, 1 skipped**.
+## Qué falta / riesgos
+
+- **Medición IA real** (`banco_conceptos` + bancos base): revisor con clave.
+- **Jerga residual:** el modelo aún ve nombres de herramientas en el esquema de tools y algo de ids en `bloques.id` (necesario para `quitar_bloque`); el prompt sigue pidiendo no repetirlos al usuario.
+- **`test_reloj`:** fallo ambiental; otro frente.

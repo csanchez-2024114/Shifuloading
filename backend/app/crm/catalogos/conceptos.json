@@ -1,0 +1,2753 @@
+{
+ "version": 1,
+ "conceptos": [
+  {
+   "id": "pestana_seccion",
+   "grupo": "estructura",
+   "nombre": "Pestaña / sección",
+   "que_es": "Una hoja del CRM con su nombre, icono y datos propios; es lo que ves arriba en píldoras.",
+   "para_que": "Separar clientes, ventas, bodega y lo demás sin mezclar todo en una sola pantalla.",
+   "frases": [
+    "agregame otra pestaña para proveedores",
+    "esta sección de clientes le cambias el nombre",
+    "quiero una pestaña solo de cobros",
+    "borra esa pestaña que no la ocupo",
+    "poneme el icono de camión en entregas"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "cuaderno_en_blanco",
+    "bloque",
+    "inicio"
+   ]
+  },
+  {
+   "id": "cuaderno_en_blanco",
+   "grupo": "estructura",
+   "nombre": "Cuaderno en blanco",
+   "que_es": "Pestaña vacía sin plantilla: tú y el chat arman campos y vistas desde cero.",
+   "para_que": "Modelar tu negocio raro o mixto sin forzarte a una receta prediseñada.",
+   "frases": [
+    "empezar de cero sin nada",
+    "pestaña vacía nomás",
+    "no quiero plantilla dame en blanco",
+    "armalo como yo te diga",
+    "cuaderno limpio para mi taller"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "pestana_seccion",
+    "plantilla",
+    "ejemplo"
+   ]
+  },
+  {
+   "id": "campo",
+   "grupo": "estructura",
+   "nombre": "Campo",
+   "que_es": "Columna de dato en una sección: nombre, tipo y opciones si es estado.",
+   "para_que": "Guardar la info que tu negocio necesita en cada registro.",
+   "frases": [
+    "agregame un campo de teléfono",
+    "falta una columna de notas",
+    "ese campo de estado ponelo con más opciones",
+    "quitame el campo que dice RFC",
+    "como le llamo al campo del vendedor"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "campo_texto",
+    "campo_calculado",
+    "relacion"
+   ]
+  },
+  {
+   "id": "campo_texto",
+   "grupo": "estructura",
+   "nombre": "Campo texto",
+   "que_es": "Campo para letras: nombres, direcciones, notas cortas y descripciones.",
+   "para_que": "Anotar datos que no son número, fecha ni lista cerrada.",
+   "frases": [
+    "nombre del cliente en texto",
+    "dirección de entrega texto",
+    "nota rápida ahí",
+    "el whatsapp va en texto",
+    "descripción del problema"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Ejemplo",
+      "tipo": "texto"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "campo_numero",
+    "nota"
+   ]
+  },
+  {
+   "id": "campo_numero",
+   "grupo": "estructura",
+   "nombre": "Campo número",
+   "que_es": "Campo para cantidades, puntajes o enteros sin moneda.",
+   "para_que": "Contar piezas, calificaciones, minutos o existencias.",
+   "frases": [
+    "cuantos hay en stock numero",
+    "puntaje del 1 al 10",
+    "duración en minutos",
+    "cantidad de personas",
+    "kilometraje del carro"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Cantidad",
+      "tipo": "numero"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "campo_dinero",
+    "inventario_stock"
+   ]
+  },
+  {
+   "id": "campo_dinero",
+   "grupo": "estructura",
+   "nombre": "Campo dinero",
+   "que_es": "Campo para montos en quetzales: precios, totales y saldos.",
+   "para_que": "Sumar ventas, cobros y gastos en tablas y gráficas.",
+   "frases": [
+    "cuanto vale en quetzales",
+    "total del pedido",
+    "monto que me debe",
+    "precio de lista",
+    "comisión en plata"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "campo_numero",
+    "precio_costo_margen",
+    "caja"
+   ]
+  },
+  {
+   "id": "campo_fecha",
+   "grupo": "estructura",
+   "nombre": "Campo fecha",
+   "que_es": "Campo para día calendario: vence, entrega, cumple o cierre.",
+   "para_que": "Ordenar por tiempo, vencimientos y calendarios del CRM.",
+   "frases": [
+    "fecha que vence el pago",
+    "cuando entregan",
+    "fecha de la cita",
+    "hasta cuando vale la promo",
+    "día que compró"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "campo_hora",
+    "vista_agenda",
+    "vista_vencimientos"
+   ]
+  },
+  {
+   "id": "campo_hora",
+   "grupo": "estructura",
+   "nombre": "Campo hora",
+   "que_es": "Campo para hora del día, aparte de la fecha.",
+   "para_que": "Agendar citas, turnos y publicaciones con hora exacta.",
+   "frases": [
+    "a las 3 de la tarde",
+    "hora de la reunión",
+    "que hora abre turno",
+    "programar post a las 8",
+    "hora de entrada"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Hora",
+      "tipo": "hora"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "campo_fecha",
+    "cita",
+    "turno_horario"
+   ]
+  },
+  {
+   "id": "campo_estado",
+   "grupo": "estructura",
+   "nombre": "Campo estado",
+   "que_es": "Lista fija de opciones: etapas, prioridades o estatus del registro.",
+   "para_que": "Tableros, embudos y filtros por paso del proceso.",
+   "frases": [
+    "etapas del embudo",
+    "estado pendiente pagado",
+    "prioridad alta media",
+    "en tránsito entregado",
+    "poné ganado y perdido"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "embudo_etapas",
+    "segmento_etiqueta"
+   ]
+  },
+  {
+   "id": "vista_tabla",
+   "grupo": "estructura",
+   "nombre": "Vista tabla",
+   "que_es": "Lista en filas y columnas con todos los registros de la sección.",
+   "para_que": "Buscar, ordenar y revisar muchos datos de un jalón.",
+   "frases": [
+    "ponelo en tabla",
+    "quiero ver todo en lista",
+    "ordenalo por fecha",
+    "una tabla como excel",
+    "muéstrame todos los clientes"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_tablero",
+    "ficha"
+   ]
+  },
+  {
+   "id": "vista_kpis",
+   "grupo": "estructura",
+   "nombre": "Vista KPIs",
+   "que_es": "Fila de números grandes: conteos, sumas de hoy o lo que vence pronto.",
+   "para_que": "Ver de un vistazo cómo va el día o la semana.",
+   "frases": [
+    "arriba unos numeros grandes",
+    "cuantos vencen esta semana",
+    "total cobrado hoy",
+    "kpis arriba del tablero",
+    "resumen rápido arriba"
+   ],
+   "se_arma_con": {
+    "vista": "kpis",
+    "campos": [
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_cifra",
+    "grafica"
+   ]
+  },
+  {
+   "id": "vista_tablero",
+   "grupo": "estructura",
+   "nombre": "Vista tablero",
+   "que_es": "Columnas por estado; cada tarjeta es un registro que arrastras de etapa.",
+   "para_que": "Seguir ventas, tareas o tickets por pasos visuales.",
+   "frases": [
+    "kanban de ventas",
+    "tablero por etapas",
+    "arrastrar tarjetas",
+    "pipeline visual",
+    "como trello pero clientes"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Título",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "embudo_etapas",
+    "vista_tabla",
+    "oportunidad"
+   ]
+  },
+  {
+   "id": "vista_agenda",
+   "grupo": "estructura",
+   "nombre": "Vista agenda",
+   "que_es": "Calendario por día con hora, título y detalle de cada evento.",
+   "para_que": "Ver citas, turnos o reuniones en línea de tiempo.",
+   "frases": [
+    "calendario de citas",
+    "agenda de la semana",
+    "que tengo mañana",
+    "horario visual",
+    "citas en calendario no en lista"
+   ],
+   "se_arma_con": {
+    "vista": "agenda",
+    "campos": [
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Hora",
+      "tipo": "hora"
+     },
+     {
+      "nombre": "Título",
+      "tipo": "texto"
+     }
+    ],
+    "pestana_base": "citas"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_calendario_mes",
+    "tarea",
+    "cita"
+   ]
+  },
+  {
+   "id": "vista_vencimientos",
+   "grupo": "estructura",
+   "nombre": "Vista vencimientos",
+   "que_es": "Lista de lo que vence pronto por fecha, con título y detalle.",
+   "para_que": "Cobrar a tiempo, renovar contratos y no olvidar pagos.",
+   "frases": [
+    "que vence este mes",
+    "lista de cobros pendientes",
+    "vencimientos próximos",
+    "facturas por vencer",
+    "alertas de fecha"
+   ],
+   "se_arma_con": {
+    "vista": "vencimientos",
+    "campos": [
+     {
+      "nombre": "Vence",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "cobros"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "seguimiento_recordatorio",
+    "vista_atencion"
+   ]
+  },
+  {
+   "id": "vista_grafica",
+   "grupo": "estructura",
+   "nombre": "Vista gráfica (simple)",
+   "que_es": "Gráfica ligada a campos de la sección: por estado, fecha o suma.",
+   "para_que": "Ver tendencias sin elegir tipo de gráfico a mano.",
+   "frases": [
+    "una gráfica de ventas",
+    "graficame por estado",
+    "torta de categorías",
+    "barras del mes",
+    "chart rápido"
+   ],
+   "se_arma_con": {
+    "vista": "grafica",
+    "campos": [
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "grafica",
+    "vista_grafico"
+   ]
+  },
+  {
+   "id": "vista_grafico",
+   "grupo": "estructura",
+   "nombre": "Vista gráfico (catálogo)",
+   "que_es": "Bloque de gráfica con tipo del catálogo: dona, embudo, línea, etc.",
+   "para_que": "Elegir la visual exacta según el dato y el rubro.",
+   "frases": [
+    "gráfico de embudo",
+    "dona de estados",
+    "línea de los últimos meses",
+    "histograma de puntajes",
+    "mapa de calor por día"
+   ],
+   "se_arma_con": {
+    "vista": "grafico",
+    "campos": [
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Valor",
+      "tipo": "dinero"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_grafica",
+    "grafica"
+   ]
+  },
+  {
+   "id": "vista_calendario_mes",
+   "grupo": "estructura",
+   "nombre": "Vista calendario mes",
+   "que_es": "Cuadrícula del mes con puntos o color por registros con fecha.",
+   "para_que": "Ver densidad de citas, entregas o eventos en el mes.",
+   "frases": [
+    "calendario mensual",
+    "ver todo el mes",
+    "puntos en cada día",
+    "mes completo visual",
+    "cuantos por día en calendario"
+   ],
+   "se_arma_con": {
+    "vista": "calendario_mes",
+    "campos": [
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_agenda"
+   ]
+  },
+  {
+   "id": "vista_tablero_dinero",
+   "grupo": "estructura",
+   "nombre": "Vista tablero dinero",
+   "que_es": "Tablero por estado que muestra sumas de dinero y detalle.",
+   "para_que": "Pipeline de ventas con montos por etapa.",
+   "frases": [
+    "tablero con plata por etapa",
+    "cuanto hay en negociación",
+    "montos en el kanban",
+    "pipeline con quetzales",
+    "etapas con totales"
+   ],
+   "se_arma_con": {
+    "vista": "tablero_dinero",
+    "campos": [
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_tablero",
+    "oportunidad"
+   ]
+  },
+  {
+   "id": "vista_cifra",
+   "grupo": "estructura",
+   "nombre": "Vista cifra",
+   "que_es": "Un número grande con meta, periodo o ayuda; puede filtrar datos.",
+   "para_que": "Destacar una métrica clave en el tablero de inicio.",
+   "frases": [
+    "número grande de ventas del mes",
+    "cifra con meta",
+    "cuanto llevamos vs objetivo",
+    "un solo KPI grande",
+    "contador principal"
+   ],
+   "se_arma_con": {
+    "vista": "cifra",
+    "campos": [
+     {
+      "nombre": "Valor",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_kpis"
+   ]
+  },
+  {
+   "id": "vista_atencion",
+   "grupo": "estructura",
+   "nombre": "Vista atención",
+   "que_es": "Lista de registros con fecha que requieren acción hoy o pronto.",
+   "para_que": "Enfocar lo urgente sin revisar toda la tabla.",
+   "frases": [
+    "que necesita atención hoy",
+    "lo urgente primero",
+    "pendientes de hoy",
+    "foco en lo atrasado",
+    "lista de atención"
+   ],
+   "se_arma_con": {
+    "vista": "atencion",
+    "campos": [
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_vencimientos",
+    "tarea"
+   ]
+  },
+  {
+   "id": "vista_franjas",
+   "grupo": "estructura",
+   "nombre": "Vista franjas",
+   "que_es": "Bandas por fecha y estado para ver carga o urgencias en el tiempo.",
+   "para_que": "Distribuir trabajo en la semana o ver picos.",
+   "frases": [
+    "franjas por día",
+    "banda de urgentes",
+    "carga de la semana",
+    "timeline por estado",
+    "organizar por franjas"
+   ],
+   "se_arma_con": {
+    "vista": "franjas",
+    "campos": [
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_agenda"
+   ]
+  },
+  {
+   "id": "vista_matriz",
+   "grupo": "estructura",
+   "nombre": "Vista matriz",
+   "que_es": "Cuadricula filas por texto y columnas por estado.",
+   "para_que": "Cruzar responsables, áreas o productos contra estatus.",
+   "frases": [
+    "matriz equipo por estado",
+    "cuadricula de áreas",
+    "tabla cruzada",
+    "quién tiene qué pendiente",
+    "matriz de seguimiento"
+   ],
+   "se_arma_con": {
+    "vista": "matriz",
+    "campos": [
+     {
+      "nombre": "Fila",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Columna",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_tabla"
+   ]
+  },
+  {
+   "id": "vista_feed",
+   "grupo": "estructura",
+   "nombre": "Vista feed",
+   "que_es": "Bloque de actividad o notas en cronología; no pide campos de sección.",
+   "para_que": "Mostrar novedades o bitácora en el tablero.",
+   "frases": [
+    "feed de actividad",
+    "línea de tiempo de notas",
+    "ultimas novedades",
+    "como facebook del cliente",
+    "bitácora visual"
+   ],
+   "se_arma_con": {
+    "vista": "feed",
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "actividad",
+    "nota"
+   ]
+  },
+  {
+   "id": "vista_equipo",
+   "grupo": "estructura",
+   "nombre": "Vista equipo",
+   "que_es": "Bloque decorativo de equipo o avatares; sin datos de la sección.",
+   "para_que": "Dar contexto humano en tableros de RH o ventas.",
+   "frases": [
+    "fotos del equipo",
+    "bloque de vendedores",
+    "quienes somos ahí",
+    "avatares del staff",
+    "equipo en el inicio"
+   ],
+   "se_arma_con": {
+    "vista": "equipo",
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "empleado",
+    "responsable_vendedor"
+   ]
+  },
+  {
+   "id": "vista_interruptores",
+   "grupo": "estructura",
+   "nombre": "Vista interruptores",
+   "que_es": "Bloque de toggles o filtros rápidos sin tabla propia.",
+   "para_que": "Encender vistas o filtros desde el tablero.",
+   "frases": [
+    "interruptores arriba",
+    "filtros con switch",
+    "prender y apagar vistas",
+    "toggles del tablero",
+    "botones de modo"
+   ],
+   "se_arma_con": {
+    "vista": "interruptores",
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "segmento_etiqueta"
+   ]
+  },
+  {
+   "id": "inicio",
+   "grupo": "estructura",
+   "nombre": "Inicio",
+   "que_es": "Primera pantalla del CRM con resumen, cifras y accesos rápidos.",
+   "para_que": "Entrar y ver cómo va el negocio sin abrir cada pestaña.",
+   "frases": [
+    "mejorame el inicio",
+    "dashboard principal",
+    "resumen al abrir",
+    "pantalla de bienvenida",
+    "lo primero que veo"
+   ],
+   "se_arma_con": {
+    "vista": "kpis",
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "pestana_seccion",
+    "bloque"
+   ]
+  },
+  {
+   "id": "bloque",
+   "grupo": "estructura",
+   "nombre": "Bloque (pieza)",
+   "que_es": "Cada recuadro del tablero: tabla, gráfico, KPI o feed con ancho y alto.",
+   "para_que": "Armar el layout de una pestaña con varias vistas.",
+   "frases": [
+    "agrega un bloque de gráfica",
+    "hazlo más ancho",
+    "otro bloque abajo",
+    "quita ese cuadro",
+    "dos bloques lado a lado"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "tarjeta",
+    "vista_tabla"
+   ]
+  },
+  {
+   "id": "ficha",
+   "grupo": "estructura",
+   "nombre": "Ficha",
+   "que_es": "Detalle de un solo registro: todos sus campos al abrirlo.",
+   "para_que": "Ver y editar un cliente, pedido o ticket completo.",
+   "frases": [
+    "abrir la ficha del cliente",
+    "ver detalle del pedido",
+    "ficha con todo",
+    "entrá al registro",
+    "datos completos de uno"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "tarjeta",
+    "vista_tabla"
+   ]
+  },
+  {
+   "id": "tarjeta",
+   "grupo": "estructura",
+   "nombre": "Tarjeta",
+   "que_es": "Mini resumen de un registro en tablero o lista; título y detalle.",
+   "para_que": "Leer rápido en kanban sin abrir la ficha.",
+   "frases": [
+    "tarjeta en el tablero",
+    "que se vea el monto en la tarjeta",
+    "tarjetas chicas",
+    "cada cliente una tarjeta",
+    "detalle en la tarjeta"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Título",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Detalle",
+      "tipo": "texto"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "ficha",
+    "contacto_cliente"
+   ]
+  },
+  {
+   "id": "grafica",
+   "grupo": "estructura",
+   "nombre": "Gráfica",
+   "que_es": "Visual de datos: tipos del catálogo (barras, embudo, dona, línea…).",
+   "para_que": "Entender ventas, estados o tiempos de un vistazo.",
+   "frases": [
+    "una gráfica bonita",
+    "embudo de prospectos",
+    "dona de canales",
+    "línea del año",
+    "histograma de quejas"
+   ],
+   "se_arma_con": {
+    "vista": "grafico",
+    "campos": [
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "vista_grafica",
+    "embudo_etapas"
+   ]
+  },
+  {
+   "id": "ejemplo",
+   "grupo": "estructura",
+   "nombre": "Ejemplo (datos demo)",
+   "que_es": "Registros de muestra que el sistema pone al crear una sección.",
+   "para_que": "Probar tableros y gráficas antes de cargar datos reales.",
+   "frases": [
+    "poneme ejemplos",
+    "datos de prueba",
+    "llenalo con muestra",
+    "ejemplos guatemaltecos",
+    "que no esté vacío"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "plantilla",
+    "importar"
+   ]
+  },
+  {
+   "id": "deshacer",
+   "grupo": "estructura",
+   "nombre": "Deshacer",
+   "que_es": "Revertir el último cambio que hizo el chat o tú en el diseño.",
+   "para_que": "Corregir sin miedo si la IA se pasó de listo.",
+   "frases": [
+    "deshacer lo último",
+    "regresa como estaba",
+    "no eso no lo quería",
+    "undo",
+    "quita el cambio anterior"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "exportar"
+   ]
+  },
+  {
+   "id": "marca",
+   "grupo": "estructura",
+   "nombre": "Marca",
+   "que_es": "Colores, fuentes y estilo visual del tablero (claro, oscuro, acento).",
+   "para_que": "Que el CRM se vea como tu negocio, no genérico.",
+   "frases": [
+    "ponelo morado como mi logo",
+    "tema oscuro",
+    "colores de la empresa",
+    "más bonito el tablero",
+    "estilo con mi marca"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "campana"
+   ]
+  },
+  {
+   "id": "importar",
+   "grupo": "estructura",
+   "nombre": "Importar",
+   "que_es": "Subir datos desde Excel o CSV con el botón Importar de cada pestaña (la persona elige columnas).",
+   "para_que": "No capturar a mano lo que ya tienes en Excel.",
+   "frases": [
+    "importar mi excel",
+    "subir el csv de clientes",
+    "cargar lista de productos",
+    "traer datos del archivo",
+    "pasame el excel al crm"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "exportar",
+    "ejemplo"
+   ]
+  },
+  {
+   "id": "exportar",
+   "grupo": "estructura",
+   "nombre": "Exportar",
+   "que_es": "Sacar registros o respaldo del CRM a archivo descargable.",
+   "para_que": "Compartir con contador, respaldar o analizar afuera.",
+   "frases": [
+    "exportar a excel",
+    "bajame la tabla",
+    "respaldo de los datos",
+    "sacar reporte en archivo",
+    "descargar todo"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "importar",
+    "documento_pdf"
+   ]
+  },
+  {
+   "id": "contacto_cliente",
+   "grupo": "crm",
+   "nombre": "Contacto / cliente",
+   "que_es": "Persona que compra o te escribe: nombre, teléfono y datos de contacto.",
+   "para_que": "Tener a la mano quién es y cómo le hablás.",
+   "frases": [
+    "lista de clientes",
+    "agregame este número",
+    "ficha del cliente juan",
+    "mis contactos del whats",
+    "cliente nuevo de facebook"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Nombre",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Teléfono",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Correo",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "empresa",
+    "prospecto_lead"
+   ]
+  },
+  {
+   "id": "empresa",
+   "grupo": "crm",
+   "nombre": "Empresa (cuenta)",
+   "que_es": "Negocio o cuenta B2B ligada a varios contactos, aunque hoy va en texto.",
+   "para_que": "Vender a empresas y no solo a personas sueltas.",
+   "frases": [
+    "empresas clientes",
+    "cuenta corporativa",
+    "la empresa y sus contactos",
+    "cliente empresa xyz",
+    "razón social ahí"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Empresa",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Rubro",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Contacto principal",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": "relacion",
+   "no_confundir_con": [
+    "contacto_cliente",
+    "proveedor"
+   ]
+  },
+  {
+   "id": "oportunidad",
+   "grupo": "crm",
+   "nombre": "Oportunidad",
+   "que_es": "Venta posible con valor y etapa hasta cerrar ganada o perdida.",
+   "para_que": "No perder deals ni olvidar en qué paso va cada uno.",
+   "frases": [
+    "oportunidades de venta",
+    "este deal cuanto vale",
+    "negociación con el hotel",
+    "venta en proceso",
+    "cerrar la oportunidad"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Nombre",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Valor",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Etapa",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Último contacto",
+      "tipo": "fecha"
+     }
+    ],
+    "pestana_base": "prospectos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "cotizacion",
+    "prospecto_lead"
+   ]
+  },
+  {
+   "id": "embudo_etapas",
+   "grupo": "crm",
+   "nombre": "Embudo y etapas",
+   "que_es": "Secuencia de estados del proceso comercial y la vista que los muestra.",
+   "para_que": "Ver cuántos hay en cada paso y dónde se atoran.",
+   "frases": [
+    "embudo de ventas",
+    "etapas del pipeline",
+    "de prospecto a ganado",
+    "grafico embudo",
+    "cuantos en propuesta"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Etapa",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "prospectos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "grafica",
+    "campana"
+   ]
+  },
+  {
+   "id": "responsable_vendedor",
+   "grupo": "crm",
+   "nombre": "Responsable / vendedor",
+   "que_es": "Quién lleva el cliente u oportunidad; hoy es campo texto.",
+   "para_que": "Repartir cartera y medir desempeño por persona.",
+   "frases": [
+    "asignale a carlos",
+    "que vendedor lo lleva",
+    "mi equipo de ventas",
+    "responsable del cliente",
+    "comisiones de maría"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Responsable",
+      "tipo": "texto"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "empleado",
+    "comision"
+   ]
+  },
+  {
+   "id": "actividad",
+   "grupo": "crm",
+   "nombre": "Actividad",
+   "que_es": "Registro de algo hecho: llamada, visita, correo o cambio con fecha.",
+   "para_que": "Historial de qué pasó con cada cliente.",
+   "frases": [
+    "anota que lo llamé",
+    "actividad de hoy",
+    "registrar visita",
+    "bitácora de llamadas",
+    "que hicimos con el cliente"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Tipo",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Nota",
+      "tipo": "texto"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "nota",
+    "seguimiento_recordatorio",
+    "tarea"
+   ]
+  },
+  {
+   "id": "tarea",
+   "grupo": "crm",
+   "nombre": "Tarea",
+   "que_es": "Pendiente con responsable, prioridad y fecha límite; va en tablero.",
+   "para_que": "Organizar el trabajo interno del equipo.",
+   "frases": [
+    "tarea para mañana",
+    "pendiente de llamar",
+    "asignale a ana",
+    "to-do del equipo",
+    "tarea urgente hoy"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Título",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Responsable",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Fecha límite",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "tareas"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "cita",
+    "recordatorio"
+   ]
+  },
+  {
+   "id": "cita",
+   "grupo": "crm",
+   "nombre": "Cita",
+   "que_es": "Compromiso con fecha y hora con alguien; va en una pestaña con vista agenda (registro), no como tarea del tablero.",
+   "para_que": "Reservar horarios sin encimar citas.",
+   "frases": [
+    "agendar cita el viernes",
+    "cita a las 4",
+    "calendario de citas",
+    "reservación con cliente",
+    "confirmar la cita"
+   ],
+   "se_arma_con": {
+    "vista": "agenda",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Hora",
+      "tipo": "hora"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "citas"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "tarea",
+    "reunion"
+   ]
+  },
+  {
+   "id": "nota",
+   "grupo": "crm",
+   "nombre": "Nota",
+   "que_es": "Texto libre pegado a un cliente o caso sin ser tarea formal.",
+   "para_que": "Apuntes rápidos que el equipo debe leer.",
+   "frases": [
+    "nota que prefiere mañanas",
+    "dejale una nota",
+    "comentario del cliente",
+    "anotación interna",
+    "nota en la ficha"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Nota",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "actividad",
+    "seguimiento_recordatorio"
+   ]
+  },
+  {
+   "id": "seguimiento_recordatorio",
+   "grupo": "crm",
+   "nombre": "Seguimiento / recordatorio",
+   "que_es": "Próximo paso con cliente o aviso con fecha; vencimientos o seguimientos.",
+   "para_que": "Volver a llamar o cobrar sin depender de la memoria.",
+   "frases": [
+    "recordame cobrarle",
+    "seguimiento el lunes",
+    "no se me olvide llamar",
+    "aviso para renovar",
+    "próximo contacto"
+   ],
+   "se_arma_con": {
+    "vista": "vencimientos",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Próximo",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Nota",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "seguimientos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "recordatorio",
+    "tarea",
+    "cita"
+   ]
+  },
+  {
+   "id": "segmento_etiqueta",
+   "grupo": "crm",
+   "nombre": "Segmento / etiqueta",
+   "que_es": "Grupo o etiqueta para filtrar clientes: VIP, zona, rubro.",
+   "para_que": "Campañas y reportes por tipo de cliente.",
+   "frases": [
+    "etiqueta vip",
+    "segmento zona 10",
+    "marcar como mayorista",
+    "tag de instagram",
+    "clientes frecuentes"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Etiqueta",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "canal_fuente",
+    "campana"
+   ]
+  },
+  {
+   "id": "canal_fuente",
+   "grupo": "crm",
+   "nombre": "Canal / fuente",
+   "que_es": "De dónde vino el lead: redes, referido, feria, Google.",
+   "para_que": "Saber qué marketing sí sirve.",
+   "frases": [
+    "vino por facebook",
+    "fuente whatsapp",
+    "canal de google",
+    "referido de un amigo",
+    "de donde salen los clientes"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Origen",
+      "tipo": "texto"
+     }
+    ],
+    "pestana_base": "prospectos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "campana",
+    "segmento_etiqueta"
+   ]
+  },
+  {
+   "id": "campana",
+   "grupo": "crm",
+   "nombre": "Campaña",
+   "que_es": "Acción de marketing con fechas, canal y presupuesto.",
+   "para_que": "Planear promos y medir si valió la pena.",
+   "frases": [
+    "campaña del buen fin",
+    "marketing en redes",
+    "presupuesto de ads",
+    "promo día de madres",
+    "campaña activa"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Nombre",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Canal",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Presupuesto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "campanas"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "promocion",
+    "canal_fuente"
+   ]
+  },
+  {
+   "id": "cotizacion",
+   "grupo": "crm",
+   "nombre": "Cotización",
+   "que_es": "Propuesta de precio enviada al cliente con vigencia y estado.",
+   "para_que": "Seguir presupuestos hasta que digan sí o no.",
+   "frases": [
+    "mandar cotización",
+    "presupuesto al cliente",
+    "cuanto cotizamos",
+    "cotización pendiente",
+    "valida hasta el viernes"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Válida hasta",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "cotizaciones"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "oportunidad",
+    "factura"
+   ]
+  },
+  {
+   "id": "ticket",
+   "grupo": "crm",
+   "nombre": "Ticket (soporte)",
+   "que_es": "Caso de queja o soporte con prioridad y estados hasta resolver.",
+   "para_que": "Atender reclamos sin que se pierdan en WhatsApp.",
+   "frases": [
+    "ticket de soporte",
+    "queja del cliente",
+    "mesa de ayuda",
+    "reclamo abierto",
+    "caso prioritario"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Asunto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Prioridad",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "quejas-y-soporte"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "orden_servicio",
+    "actividad"
+   ]
+  },
+  {
+   "id": "orden_servicio",
+   "grupo": "crm",
+   "nombre": "Orden de servicio",
+   "que_es": "Trabajo acordado con cliente: qué se hace, cuándo y en qué estado.",
+   "para_que": "Talleres, servicios técnicos y instalaciones ordenados.",
+   "frases": [
+    "orden de servicio",
+    "arreglo del aire",
+    "servicio en domicilio",
+    "orden para el técnico",
+    "trabajo pendiente cliente"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Servicio",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "ticket",
+    "reparacion_garantia"
+   ]
+  },
+  {
+   "id": "membresia_suscripcion",
+   "grupo": "crm",
+   "nombre": "Membresía / suscripción",
+   "que_es": "Cliente que paga recurrente con inicio, fin y estado de plan.",
+   "para_que": "Gimnasios, SaaS y mensualidades sin Excel aparte.",
+   "frases": [
+    "membresía mensual",
+    "suscripción activa",
+    "cuando renueva",
+    "plan anual del cliente",
+    "mensualidad del gym"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Plan",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Inicio",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "cobro_pago",
+    "contrato"
+   ]
+  },
+  {
+   "id": "prospecto_lead",
+   "grupo": "crm",
+   "nombre": "Prospecto (lead)",
+   "que_es": "Persona interesada aún no cliente, con etapa en el embudo.",
+   "para_que": "Nutrir ventas antes del cierre.",
+   "frases": [
+    "prospectos nuevos",
+    "leads de la feria",
+    "gente interesada",
+    "pipeline de leads",
+    "posible cliente"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Nombre",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Origen",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Valor",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Etapa",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "prospectos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "contacto_cliente",
+    "oportunidad"
+   ]
+  },
+  {
+   "id": "producto",
+   "grupo": "erp",
+   "nombre": "Producto",
+   "que_es": "Artículo o servicio que vendés, con nombre y categoría.",
+   "para_que": "Catálogo base para inventario y pedidos.",
+   "frases": [
+    "mis productos",
+    "agregar refacción nueva",
+    "lista de lo que vendo",
+    "sku del producto",
+    "catálogo de tienda"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Producto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Categoría",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Precio",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "inventario"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "inventario_stock",
+    "linea_pedido"
+   ]
+  },
+  {
+   "id": "inventario_stock",
+   "grupo": "erp",
+   "nombre": "Inventario / stock",
+   "que_es": "Cuántas unidades hay, mínimo y estado de cada producto en bodega.",
+   "para_que": "Saber qué reordenar antes de quedarte sin existencia.",
+   "frases": [
+    "cuanto stock queda",
+    "inventario de bodega",
+    "producto agotado",
+    "bajo inventario",
+    "existencias actuales"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Producto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Existencia",
+      "tipo": "numero"
+     },
+     {
+      "nombre": "Mínimo",
+      "tipo": "numero"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "inventario"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "movimiento_inventario",
+    "producto"
+   ]
+  },
+  {
+   "id": "sucursal_almacen",
+   "grupo": "erp",
+   "nombre": "Sucursal / almacén",
+   "que_es": "Lugar donde guardás mercadería: tienda, bodega o sucursal.",
+   "para_que": "Separar existencias por punto de venta.",
+   "frases": [
+    "sucursal mixco",
+    "bodega central",
+    "stock por tienda",
+    "almacén zona 9",
+    "cada local su inventario"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Sucursal",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Producto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Existencia",
+      "tipo": "numero"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "inventario_stock",
+    "proveedor"
+   ]
+  },
+  {
+   "id": "movimiento_inventario",
+   "grupo": "erp",
+   "nombre": "Movimiento de inventario",
+   "que_es": "Entrada o salida que debe actualizar el stock automáticamente.",
+   "para_que": "Registrar compras, ventas y ajustes sin recalcular a mano.",
+   "frases": [
+    "entrada de mercadería",
+    "salida por venta",
+    "ajuste de inventario",
+    "kardex automático",
+    "movimiento de bodega"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Producto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Cantidad",
+      "tipo": "numero"
+     },
+     {
+      "nombre": "Tipo",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": "movimientos",
+   "no_confundir_con": [
+    "inventario_stock",
+    "compra"
+   ]
+  },
+  {
+   "id": "proveedor",
+   "grupo": "erp",
+   "nombre": "Proveedor",
+   "que_es": "Quién te surte: nombre, rubro, contacto y plazo.",
+   "para_que": "Pedir rápido cuando se acaba algo.",
+   "frases": [
+    "lista de proveedores",
+    "quien me vende esto",
+    "contacto del distribuidor",
+    "proveedor de empaques",
+    "nuevo surtidor"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Proveedor",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Rubro",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Contacto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "proveedores"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "compra",
+    "empresa"
+   ]
+  },
+  {
+   "id": "compra",
+   "grupo": "erp",
+   "nombre": "Compra",
+   "que_es": "Orden a proveedor con monto, fechas y estado de llegada.",
+   "para_que": "Controlar abastecimiento y pagos a proveedores.",
+   "frases": [
+    "orden de compra",
+    "pedido al proveedor",
+    "compra en tránsito",
+    "cuando llega la merca",
+    "requisición de bodega"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Proveedor",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Llegada",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "compras"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "gasto",
+    "cuenta_por_pagar"
+   ]
+  },
+  {
+   "id": "venta_pedido",
+   "grupo": "erp",
+   "nombre": "Venta / pedido",
+   "que_es": "Pedido del cliente con total, fechas y estado hasta entregar.",
+   "para_que": "Surtir pedidos sin perder ninguno en el camión.",
+   "frases": [
+    "pedidos del día",
+    "orden de venta",
+    "que pidieron hoy",
+    "pedido en ruta",
+    "venta por surtir"
+   ],
+   "se_arma_con": {
+    "vista": "tablero",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Total",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Entrega",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "pedidos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "factura",
+    "linea_pedido"
+   ]
+  },
+  {
+   "id": "linea_pedido",
+   "grupo": "erp",
+   "nombre": "Línea de pedido",
+   "que_es": "Cada producto dentro de un pedido con cantidad y precio.",
+   "para_que": "Detallar qué lleva cada orden sin un solo campo texto.",
+   "frases": [
+    "líneas del pedido",
+    "varios productos en una orden",
+    "detalle del pedido",
+    "cantidad por ítem",
+    "desglose de la venta"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Producto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Cantidad",
+      "tipo": "numero"
+     },
+     {
+      "nombre": "Precio",
+      "tipo": "dinero"
+     }
+    ],
+    "pestana_base": null
+   },
+   "falta": "relacion",
+   "no_confundir_con": [
+    "venta_pedido",
+    "producto"
+   ]
+  },
+  {
+   "id": "precio_costo_margen",
+   "grupo": "erp",
+   "nombre": "Precio / costo / margen",
+   "que_es": "Precio de venta, costo unitario y utilidad; margen auto aún no existe.",
+   "para_que": "Saber si ganás en cada producto.",
+   "frases": [
+    "precio y costo",
+    "cuanto me deja de margen",
+    "utilidad por producto",
+    "subir precios",
+    "costo de la mercadería"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [
+     {
+      "nombre": "Precio",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Costo",
+      "tipo": "dinero"
+     }
+    ],
+    "pestana_base": "inventario"
+   },
+   "falta": "calculado",
+   "no_confundir_con": [
+    "campo_dinero",
+    "cotizacion"
+   ]
+  },
+  {
+   "id": "factura",
+   "grupo": "erp",
+   "nombre": "Factura",
+   "que_es": "Documento de cobro con folio, monto, emisión y vencimiento.",
+   "para_que": "Facturación y control de lo timbrado o enviado.",
+   "frases": [
+    "facturas del mes",
+    "folio de factura",
+    "factura pendiente de pago",
+    "timbrar la factura",
+    "cfdi al cliente"
+   ],
+   "se_arma_con": {
+    "vista": "vencimientos",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Folio",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Vence",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "facturas"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "cobro_pago",
+    "cuenta_por_cobrar"
+   ]
+  },
+  {
+   "id": "cobro_pago",
+   "grupo": "erp",
+   "nombre": "Cobro / pago",
+   "que_es": "Movimiento de dinero entrante o saliente ligado a un concepto.",
+   "para_que": "Registrar que ya pagaron o que tú pagaste.",
+   "frases": [
+    "registrar el cobro",
+    "me pagó hoy",
+    "pago del cliente",
+    "abono a la factura",
+    "salida de caja proveedor"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Concepto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Tipo",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "cobros"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "caja",
+    "gasto"
+   ]
+  },
+  {
+   "id": "cuenta_por_cobrar",
+   "grupo": "erp",
+   "nombre": "Cuenta por cobrar",
+   "que_es": "Saldo que clientes te deben con fecha de vencimiento.",
+   "para_que": "Cobranza y flujo de caja previsible.",
+   "frases": [
+    "quien me debe",
+    "cuentas por cobrar",
+    "cartera de clientes",
+    "saldo pendiente",
+    "cobros atrasados"
+   ],
+   "se_arma_con": {
+    "vista": "vencimientos",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Vence",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "cobros"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "factura",
+    "cobro_pago"
+   ]
+  },
+  {
+   "id": "cuenta_por_pagar",
+   "grupo": "erp",
+   "nombre": "Cuenta por pagar",
+   "que_es": "Deuda con proveedores o gastos por pagar con vencimiento.",
+   "para_que": "No chocar con el banco por olvidar un pago.",
+   "frases": [
+    "deuda con proveedor",
+    "cuentas por pagar",
+    "factura del proveedor pendiente",
+    "pagar la renta",
+    "obligaciones del mes"
+   ],
+   "se_arma_con": {
+    "vista": "vencimientos",
+    "campos": [
+     {
+      "nombre": "Proveedor",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Vence",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "gastos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "compra",
+    "gasto"
+   ]
+  },
+  {
+   "id": "gasto",
+   "grupo": "erp",
+   "nombre": "Gasto",
+   "que_es": "Salida de dinero del negocio por concepto y categoría.",
+   "para_que": "Ver en qué se va la plata cada mes.",
+   "frases": [
+    "gastos de operación",
+    "pago de luz",
+    "egreso del día",
+    "en que se fue la plata",
+    "gasto de marketing"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Concepto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Categoría",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "gastos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "caja",
+    "cuenta_por_pagar"
+   ]
+  },
+  {
+   "id": "caja",
+   "grupo": "erp",
+   "nombre": "Caja",
+   "que_es": "Entradas y salidas del día para cuadrar efectivo al cierre.",
+   "para_que": "Arqueo diario y saber cuánto quedó en caja.",
+   "frases": [
+    "corte de caja",
+    "arqueo de hoy",
+    "movimientos de caja",
+    "efectivo en caja",
+    "entrada y salida del día"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Concepto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Tipo",
+      "tipo": "estado"
+     },
+     {
+      "nombre": "Monto",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     }
+    ],
+    "pestana_base": "caja-diaria"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "cobro_pago",
+    "gasto"
+   ]
+  },
+  {
+   "id": "empleado",
+   "grupo": "erp",
+   "nombre": "Empleado",
+   "que_es": "Persona de tu nómina o equipo con datos básicos y estado.",
+   "para_que": "RH ligero: quién trabaja y en qué área.",
+   "frases": [
+    "lista de empleados",
+    "personal de la tienda",
+    "colaborador nuevo",
+    "planilla del equipo",
+    "quien trabaja aqui"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Colaborador",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Área",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "nomina"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "turno_horario",
+    "responsable_vendedor"
+   ]
+  },
+  {
+   "id": "turno_horario",
+   "grupo": "erp",
+   "nombre": "Turno / horario",
+   "que_es": "Quién cubre qué día y hora; se ve en agenda de turnos.",
+   "para_que": "Cuadrar personal en mostrador, cocina o reparto.",
+   "frases": [
+    "turnos de la semana",
+    "quien abre mañana",
+    "horario del personal",
+    "roster de trabajo",
+    "turno noche"
+   ],
+   "se_arma_con": {
+    "vista": "agenda",
+    "campos": [
+     {
+      "nombre": "Colaborador",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Inicio",
+      "tipo": "hora"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "turnos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "cita",
+    "asistencia"
+   ]
+  },
+  {
+   "id": "activo_equipo",
+   "grupo": "erp",
+   "nombre": "Activo / equipo",
+   "que_es": "Máquina, vehículo o activo fijo con mantenimientos programados.",
+   "para_que": "No fallar por olvidar servicio al camión o al horno.",
+   "frases": [
+    "equipos del negocio",
+    "camioneta de reparto",
+    "activo fijo",
+    "maquinaria del taller",
+    "aire acondicionado local"
+   ],
+   "se_arma_con": {
+    "vista": "vencimientos",
+    "campos": [
+     {
+      "nombre": "Equipo",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Programado",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Costo",
+      "tipo": "dinero"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "mantenimientos"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "producto",
+    "reparacion_garantia"
+   ]
+  },
+  {
+   "id": "reparacion_garantia",
+   "grupo": "erp",
+   "nombre": "Reparación / garantía",
+   "que_es": "Caso post-venta por garantía con vigencia y estado de taller.",
+   "para_que": "Dar seguimiento a arreglos y reclamos de fábrica.",
+   "frases": [
+    "garantía del producto",
+    "en taller el celular",
+    "reparación pendiente",
+    "vence la garantía",
+    "caso de garantía"
+   ],
+   "se_arma_con": {
+    "vista": "vencimientos",
+    "campos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Producto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Vence",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "garantias"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "ticket",
+    "orden_servicio"
+   ]
+  },
+  {
+   "id": "relacion",
+   "grupo": "futuro",
+   "nombre": "Relación entre registros",
+   "que_es": "Enlace real entre tablas: cliente ↔ empresa, pedido ↔ líneas.",
+   "para_que": "Dejar de repetir nombres en texto y mantener datos consistentes.",
+   "frases": [
+    "ligar cliente con empresa",
+    "relación pedido productos",
+    "que no sea texto suelto",
+    "vincular factura al cliente",
+    "conectar tablas"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": "relacion",
+   "no_confundir_con": [
+    "campo_texto",
+    "linea_pedido"
+   ]
+  },
+  {
+   "id": "campo_calculado",
+   "grupo": "futuro",
+   "nombre": "Campo calculado / fórmula",
+   "que_es": "Campo que se llena solo: margen, días vencidos, totales.",
+   "para_que": "Evitar Excel paralelo para números derivados.",
+   "frases": [
+    "formula del margen",
+    "que calcule solo",
+    "total automático",
+    "dias de atraso calculado",
+    "campo que se actualice"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": "calculado",
+   "no_confundir_con": [
+    "campo_numero",
+    "precio_costo_margen"
+   ]
+  },
+  {
+   "id": "regla_cuando_entonces",
+   "grupo": "futuro",
+   "nombre": "Regla cuando-entonces",
+   "que_es": "Automatización: si pasa X, cambiar estado o avisar.",
+   "para_que": "Menos trabajo manual en cobros, stock y seguimientos.",
+   "frases": [
+    "si vence avisame",
+    "cuando stock bajo pedir",
+    "regla automática",
+    "si pagado cerrar ticket",
+    "automatizar cobros"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": "regla",
+   "no_confundir_con": [
+    "seguimiento_recordatorio",
+    "movimiento_inventario"
+   ]
+  },
+  {
+   "id": "documento_pdf",
+   "grupo": "futuro",
+   "nombre": "Documento PDF",
+   "que_es": "Generar o adjuntar PDF: cotización, factura o contrato desde el CRM.",
+   "para_que": "Mandar papel formal sin salir del sistema.",
+   "frases": [
+    "pdf de la cotización",
+    "imprimir factura",
+    "documento para firmar",
+    "mandar pdf al cliente",
+    "generar contrato"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": "documento_pdf",
+   "no_confundir_con": [
+    "cotizacion",
+    "exportar"
+   ]
+  },
+  {
+   "id": "rol_permiso",
+   "grupo": "futuro",
+   "nombre": "Rol / permiso",
+   "que_es": "Quién puede ver o editar cada pestaña y dato sensible.",
+   "para_que": "Que caja no vea nómina y vendedores no borren todo.",
+   "frases": [
+    "permisos por usuario",
+    "solo gerencia ve gastos",
+    "rol de vendedor",
+    "que ana no edite precios",
+    "accesos del equipo"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": "rol",
+   "no_confundir_con": [
+    "empleado",
+    "responsable_vendedor"
+   ]
+  },
+  {
+   "id": "plantilla",
+   "grupo": "futuro",
+   "nombre": "Plantilla",
+   "que_es": "Receta guardada de sección + piezas para clonar o mezclar rubros.",
+   "para_que": "Arrancar rápido sin perder el cuaderno en blanco.",
+   "frases": [
+    "plantilla de ferretería",
+    "usar receta de restaurante",
+    "mezclar dos rubros",
+    "template guardado",
+    "empezar con plantilla"
+   ],
+   "se_arma_con": {
+    "vista": null,
+    "campos": [],
+    "pestana_base": null
+   },
+   "falta": "plantilla",
+   "no_confundir_con": [
+    "cuaderno_en_blanco",
+    "ejemplo",
+    "pestana_seccion"
+   ]
+  },
+  {
+   "id": "recordatorio",
+   "grupo": "crm",
+   "nombre": "Recordatorio (aviso)",
+   "que_es": "Aviso con fecha para ti o el equipo; pestaña recordatorios.",
+   "para_que": "Obligaciones del negocio que no son seguimiento a un cliente.",
+   "frases": [
+    "recordatorio pagar predial",
+    "aviso renovar póliza",
+    "no olvidar pedir insumos",
+    "alarma para el lunes",
+    "pendiente con fecha"
+   ],
+   "se_arma_con": {
+    "vista": "vencimientos",
+    "campos": [
+     {
+      "nombre": "Título",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Cuándo",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "recordatorios"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "seguimiento_recordatorio",
+    "tarea"
+   ]
+  },
+  {
+   "id": "reunion",
+   "grupo": "crm",
+   "nombre": "Reunión",
+   "que_es": "Junta con fecha y hora; misma vista agenda que citas.",
+   "para_que": "Coordinar juntas internas o con clientes grandes.",
+   "frases": [
+    "junta con el cliente",
+    "reunión el martes",
+    "agenda de juntas",
+    "zoom a las 10",
+    "reunión de cierre"
+   ],
+   "se_arma_con": {
+    "vista": "agenda",
+    "campos": [
+     {
+      "nombre": "Asunto",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Hora",
+      "tipo": "hora"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "reuniones"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "cita",
+    "actividad"
+   ]
+  },
+  {
+   "id": "asistencia",
+   "grupo": "erp",
+   "nombre": "Asistencia",
+   "que_es": "Entrada y salida del personal por día con estado de falta o retardo.",
+   "para_que": "Control básico de quién vino y a qué hora.",
+   "frases": [
+    "control de asistencia",
+    "quien vino hoy",
+    "faltas del mes",
+    "entrada y salida",
+    "retardo del personal"
+   ],
+   "se_arma_con": {
+    "vista": "tabla",
+    "campos": [
+     {
+      "nombre": "Colaborador",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "Fecha",
+      "tipo": "fecha"
+     },
+     {
+      "nombre": "Entrada",
+      "tipo": "hora"
+     },
+     {
+      "nombre": "Estado",
+      "tipo": "estado"
+     }
+    ],
+    "pestana_base": "asistencia"
+   },
+   "falta": null,
+   "no_confundir_con": [
+    "turno_horario",
+    "empleado"
+   ]
+  }
+ ]
+}
