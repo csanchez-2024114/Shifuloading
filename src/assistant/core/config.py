@@ -141,7 +141,7 @@ class Settings:
     coder_data_enabled: bool = False          # API de datos por proyecto (solo si el usuario pide base)
     coder_sharing_enabled: bool = False       # handle, publicación por versión y rutas públicas
     coder_public_write_enabled: bool = False  # escritura anónima de visitantes en una colección pública aparte
-    coder_sandbox_origin: str = "http://localhost:8100"  # origen aislado (otro host que la app, no solo otro puerto)
+    coder_sandbox_origin: str = "http://127.0.0.2:8100"  # origen aislado: otro host (loopback), no otro puerto
     coder_max_file_bytes: int = 200_000
     coder_max_files: int = 40                 # archivos por proyecto
     coder_max_projects_per_user: int = 20
@@ -247,7 +247,7 @@ class Settings:
             coder_data_enabled=_bool("CODER_DATA_ENABLED"),
             coder_sharing_enabled=_bool("CODER_SHARING_ENABLED"),
             coder_public_write_enabled=_bool("CODER_PUBLIC_WRITE_ENABLED"),
-            coder_sandbox_origin=(os.getenv("CODER_SANDBOX_ORIGIN") or "http://localhost:8100").strip().rstrip("/"),
+            coder_sandbox_origin=(os.getenv("CODER_SANDBOX_ORIGIN") or "http://127.0.0.2:8100").strip().rstrip("/"),
             coder_max_file_bytes=_num("CODER_MAX_FILE_BYTES", "200000"),
             coder_max_files=_num("CODER_MAX_FILES", "40"),
             coder_max_projects_per_user=_num("CODER_MAX_PROJECTS_PER_USER", "20"),

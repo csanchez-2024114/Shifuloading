@@ -44,7 +44,7 @@ def check_settings(settings, profile=None, appdata=None) -> None:
             or origin.query or origin.fragment or origin.username or origin.password:
         raise ConfigError(_text(profile, "startup.coder_sandbox_origin",
                                 "CODER_SANDBOX_ORIGIN debe ser un origen http(s) sin ruta, p. ej. "
-                                "http://localhost:8100 (es «{origin}»).", origin=settings.coder_sandbox_origin))
+                                "http://127.0.0.2:8100 (es «{origin}»).", origin=settings.coder_sandbox_origin))
     host = origin.hostname.lower()
     if host in settings.trusted_hosts or "*" in settings.trusted_hosts:
         raise ConfigError(_text(profile, "startup.coder_sandbox_host_shared",

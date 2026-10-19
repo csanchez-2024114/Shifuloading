@@ -44,7 +44,9 @@ def test_con_los_interruptores_en_0_no_hay_nada_del_codificador():
     (dict(VALIDO, coder_sandbox_origin="javascript:alert(1)"), "CODER_SANDBOX_ORIGIN debe ser"),
     (dict(VALIDO, coder_sandbox_origin="http://localhost:8100/ruta"), "CODER_SANDBOX_ORIGIN debe ser"),
     (dict(VALIDO, coder_sandbox_origin="http://u:p@localhost:8100"), "CODER_SANDBOX_ORIGIN debe ser"),
-    (dict(VALIDO, trusted_hosts=("localhost", "127.0.0.1", "testserver")), "también está en TRUSTED_HOSTS"),
+    (dict(VALIDO, coder_sandbox_origin="http://localhost:8100", trusted_hosts=("localhost", "127.0.0.1", "testserver")),
+     "también está en TRUSTED_HOSTS"),
+    (dict(VALIDO, coder_sandbox_origin="http://127.0.0.1:8100"), "también está en TRUSTED_HOSTS"),  # solo otro puerto
     (dict(VALIDO, trusted_hosts=("127.0.0.1", "*")), "también está en TRUSTED_HOSTS"),
     (dict(VALIDO, coder_sandbox_origin="http://LOCALHOST:8100", trusted_hosts=("localhost", "testserver")),
      "también está en TRUSTED_HOSTS"),
@@ -53,6 +55,24 @@ def test_combinaciones_invalidas_no_arrancan(overrides, texto):
     with pytest.raises(ConfigError) as e:
         _app(**overrides)
     assert texto in str(e.value)
+
+
+def test_con_los_defaults_y_coder_enabled_la_validacion_de_hosts_pasa(monkeypatch):
+    """El default de CODER_SANDBOX_ORIGIN (127.0.0.2, otro host de loopback) no choca con el TRUSTED_HOSTS por defecto
+    (localhost, 127.0.0.1): basta con encender CODER_ENABLED y AUTH_ENABLED."""
+    from assistant.core.coder.routes import check_settings
+    from assistant.core.config import Settings
+
+    for name in ("TRUSTED_HOSTS", "CODER_SANDBOX_ORIGIN"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("AUTH_ENABLED", "1")
+    monkeypatch.setenv("CODER_ENABLED", "1")
+    s = Settings.from_env()
+    assert s.trusted_hosts == ("localhost", "127.0.0.1")
+    assert s.coder_sandbox_origin == "http://127.0.0.2:8100"
+    check_settings(s, None, appdata=object())  # no lanza
+    app = _app(**dict(VALIDO, trusted_hosts=("localhost", "127.0.0.1", "testserver")))  # arranca con esos hosts
+    assert hasattr(app.state, "coder")
 
 
 def test_sin_base_de_negocio_no_arranca():

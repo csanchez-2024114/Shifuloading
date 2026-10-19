@@ -276,7 +276,7 @@
    "coder_public_write_enabled": false,
    "coder_public_write_max_docs": 500,
    "coder_public_write_rpm": 5,
-   "coder_sandbox_origin": "http://localhost:8100",
+   "coder_sandbox_origin": "http://127.0.0.2:8100",
    "coder_sharing_enabled": false,
    "coder_token_fail_max": 10,
    "coder_token_fail_window_minutes": 15,

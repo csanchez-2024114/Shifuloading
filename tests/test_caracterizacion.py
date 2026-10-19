@@ -690,7 +690,7 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "CODER_DATA_ENABLED": ("coder_data_enabled", False),
     "CODER_SHARING_ENABLED": ("coder_sharing_enabled", False),
     "CODER_PUBLIC_WRITE_ENABLED": ("coder_public_write_enabled", False),
-    "CODER_SANDBOX_ORIGIN": ("coder_sandbox_origin", "http://localhost:8100"),
+    "CODER_SANDBOX_ORIGIN": ("coder_sandbox_origin", "http://127.0.0.2:8100"),
     "CODER_MAX_FILE_BYTES": ("coder_max_file_bytes", 200000),
     "CODER_MAX_FILES": ("coder_max_files", 40),
     "CODER_MAX_PROJECTS_PER_USER": ("coder_max_projects_per_user", 20),
