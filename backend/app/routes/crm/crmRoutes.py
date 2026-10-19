@@ -38,6 +38,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.limiter import limiter
+from app.crm import adjuntos
 from app.crm import agente
 from app.crm import diseno
 from app.crm import estructura as est
@@ -57,6 +58,8 @@ router = APIRouter()
 MAX_IMAGEN = 4_000_000  # caracteres del data URL (≈3 MB de imagen)
 _IMAGEN_LEIBLE = re.compile(r"^data:image/(png|jpe?g|webp|gif);base64,", re.I)  # los formatos que lee el modelo (no SVG ni otros)
 TEXTO_SOLO_CAPTURA = "Mira esta imagen: dime en una línea qué ves y haz lo más obvio con ella, o propón una acción concreta."
+TEXTO_SOLO_ARCHIVO = "Te mando este archivo: ¿qué hago con él?"
+MAX_ADJUNTO = 7_000_000  # base64 de un archivo de hasta 5 MB
 
 
 # ───────── Entradas ─────────
@@ -197,10 +200,17 @@ class MensajePrevio(_Texto):
     t: str = Field(..., max_length=500)
 
 
+class Adjunto(BaseModel):
+    """Archivo en base64: no pasa por _Texto para no tocar el payload."""
+    nombre: str = Field(..., max_length=120)
+    datos: str = Field(..., max_length=MAX_ADJUNTO)
+
+
 class ContextoChat(_Texto):
     historial: list[MensajePrevio] = Field(default_factory=list, max_length=20)  # últimos mensajes, para entender "y también a Pedro"
     pendiente: Optional[dict[str, Any]] = None
     imagen: Optional[str] = Field(None, max_length=MAX_IMAGEN)
+    archivo: Optional[Adjunto] = None
     seccion: Optional[str] = Field(None, max_length=40)
 
 
@@ -511,7 +521,7 @@ async def deshacer(request: Request, datos: Optional[Deshacer] = None, user: dic
 # ───────── Chat ─────────
 
 async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool,
-                         imagen: str | None = None, seccion: str | None = None, persona: str | None = None):
+                         imagen: str | None = None, seccion: str | None = None, persona: str | None = None, adjunto: str | None = None):
     """Resuelve un mensaje del chat. Con IA si se puede (y no hay un borrado por confirmar); si no, con las reglas.
     El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite).
     Si el turno cambió algo que se puede deshacer, deja un punto con `antes_de` = lo que escribió la persona (como lo hecho a mano):
@@ -525,13 +535,15 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
         r = None
         if (texto or imagen) and not pendiente and agente.activo():
             # Con imagen se intenta verla; si el modelo no puede con ella (formato raro, demasiado grande) se reintenta solo con el texto.
-            intentos = [{"imagen": imagen, "seccion": seccion, "persona": persona}, {"persona": persona}] if imagen else [{"persona": persona}]
+            intentos = [{"imagen": imagen, "seccion": seccion, "persona": persona}, {"persona": persona, "seccion": seccion}] if imagen else [{"persona": persona, "seccion": seccion}]
+            if adjunto:  # el archivo solo lo lee el modelo; las reglas (sin IA) nunca lo toman como órdenes
+                intentos = [{**x, "adjunto": adjunto} for x in intentos]
             if diseno:
                 puntos = await _puntos_con_foto(db, user_id)
                 intentos = [{**x, "puntos": puntos} for x in intentos]
             for extra in intentos:
                 try:
-                    r = await agente.responder(doc, texto or TEXTO_SOLO_CAPTURA, historial, con_captura=con_captura, **extra)
+                    r = await agente.responder(doc, texto or (TEXTO_SOLO_ARCHIVO if adjunto else TEXTO_SOLO_CAPTURA), historial, con_captura=con_captura, **extra)
                     break
                 except Exception as e:  # sin saldo, tiempo agotado, clave inválida…: se sigue con las reglas
                     if extra is intentos[-1]:
@@ -570,18 +582,38 @@ async def _reponer_puntos(db, user_id: str, deshecho: dict) -> None:
         logger.warning("No se pudieron ajustar los puntos de deshacer: %s", type(e).__name__)
 
 
+async def _salida_sin_turno(db, user_id: str, doc: dict, respuesta: str) -> dict:
+    """Respuesta de chat sin tocar el CRM ni llamar al modelo (p. ej. adjunto ilegible)."""
+    diseno = agente.diseno_activo()
+    crm = await _vista(db, user_id, doc) if diseno else vista_crm(doc)
+    salida = {"respuesta": respuesta, "crm": crm, "modo": "ia" if agente.activo() else "reglas"}
+    if diseno:
+        for clave in ("cambios", "fallos", "intentos", "consultas", "avisos"):
+            salida[clave] = []
+    return salida
+
+
 @router.post("/chat")
 @limiter.limit("60/minute")
 async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: BackgroundTasks, user: dict = Depends(get_current_user)):
     ctx = datos.contexto or ContextoChat()
     db = request.app.state.db
     imagen = ctx.imagen if ctx.imagen and _IMAGEN_LEIBLE.match(ctx.imagen) else None
-    if not datos.texto and not imagen:
-        return JSONResponse({"mensaje": "Escribe algo o adjunta una captura."}, status_code=422)
+    adj_leido: dict | None = None
+    if ctx.archivo:
+        adj_leido = adjuntos.leer_adjunto(ctx.archivo.nombre, ctx.archivo.datos)
+        if not adj_leido.get("ok"):
+            doc = await repo.obtener(db, user["id"])
+            if doc is None:
+                return _error(op.ErrorCrm(404, "Todavía no tienes un CRM. Responde el cuestionario para crearlo."))
+            return await _salida_sin_turno(db, user["id"], doc, adj_leido["error"])
+    if not datos.texto and not imagen and not ctx.archivo:
+        return JSONResponse({"mensaje": "Escribe algo o adjunta una captura o un archivo."}, status_code=422)
 
     pendiente = sanear_pendiente(ctx.pendiente)
-    if imagen:
-        pendiente = None  # una captura es un tema nuevo: no se queda atada a un borrado por confirmar (nada se borra sin su “sí”)
+    if imagen or ctx.archivo:
+        pendiente = None  # captura o documento: tema nuevo, sin borrado pendiente
+    bloque_adjunto = adjuntos.para_el_modelo(adj_leido) if adj_leido and adj_leido.get("ok") else None
     # El historial y lo que Shifu recuerda de la persona viven en el servidor; lo que mande la pantalla solo sirve si todavía no hay nada guardado.
     try:
         conv = await mem.obtener(db, user["id"])
@@ -591,7 +623,7 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     historial = mem.historial_para_modelo(conv) or [m.model_dump() for m in ctx.historial]
     persona = mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None) if conv else None
     try:
-        doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona)
+        doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona, bloque_adjunto)
     except op.ErrorCrm as e:
         return _error(e)
 
@@ -601,8 +633,13 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
         donde = f" de “{ctx.seccion}”" if ctx.seccion else ""
         respuesta = (f"📸 Recibí tu captura{donde}, pero ahora mismo no puedo leer imágenes: me guío por lo que escribiste. {respuesta}" if datos.texto
                      else f"📸 Recibí tu captura{donde}, pero ahora mismo no puedo leer imágenes. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.")
+    if bloque_adjunto and resultado.get("modo") != "ia":
+        respuesta = f"📎 Recibí «{ctx.archivo.nombre}», pero ahora mismo no puedo leer archivos." + (f" {respuesta}" if datos.texto and respuesta else " Inténtalo en un rato.")
+    texto_memoria = datos.texto or ("(adjuntó una imagen)" if imagen else "")
+    if adj_leido and adj_leido.get("ok"):
+        texto_memoria = (f"{datos.texto} 📎 {ctx.archivo.nombre}".strip() if datos.texto else f"📎 {ctx.archivo.nombre}")
     try:
-        _, toca = await mem.registrar_turno(db, user["id"], datos.texto or "(adjuntó una imagen)", respuesta, recuerdos=mem.sin_clientes(resultado.get("recuerdos"), [c["n"] for c in doc["contactos"]]))
+        _, toca = await mem.registrar_turno(db, user["id"], texto_memoria or "(adjuntó un archivo)", respuesta, recuerdos=mem.sin_clientes(resultado.get("recuerdos"), [c["n"] for c in doc["contactos"]]))
         if toca and agente.activo():
             segundo_plano.add_task(mem.actualizar_memoria, db, user["id"])  # se pone al día lo que Shifu recuerda sin hacer esperar a la persona
     except Exception as e:
