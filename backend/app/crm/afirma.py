@@ -25,11 +25,15 @@ def afirma_cambio(texto: Any) -> bool:
     return afirma_con(texto, _VERBO)
 
 
+def sin_preguntas(texto: Any) -> str:
+    """El texto sin sus preguntas («¿quieres que la cree?» no afirma ni promete nada)."""
+    return _PREGUNTA_SIN_ABRIR.sub(" ", _PREGUNTA.sub(" ", str(texto or "")))
+
+
 def afirma_con(texto: Any, verbo: Any) -> bool:
     """La misma regla con otro vocabulario (`verbo`: un patrón con `finditer`): las preguntas y lo negado no cuentan. La usa el agente
     para las frases de logro de Carlos («registré», «he agregado»…) con el sistema de diseño."""
-    sin_preguntas = _PREGUNTA_SIN_ABRIR.sub(" ", _PREGUNTA.sub(" ", str(texto or "")))
-    for oracion in _ORACION.split(sin_preguntas):
+    for oracion in _ORACION.split(sin_preguntas(texto)):
         for m in verbo.finditer(oracion):
             if not _NIEGA.search(oracion[: m.start()]):
                 return True

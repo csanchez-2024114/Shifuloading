@@ -531,7 +531,7 @@ async def deshacer(request: Request, datos: Optional[Deshacer] = None, user: dic
 
 async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool,
                          imagen: str | None = None, seccion: str | None = None, persona: str | None = None, adjunto: str | None = None,
-                         columnas: list[str] | None = None):
+                         columnas: list[str] | None = None, por_hacer: list[dict] | None = None):
     """Resuelve un mensaje del chat. Con IA si se puede (y no hay un borrado por confirmar); si no, con las reglas.
     El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite).
     Si el turno cambió algo que se puede deshacer, deja un punto con `antes_de` = lo que escribió la persona (como lo hecho a mano):
@@ -550,7 +550,7 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
                 intentos = [{**x, "adjunto": adjunto, "columnas": columnas} for x in intentos]
             if diseno:
                 puntos = await _puntos_con_foto(db, user_id)
-                intentos = [{**x, "puntos": puntos} for x in intentos]
+                intentos = [{**x, "puntos": puntos, "por_hacer": por_hacer} for x in intentos]
             for extra in intentos:
                 try:
                     r = await agente.responder(doc, texto or (TEXTO_SOLO_ARCHIVO if adjunto else TEXTO_SOLO_CAPTURA), historial, con_captura=con_captura, **extra)
@@ -633,11 +633,12 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     except Exception as e:  # la memoria nunca debe impedir que el chat conteste
         logger.warning("No se pudo leer la memoria de Shifu: %s", type(e).__name__)
         conv = None
+    # Al modelo: lo que sabe de la persona, el resumen de lo que ya no cabe en los 16 mensajes, y esos 16 completos.
     historial = mem.historial_para_modelo(conv) or [m.model_dump() for m in ctx.historial]
-    persona = mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None) if conv else None
+    persona = "\n\n".join(x for x in (mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None), mem.bloque_resumen(conv)) if x) or None if conv else None
     try:
         doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona, extra_modelo,
-                                              (adj_leido or {}).get("columnas") or None)
+                                              (adj_leido or {}).get("columnas") or None, por_hacer=(conv or {}).get("por_hacer"))
     except op.ErrorCrm as e:
         return _error(e)
 
@@ -653,7 +654,8 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     if adj_leido and adj_leido.get("ok"):
         texto_memoria = (f"{datos.texto} 📎 {ctx.archivo.nombre}".strip() if datos.texto else f"📎 {ctx.archivo.nombre}")
     try:
-        _, toca = await mem.registrar_turno(db, user["id"], texto_memoria or "(adjuntó un archivo)", respuesta, recuerdos=mem.sin_clientes(resultado.get("recuerdos"), [c["n"] for c in doc["contactos"]]))
+        _, toca = await mem.registrar_turno(db, user["id"], texto_memoria or "(adjuntó un archivo)", respuesta, recuerdos=mem.sin_clientes(resultado.get("recuerdos"), [c["n"] for c in doc["contactos"]]),
+                                            por_hacer=resultado.get("por_hacer") if "por_hacer" in resultado else None)  # sin IA, lo pendiente sigue igual
         if toca and agente.activo():
             segundo_plano.add_task(mem.actualizar_memoria, db, user["id"])  # se pone al día lo que Shifu recuerda sin hacer esperar a la persona
     except Exception as e:

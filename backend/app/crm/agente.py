@@ -24,6 +24,7 @@ from typing import Any
 
 from app.crm import automatizaciones
 from app.crm import estructura as est
+from app.crm import memoria
 from app.crm import operaciones as op
 from app.crm import web
 from app.crm.chat import _capitaliza, _norm
@@ -870,8 +871,10 @@ def _mensajes(doc: dict, texto: str, historial: list[dict], ahora: datetime, con
 
     sobre = f"\n\n{persona}" if persona else ""
     msgs: list[Any] = [SystemMessage(content=f"{INSTRUCCIONES}{sobre}\n\nEstado del CRM (JSON):\n{contexto_crm(doc, ahora)}")]
-    for h in _sin_negativas_viejas((historial or [])[-MAX_HISTORIAL:]):
-        t = str(h.get("t", ""))[:500]
+    # Los mismos 16 mensajes que david (`memoria.ventana`), pero completos: cortarlos a 500 caracteres hacía que «ya te los pasé»
+    # no encontrara los datos de un mensaje largo (prueba del 19-oct). No van más de 16. Lo que se sale va en el resumen rodante.
+    for h in _sin_negativas_viejas(memoria.ventana(historial or [])):
+        t = str(h.get("t", ""))
         if t:
             msgs.append(HumanMessage(content=t) if h.get("de") == "yo" else AIMessage(content=t))
     # El archivo adjunto va solo en el mensaje al modelo: los cercos y las reglas miran únicamente lo que escribió la persona
@@ -938,6 +941,10 @@ def revisar_respuesta(respuesta: str, sesion: "Sesion", doc_inicial: dict) -> st
         aviso = sesion.aviso_numero_inventado(respuesta)
         if aviso:
             return aviso
+        # Antes de la salida de las preguntas: «¿puedes llevar mis ventas?» → «crearé la sección Ventas» sin crearla (prueba del 19-oct).
+        aviso = None if sesion.solo_toma() else sesion.aviso_promesa(respuesta)
+        if aviso:
+            return aviso
     if not sesion.acciones and _ES_PREGUNTA.search(sesion.texto or ""):
         return None  # una pregunta sin acciones: la respuesta puede hablar de cosas ya hechas antes sin que sea un falso éxito
     if diseno:
@@ -976,7 +983,7 @@ def revisar_respuesta(respuesta: str, sesion: "Sesion", doc_inicial: dict) -> st
 async def responder(doc: dict, texto: str, historial: list[dict] | None = None, ahora: datetime | None = None,
                     con_captura: bool = False, modelo: Any = None, buscador: Any = None, imagen: str | None = None, seccion: str | None = None,
                     persona: str | None = None, puntos: list[dict] | None = None, adjunto: str | None = None,
-                    columnas: list[str] | None = None) -> dict:
+                    columnas: list[str] | None = None, por_hacer: list[dict] | None = None) -> dict:
     """Devuelve `{doc, respuesta, vista?, pendiente?, modo: "ia"}`. Lanza excepción si el modelo falla: quien llama usa las reglas.
     Con CRM_DISENO=1 lo resuelve `agente_diseno` (mismo contrato, más `cambios`, `fallos`, `intentos`, `consultas` y `avisos`);
     `puntos` (con foto) son los pedidos que se pueden deshacer y solo se usan ahí."""
@@ -984,7 +991,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
         from app.crm import agente_diseno  # aquí: agente_diseno importa este módulo
 
         return await agente_diseno.responder(doc, texto, historial, ahora, con_captura, modelo, buscador, imagen, seccion, persona, puntos=puntos,
-                                             adjunto=adjunto, columnas=columnas)
+                                             adjunto=adjunto, columnas=columnas, por_hacer=por_hacer)
     from langchain_core.messages import HumanMessage, ToolMessage
 
     buscador = buscador or web.buscar

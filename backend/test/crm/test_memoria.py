@@ -160,8 +160,11 @@ async def test_se_guardan_los_dos_lados_de_la_charla_y_se_cuenta_para_actualizar
         conv, toca = await mem.registrar_turno(db, "u1", f"mensaje {i}", f"respuesta {i}", AHORA)
         assert toca is False
     conv, toca = await mem.registrar_turno(db, "u1", "mensaje 3", "respuesta 3", AHORA)
-    assert toca is True and len(conv["mensajes"]) == 8 and conv["mensajes"][0] == {"de": "yo", "t": "mensaje 0", "ts": AHORA}
-    assert [m["de"] for m in mem.historial_para_modelo(conv, 4)] == ["yo", "shifu", "yo", "shifu"]
+    assert toca is True and len(conv["mensajes"]) == 8 and conv["mensajes"][0] == {"de": "yo", "t": "mensaje 0", "ts": AHORA, "n": 1}
+    assert [m["n"] for m in conv["mensajes"]] == list(range(1, 9))  # numerados: el resumen rodante sabe hasta dónde llegó
+    # Al modelo van los 8 (caben en los 16). Un tope menor recorta por cantidad, no por tokens.
+    assert len(mem.historial_para_modelo(conv)) == 8
+    assert [m["t"] for m in mem.historial_para_modelo(conv, 2)] == ["mensaje 3", "respuesta 3"]
 
 
 @pytest.mark.asyncio

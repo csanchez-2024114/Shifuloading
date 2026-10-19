@@ -3,12 +3,13 @@
 Es el agente de Carlos (modelo + herramientas + verificador) con el prompt del laboratorio (`INSTRUCCIONES_LAB`, copiado de
 `laboratorio/servidor/chat.js`) más herramientas y reglas que solo tiene el CRM, y lo que el laboratorio midió en
 `laboratorio/servidor/chat.js`:
-- Datos por chat: agregar_registro, editar_registro, borrar_registro y consultar_datos (esquemas LITERALES de `registros.py`) sobre
-  TODAS las secciones con registros (`secciones_v`: contactos, tareas y secciones propias). El código entiende cada valor, encuentra
-  el registro y dice qué cambiar (`registros.ejecutar_dato`); aquí solo se aplica con `secciones_v.registro_*`, con el id ya generado.
-  Las herramientas de Carlos que hacían lo mismo (agregar_contactos, cambiar_contacto, eliminar_contacto, agregar_registros,
-  cambiar_registro, eliminar_registro) ya no se le muestran al modelo, pero si las llama siguen funcionando: van a los mismos
-  handlers (alias por una versión, contrato §8). consultar_datos no cambia nada: va a `consultas`, no a `cambios`.
+- Datos por chat: agregar_registro, editar_registro, borrar_registro y consultar_datos (esquemas de `registros.py`) sobre
+  TODAS las secciones con registros (`secciones_v`: contactos, tareas y secciones propias). `agregar_registro` acepta además una
+  lista (`registros`) en el mismo nombre: varios de una sección son una acción, no una herramienta nueva. El código entiende cada
+  valor, encuentra el registro y dice qué cambiar (`registros.ejecutar_dato`); aquí solo se aplica con `secciones_v.registro_*`,
+  con el id ya generado. Las herramientas de Carlos que hacían lo mismo (agregar_contactos, cambiar_contacto, eliminar_contacto,
+  agregar_registros, cambiar_registro, eliminar_registro) ya no se le muestran al modelo, pero si las llama siguen funcionando:
+  van a los mismos handlers (alias por una versión, contrato §8). consultar_datos no cambia nada: va a `consultas`, no a `cambios`.
 - Deshacer por pedido (`deshacer`, resuelto por el código con `puntos.deshacer`; la lista va en `pedidos_anteriores`). Reglas de
   chat.js: tras un deshacer solo (sin otra herramienta en esa vuelta) el turno se cierra y el modelo responde sin herramientas; tras
   deshacer, en el mismo mensaje solo se puede cambiar LO MISMO; si lo único que pasó fue deshacer, la respuesta la escribe el código.
@@ -44,19 +45,20 @@ from app.crm import estructura as est
 from app.crm import operaciones as op
 from app.crm import traza
 from app.crm import pantalla
+from app.crm import por_hacer as ph
 from app.crm.lienzo import ubicar_todo
 from app.crm import puntos as pt
 from app.crm import registros
 from app.crm import secciones_v as sv
 from app.crm import toma
 from app.crm import web
-from app.crm.afirma import afirma_cambio, afirma_con
+from app.crm.afirma import afirma_cambio, afirma_con, sin_preguntas
 from app.crm import chat as agente_chat
 from app.crm.chat import _capitaliza, _norm
 from app.crm.regional import PAISES
 from app.crm import plantillas
 from app.crm.secciones import OTROS_NOMBRES
-from app.crm.valores import fecha_larga, parse_fecha, parse_hora, parse_numero, sin_acentos
+from app.crm.valores import campo_titulo, fecha_larga, parse_fecha, parse_hora, parse_numero, sin_acentos
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +79,33 @@ HERR_DESHACER = {"type": "function", "function": {
 
 # Las de Carlos que hacen lo mismo que las de datos del laboratorio: no se muestran, pero si el modelo las llama van al mismo handler.
 ALIAS_DE_DATOS = frozenset({"agregar_contactos", "cambiar_contacto", "eliminar_contacto", "agregar_registros", "cambiar_registro", "eliminar_registro"})
+
+
+def _agregar_registro_con_lote() -> dict:
+    """El `agregar_registro` de david, que además acepta una lista. Mismo nombre: una herramienta nueva en el catálogo
+    (medida: banco_datos y banco_pestañas bajaron al ver `agregar_registros` siempre) le hacía contestar con la config
+    de la pantalla o preguntar en vez de hacer la gráfica. Varios de una sección siguen siendo UNA acción (`_varios`)."""
+    base = copy.deepcopy(next(h for h in registros.HERRAMIENTAS_DATOS if h["function"]["name"] == "agregar_registro"))
+    fn = base["function"]
+    fn["description"] += (" Si son VARIOS de la misma sección, una sola llamada: la lista va en «registros» "
+                          "(cada objeto es campo → valor, tal como lo dijo) y «valores» puede ir vacío.")
+    fn["parameters"]["properties"]["registros"] = {
+        "type": "array", "maxItems": agente.MAX_CONTACTOS_POR_LLAMADA,
+        "items": {"type": "object", "description": "campo (id o nombre) → valor como lo dijo la persona"}}
+    return base
+
+
+HERR_AGREGAR_REGISTRO = _agregar_registro_con_lote()
+
+
+def _lista_de_agregar(args: dict) -> list[dict] | None:
+    """Varios registros en la misma llamada a `agregar_registro`. None si es uno solo (`valores` objeto): ese camino no cambia."""
+    regs = args.get("registros")
+    if not (isinstance(regs, list) and regs) and isinstance(args.get("valores"), list) and args.get("valores"):
+        regs = args["valores"]
+    if not (isinstance(regs, list) and regs):
+        return None
+    return [{"seccion": args.get("seccion"), "valores": r if isinstance(r, dict) else {}} for r in regs]
 # Mismo nombre que el laboratorio pero esquema de Carlos (`nombre`/`destino`…): no se muestran; si las llama, van a los `_h_*` de Carlos (contrato §8).
 ALIAS_ESTRUCTURA_CARLOS = frozenset({"crear_seccion", "agregar_campo", "renombrar_campo", "quitar_campo", "renombrar_seccion", "definir_opciones"})
 NOMBRES_EDICION = frozenset(h["function"]["name"] for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer")
@@ -198,6 +227,8 @@ PROMESA = regex.compile(r"(?<!\p{L})(voy a|vamos a|procedo|creo una|agrego un|po
 MASIVO = re.compile(r"\btod[ao]s?\b|\bvarias\b|\btodo\b", re.IGNORECASE | re.ASCII)  # «borra todas»: se confirma ANTES de borrar el primero
 SUSTITUTO = re.compile(r"m[aá]s parecid|en su lugar|como alternativa|no hay forma|no (se )?puedo hacer|no es posible|no se puede hacer"
                        r"|solo puedo (mostrar|hacer|poner)|no existe[^.]*\.[^?]*\bya (agregu|puse)", re.IGNORECASE)  # para el gancho de E2
+AVISO_TOPE = ("Se alcanzó el límite de acciones por mensaje: esto NO se hizo. El código lo dejó anotado como pendiente para el siguiente "
+              "mensaje. No lo intentes otra vez ahora: di qué quedó pendiente.")
 ERROR_MASIVO_REGISTROS = ("ERROR: borrar varios registros de una vez necesita confirmación. No borres nada más: di cuáles se borrarían y pregunta "
                           "si está seguro (que responda \"sí\").")
 ERROR_MASIVO_BLOQUES = ('ERROR: quitar varios bloques de una vez necesita confirmación. No quites nada más: di cuáles se quitarían y pregunta si está seguro (que responda "sí").')
@@ -225,6 +256,13 @@ def catalogo(doc: dict) -> toma.Catalogo:
 
 
 # ───────── Ayudas ─────────
+
+# Futuro de indicativo (crearé, agregaré, haré, diré, pondré, haremos, añadiremos, pondremos): la forma gramatical de una promesa, no una
+# lista de casos. El futuro es el infinitivo + «é» (-aré, -eré, -iré) o la raíz irregular en «-dré». No se toma «-ré» suelto: también es
+# el pasado de los verbos en -rar («registré», «borré», «ignoré»). Los pasados en -aré/-eré/-iré («preparé», «generé») sí entran, pero
+# solo cuentan si lo que nombran no corrió en el turno: entonces tampoco es verdad. («-eremos» no: también es «queremos».)
+_FUTURO = regex.compile(r"(?<!\p{L})\p{L}+(?:[aei]ré|dré|aremos|iremos|dremos)(?!\p{L})", regex.IGNORECASE)
+_NUM_SEP = re.compile(r"(?<=\d)[,.](?=\d{3}\b)")
 
 # Partes de una oración para `afirma_sin_respaldo`: «ya estaba la de mañana, pero puse las de los jueves» son dos afirmaciones.
 _PARTES = re.compile(r"[.!?\n;:,]|\bpero\b|\by\b", re.IGNORECASE)
@@ -583,7 +621,7 @@ class SesionDiseno(agente.Sesion):
     diseno = True
 
     def __init__(self, doc: dict, ahora: datetime, texto: str = "", con_imagen: bool = False, historial: list[dict] | None = None,
-                 puntos: list[dict] | None = None, digresion: bool = False, toma_entrada: bool = False):
+                 puntos: list[dict] | None = None, digresion: bool = False, toma_entrada: bool = False, por_hacer: list[dict] | None = None):
         super().__init__(doc, ahora, texto, con_imagen)
         self.historial = historial or []
         self.puntos = sorted(puntos or [], key=lambda x: x["n"])
@@ -614,6 +652,10 @@ class SesionDiseno(agente.Sesion):
         self._lote_secciones: list[str] = []  # las secciones que el modelo quiso quitar en la vuelta (para armar el pendiente)
         self._pendiente_titulos: list[str] = []
         self._pendiente_fuera: list[str] = []
+        self.por_hacer_previo: list[dict] = list(por_hacer or [])  # lo pendiente de mensajes anteriores (lo anotó el código)
+        self.por_hacer: list[dict] = []  # lo que no alcanzó a correr en ESTE turno (por_hacer.py)
+        self.agregados: list[tuple[str, str]] = []  # (sección, id) de cada registro agregado en el turno, en orden
+        self._revisados: set[tuple[str, str]] = set()  # los que ya revisó `aviso_campos_vacios`
 
     def _tiene_imagen(self) -> bool:
         return self.con_imagen or bool(self.imagen_enlace)
@@ -653,7 +695,8 @@ class SesionDiseno(agente.Sesion):
         """Carlos (sin alias ni nombres que ya trae edicion.js), herramientas de diseño con el mismo filtro que chat.js, toma, deshacer, datos y leer_enlace."""
         lab = [h for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer"
                and (self._tiene_imagen() or h["function"]["name"] != "usar_logo")]
-        return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *registros.HERRAMIENTAS_DATOS,
+        datos = [HERR_AGREGAR_REGISTRO if h["function"]["name"] == "agregar_registro" else h for h in registros.HERRAMIENTAS_DATOS]
+        return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *datos,
                 edicion.HERR_ENLACE]
 
     def contexto(self) -> str:
@@ -1065,6 +1108,76 @@ class SesionDiseno(agente.Sesion):
         nuevo = {"pestana": self._lienzo_abierto(), "vista": args.get("vista") or b.get("vista"),
                  "seccion": args.get("seccion") or b.get("seccion"), "opciones": opciones}
         return "agregar_bloque", nuevo
+    def promesas_sin_respaldo(self, respuesta: str) -> list[str]:
+        """Las partes de la respuesta que prometen algo (futuro: «crearé la sección Ventas») que no corrió en el turno ni está pendiente. Mismo
+        mecanismo que `afirma_sin_respaldo`: lo que dice tiene que estar en lo que corrió (los argumentos de los cambios) o en lo que el código
+        dejó por hacer. Las preguntas y lo negado no cuentan («¿quieres que la cree?», «no la crearé»)."""
+        hecho = ph.palabras([c.get("args") for c in self.cambios]) | ph.palabras([c.get("etiqueta") for c in self.cambios])
+        pendiente = ph.palabras([ph.texto_de(x) for x in (*self.por_hacer_previo, *self.por_hacer)])
+        salida = []
+        for parte in _PARTES.split(sin_preguntas(respuesta)):
+            if not afirma_con(parte, _FUTURO):
+                continue
+            contenido = ph.palabras(_FUTURO.sub(" ", parte))
+            if contenido and not contenido & (hecho | pendiente):
+                salida.append(" ".join(parte.split()))
+        return salida
+
+    def aviso_promesa(self, respuesta: str) -> str | None:
+        promesas = self.promesas_sin_respaldo(respuesta)
+        if not promesas:
+            return None
+        return (f"[Aviso interno] Dices «{promesas[0]}», pero eso no lo hiciste en este mensaje ni quedó como pendiente. Hazlo AHORA con la "
+                "herramienta; si falta un dato de la persona, pregúntalo (con «¿…?») en vez de prometerlo; si no se puede, dilo. Si no hablabas "
+                "de una acción en el CRM, repite tu respuesta sin prometer.")
+
+    def aviso_campos_vacios(self) -> str | None:
+        """Punto 11 (prueba del 19-oct: de 5 productos, solo la laptop HP quedó con Marca y Modelo). Tras agregar registros, el CÓDIGO revisa
+        los campos que quedaron vacíos teniendo el dato cerca: el mismo campo se llenó en otro registro agregado en este turno con un valor que
+        salió del texto de la persona, o la persona nombró ese campo. Sin llamada extra: el aviso va con los resultados de las herramientas,
+        en la vuelta que el modelo hace de todos modos. Cada registro se revisa una sola vez."""
+        nuevos = [x for x in self.agregados if x not in self._revisados]
+        if not nuevos:
+            return None
+        self._revisados.update(nuevos)
+        texto = _NUM_SEP.sub("", sin_acentos(self.dichos))
+
+        def del_texto(v: Any) -> bool:
+            if isinstance(v, bool) or v in (None, ""):
+                return False
+            if isinstance(v, (int, float)):
+                return bool(re.search(rf"(?<![\d]){re.escape(_js(v))}(?![\d])", texto))
+            t = sin_acentos(v)
+            return len(t) >= 2 and t in texto
+
+        vista = _visible(self.doc)
+        lineas = []
+        for sid in dict.fromkeys(s for s, _ in nuevos):
+            sec = next((x for x in sv.secciones_de(vista) if x["id"] == sid), None)
+            if not sec:
+                continue
+            ct = campo_titulo(sec, sec["campos"]) or {}
+            regs = {r["id"]: r for r in sv.registros_de(vista, sid)}
+            del_turno = [regs[r] for s, r in self.agregados if s == sid and r in regs]
+            for s, rid in nuevos:
+                r = regs.get(rid) if s == sid else None
+                if not r or not del_texto((r.get("valores") or {}).get(ct.get("id"))):
+                    continue  # el registro no salió de lo que escribió la persona: no hay de dónde completar
+                vacios = []
+                for c in sec["campos"]:
+                    if c["id"] == ct.get("id") or (r.get("valores") or {}).get(c["id"]) not in (None, ""):
+                        continue
+                    otro = any(o is not r and del_texto((o.get("valores") or {}).get(c["id"])) for o in del_turno)
+                    nombrado = len(sin_acentos(c.get("nombre"))) >= 4 and re.search(rf"\b{re.escape(sin_acentos(c.get('nombre')))}\b", texto)
+                    if otro or nombrado:
+                        vacios.append(str(c.get("nombre")))
+                if vacios:
+                    lineas.append(f"«{(r.get('valores') or {}).get(ct.get('id'))}» en {sec['titulo']}: {', '.join(vacios)}")
+        if not lineas:
+            return None
+        return ("[Aviso del código] Registros que acabas de agregar quedaron con campos vacíos que en otros sí llenaste o que la persona nombró: "
+                + "; ".join(lineas[:8]) + ". Si ese dato está en lo que escribió la persona, complétalo con editar_registro; si no lo dijo, déjalo "
+                "vacío (no inventes) y no lo menciones.")
 
     # --- ejecución ---
     def ejecutar(self, nombre: str, args: dict) -> str:
@@ -1073,7 +1186,9 @@ class SesionDiseno(agente.Sesion):
         nombre, args = self._a_la_pestana_abierta(nombre, args)
         self.acciones += 1
         if self.acciones > agente.MAX_ACCIONES:
-            resultado = "Se alcanzó el límite de acciones por mensaje. Dile al usuario que continúe en otro mensaje."
+            # Lo que no alcanzó lo anota el CÓDIGO (con sus argumentos) para el turno siguiente: no depende de que el modelo lo recuerde.
+            self.por_hacer.append(ph.de_llamada(_visible(self.doc), nombre, args))
+            resultado = AVISO_TOPE
         else:
             resultado = self._cerco(nombre, args)
             if resultado is None:
@@ -1143,6 +1258,10 @@ class SesionDiseno(agente.Sesion):
             if r["ok"] and _toma_distinta(self.doc, r["doc"]):
                 self.doc = r["doc"]
             return r["resultado"]
+        if nombre == "agregar_registro":
+            lote = _lista_de_agregar(args)
+            if lote is not None:  # varios en la misma llamada: una sola acción (el tope de 12 no se come la carga)
+                return self._varios("agregar_registro", "agregar_registro", lote)
         if nombre in registros.HERR_DATOS:
             return self._un_dato(nombre, args)
         if self._es_alias_estructura_carlos(nombre, args):
@@ -1190,6 +1309,9 @@ class SesionDiseno(agente.Sesion):
     def _anotar(self, nombre: str, args: dict, resultado: str) -> None:
         """Trazabilidad: lo que salió va a `cambios`; cada intento fallido, con su herramienta y argumentos, a `intentos` y `fallos`."""
         etiqueta, self._etiqueta = self._etiqueta, _SIN
+        if resultado == AVISO_TOPE:  # ya quedó en `por_hacer`: no es un fallo que el modelo deba arreglar en este mensaje
+            self.intentos.append({"herramienta": nombre, "args": args, "resultado": resultado})
+            return
         if self.es_fallo(resultado):
             self.fallos.append(resultado)
             self.intentos.append({"herramienta": nombre, "args": args, "resultado": resultado})
@@ -1275,6 +1397,7 @@ class SesionDiseno(agente.Sesion):
         if tipo == "agregar":
             d, _ = sv.registro_agregar(d, sec_id, operacion["valores"], self.ahora, canal="Chat", id=operacion["id"])
             self._agregado = (sec_id, operacion["id"])
+            self.agregados.append(self._agregado)
         elif tipo == "editar":
             d, _ = sv.registro_actualizar(d, sec_id, operacion["id"], operacion["cambios"], self.ahora)
         elif tipo == "borrar":
@@ -1302,6 +1425,10 @@ class SesionDiseno(agente.Sesion):
         """Un alias de Carlos con varios registros: una herramienta de datos por registro. Si alguno no se pudo, el texto lo dice (y
         queda en `intentos`); si ninguno se pudo, es un error."""
         hechos, errores, etiquetas, nuevos = [], [], [], []
+        sobran = lista[agente.MAX_CONTACTOS_POR_LLAMADA:]
+        if sobran:  # antes se perdían en silencio
+            self.por_hacer.append(ph.de_registros(_visible(self.doc), sobran[0].get("seccion"), [a.get("valores") for a in sobran]))
+            errores.append(f"Pasaron del tope de {agente.MAX_CONTACTOS_POR_LLAMADA} por llamada: {len(sobran)} quedaron anotados como pendientes.")
         for a in lista[:agente.MAX_CONTACTOS_POR_LLAMADA]:
             self._agregado = None
             ok, texto, etiqueta = self._dato(nombre, a)
@@ -1447,7 +1574,7 @@ class SesionDiseno(agente.Sesion):
         if hechos:
             return f"Esto es lo que cambió: {', '.join(hechos)}." + (f" No pude hacer todo lo que pediste: {fallo}" if fallo else "")
         if self.cambios:
-            return " ".join(ultimos) or "Listo."
+            return " ".join(u for u in ultimos if u != AVISO_TOPE) or "Listo."
         return f"No pude hacer ese cambio: {fallo}" if fallo else "No pude hacer ese cambio."
 
 
@@ -1500,9 +1627,9 @@ def pestana_abierta(doc: dict, seccion: str | None) -> str | None:
 async def responder(doc: dict, texto: str, historial: list[dict] | None = None, ahora: datetime | None = None, con_captura: bool = False,
                     modelo: Any = None, buscador: Any = None, imagen: str | None = None, seccion: str | None = None, persona: str | None = None,
                     puntos: list[dict] | None = None, lector_enlaces: Any = None, adjunto: str | None = None,
-                    columnas: list[str] | None = None) -> dict:
+                    columnas: list[str] | None = None, por_hacer: list[dict] | None = None) -> dict:
     """Un turno del chat (ver `_responder`). Con CRM_TRAZA=1 además deja su traza en el archivo del día (`traza`); sin ella, nada cambia."""
-    args = (doc, texto, historial, ahora, con_captura, modelo, buscador, imagen, seccion, persona, puntos, lector_enlaces, adjunto, columnas)
+    args = (doc, texto, historial, ahora, con_captura, modelo, buscador, imagen, seccion, persona, puntos, lector_enlaces, adjunto, columnas, por_hacer)
     token = traza.empezar()
     if token is None:
         return await _responder(*args)
@@ -1523,7 +1650,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
 async def _responder(doc: dict, texto: str, historial: list[dict] | None = None, ahora: datetime | None = None, con_captura: bool = False,
                      modelo: Any = None, buscador: Any = None, imagen: str | None = None, seccion: str | None = None, persona: str | None = None,
                      puntos: list[dict] | None = None, lector_enlaces: Any = None, adjunto: str | None = None,
-                    columnas: list[str] | None = None) -> dict:
+                    columnas: list[str] | None = None, por_hacer: list[dict] | None = None) -> dict:
     """Como `agente.responder`, más `cambios`, `fallos`, `intentos`, `consultas` y `avisos` (forma del laboratorio). Si en el turno se
     deshizo algo, `deshacer` = {deshechos, puntos (los que quedan, con foto), base (el CRM justo tras el último deshacer: el punto del
     turno se mide desde ahí)}. Lanza excepción si el modelo falla: quien llama usa las reglas."""
@@ -1540,7 +1667,7 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
 
     texto_turno = texto or ""
     sesion = SesionDiseno(doc_turno, ahora, texto_turno, bool(imagen), historial=historial, puntos=puntos, digresion=prep["digresion"],
-                          toma_entrada=bool((doc.get("toma") or {}).get("activa")))
+                          toma_entrada=bool((doc.get("toma") or {}).get("activa")), por_hacer=por_hacer)
     sesion.abierta = pestana_abierta(doc_turno, seccion)
     doc_inicial = sesion.doc
     base = modelo or agente._modelo()
@@ -1554,7 +1681,7 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
     sesion._columnas_fuera = fuera
     brief = doc_turno.get("brief") or {}
     persona_brief = f"Lo que contó de su negocio:\n{resumen_del_brief(brief)}" if brief.get("que_vendes") or brief.get("nombre") else None
-    persona_final = "\n\n".join(x for x in (persona, persona_brief) if x) or None
+    persona_final = "\n\n".join(x for x in (persona, persona_brief, ph.bloque(sesion.por_hacer_previo)) if x) or None
     vista_ctx = seccion or (doc_turno.get("vista") if isinstance(doc_turno.get("vista"), str) else None) or "inicio"
     avisos_codigo = conceptos.avisos_turno(doc_turno, texto_turno, historial, sesion.abierta or vista_ctx)
     mensajes = agente._mensajes(doc, texto_turno, historial, ahora, con_captura, imagen, seccion, persona_final, adjunto)
@@ -1634,8 +1761,13 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
         if sesion.pregunta_pendiente() and all(ll.get("name") == "quitar_seccion" for ll in llamadas):
             respuesta = ""  # la pregunta la escribe el código con la lista exacta: no hace falta otra vuelta del modelo
             break
+        vacios = sesion.aviso_campos_vacios()
+        if vacios:
+            mensajes.append(HumanMessage(content=vacios))
     else:
-        respuesta = " ".join(ultimos)  # el modelo no terminó: se le dice a la persona lo que sí se hizo
+        # El modelo no terminó: lo que sí se hizo lo cuenta el código (`respuesta_del_codigo`), no el texto crudo de la última herramienta
+        # (medido en banco_memoria: la respuesta era «ERROR: «Reparaciones» ya tiene el campo «Cobro».»).
+        respuesta = ""
 
     respuesta = await revisar_sustituto_final(respuesta, sesion, doc_inicial, mensajes, base, sesion._tiene_imagen())
     if correcciones >= agente.MAX_CORRECCIONES and (vl := sesion.verdad_lado_final(respuesta)):
@@ -1650,6 +1782,14 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
     faltan_col = [c for c in getattr(sesion, "_columnas_fuera", []) if sin_acentos(c) not in sin_acentos(respuesta)]
     if faltan_col:
         respuesta += f"\n\n{adjuntos.frase_columnas(faltan_col)}"
+    # Lo que no alcanzó y lo que prometió sin hacer: lo anota el código y lo dice el código (nunca lo redacta el modelo).
+    promesas = sesion.promesas_sin_respaldo(respuesta) if not sesion.pendiente and not sesion.solo_toma() else []
+    sesion.por_hacer += [ph.promesa(p) for p in promesas]
+    pendiente_dicho = ph.linea(ph.juntar(sesion.por_hacer), respuesta)
+    if pendiente_dicho:
+        respuesta += f"\n\n{pendiente_dicho}"
+    if promesas:
+        respuesta += f"\n\nOjo: «{promesas[0]}» todavía no está hecho; lo dejé anotado para el siguiente mensaje."
     falta = creado_sin_decir(doc, sesion.cambios, respuesta)
     if falta:
         respuesta += f"\n\nPara guardarlo agregué {' y '.join(falta)}. Si no lo querías, dime «deshaz»."
@@ -1666,7 +1806,8 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
     if sesion.pendiente and "sí" not in respuesta.lower() and "si " not in respuesta.lower():
         respuesta += " Responde “sí” para confirmar."
 
-    salida: dict[str, Any] = {"doc": sesion.doc, "respuesta": respuesta, "modo": "ia", **_traza(sesion)}
+    salida: dict[str, Any] = {"doc": sesion.doc, "respuesta": respuesta, "modo": "ia", **_traza(sesion),
+                              "por_hacer": ph.seguir(sesion.por_hacer_previo, _visible(sesion.doc), sesion.cambios, sesion.por_hacer)}
     if sesion.recuerdos:
         salida["recuerdos"] = sesion.recuerdos
     if sesion.vista:

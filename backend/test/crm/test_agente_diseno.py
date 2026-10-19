@@ -109,10 +109,15 @@ async def test_con_la_bandera_ve_las_herramientas_del_laboratorio_y_no_los_alias
     nombres = modelo.ataduras[0]["nombres"]
     for n in ("agregar_registro", "editar_registro", "borrar_registro", "consultar_datos", "deshacer", "abrir_toma", "agregar_tarea", "crear_seccion"):
         assert n in nombres
-    for n in agente_diseno.ALIAS_DE_DATOS | {"anotar_bloque", "cerrar_toma"}:  # las de anotar, solo con la ficha abierta
+    for n in agente_diseno.ALIAS_DE_DATOS | {"anotar_bloque", "cerrar_toma"}:  # las de anotar, solo con la ficha abierta; agregar_registros no se muestra
         assert n not in nombres
+    # La carga por lotes va en el mismo agregar_registro (lista opcional). Lo obligatorio sigue siendo seccion + valores, como en david.
+    herr = agente_diseno.HERR_AGREGAR_REGISTRO["function"]
+    assert nombres.count("agregar_registro") == 1 and herr["parameters"]["required"] == ["seccion", "valores"]
+    assert "registros" in herr["parameters"]["properties"] and "Si son VARIOS" in herr["description"]
     assert r["cambios"] == r["fallos"] == r["intentos"] == r["consultas"] == r["avisos"] == r["enlaces"] == []
     sistema = modelo.recibidos[0][0].content
+    assert "Si la persona pasa VARIOS" not in sistema and "Pendiente de mensajes anteriores" not in sistema
     assert sistema.startswith(agente_diseno.INSTRUCCIONES_LAB)
     assert "asistente del CRM de una persona" not in sistema.split(agente_diseno._CABECERA_ESTADO_PANTALLA, 1)[0]
     assert agente_diseno.INSTRUCCIONES_CARLOS_EXTRA.strip() in sistema
