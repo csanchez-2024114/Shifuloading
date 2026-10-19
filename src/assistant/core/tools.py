@@ -244,8 +244,9 @@ def make_buscar_recuerdos(min_score: float = 0.0) -> BaseTool:
 buscar_recuerdos = make_buscar_recuerdos()
 
 
-def make_actualizar_recuerdo(verifier=None, require_quote: bool = False) -> BaseTool:
-    """Misma verificación que save_memory. Solo toca recuerdos del user_id del contexto."""
+def make_actualizar_recuerdo(verifier=None, require_quote: bool = False, prior_evidence: bool = False) -> BaseTool:
+    """Misma verificación que save_memory. Solo toca recuerdos del user_id del contexto. `prior_evidence`:
+    MEMORY_UPDATE_PRIOR_EVIDENCE (ver `memory.revise`)."""
 
     @tool("update_memory", description=ACTUALIZAR_RECUERDO_DOC)
     def actualizar_recuerdo(id: str, text: str, runtime: ToolRuntime[Context], evidence: str = "") -> str:  # noqa: A002
@@ -255,7 +256,8 @@ def make_actualizar_recuerdo(verifier=None, require_quote: bool = False) -> Base
         # con archivos adjuntos en el hilo, solo se guarda lo que el usuario dijo con sus palabras (cita literal)
         return memory.revise(runtime.store, runtime.context.user_id, id, text, evidence, texts,
                              thread_id=thread_id, verifier=verifier,
-                             require_quote=require_quote or thread_has_files(messages))
+                             require_quote=require_quote or thread_has_files(messages),
+                             prior_evidence=prior_evidence)
 
     return actualizar_recuerdo
 
@@ -677,7 +679,7 @@ def base_tools(model: BaseChatModel, settings: Settings, search_fn=web_search, c
         make_guardar_recuerdo(verifier, settings.memory_save_policy, settings.memory_max_per_turn,
                               settings.memory_dedup, settings.memory_dedup_score, settings.memory_require_quote),
         make_buscar_recuerdos(settings.memory_min_score),
-        make_actualizar_recuerdo(verifier, settings.memory_require_quote),
+        make_actualizar_recuerdo(verifier, settings.memory_require_quote, settings.memory_update_prior_evidence),
         make_investigador(model, settings, search_fn),
     ] + (_file_tools() if settings.files_enabled else [])
 

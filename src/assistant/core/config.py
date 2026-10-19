@@ -98,6 +98,11 @@ class Settings:
     # (confidence "quoted"), sin llamar a un LLM. Apagado por defecto: hoy un recuerdo sin cita se guarda como
     # "unverified" y el modelo recibiría otro resultado.
     memory_require_quote: bool = False
+    # update_memory contrasta también contra la cita literal guardada en el propio recuerdo: tras una compactación
+    # el dato viejo ya no está en los mensajes y un recuerdo con varios datos no se podía corregir. La cita del
+    # valor nuevo se sigue buscando solo en esta conversación. Apagado por defecto: cambia el resultado de la
+    # herramienta.
+    memory_update_prior_evidence: bool = False
     # P2.4: al terminar cada turno quita de la respuesta los enlaces cuya URL (con su query) no está en lo que
     # devolvieron las herramientas ni en lo que escribió el usuario, aunque ANSWER_VERIFY=0. 0 tokens. Apagado por
     # defecto: puede cambiar la respuesta final.
@@ -193,6 +198,7 @@ class Settings:
             turn_max_seconds=_num("TURN_MAX_SECONDS", "0", float),
             untrusted_wrap=_bool("UNTRUSTED_WRAP"),
             memory_require_quote=_bool("MEMORY_REQUIRE_QUOTE"),
+            memory_update_prior_evidence=_bool("MEMORY_UPDATE_PRIOR_EVIDENCE"),
             url_filter_always=_bool("URL_FILTER_ALWAYS"),
             effect_approval=_bool("EFFECT_APPROVAL"),
             max_message_chars=_num("MAX_MESSAGE_CHARS", "50000"),

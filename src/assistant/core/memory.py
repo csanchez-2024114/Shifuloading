@@ -361,11 +361,23 @@ NOT_FOUND_MSG = "Not updated: there is no memory with that id. Use search_memori
 
 
 def revise(store, user_id: str, key: str, text: str, quote: str, texts: list[str], *,
-           thread_id: str | None = None, verifier=None, require_quote: bool = False) -> str:
-    """Lógica común de update_memory: solo recuerdos del propio user_id y con la misma verificación."""
-    if store.get(memory_namespace(user_id), key) is None:
+           thread_id: str | None = None, verifier=None, require_quote: bool = False,
+           prior_evidence: bool = False) -> str:
+    """Lógica común de update_memory: solo recuerdos del propio user_id y con la misma verificación.
+    `prior_evidence` (MEMORY_UPDATE_PRIOR_EVIDENCE): la cita literal ya guardada en el recuerdo (palabras del usuario,
+    verificadas al guardarlo) respalda lo que no cambia aunque la compactación la haya quitado de los mensajes. La
+    evidencia de la actualización se busca solo en lo que el usuario escribió en esta conversación."""
+    item = store.get(memory_namespace(user_id), key)
+    if item is None:
         return NOT_FOUND_MSG
-    prov = _provenance(text, quote, texts, verifier)
+    old = str((item.value or {}).get("evidence") or "").strip() if prior_evidence else ""
+    # primero y con los últimos mensajes: el verificador solo mira los 20 más recientes
+    context = [old, *texts[-19:]] if old else texts
+    prov = _provenance(text, quote, context, verifier)
+    if prov is not None and old and prov[0] and not find_quote(prov[0], texts):
+        # la cita salió del recuerdo viejo: no prueba el valor nuevo
+        evidence = find_quote(quote, texts)
+        prov = (evidence, prov[1] if verifier is not None else ("quoted" if evidence else "unverified"))
     if prov is None:
         return ("Not updated: the user never stated the new value in the conversation. Do not update with "
                 "assumptions; tell the user it was not updated.")

@@ -155,7 +155,8 @@ def build_registry(model, settings: Settings, memories_store, search_fn: Callabl
         # con archivos adjuntos en el hilo, solo se guarda lo que el usuario dijo con sus palabras (cita literal)
         return memory.revise(memories_store, _ctx("user_id", "anon"), id, text, evidence, memory.user_texts(messages),
                              thread_id=thread_id, verifier=verifier,
-                             require_quote=settings.memory_require_quote or thread_has_files(messages))
+                             require_quote=settings.memory_require_quote or thread_has_files(messages),
+                             prior_evidence=settings.memory_update_prior_evidence)
 
     @tool("deep_research", description=INVESTIGADOR_DOC)
     def investigador_profundo(task: str) -> str:

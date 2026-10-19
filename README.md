@@ -82,6 +82,7 @@ copy .env.example .env   # y pon tu OPENAI_API_KEY
 | `TURN_MAX_SECONDS` | `0` | tiempo máximo por mensaje: al pasarlo, el turno se cierra en la siguiente frontera de paso, como con `TURN_TOKEN_CAP`; `0` = apagado |
 | `UNTRUSTED_WRAP` | `0` | `1` = el contenido de la web (web_search, deep_research y las herramientas de red de bigtool) va entre `<untrusted_web_content>` y el prompt suma una regla para tratarlo como datos |
 | `MEMORY_REQUIRE_QUOTE` | `0` | `1` = save_memory/update_memory solo guardan con una cita literal de lo que escribió el usuario (sin LLM) |
+| `MEMORY_UPDATE_PRIOR_EVIDENCE` | `0` | `1` = update_memory también acepta como respaldo de lo que no cambia la cita literal ya guardada en el recuerdo (corrige datos tras una compactación); el valor nuevo debe estar en la conversación |
 | `URL_FILTER_ALWAYS` | `0` | `1` = quita de la respuesta final los enlaces cuya URL (con su query) no está en los resultados de herramientas ni en lo que escribió el usuario, aunque `ANSWER_VERIFY=0` (0 tokens; solo agente normal) |
 | `EFFECT_APPROVAL` | `0` | `1` = las herramientas con efecto `write`/`send`/`delete` piden aprobación con la tarjeta, también en bigtool (p. ej. `crm_create_order`) |
 | `FILES_ENABLED` | `0` | `1` = adjuntar archivos (ver "Archivos"); con `0` no hay rutas, herramientas ni reglas nuevas |

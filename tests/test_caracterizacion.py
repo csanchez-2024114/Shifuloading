@@ -667,6 +667,7 @@ NEW_CONFIG_VARS = {  # variable de entorno -> (campo de Settings, default); la l
     "FEEDBACK_ENABLED": ("feedback_enabled", False),
     "METRICS_TTL_DAYS": ("metrics_ttl_days", 90),
     "TOOL_ERROR_DETAIL_HIDDEN": ("tool_error_detail_hidden", False),
+    "MEMORY_UPDATE_PRIOR_EVIDENCE": ("memory_update_prior_evidence", False),
 }
 
 

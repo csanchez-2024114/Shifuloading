@@ -51,6 +51,7 @@ Todos los booleanos están en `0` por defecto. Sin ellos, la huella es idéntica
 |---|---|---|
 | `UNTRUSTED_WRAP` | 0 | resultados web entre `<untrusted_web_content>` + regla en el prompt |
 | `MEMORY_REQUIRE_QUOTE` | 0 | la memoria solo guarda con cita literal del usuario |
+| `MEMORY_UPDATE_PRIOR_EVIDENCE` | 0 | `update_memory` contrasta también contra la cita guardada en el recuerdo, para corregir un dato tras una compactación (B2 de `docs/PRUEBA_USUARIO_LARGA.md`); el valor nuevo se exige en la conversación. Solo probado con modelos falsos (`test_memoria_compactada`) |
 | `URL_FILTER_ALWAYS` | 0 | quita enlaces sin respaldo de la respuesta final |
 | `TURN_MAX_SECONDS` | 0 | tope de tiempo por mensaje |
 | `EFFECT_APPROVAL` | 0 | tarjeta para herramientas con efecto |
