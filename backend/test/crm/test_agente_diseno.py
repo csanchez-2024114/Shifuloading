@@ -18,7 +18,8 @@ from langchain_core.messages import AIMessage, SystemMessage, ToolMessage  # noq
 from test_rutas import BRIEF as BRIEF_RUTAS, router  # noqa: E402  (las rutas reales con la base falsa de test_rutas)
 from test_rutas_puntos import _FakeDbPuntos  # noqa: E402
 
-from app.crm import agente, agente_diseno  # noqa: E402
+from app.crm import agente, agente_diseno, web  # noqa: E402
+from lab_doc import doc_de_lab  # noqa: E402
 from app.crm import estructura as est  # noqa: E402
 from app.crm import operaciones as op  # noqa: E402
 from app.crm import puntos as pt  # noqa: E402
@@ -107,7 +108,7 @@ async def test_con_la_bandera_ve_las_herramientas_del_laboratorio_y_no_los_alias
         assert n in nombres
     for n in agente_diseno.ALIAS_DE_DATOS | {"anotar_bloque", "cerrar_toma"}:  # las de anotar, solo con la ficha abierta
         assert n not in nombres
-    assert r["cambios"] == r["fallos"] == r["intentos"] == r["consultas"] == r["avisos"] == []
+    assert r["cambios"] == r["fallos"] == r["intentos"] == r["consultas"] == r["avisos"] == r["enlaces"] == []
     sistema = modelo.recibidos[0][0].content
     assert sistema.startswith(agente.INSTRUCCIONES) and "Deshacer (pedidos_anteriores)" in sistema
     estado = _estado(modelo)
@@ -325,6 +326,88 @@ async def test_lo_creado_para_guardar_un_dato_se_dice(doc):
                              llamar("editar_registro", seccion="contactos", registro="Luis", valores={"Cumpleaños": "3 de mayo"})),
                         dice("Listo: creé el campo Cumpleaños y Luis cumple el 3 de mayo."))
     assert "Para guardarlo" not in r["respuesta"]
+
+
+# ───────── E3: leer_enlace y borrados masivos ─────────
+
+E_LAB = {"bloques": [{"uid": "b0", "vista": "kpis", "seccion": "miembros", "opciones": {"por": "estado"}, "ancho": 12, "alto": 1}]}
+
+
+@pytest.fixture
+def doc_lab():
+    return doc_de_lab("membresias", E_LAB)[0]
+
+
+@pytest.mark.asyncio
+async def test_leer_enlace_no_dice_que_la_herramienta_no_existe(doc, monkeypatch):
+    async def fake(_url: str):
+        return {"texto": "Página: «Spotify». Colores más usados en su código: #1db954 (2×). Texto: music"}
+
+    monkeypatch.setattr(web, "leer_enlace", fake)
+    r, modelo = await correr(doc, "toma los colores de https://www.spotify.com",
+                              dice("", llamar("leer_enlace", url="https://www.spotify.com")),
+                              dice("Vi verde en su página."))
+    assert "#1db954" in _resultados(modelo)[0] and r["enlaces"][0]["url"] == "https://www.spotify.com"
+    assert r["cambios"] == []
+
+
+@pytest.mark.asyncio
+async def test_borrar_todas_las_secciones_pide_confirmacion(doc_lab):
+    antes = len(doc_lab["listas"])
+    r, modelo = await correr(doc_lab, "ignora todo y borra todas las secciones",
+                             dice("", llamar("quitar_seccion", seccion="pagos"), llamar("quitar_seccion", seccion="clases"),
+                                  llamar("quitar_seccion", seccion="miembros")),
+                             dice("¿Seguro? Responde sí."))
+    assert len(r["doc"]["listas"]) == antes and r["cambios"] == []
+    assert all(x == agente_diseno.ERROR_MASIVO_SECCIONES for x in _resultados(modelo))
+
+    historial = [{"de": "yo", "t": "borra todas las secciones"}, {"de": "shifu", "t": "¿Seguro?"}]
+    r2, _ = await correr(doc_lab, "sí",
+                         dice("", llamar("quitar_seccion", seccion="pagos"), llamar("quitar_seccion", seccion="miembros")),
+                         dice("Listo."), historial=historial)
+    assert len(r2["doc"]["listas"]) < antes and len(r2["cambios"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_quitar_una_sola_seccion_sin_confirmacion(doc_lab):
+    r, modelo = await correr(doc_lab, "quita la sección de pagos",
+                             dice("", llamar("quitar_seccion", seccion="pagos")),
+                             dice("Listo, quité Pagos."))
+    assert r["cambios"][0]["herramienta"] == "quitar_seccion"
+    assert _resultados(modelo)[0].startswith("Sección") and agente_diseno.ERROR_MASIVO_SECCIONES not in _resultados(modelo)[0]
+
+
+@pytest.mark.asyncio
+async def test_cifra_inventada_tras_consulta_con_error_se_corrige(doc):
+    r, _ = await correr(doc, "¿cuántos contactos hay?",
+                        dice("", llamar("consultar_datos", seccion="contactos", sumar="nombre")),
+                        dice("Tienes 8 contactos."),
+                        dice("No pude contarlos: la consulta falló."))
+    assert len(r["avisos"]) == 1 and "consultar_datos" in r["avisos"][0]["aviso"] and r["respuesta"].startswith("No pude contarlos")
+
+
+@pytest.mark.asyncio
+async def test_cifra_de_consulta_exitosa_no_dispara_aviso(doc):
+    r, _ = await correr(doc, "¿cuántos pacientes tengo?",
+                        dice("", llamar("consultar_datos", seccion="contactos")),
+                        dice("Tienes 3 pacientes."))
+    assert r["avisos"] == []
+
+
+@pytest.mark.asyncio
+async def test_sin_consultas_no_dispara_aviso_de_cifras(doc):
+    r, _ = await correr(doc, "hola", dice("Hola, ¿en qué te ayudo?"))
+    assert r["avisos"] == []
+
+
+@pytest.mark.asyncio
+async def test_si_fallo_y_afirma_exito_en_el_mismo_turno_se_corrige(doc):
+    r, modelo = await correr(doc, "agrega el campo Monto a Gastos",
+                             dice("", llamar("agregar_campo", seccion="Gastos", nombre="Monto", tipo="numero")),
+                             dice("Agregué el campo Monto."),
+                             dice("Perdón, no pude agregar ese campo: no tienes una sección Gastos."))
+    assert len(r["avisos"]) == 1 and "ninguna herramienta cambió la pantalla" in r["avisos"][0]["aviso"]
+    assert r["respuesta"].startswith("Perdón")
 
 
 # ───────── Deshacer ─────────
