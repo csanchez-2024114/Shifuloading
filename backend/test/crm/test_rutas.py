@@ -609,7 +609,7 @@ def test_las_preguntas_de_seguimiento_no_piden_sesion_y_usan_las_del_rubro_sin_i
 
 def test_las_preguntas_de_seguimiento_exigen_el_rubro_y_validan_el_cuestionario(cli):
     assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"nombre": "Sin rubro"}}).status_code == 422
-    assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"rubro": "comercio", "que_vendes": "x" * 301}}).status_code == 422
+    assert cli.post("/api/v1/crm/seguimiento", json={"brief": {"rubro": "comercio", "que_vendes": "x" * 1501}}).status_code == 422  # tope 1500 (lista 24)
     assert cli.post("/api/v1/crm/seguimiento", json={}).status_code == 422
 
 
@@ -847,7 +847,7 @@ def test_la_siguiente_pregunta_no_pide_sesion_exige_lo_basico_y_sin_ia_manda_a_l
     assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "nombre": ""}).status_code == 422
     assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": ""}).status_code == 422
     assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "qa": [{"pregunta": "p", "respuesta": "r"}] * 7}).status_code == 422
-    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": "x" * 301}).status_code == 422
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": "x" * 1501}).status_code == 422  # tope 1500 (lista 24)
 
 
 def test_se_pueden_importar_varias_filas_a_una_seccion_de_un_solo_golpe(cli, db):

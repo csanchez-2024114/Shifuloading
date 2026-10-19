@@ -16,11 +16,12 @@ const FIJAS = porId(['nombre', 'ubicacion', 'que_vendes'])
 const RESPALDO = porId(['rubro', 'ciclo', 'equipo', 'problemas', 'objetivos'])
 const ESTIMADO = 7 // cuántas preguntas se anuncian mientras la IA todavía no termina (3 fijas + unas 4 de la IA)
 const VERSION = 2
+const LARGO_ABIERTA = 1500 // pregunta abierta (y respuestas de texto): el backend acepta lo mismo (lista 24)
 
 const claveFijas = (r) => JSON.stringify([r.nombre, r.ubicacion, r.que_vendes])
 const adaptar = (p) => ({ id: p.id, capitulo: 'Para conocer tu negocio', emoji: p.emoji || '🧩', tipo: p.tipo, titulo: p.titulo, sub: p.sub, opciones: p.opciones || [], requerido: true })
 const respuestaDe = (p, v) => {
-  if (p.tipo === 'parrafo') return String(v || '').trim().slice(0, 300)
+  if (p.tipo === 'parrafo') return String(v || '').trim().slice(0, LARGO_ABIERTA)
   const lista = Array.isArray(v) ? v : v ? [v] : []
   return lista.map((x) => p.opciones.find((o) => o.v === x)?.t).filter(Boolean).join(', ').slice(0, 300)
 }
@@ -201,7 +202,7 @@ export default function BriefPage() {
             )}
 
             {q.tipo === 'parrafo' && (
-              <textarea className="campo campo-parrafo" autoFocus rows={3} maxLength={300} placeholder={q.placeholder} value={seleccion || ''}
+              <textarea className="campo campo-parrafo" autoFocus rows={3} maxLength={LARGO_ABIERTA} placeholder={q.placeholder} value={seleccion || ''}
                 onChange={(e) => poner(q.id, e.target.value)} />
             )}
 

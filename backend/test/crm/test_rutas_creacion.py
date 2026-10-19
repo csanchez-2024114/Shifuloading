@@ -48,36 +48,39 @@ def test_sin_la_bandera_es_exactamente_lo_de_siempre(cli, monkeypatch, valor):
     assert [b["seccion"] for b in crm["inicio"]] == ["contactos"]  # el inicio por defecto del esquema 2
 
 
-def test_con_la_bandera_se_siembra_la_plantilla_de_asignar(cli, db, con_diseno):
+def test_con_la_bandera_se_arma_uno_nuevo_con_piezas_y_pocos_ejemplos(cli, db, con_diseno):
     r = crear(cli, BRIEF_DENTAL)
     assert r.status_code == 201
     crm = r.json()
-    assert crm["esquema"] == 2 and crm["plantilla"]["id"] == "clinica-dental" and crm["plantilla"]["origen"] == "asignar"
-    assert [l["id"] for l in crm["listas"]] == ["l_citas", "l_tratamientos", "l_pacientes"]
-    assert all(len(l["registros"]) == 220 and all(x.get("ejemplo") for x in l["registros"]) for l in crm["listas"])
-    assert {b["seccion"] for b in crm["inicio"]} <= {"l_citas", "l_tratamientos", "l_pacientes"} and crm["inicio"][0]["uid"] == "b0"
+    assert crm["esquema"] == 2 and crm["plantilla"]["origen"] == "piezas" and crm["plantilla"]["id"].startswith("medida-")
+    ids = [l["id"] for l in crm["listas"]]
+    assert len(ids) >= 3 and "l_pacientes" in ids  # la pieza de pacientes de la clínica dental (sin IA: respaldo con las de mayor %)
+    assert all(len(l["registros"]) == 8 and all(x.get("ejemplo") for x in l["registros"]) for l in crm["listas"])  # pocos, no 220
+    assert {b["seccion"] for b in crm["inicio"]} <= set(ids) and len(crm["inicio"]) >= 2 and crm["inicio"][0]["uid"] == "b0"
     assert crm["totalContactos"] == 0 and crm["vendedores"] == ["Tú"]
+    assert crm["resumenIA"].startswith("Te dejé una base con") and crm["saludoEjemplos"]
     guardado = db["crm_workspaces"].docs[0]
-    assert guardado["plantilla"]["id"] == "clinica-dental" and len(guardado["listas"][0]["registros"]) == 220
-    assert cli.get(URL, headers=H).json()["listas"][0]["id"] == "l_citas"
+    assert guardado["plantilla"]["respaldo"] is True and len(guardado["listas"][0]["registros"]) == 8
+    assert [l["id"] for l in cli.get(URL, headers=H).json()["listas"]] == ids
 
 
-def test_con_la_bandera_y_respuestas_ambiguas_es_lo_de_carlos(cli, con_diseno):
-    crm = crear(cli, BRIEF).json()
-    assert crm["plantilla"] == {"id": None, "origen": "generador", "porque": []}
-    assert crm["listas"] == [] and crm["contactos"] == []
+def test_con_la_bandera_respuestas_vagas_tampoco_dejan_un_crm_casi_vacio(cli, con_diseno):
+    crm = crear(cli, BRIEF).json()  # antes: «ambiguo» → 0 secciones y 0 ejemplos (caso 21b)
+    assert crm["plantilla"]["origen"] == "piezas" and len(crm["listas"]) >= 3
+    assert all(l["registros"] for l in crm["listas"]) and len(crm["inicio"]) >= 2
 
 
 def test_quitar_ejemplos_borra_solo_los_ejemplos_sembrados(cli, con_diseno):
-    crear(cli, BRIEF_DENTAL)
-    r = cli.post(f"{URL}/listas/l_pacientes/registros", json={"valores": {"nombre": "Paciente real", "tipo": "Nuevo"}}, headers=H)
+    ids = [l["id"] for l in crear(cli, BRIEF_DENTAL).json()["listas"]]
+    r = cli.post(f"{URL}/listas/l_pacientes/registros", json={"valores": {"nombre": "Paciente real"}}, headers=H)
     assert r.status_code == 201, r.json()
-    crm = cli.post(f"{URL}/registros/ejemplos/quitar", json={"seccion": "l_citas"}, headers=H).json()
-    assert [len(l["registros"]) for l in crm["listas"]] == [0, 220, 221]  # solo la sección pedida
+    otra = next(i for i in ids if i != "l_pacientes")
+    crm = cli.post(f"{URL}/registros/ejemplos/quitar", json={"seccion": otra}, headers=H).json()
+    por_id = {l["id"]: len(l["registros"]) for l in crm["listas"]}
+    assert por_id[otra] == 0 and por_id["l_pacientes"] == 9  # solo la sección pedida
     crm = cli.post(f"{URL}/registros/ejemplos/quitar", headers=H).json()
-    assert [len(l["registros"]) for l in crm["listas"]] == [0, 0, 1]
-    assert crm["listas"][2]["registros"][0]["valores"]["nombre"] == "Paciente real"
-    assert [l["id"] for l in crm["listas"]] == ["l_citas", "l_tratamientos", "l_pacientes"]  # las secciones y el inicio se quedan
+    assert {l["id"]: len(l["registros"]) for l in crm["listas"]} == {i: (1 if i == "l_pacientes" else 0) for i in ids}
+    assert [l["id"] for l in crm["listas"]] == ids  # las secciones y el inicio se quedan
     assert cli.post(f"{URL}/registros/ejemplos/quitar", headers=H).status_code == 404  # ya no hay ejemplos
 
 
@@ -89,12 +92,36 @@ def test_un_crm_con_solo_ejemplos_se_puede_volver_a_crear_y_uno_con_datos_no(cli
     assert len(db["crm_workspaces"].docs) == 1
 
 
-def test_con_contactos_sembrados_tambien_se_puede_rehacer(cli, monkeypatch, con_diseno):
-    from app.crm import sembrar
+class _ModeloClientes:
+    """La IA (falsa) arma clientes con etapas primero: van a los contactos de Carlos."""
 
-    monkeypatch.setattr(sembrar, "elegir", lambda brief: {"recomendada": {"id": "agencia-marketing", "porque": ["tu rubro"]}, "opciones": [], "ambiguo": False})
+    async def ainvoke(self, mensajes):
+        import json
+
+        return type("R", (), {"content": json.dumps({"secciones": [
+            {"id": "clientes", "titulo": "Clientes", "campos": [["nombre", "Nombre", "texto", "persona"], ["telefono", "Teléfono", "texto", ["5555 1234"]],
+                                                                 ["etapa", "Etapa", "estado", ["Prospecto", "Activo", "En pausa", "Cerrado"]]]},
+            {"id": "campanas", "titulo": "Campañas", "vista": "tablero", "opciones": {"por": "estado"},
+             "campos": [["campana", "Campaña", "texto", ["Lanzamiento"]], ["estado", "Estado", "estado", ["Propuesta", "Activa", "Cerrada"]], ["inicio", "Inicio", "fecha"]]},
+            {"id": "entregas", "titulo": "Entregables", "campos": [["pieza", "Pieza", "texto", ["Video"]], ["entrega", "Entrega", "fecha"]]}],
+            "inicio": [{"seccion": "campanas", "vista": "kpis", "opciones": {"por": "estado"}}, {"seccion": "entregas", "vista": "vencimientos", "opciones": {}}]})})()
+
+
+def test_con_contactos_sembrados_tambien_se_puede_rehacer(cli, monkeypatch, con_diseno):
+    from app.crm import agente, primer_diseno
+
+    monkeypatch.setattr(agente, "activo", lambda: True)
+    monkeypatch.setattr(primer_diseno, "modelo_creacion", lambda: _ModeloClientes())
     crm = crear(cli, {"nombre": "Ola", "rubro": "agencia"}).json()
-    assert crm["totalContactos"] == 220 and crm["etapas"] == ["Prospecto", "Activo", "En pausa", "Cerrado"]
+    assert crm["totalContactos"] == 8 and crm["etapas"] == ["Prospecto", "Activo", "En pausa", "Cerrado"]
+    assert crm["plantilla"]["respaldo"] is False and crm["plantilla"]["llamadas"] == 1
     assert crear(cli, {"nombre": "Ola", "rubro": "agencia"}).status_code == 201
     cli.post(f"{URL}/contactos", json={"filas": [{"n": "Cliente real"}], "canal": "WhatsApp"}, headers=H)
     assert crear(cli, {"nombre": "Ola", "rubro": "agencia"}).status_code == 409
+
+
+def test_la_pregunta_abierta_y_las_respuestas_aceptan_1500_caracteres(cli, con_diseno):
+    largo = {"nombre": "PepesCore", "rubro": "comercio", "que_vendes": "v" * 1500, "seguimiento": [{"pregunta": "¿Qué quieres lograr?", "respuesta": "r" * 1500}]}
+    assert crear(cli, largo).status_code == 201  # antes se cortaba en 300 («…y mi personal», lista 24)
+    assert crear(cli, {**largo, "que_vendes": "v" * 1501}).status_code == 422
+    assert crear(cli, {**largo, "seguimiento": [{"pregunta": "¿Qué?", "respuesta": "r" * 1501}]}).status_code == 422

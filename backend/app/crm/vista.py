@@ -68,6 +68,8 @@ def vista_crm(doc: dict, ahora: datetime | None = None, puntos: list[dict] | Non
     if (doc.get("esquema") or 1) >= ESQUEMA:
         v2 = {**{k: doc.get(k) for k in ("plantilla", "inicio", "paginas", "marca", "toma")}, **esquema2_faltante(doc)}
         salida.update(esquema=doc["esquema"], plantilla=v2["plantilla"], inicio=v2["inicio"], paginas=v2["paginas"], marca=v2["marca"], toma=v2["toma"])
+        if doc.get("saludo_ejemplos"):  # pedidos de ejemplo del saludo, con las secciones que de verdad se crearon (lista 29)
+            salida["saludoEjemplos"] = list(doc["saludo_ejemplos"])
     if puntos is not None:
         salida["puntos"] = vista_puntos(puntos)
     return salida
