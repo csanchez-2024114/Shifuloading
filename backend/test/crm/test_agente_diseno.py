@@ -183,7 +183,7 @@ async def test_un_duplicado_exacto_es_un_error_de_la_herramienta(doc):
 @pytest.mark.asyncio
 async def test_una_seccion_que_no_existe_lo_dice_con_las_que_hay(doc):
     r, modelo = await correr(doc, "agrega un gasto", dice("", llamar("agregar_registro", seccion="Gastos", valores={"Monto": "50"})), dice("No tienes una sección de gastos."))
-    assert _resultados(modelo)[0] == "ERROR: «Gastos» no es una sección con registros. Secciones con registros: contactos (Pacientes), desarrollo (Tratamientos)."
+    assert _resultados(modelo)[0] == "ERROR: «Gastos» no es una sección con registros. Secciones con registros: «Pacientes», «Tratamientos»."
 
 
 @pytest.mark.asyncio
@@ -625,8 +625,8 @@ async def test_deshacer_sin_numero_es_el_ultimo_pedido(rosa_y_carlos):
 async def test_en_modo_diseno_el_modelo_no_ve_automatizaciones_ni_cobros_inactivos(doc):
     _, modelo = await correr(doc, "¿qué tengo?", dice("Tienes contactos."))
     ctx = _estado(modelo)
-    assert "automatizaciones" not in ctx and "automatizaciones" not in ctx.get("secciones_integradas", {})
-    assert "cobros" not in ctx.get("secciones_integradas", {})
+    assert "automatizaciones" not in ctx and "automatizaciones" not in ctx.get("secciones_del_menu", {})
+    assert "cobros" not in ctx.get("secciones_del_menu", {})
 
 
 def test_la_pestana_abierta_se_reconoce_por_id_o_por_titulo(doc):

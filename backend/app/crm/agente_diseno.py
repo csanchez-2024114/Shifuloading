@@ -126,9 +126,9 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 - mover_tarea: Mueve una tarea a otra columna.
 - eliminar_tarea: Pide eliminar una tarea. NO la borra: deja una confirmación pendiente y tú debes preguntar si está seguro.
 - definir_etapas: Cambia las etapas del proceso de venta (de 2 a 8). Los contactos que estaban en una etapa que se conserva siguen ahí; los demás pasan a la etapa del mismo lugar.
-- mostrar_seccion: Vuelve a mostrar en el menú una sección integrada que estaba oculta.
+- mostrar_seccion: Vuelve a mostrar en el menú una pestaña del CRM que estaba oculta.
 - definir_opciones: Convierte un campo que YA existe en una lista de opciones fijas (por ejemplo Estado = pendiente, realizado, cancelado), o cambia las opciones de una lista. Se conservan sus datos. Úsala en vez de quitar y volver a crear el campo.
-- mover_campo: Cambia el LUGAR de un campo en los contactos o en una sección propia (por ejemplo, ponerlo al principio). `posicion`: "inicio", "final" o un número (1 es el primero).
+- mover_campo: Cambia el LUGAR de un campo en los contactos o en una tabla del menú (por ejemplo, ponerlo al principio). `posicion`: "inicio", "final" o un número (1 es el primero).
 - recordar: Guarda UN dato duradero que la persona te dijo sobre cómo quiere que la trates o sobre su negocio (por ejemplo “prefiere que le hablen de usted”, “vende los fines de semana”). Una frase corta. Nunca datos de sus clientes, contraseñas, tarjetas ni identificaciones.
 - agregar_vendedor: Agrega una persona nueva al equipo de ventas. Si ya es un contacto (cliente), primero confirma con la persona y luego repite con confirmado=true.
 - recordar_ciudad / buscar_en_internet: Guarda la ciudad del negocio (clima y datos locales) cuando te la digan; busca en internet información general que no está en el CRM (clima, noticias…), sin datos de clientes.
@@ -138,7 +138,7 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 # Solo lo que el prompt del laboratorio no cubre y es específico de este backend (contexto JSON del CRM).
 INSTRUCCIONES_DISENO = """Más de este CRM (Python)
 - No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
-- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado."""
+- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el nombre/id de pestaña que aparece en el Estado (campo pestana o id_para_herramientas)."""
 
 _CABECERA_ESTADO_PANTALLA = "Estado de la pantalla (JSON):\n"
 
@@ -436,7 +436,7 @@ class SesionDiseno(agente.Sesion):
             self._masivo_plan = None
             return
         masivo_txt = conceptos.masivo_destruye_registros(self.texto or "")
-        masivo_bloques = conceptos.masivo_destruye_bloques(self.texto or "")
+        masivo_bloques = bool(MASIVO.search(self.texto or ""))
         n_sec = sum(1 for ll in llamadas if ll.get("name") == "quitar_seccion")
         n_bloq = sum(1 for ll in llamadas if ll.get("name") == "quitar_bloque")
         n_camp = sum(1 for ll in llamadas if ll.get("name") == "quitar_campo")
@@ -488,7 +488,7 @@ class SesionDiseno(agente.Sesion):
         if "NO ACTIVA" in str(((base.get("secciones_integradas") or {}).get("cobros") or {}).get("para_que", "")):
             base["secciones_integradas"].pop("cobros", None)
         base.update(pantalla.describir_pantalla(self.doc, self.vista or self.abierta or "inicio", self.puntos))
-        return json.dumps(base, ensure_ascii=False, default=str)
+        return json.dumps(conceptos.humanizar_estado_modelo(base), ensure_ascii=False, default=str)
 
     def solo_toma(self) -> bool:
         t = self.doc.get("toma") or {}
@@ -626,7 +626,7 @@ class SesionDiseno(agente.Sesion):
             if bloque in self.en_error and not confirmado:
                 return ERROR_QUITAR_BLOQUE_EN_ERROR
             ya_b = sum(1 for c in self.cambios if c["herramienta"] == "quitar_bloque")
-            if not confirmado and (plan.get("bloques") or conceptos.masivo_destruye_bloques(self.texto or "") or ya_b >= 2):
+            if not confirmado and (plan.get("bloques") or MASIVO.search(self.texto or "") or ya_b >= 2):
                 return ERROR_MASIVO_BLOQUES
         if nombre == "quitar_seccion":
             ya_s = sum(1 for c in self.cambios if c["herramienta"] == "quitar_seccion")
@@ -684,7 +684,7 @@ class SesionDiseno(agente.Sesion):
             if r.get("vista"):
                 self.vista = r["vista"]
             self._etiqueta = r.get("etiqueta")
-        return r["resultado"]
+        return conceptos.humanizar_resultado_herramienta(r["resultado"], self.doc)
 
     @staticmethod
     def es_fallo(resultado: str) -> bool:
@@ -722,7 +722,7 @@ class SesionDiseno(agente.Sesion):
             s = next((x for x in secs if x["id"] == sid), None) or next((x for x in secs if _norm(x["titulo"]) == _norm(k)), None)
         if s is None:
             # Literal de edicion.js (contextoDatos). Fuera del f-string: comillas iguales anidadas no compilan en Python 3.11.
-            cuales = ", ".join(f"{x['id']} ({x['titulo']})" for x in secs)
+            cuales = ", ".join(f"«{x['titulo']}»" for x in secs)
             return None, f"ERROR: «{_js(q)}» no es una sección con registros. Secciones con registros: {cuales}."
         return s, None
 
@@ -1009,7 +1009,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     if prep["construir"]:
         return _construir(doc_turno)
 
-    texto_turno = conceptos.texto_tras_afirmacion(texto or "", historial) or (texto or "")
+    texto_turno = texto or ""
     sesion = SesionDiseno(doc_turno, ahora, texto_turno, bool(imagen), historial=historial, puntos=puntos, digresion=prep["digresion"],
                           toma_entrada=bool((doc.get("toma") or {}).get("activa")))
     sesion.abierta = pestana_abierta(doc_turno, seccion)
@@ -1021,8 +1021,6 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     persona_final = "\n\n".join(x for x in (persona, persona_brief) if x) or None
     vista_ctx = seccion or (doc_turno.get("vista") if isinstance(doc_turno.get("vista"), str) else None) or "inicio"
     avisos_codigo = conceptos.avisos_turno(doc_turno, texto_turno, historial, sesion.abierta or vista_ctx)
-    if texto_turno != (texto or ""):
-        avisos_codigo.append("La persona respondió «sí» a tu pregunta anterior: ejecuta la opción que recomendaste, sin repetir la pregunta.")
     mensajes = agente._mensajes(doc, texto_turno, historial, ahora, con_captura, imagen, seccion, persona_final, adjunto)
     aviso_toma = "\n".join(x for x in (prep["aviso"], prep["digresion"] and toma.AVISO_DIGRESION, *avisos_codigo) if x)
     conceptos_txt = conceptos.bloque_para_prompt(texto_turno, None)
@@ -1099,7 +1097,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     respuesta = await revisar_sustituto_final(respuesta, sesion, doc_inicial, mensajes, base, sesion._tiene_imagen())
     if correcciones >= agente.MAX_CORRECCIONES and (vl := sesion.verdad_lado_final(respuesta)):
         respuesta += f"\n\nOjo: en realidad quedó en {vl}."
-    respuesta = conceptos.sin_jerga(agente.limpiar_respuesta(respuesta))
+    respuesta = agente.limpiar_respuesta(respuesta)
     if respuesta and correcciones >= agente.MAX_CORRECCIONES and sesion.afirma_sin_respaldo(respuesta):
         # Agotadas las correcciones, lo que no tiene respaldo no se entrega (Alan, «Te mandé la prueba»): habla el código con lo que pasó.
         sesion.avisos.append({"aviso": "sin respaldo tras corregir: respondió el código", "descartada": respuesta[:300]})

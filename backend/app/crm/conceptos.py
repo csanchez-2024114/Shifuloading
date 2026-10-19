@@ -1,6 +1,6 @@
 """Catálogo de conceptos del CRM (lista 19-oct, punto 19): una línea por concepto en cada turno; detalle solo si aparece en el mensaje.
 
-También: sugerir 2–3 gráficas (13/14), resolver un «sí» suelto a la opción recomendada (7), y quitar jerga interna de la respuesta (8).
+También: sugerir 2–3 gráficas (13/14) y humanizar el estado que ve el modelo (sin jerga de ids internos en lo visible).
 """
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from app.crm import agente
 from app.crm import pantalla
 from app.crm import plantillas
 from app.crm import secciones_v as sv
@@ -34,18 +33,6 @@ _RUBRO_GROK: dict[str, str] = {
 _TECNO = re.compile(r"comput|celular|laptop|repar|taller|tecnolog|repuesto|geek", re.I)
 _GRAFICAS_PREGUNTA = re.compile(r"gr[aá]ficas?\s+puedo|qu[eé]\s+gr[aá]ficas?", re.I)
 _PEDIR_GRAFICA = re.compile(r"gr[aá]fica|grafico|dona|embudo|columnas|barras", re.I)
-_TIPOS_GRAFICA = (
-    "columnas apiladas", "columnas 100", "barras horizontales", "barras apiladas", "barra 100", "línea con área", "linea con area",
-    "área apilada", "línea con tendencia", "anillos concéntricos", "anillo de meta", "mapa de árbol", "caja y bigotes", "mapa de calor",
-    "tabla de posiciones", "columnas + acumulado", "múltiplos pequeños", "media dona", "rosa polar", "puntos por categoría",
-    "línea de tiempo", "barras de progreso", "bala contra meta", "dos kpis", "kpi con tendencia", "columnas", "barras", "línea", "linea",
-    "dona", "pastel", "medidor", "embudo", "radar", "dispersión", "burbujas", "histograma", "cascada", "estadísticas", "paleta", "pareto",
-    "escalones", "pendiente", "waffle", "sol", "gantt", "kpi", "posiciones",
-)
-_RECOMIENDO = re.compile(r"te la recomiendo|la recomiendo|te recomiendo", re.I)
-_PREGUNTA = re.compile(r"\?|¿")
-
-
 @lru_cache(maxsize=1)
 def _catalogo() -> list[dict]:
     with open(_CARPETA / "conceptos.json", encoding="utf-8") as f:
@@ -211,7 +198,7 @@ def avisos_turno(doc: dict, texto: str, historial: list[dict] | None, vista: str
     if _GRAFICAS_PREGUNTA.search(texto or ""):
         sug = sugerir_graficas(doc, sec, 3)
         if sug:
-            lista = ", ".join(f"{g['nombre']} ({g['id']})" for g in sug)
+            lista = ", ".join(g["nombre"] for g in sug)
             avisos.append(f"Si preguntan qué gráficas pueden poner: ofrece SOLO 2 o 3 de esta lista (con una recomendada), no enumerar el catálogo entero: {lista}.")
         else:
             avisos.append("Si preguntan qué gráficas pueden poner: con los campos que hay, elige 2 o 3 del catálogo compatibles y recomienda una.")
@@ -223,67 +210,79 @@ def avisos_turno(doc: dict, texto: str, historial: list[dict] | None, vista: str
     return avisos
 
 
-def _tipo_recomendado(msg: str) -> str | None:
-    """Tipo de gráfica recomendada en el último mensaje de Shifu (p. ej. dona)."""
-    t = msg or ""
-    pos = None
-    m = _RECOMIENDO.search(t)
-    if m:
-        pos = m.start()
-    ventana = t[:pos] if pos is not None else t
-    ventana_l = ventana.lower()
-    for g in _TIPOS_GRAFICA:
-        if g in ventana_l:
-            return g.replace("linea", "línea") if g == "linea" else g
-    return None
-
-
-def texto_tras_afirmacion(texto: str, historial: list[dict] | None) -> str | None:
-    """Un «sí» suelto tras una pregunta con recomendación → instrucción explícita (punto 7)."""
-    if not agente._AFIRMA.match(texto or ""):
-        return None
-    ultima = next((str(h.get("t") or "") for h in reversed(historial or []) if h.get("de") == "shifu"), "")
-    if not _PREGUNTA.search(ultima):
-        return None
-    rec = _tipo_recomendado(ultima)
-    if rec:
-        return f"acepto tu recomendación: pon la gráfica de {rec} en el inicio"
-    if _RECOMIENDO.search(ultima):
-        return "acepto la opción que recomendaste"
-    return None
-
-
-def masivo_destruye_bloques(texto: str) -> bool:
-    """«Todos» que pide quitar varias piezas, no «todos los miembros» como alcance de una sola gráfica."""
-    t = texto or ""
-    if re.search(r"\b(quita|quitar|saca|borra|elimina)\s+(todos?|todas?)\s+(los?\s+)?(bloque|gr[aá]fica|grafica|pieza)", t, re.I):
-        return True
-    if re.search(r"\b(todos?|todas?)\s+(los?\s+)?(bloque|gr[aá]fica|grafica|pieza)", t, re.I):
-        return True
-    return False
-
-
 def masivo_destruye_registros(texto: str) -> bool:
     return bool(re.search(r"\btod[ao]s?\b|\bvarias\b|\btodo\b", texto or "", re.I | re.ASCII))
 
 
-_JERGA_SUBS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"propia,?\s*no\s+integrad[ao]", re.I), ""),
-    (re.compile(r"\bintegrad[ao]\b", re.I), "del menú"),
-    (re.compile(r"\bpestanas_base\b", re.I), ""),
-    (re.compile(r"\bgraficos_posibles\b", re.I), "tipos de gráfica disponibles"),
-    (re.compile(r"\b(l_[a-z0-9_]+|p_[a-z0-9_]+|b\d+)\b", re.I), ""),
-    (re.compile(r"\b[a-z]+_[a-z_]{2,}\b"), ""),
-    (re.compile(r"\bagregar_\w+\b|\bquitar_\w+\b|\bcrear_\w+\b", re.I), ""),
-    (re.compile(r"\s{2,}"), " "),
-]
+def humanizar_estado_modelo(estado: dict) -> dict:
+    """Textos del JSON de contexto en lenguaje de la persona (ids solo donde la herramienta los exige)."""
+    from app.crm import pantalla
+
+    out = dict(estado)
+    integradas = out.pop("secciones_integradas", None)
+    if integradas is not None:
+        out["secciones_del_menu"] = {
+            (info.get("nombre") or sid): {"oculta_en_menu": info.get("oculta"), "sirve_para": info.get("para_que")}
+            for sid, info in integradas.items()
+        }
+    propias = out.pop("secciones_propias", None)
+    if propias is not None:
+        out["tablas_del_negocio"] = [
+            {
+                "nombre": p.get("nombre"),
+                "campos": p.get("campos"),
+                "cuantos_registros": p.get("total_registros"),
+                **({k: p[k] for k in ("totales_exactos", "conteo_por_opcion") if k in p}),
+            }
+            for p in propias
+        ]
+    titulos = {s.get("id"): s.get("titulo") or s.get("id") for s in out.get("secciones") or []}
+    for sec in out.get("secciones") or []:
+        if "graficos_posibles" in sec:
+            sec["graficas_disponibles"] = [
+                g.split(" (", 1)[1].rstrip(")") if " (" in g else g for g in sec["graficos_posibles"]
+            ]
+            del sec["graficos_posibles"]
+        sid = sec.get("id")
+        tit = sec.get("titulo") or titulos.get(sid) or sid
+        if tit:
+            sec["pestana"] = tit
+        if sid and str(sid).startswith(("l_", "p_")):
+            sec["id_para_herramientas"] = sid
+            sec.pop("id", None)
+    if "pestanas_base" in out:
+        out["plantillas_de_pestana"] = [
+            p[p.index("(") + 1 :].rstrip(")") if "(" in p else p for p in out.pop("pestanas_base")
+        ]
+    nombre_vista = pantalla.NOMBRE_VISTA
+    for bloque in out.get("bloques") or []:
+        v = bloque.get("vista")
+        if isinstance(v, str) and v in nombre_vista:
+            bloque["tipo_de_pieza"] = nombre_vista[v]
+            bloque.pop("vista", None)
+        sec = bloque.get("seccion")
+        if sec in titulos:
+            bloque["de_la_pestana"] = titulos[sec]
+            bloque.pop("seccion", None)
+    for pieza in out.get("piezas_que_se_ven_ahora") or []:
+        pieza.pop("id", None)
+        v = pieza.get("vista")
+        if isinstance(v, str) and v in nombre_vista:
+            pieza["tipo_de_pieza"] = nombre_vista[v]
+            pieza.pop("vista", None)
+    if out.get("grafico"):
+        out["grafico"] = out["grafico"].replace("graficos_posibles", "graficas_disponibles de esa pestaña")
+    return out
 
 
-def sin_jerga(texto: str) -> str:
-    """Quita jerga interna visible en la respuesta (punto 8)."""
-    if not texto:
+def humanizar_resultado_herramienta(texto: str, doc: dict) -> str:
+    """Sustituye la cola «Así se ve ahora: b0 (kpis)…» por nombres legibles."""
+    from app.crm import pantalla
+
+    marca = "Así se ve ahora:"
+    if marca not in (texto or ""):
         return texto
-    out = texto
-    for pat, repl in _JERGA_SUBS:
-        out = pat.sub(repl, out)
-    return re.sub(r"\n{3,}", "\n\n", out).strip()
+    prefijo, _ = texto.split(marca, 1)
+    titulos = {s["id"]: s.get("titulo") or s["id"] for s in pantalla.plantilla_efectiva(doc)["secciones"]}
+    legible = pantalla.asi_se_ve_legible(doc.get("inicio") or [], titulos)
+    return f"{prefijo}{marca} {legible}."
