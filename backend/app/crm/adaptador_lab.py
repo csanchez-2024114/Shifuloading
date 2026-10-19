@@ -1,0 +1,536 @@
+"""Adaptador entre el estado del laboratorio (bancos de prueba) y el documento CRM de Carlos (esquema 2).
+
+Funciones puras, sin I/O. Los bancos (`laboratorio/pruebas/*.py`) envían `{plantilla, estado, texto, …}` y esperan la misma
+forma de respuesta que `/api/lab/chat`; este módulo traduce estado ↔ documento para medir el motor Python sin cambiar los bancos.
+
+Puntos de deshacer: en el laboratorio viven en `estado.puntos` (con `foto` en forma lab). En Carlos van en `crm_puntos` con
+`foto` en forma documento (contrato §3). El adaptador traduce las fotos en ambos sentidos; el contador `puntos_n` queda en el doc.
+"""
+from __future__ import annotations
+
+import copy
+from datetime import date, datetime, timezone
+from typing import Any, Callable
+
+from app.crm import ejemplos
+from app.crm import estructura as est
+from app.crm import plantillas as catalogo
+from app.crm import puntos as pt
+from app.crm import sembrar
+from app.crm.generador import generar
+from app.crm.secciones import IDS_SECCION
+from app.crm.secciones_v import registros_de as regs_de
+
+PREFIJO = sembrar.PREFIJO
+_FIJAS_LAB = sembrar.FIJAS  # feed → actividad, etc.
+
+
+def _hoy_default(hoy: date | None) -> date:
+    return hoy or date.today()
+
+
+def _muestra_norm(muestra: dict | None) -> dict:
+    m = muestra or {}
+    nivel = m.get("nivel") or "pocos"
+    if nivel not in ("vacio", "pocos", "muchos"):
+        nivel = "pocos"
+    return {"nivel": nivel, "ejemplos": m.get("ejemplos") is not False, "pais": (m.get("pais") or "gt")[:5]}
+
+
+def mapa_secciones(plantilla: dict, doc: dict) -> dict[str, str]:
+    """Id de sección del laboratorio → id en el documento (p. ej. `miembros` → `l_miembros`)."""
+    out: dict[str, str] = {}
+    personas = sembrar.seccion_personas(plantilla)
+    if personas:
+        out[personas[0]["id"]] = "contactos"
+    for s in plantilla.get("secciones") or []:
+        sid = s["id"]
+        if sid in out:
+            continue
+        if s.get("vista") in _FIJAS_LAB and not s.get("campos"):
+            out[sid] = _FIJAS_LAB[s["vista"]]
+        elif s.get("campos") and not s.get("fuente"):
+            out[sid] = PREFIJO + sid
+        elif s.get("fuente"):
+            out[sid] = out.get(s["fuente"], PREFIJO + s["fuente"])
+    # Lo que realmente quedó sembrado (por si una sección no cupo).
+    for l in doc.get("listas") or []:
+        if l["id"].startswith(PREFIJO):
+            out.setdefault(l["id"][len(PREFIJO):], l["id"])
+    return out
+
+
+def _inv_mapa(mapa: dict[str, str], plantilla: dict | None = None) -> dict[str, str]:
+    """Documento → id de sección del laboratorio. Si varias secciones de plantilla comparten lista (`fuente`), gana la dueña."""
+    if not plantilla:
+        return {v: k for k, v in mapa.items()}
+    por = {s["id"]: s for s in plantilla.get("secciones") or []}
+    inv: dict[str, str] = {}
+    for lab_id, doc_sec in mapa.items():
+        s = por.get(lab_id, {})
+        if s.get("campos") and not s.get("fuente"):
+            inv[doc_sec] = lab_id
+    for lab_id, doc_sec in mapa.items():
+        inv.setdefault(doc_sec, lab_id)
+    return inv
+
+
+def _fuente_lab(plantilla: dict, lab_sec: str) -> str:
+    por = {s["id"]: s for s in plantilla.get("secciones") or []}
+    s = por.get(lab_sec)
+    if not s:
+        return lab_sec
+    return s.get("fuente") or s["id"]
+
+
+def _bloque_a_doc(b: dict, mapa: dict[str, str]) -> dict:
+    sec = b.get("seccion")
+    doc_sec = mapa.get(sec, sec)
+    vista = "grafico" if b.get("vista") == "grafica" else b.get("vista")
+    return {**copy.deepcopy(b), "seccion": doc_sec, "vista": vista}
+
+
+def _bloque_a_lab(b: dict, inv: dict[str, str]) -> dict:
+    sec = b.get("seccion")
+    lab_sec = inv.get(sec, sec[len(PREFIJO):] if isinstance(sec, str) and sec.startswith(PREFIJO) else sec)
+    # El laboratorio acepta `grafica` (vieja) y `grafico`; no forzamos una u otra al volver.
+    return {**copy.deepcopy(b), "seccion": lab_sec}
+
+
+def _aplicar_datos_lab(registros: dict[str, list[dict]], delta: dict | None, mapeo_estado: dict | None) -> dict[str, list[dict]]:
+    """Port de `aplicarDatos` (datosEjemplo.js): delta sobre registros por sección dueña."""
+    if not delta or not any(delta.get(k) for k in ("nuevos", "cambios", "borrados")):
+        return registros
+    out = {k: [copy.deepcopy(r) for r in v] for k, v in registros.items()}
+    fuentes = set((delta.get("nuevos") or {}).keys()) | set((delta.get("cambios") or {}).keys()) | set((delta.get("borrados") or {}).keys())
+    for f in fuentes:
+        fuera = set(delta.get("borrados", {}).get(f) or [])
+        cambios = delta.get("cambios", {}).get(f) or {}
+        out[f] = [*(out.get(f) or []), *[copy.deepcopy(r) for r in (delta.get("nuevos", {}).get(f) or [])]]
+        out[f] = [r for r in out[f] if r["id"] not in fuera]
+        out[f] = [{**r, "valores": {**r["valores"], **cambios[r["id"]]}} if r["id"] in cambios else r for r in out[f]]
+        if mapeo_estado and mapeo_estado.get(f):
+            out[f] = ejemplos._mapear_estados(out[f], mapeo_estado[f])
+    return out
+
+
+def _registros_semilla_lab(plantilla: dict, muestra: dict, estructura: dict | None, hoy: date) -> dict[str, list[dict]]:
+    m = _muestra_norm(muestra)
+    base = ejemplos.datos_ejemplo(plantilla, m["nivel"], hoy, m["pais"])
+    if not m["ejemplos"]:
+        base = ejemplos.sin_ejemplos(base) or base
+    ext = ejemplos.extender_datos(base, plantilla, estructura or {}, m["nivel"], hoy) or base
+    return ext["registros"]
+
+
+def _delta_datos_lab(actuales: dict[str, list[dict]], semilla: dict[str, list[dict]], plantilla: dict) -> dict | None:
+    """Registros actuales → delta {nuevos, cambios, borrados, n} frente a la semilla (ids de ejemplo)."""
+    nuevos: dict[str, list] = {}
+    cambios: dict[str, dict] = {}
+    borrados: dict[str, list] = {}
+    n = 0
+    for s in plantilla.get("secciones") or []:
+        if not s.get("campos"):
+            continue
+        f = _fuente_lab(plantilla, s["id"])
+        base_ids = {r["id"] for r in semilla.get(f, [])}
+        por_id = {r["id"]: r for r in actuales.get(f, [])}
+        for rid in base_ids:
+            if rid not in por_id:
+                borrados.setdefault(f, []).append(rid)
+        for rid, r in por_id.items():
+            if rid in base_ids:
+                base_r = next(x for x in semilla[f] if x["id"] == rid)
+                diff = {k: v for k, v in r["valores"].items() if base_r["valores"].get(k) != v}
+                if diff:
+                    cambios.setdefault(f, {})[rid] = diff
+            else:
+                nuevos.setdefault(f, []).append({"id": rid, "valores": dict(r["valores"])})
+                n = max(n, 1)
+    if not nuevos and not cambios and not borrados:
+        return None
+    out: dict[str, Any] = {}
+    if nuevos:
+        out["nuevos"] = nuevos
+    if cambios:
+        out["cambios"] = cambios
+    if borrados:
+        out["borrados"] = borrados
+    if n or nuevos:
+        out["n"] = max(n, len([r for rs in nuevos.values() for r in rs]))
+    return out
+
+
+def _poner_registros_lab(doc: dict, plantilla: dict, mapa: dict[str, str], registros: dict[str, list[dict]]) -> dict:
+    """Escribe registros (claves lab / fuente) en el documento."""
+    out = copy.deepcopy(doc)
+    inv = _inv_mapa(mapa)
+    for lab_f, rs in registros.items():
+        doc_sec = mapa.get(lab_f, PREFIJO + lab_f)
+        if doc_sec == "contactos":
+            continue  # los bancos de membresías no usan contactos
+        lista = next((l for l in out["listas"] if l["id"] == doc_sec), None)
+        if lista is None:
+            continue
+        creado = lista["registros"][0]["creado"] if lista["registros"] else datetime.now(timezone.utc)
+        lista["registros"] = [
+            {"id": r["id"], "valores": copy.deepcopy(r["valores"]), "ejemplo": bool(r.get("ejemplo")), "creado": creado}
+            for r in rs
+        ]
+    return out
+
+
+def _registros_actuales_lab(doc: dict, plantilla: dict, mapa: dict[str, str]) -> dict[str, list[dict]]:
+    inv = _inv_mapa(mapa)
+    out: dict[str, list] = {}
+    for lab_id, doc_sec in mapa.items():
+        if doc_sec in ("actividad", "rrhh", "automatizaciones", "cobros", "desarrollo", "importar"):
+            continue
+        f = _fuente_lab(plantilla, lab_id)
+        if f in out:
+            continue
+        try:
+            out[f] = regs_de(doc, doc_sec)
+        except Exception:
+            out[f] = []
+    return out
+
+
+def _aplicar_estructura_lab(doc: dict, plantilla: dict, est_lab: dict | None, mapa: dict[str, str], hoy: date) -> dict:
+    if not est_lab:
+        return doc
+    out = copy.deepcopy(doc)
+    m = _muestra_norm({})
+    # Páginas propias de pestañas
+    if est_lab.get("paginas"):
+        paginas = {}
+        for lab_pid, bloques in est_lab["paginas"].items():
+            doc_pid = mapa.get(lab_pid, PREFIJO + lab_pid)
+            paginas[doc_pid] = [_bloque_a_doc(b, mapa) for b in bloques]
+        out["paginas"] = paginas
+    # Títulos
+    for lab_id, titulo in (est_lab.get("titulos") or {}).items():
+        doc_sec = mapa.get(lab_id)
+        if not doc_sec:
+            continue
+        if doc_sec.startswith(PREFIJO):
+            lista = next((l for l in out["listas"] if l["id"] == doc_sec), None)
+            if lista:
+                lista["nombre"] = titulo
+        else:
+            out.setdefault("secciones", {})[doc_sec] = titulo
+    # Campos nuevos por sección
+    for lab_id, campos in (est_lab.get("campos") or {}).items():
+        doc_sec = mapa.get(lab_id, PREFIJO + lab_id)
+        for c in campos:
+            try:
+                out = est.campo_agregar(out, doc_sec, c.get("nombre", "Campo"), c.get("tipo", "texto"), opciones=c.get("opciones"))
+            except Exception:
+                pass
+    # Secciones nuevas
+    for sec in est_lab.get("secciones") or []:
+        if sec["id"] in mapa:
+            continue
+        try:
+            campos = [{"nombre": c["nombre"], "tipo": c.get("tipo", "texto")} for c in sec.get("campos") or []]
+            out = est.lista_crear(out, sec.get("titulo") or sec["id"], campos or None)
+            # El id del laboratorio no siempre coincide con el generado; el banco usa ids fijos en estructura.
+            lista = out["listas"][-1]
+            mapa[sec["id"]] = lista["id"]
+        except Exception:
+            pass
+    # Meta en listas existentes
+    for lab_id, doc_sec in list(mapa.items()):
+        if not doc_sec.startswith(PREFIJO):
+            continue
+        lista = next((l for l in out["listas"] if l["id"] == doc_sec), None)
+        if not lista:
+            continue
+        base = next((s for s in plantilla.get("secciones") or [] if s["id"] == lab_id), None)
+        cq = (est_lab.get("camposQuitados") or {}).get(lab_id) or []
+        if cq and base:
+            for cid in cq:
+                try:
+                    out = est.campo_eliminar(out, doc_sec, cid)
+                except Exception:
+                    pass
+        nc = (est_lab.get("nombresCampo") or {}).get(lab_id) or {}
+        for cid, nombre in nc.items():
+            try:
+                out = est.campo_renombrar(out, doc_sec, cid, nombre)
+            except Exception:
+                pass
+        oe = (est_lab.get("opcionesEstado") or {}).get(lab_id) or {}
+        for cid, opts in oe.items():
+            lista = next(l for l in out["listas"] if l["id"] == doc_sec)
+            lista["opciones_estado"] = {**(lista.get("opciones_estado") or {}), cid: list(opts)}
+            campo = next((c for c in lista["campos"] if c["id"] == cid), None)
+            if campo and campo.get("tipo") in est.CON_OPCIONES:
+                campo["opciones"] = list(opts)
+        me = (est_lab.get("mapeoEstado") or {}).get(lab_id) or {}
+        if me:
+            lista = next(l for l in out["listas"] if l["id"] == doc_sec)
+            lista["mapeo_estado"] = {**(lista.get("mapeo_estado") or {}), **me}
+        if (est_lab.get("ficha") or {}).get(lab_id):
+            lista = next(l for l in out["listas"] if l["id"] == doc_sec)
+            lista["ficha"] = copy.deepcopy(est_lab["ficha"][lab_id])
+        if (est_lab.get("tarjeta") or {}).get(lab_id):
+            lista = next(l for l in out["listas"] if l["id"] == doc_sec)
+            lista["tarjeta"] = copy.deepcopy(est_lab["tarjeta"][lab_id])
+    # Ocultas (ids del laboratorio)
+    for lab_id in est_lab.get("ocultas") or []:
+        doc_sec = mapa.get(lab_id)
+        if doc_sec and doc_sec in IDS_SECCION:
+            try:
+                out = est.seccion_ocultar(out, doc_sec)
+            except Exception:
+                pass
+    return out
+
+
+def _paginas_en_lab(paginas: dict | None, inv: dict[str, str]) -> dict[str, list]:
+    out: dict[str, list] = {}
+    for doc_pid, bloques in (paginas or {}).items():
+        lab_pid = inv.get(doc_pid, doc_pid[len(PREFIJO):] if doc_pid.startswith(PREFIJO) else doc_pid)
+        out[lab_pid] = [_bloque_a_lab(b, inv) for b in bloques]
+    return out
+
+
+def _estructura_lab(doc: dict, doc_sembrado: dict, plantilla: dict, mapa: dict[str, str]) -> dict | None:
+    est_out: dict[str, Any] = {}
+    inv = _inv_mapa(mapa, plantilla)
+    por_plantilla = {s["id"]: s for s in plantilla.get("secciones") or []}
+    paginas_lab = _paginas_en_lab(doc.get("paginas"), inv)
+    paginas_sem = _paginas_en_lab(doc_sembrado.get("paginas"), inv)
+    if paginas_lab != paginas_sem:
+        est_out["paginas"] = paginas_lab
+    doc_secs_vistas: set[str] = set()
+    for lab_id, doc_sec in mapa.items():
+        if not doc_sec.startswith(PREFIJO):
+            continue
+        if doc_sec in doc_secs_vistas:
+            continue
+        if por_plantilla.get(lab_id, {}).get("fuente"):
+            continue
+        doc_secs_vistas.add(doc_sec)
+        lista = next((l for l in doc["listas"] if l["id"] == doc_sec), None)
+        lista0 = next((l for l in doc_sembrado["listas"] if l["id"] == doc_sec), None)
+        base = por_plantilla.get(lab_id)
+        if not lista or not base:
+            continue
+        if lista["nombre"] != base.get("titulo"):
+            est_out.setdefault("titulos", {})[lab_id] = lista["nombre"]
+        ids_base = {c["id"] for c in base.get("campos") or []}
+        ids_now = {c["id"] for c in lista["campos"]}
+        quitados = [c for c in ids_base if c not in ids_now]
+        if quitados:
+            est_out.setdefault("camposQuitados", {})[lab_id] = quitados
+        agregados = [c for c in lista["campos"] if c["id"] not in ids_base]
+        if agregados:
+            est_out.setdefault("campos", {})[lab_id] = [{k: c[k] for k in ("id", "nombre", "tipo", "opciones") if k in c} for c in agregados]
+        nombres = {}
+        por_base = {c["id"]: c for c in base.get("campos") or []}
+        for c in lista["campos"]:
+            if c["id"] in por_base and c.get("nombre") != por_base[c["id"]].get("nombre"):
+                nombres[c["id"]] = c["nombre"]
+        if nombres:
+            est_out.setdefault("nombresCampo", {})[lab_id] = nombres
+        for c in lista["campos"]:
+            if c.get("tipo") not in est.CON_OPCIONES:
+                continue
+            opts_b = (por_base.get(c["id"]) or {}).get("opciones")
+            opts_n = c.get("opciones")
+            if opts_b and opts_n and list(opts_b) != list(opts_n):
+                est_out.setdefault("opcionesEstado", {})[lab_id] = {**(est_out.get("opcionesEstado", {}).get(lab_id) or {}), c["id"]: list(opts_n)}
+        me = lista.get("mapeo_estado") or {}
+        me0 = (lista0 or {}).get("mapeo_estado") or {}
+        if me and me != me0:
+            est_out.setdefault("mapeoEstado", {})[lab_id] = copy.deepcopy(me)
+        if lista.get("ficha") and lista.get("ficha") != base.get("ficha"):
+            est_out.setdefault("ficha", {})[lab_id] = copy.deepcopy(lista["ficha"])
+        if lista.get("tarjeta") and lista.get("tarjeta") != base.get("tarjeta"):
+            est_out.setdefault("tarjeta", {})[lab_id] = copy.deepcopy(lista["tarjeta"])
+    return est_out or None
+
+
+def _foto_punto_a_doc(foto_lab: dict, plantilla: dict, mapa: dict[str, str]) -> dict:
+    if not foto_lab:
+        return {}
+    foto: dict[str, Any] = {}
+    if "bloques" in foto_lab:
+        b = foto_lab["bloques"]
+        if isinstance(b, list):
+            foto["bloques"] = {"inicio": [_bloque_a_doc(x, mapa) for x in b], "paginas": {}}
+        else:
+            foto["bloques"] = {"inicio": [_bloque_a_doc(x, mapa) for x in (b.get("inicio") or [])],
+                               "paginas": {mapa.get(k, PREFIJO + k): [_bloque_a_doc(x, mapa) for x in v] for k, v in (b.get("paginas") or {}).items()}}
+    if "marca" in foto_lab:
+        foto["marca"] = copy.deepcopy(foto_lab["marca"])
+    if "estructura" in foto_lab:
+        foto["estructura"] = copy.deepcopy(foto_lab["estructura"])  # se reconcilia al deshacer vía doc
+    if "datos" in foto_lab:
+        foto["datos"] = {mapa.get(k, PREFIJO + k): copy.deepcopy(v) for k, v in foto_lab["datos"].items()}
+    return foto
+
+
+def _foto_punto_a_lab(foto_doc: dict, inv: dict[str, str]) -> dict:
+    if not foto_doc:
+        return {}
+    foto: dict[str, Any] = {}
+    if "bloques" in foto_doc:
+        b = foto_doc["bloques"]
+        foto["bloques"] = {
+            "inicio": [_bloque_a_lab(x, inv) for x in b.get("inicio") or []],
+            "paginas": {inv.get(k, k[len(PREFIJO):] if k.startswith(PREFIJO) else k): [_bloque_a_lab(x, inv) for x in v]
+                        for k, v in (b.get("paginas") or {}).items()},
+        }
+    for k in ("marca", "estructura"):
+        if k in foto_doc:
+            foto[k] = copy.deepcopy(foto_doc[k])
+    if "datos" in foto_doc:
+        foto["datos"] = {inv.get(k, k[len(PREFIJO):] if isinstance(k, str) and k.startswith(PREFIJO) else k): copy.deepcopy(v)
+                         for k, v in foto_doc["datos"].items()}
+    return foto
+
+
+def puntos_lab_desde_doc(puntos_doc: list[dict], plantilla: dict, mapa: dict[str, str]) -> list[dict]:
+    inv = _inv_mapa(mapa, plantilla)
+    out = []
+    for p in puntos_doc or []:
+        hora = p.get("hora") or ""
+        if isinstance(hora, str) and len(hora) > 8:
+            hora = hora[11:16] if "T" in hora else hora[:5]
+        out.append({"n": p["n"], "antes_de": p.get("antes_de", ""), "hora": hora, "cambio": list(p.get("cambio") or []),
+                    "foto": _foto_punto_a_lab(p.get("foto") or {}, inv)})
+    return out
+
+
+def puntos_doc_desde_lab(puntos_lab: list[dict], plantilla: dict, mapa: dict[str, str]) -> list[dict]:
+    out = []
+    for p in puntos_lab or []:
+        hora = p.get("hora") or ""
+        if hora and len(hora) <= 5:
+            hora = datetime.now(timezone.utc).replace(hour=int(hora[:2]), minute=int(hora[3:5]), second=0, microsecond=0).isoformat()
+        out.append({"n": p["n"], "antes_de": p.get("antes_de", ""), "hora": hora, "cambio": list(p.get("cambio") or []),
+                    "foto": _foto_punto_a_doc(p.get("foto") or {}, plantilla, mapa)})
+    return out
+
+
+def sembrar_doc(plantilla_id: str, muestra: dict | None, *, hoy: date | None = None, user_id: str = "lab") -> dict:
+    """Documento sembrado (baseline para deltas)."""
+    hoy = _hoy_default(hoy)
+    m = _muestra_norm(muestra)
+    plantilla = catalogo.plantilla_por_id(plantilla_id)
+    if plantilla is None:
+        raise KeyError(f"no existe la plantilla «{plantilla_id}»")
+    base = generar(user_id, {"nombre": "Lab"}, datetime.now(timezone.utc))
+    return sembrar.sembrar(base, plantilla, nivel=m["nivel"], hoy=hoy, pais=m["pais"], porque=["banco"])
+
+
+def doc_desde_lab(plantilla_id: str, estado: dict | None, muestra: dict | None, *, hoy: date | None = None) -> dict:
+    """Estado del laboratorio → documento esquema 2."""
+    hoy = _hoy_default(hoy)
+    estado = estado or {}
+    m = _muestra_norm(muestra)
+    plantilla = catalogo.plantilla_por_id(plantilla_id)
+    if plantilla is None:
+        raise KeyError(f"no existe la plantilla «{plantilla_id}»")
+    doc = sembrar_doc(plantilla_id, m, hoy=hoy)
+    mapa = mapa_secciones(plantilla, doc)
+    est_lab = estado.get("estructura") or {}
+    doc = _aplicar_estructura_lab(doc, plantilla, est_lab, mapa, hoy)
+    mapa = mapa_secciones(plantilla, doc)
+    semilla = _registros_semilla_lab(plantilla, m, est_lab, hoy)
+    regs = _aplicar_datos_lab(semilla, estado.get("datos"), (est_lab or {}).get("mapeoEstado"))
+    doc = _poner_registros_lab(doc, plantilla, mapa, regs)
+    if estado.get("bloques") is not None:
+        doc["inicio"] = [_bloque_a_doc(b, mapa) for b in estado["bloques"]]
+    if estado.get("marca"):
+        doc["marca"] = {**(doc.get("marca") or {}), **copy.deepcopy(estado["marca"])}
+    if estado.get("toma"):
+        doc["toma"] = copy.deepcopy(estado["toma"])
+    pts_lab = estado.get("puntos") or []
+    if pts_lab:
+        doc["puntos_n"] = max(p["n"] for p in pts_lab)
+    return doc
+
+
+def lab_desde_doc(
+    doc_final: dict,
+    doc_sembrado: dict,
+    plantilla_id: str,
+    *,
+    vista: str | None = None,
+    puntos_doc: list[dict] | None = None,
+    muestra: dict | None = None,
+    hoy: date | None = None,
+) -> dict:
+    """Documento → estado en forma del laboratorio (datos como delta frente a la siembra)."""
+    plantilla = catalogo.plantilla_por_id(plantilla_id)
+    if plantilla is None:
+        raise KeyError(f"no existe la plantilla «{plantilla_id}»")
+    mapa = mapa_secciones(plantilla, doc_sembrado)
+    inv = _inv_mapa(mapa, plantilla)
+    est_lab = _estructura_lab(doc_final, doc_sembrado, plantilla, mapa)
+    semilla = _registros_semilla_lab(plantilla, _muestra_norm(muestra), est_lab, _hoy_default(hoy))
+    actuales = _registros_actuales_lab(doc_final, plantilla, mapa)
+    datos = _delta_datos_lab(actuales, semilla, plantilla)
+    estado: dict[str, Any] = {"vista": vista or "inicio", "bloques": [_bloque_a_lab(b, inv) for b in doc_final.get("inicio") or []]}
+    if est_lab:
+        estado["estructura"] = est_lab
+    if datos:
+        estado["datos"] = datos
+    marca = {k: v for k, v in (doc_final.get("marca") or {}).items() if k != "logo_id"}
+    if marca:
+        estado["marca"] = marca
+    toma = doc_final.get("toma")
+    if toma and toma != est.toma_vacia():
+        estado["toma"] = copy.deepcopy(toma)
+    if puntos_doc:
+        estado["puntos"] = puntos_lab_desde_doc(puntos_doc, plantilla, mapa)
+    elif doc_final.get("puntos_n"):
+        estado["puntos"] = []
+    return estado
+
+
+def normalizar_estado_lab(estado: dict) -> dict:
+    """Quita claves vacías para comparar round-trips."""
+    e = copy.deepcopy(estado)
+
+    def limpia(obj: Any) -> Any:
+        if isinstance(obj, dict):
+            return {k: limpia(v) for k, v in obj.items() if v is not None and v != {} and v != [] and v != est.toma_vacia()}
+        return obj
+
+    return limpia(e)
+
+
+def procesar_chat_lab(
+    cuerpo: dict,
+    responder: Callable[..., dict],
+    *,
+    hoy: date | None = None,
+) -> dict:
+    """Un turno de banco: traduce entrada, llama al motor, devuelve forma lab."""
+    plantilla_id = cuerpo.get("plantilla") or "membresias"
+    estado_in = cuerpo.get("estado") or {}
+    muestra = cuerpo.get("muestra")
+    hoy = _hoy_default(hoy)
+    doc_sem = sembrar_doc(plantilla_id, muestra, hoy=hoy)
+    doc = doc_desde_lab(plantilla_id, estado_in, muestra, hoy=hoy)
+    puntos = puntos_doc_desde_lab(estado_in.get("puntos") or [], catalogo.plantilla_por_id(plantilla_id) or {}, mapa_secciones(catalogo.plantilla_por_id(plantilla_id) or {"secciones": []}, doc))
+    contexto = {"muestra": _muestra_norm(muestra), "vista": estado_in.get("vista") or "inicio", "seleccion": cuerpo.get("seleccion")}
+    salida = responder(doc=doc, texto=str(cuerpo.get("texto") or ""), historial=cuerpo.get("historial") or [], contexto=contexto, puntos=puntos)
+    doc_fin = salida.get("doc") or doc
+    puntos_fin = salida.get("puntos") or puntos
+    estado_out = lab_desde_doc(doc_fin, doc_sem, plantilla_id, vista=salida.get("vista") or contexto["vista"], puntos_doc=puntos_fin, muestra=muestra, hoy=hoy)
+    return {
+        "respuesta": salida.get("respuesta") or "",
+        "estado": estado_out,
+        "cambios": salida.get("cambios") or [],
+        "fallos": salida.get("fallos") or [],
+        "intentos": salida.get("intentos") or [],
+        "consultas": salida.get("consultas") or [],
+        "avisos": salida.get("avisos") or [],
+        "estadoCambio": bool(salida.get("cambios")) or salida.get("estadoCambio"),
+    }
