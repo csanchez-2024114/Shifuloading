@@ -902,6 +902,10 @@ _LOGROS = [
     (re.compile(r"\b(cre[eé]|cread[oa]) la secci[oó]n\b", re.I), {"crear_seccion"}),
 ]
 
+AVISO_LOGRO = ("[Aviso interno] Dices que registraste, guardaste, agendaste o creaste algo, pero ninguna herramienta lo hizo en este mensaje. "
+               "Llama a la herramienta que corresponde ahora (por ejemplo agregar_registros) o corrige tu respuesta. "
+               "Si tu respuesta no hablaba de acciones en el CRM, ignora este aviso y repítela igual.")
+
 # Preguntas de relleno que la persona no necesita: ofrecer teléfono o correo después de guardar.
 _RELLENO = re.compile(r"^\s*¿(quieres|te gustar[ií]a|deseas|querés)[^?\n]*(tel[eé]fono|correo)[^?\n]*\?\s*$", re.I)
 
@@ -930,22 +934,21 @@ def revisar_respuesta(respuesta: str, sesion: "Sesion", doc_inicial: dict) -> st
     if not sesion.acciones and _ES_PREGUNTA.search(sesion.texto or ""):
         return None  # una pregunta sin acciones: la respuesta puede hablar de cosas ya hechas antes sin que sea un falso éxito
     if diseno:
-        # D51: «¿afirma un cambio?» lo decide afirma_cambio (sin preguntas, subjuntivo ni negaciones) en vez de las frases de logro.
+        # D51: «¿afirma un cambio?» lo decide la regla de afirma_cambio (las preguntas, el subjuntivo y lo negado no cuentan), también
+        # para las frases de logro de abajo; ver SesionDiseno.afirma_sin_cambios y logro_sin_herramienta.
         if sesion.solo_toma():
             return None
         if _PROMESA.search(respuesta) or sesion.promete(respuesta):
             return ("[Aviso interno] No anuncies lo que vas a hacer: hazlo AHORA llamando a las herramientas. Si de verdad falta un dato imprescindible, "
                     "pregunta solo eso en una línea, sin decir “voy a”. Si tu respuesta no hablaba de acciones en el CRM (era una charla o una explicación), ignora este aviso y repítela igual.")
-        return sesion.afirma_sin_cambios(respuesta)
+        return sesion.afirma_sin_cambios(respuesta) or sesion.logro_sin_herramienta(respuesta)
     cambio = sesion.doc is not doc_inicial
     if sesion.fallos and _EXITO.search(respuesta):
         return ("[Aviso interno] Dices que lograste algo, pero una herramienta falló: " + " | ".join(sesion.fallos[-3:]) +
                 ". Arregla el problema (por ejemplo crea el campo que falta o corrige el dato) y vuelve a llamar la herramienta; si no se puede, dile la verdad a la persona.")
     for patron, herramientas in _LOGROS:
         if patron.search(respuesta) and not (herramientas & sesion.hechas):
-            return ("[Aviso interno] Dices que registraste, guardaste, agendaste o creaste algo, pero ninguna herramienta lo hizo en este mensaje. "
-                    "Llama a la herramienta que corresponde ahora (por ejemplo agregar_registros) o corrige tu respuesta. "
-                    "Si tu respuesta no hablaba de acciones en el CRM, ignora este aviso y repítela igual.")
+            return AVISO_LOGRO
     if _PROMESA.search(respuesta):
         return ("[Aviso interno] No anuncies lo que vas a hacer: hazlo AHORA llamando a las herramientas. Si de verdad falta un dato imprescindible, "
                 "pregunta solo eso en una línea, sin decir “voy a”. Si tu respuesta no hablaba de acciones en el CRM (era una charla o una explicación), ignora este aviso y repítela igual.")

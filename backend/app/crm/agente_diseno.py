@@ -41,9 +41,11 @@ from app.crm import registros
 from app.crm import secciones_v as sv
 from app.crm import toma
 from app.crm import web
-from app.crm.afirma import afirma_cambio
-from app.crm.chat import _norm
+from app.crm.afirma import afirma_cambio, afirma_con
+from app.crm import chat as agente_chat
+from app.crm.chat import _capitaliza, _norm
 from app.crm.regional import PAISES
+from app.crm.valores import parse_numero
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,12 @@ SUSTITUTO = re.compile(r"m[aá]s parecid|en su lugar|como alternativa|no hay for
 ERROR_MASIVO_REGISTROS = ("ERROR: borrar varios registros de una vez necesita confirmación. No borres nada más: di cuáles se borrarían y pregunta "
                           "si está seguro (que responda \"sí\").")
 NOMBRE_VISTA = toma.NOMBRE_VISTA
+# Las frases de logro de Carlos con la regla de D51 para el subjuntivo: solo con tilde («registré» afirma, «que registre» no).
+_LOGROS_D51 = [(re.compile(p.pattern.replace("[eé]", "é"), p.flags), h) for p, h in agente._LOGROS]
+# El vocabulario de logro de Carlos (`agente._EXITO`) solo en las formas que AFIRMAN que Shifu lo hizo: «he agregado», «agregué». El
+# participio suelto («tus contactos agregados», «la sección fue creada») también describe lo que ya había: no cuenta (D51).
+_EXITO_D51 = re.compile(agente._EXITO.pattern.replace(r"\b(he |ya )?", r"\b(he|hemos|ya he|ya hemos)\s+", 1), agente._EXITO.flags)
+MONTO_ABSURDO = 1_000_000_000  # como `Sesion._monto_absurdo` de Carlos: mil millones o más casi siempre es un error de dedo
 # Las 12 tipografías de la marca (marca.js), por si `marca.py` de C2 todavía no está.
 _FUENTES_MARCA = ["Inter", "Poppins", "Nunito", "Montserrat", "DM Sans", "Rubik", "Work Sans", "Lato", "Playfair Display", "Lora", "Merriweather", "Outfit"]
 
@@ -175,6 +183,17 @@ def pais_de(doc: dict) -> str:
             if k in por_nombre:
                 return por_nombre[k]
     return "gt"
+
+
+def _sin_identicos(regs: list[dict]) -> list[dict]:
+    """El primero de cada grupo de registros con los mismos valores."""
+    vistos: list[dict] = []
+    out = []
+    for r in regs:
+        if r["valores"] not in vistos:
+            vistos.append(r["valores"])
+            out.append(r)
+    return out
 
 
 def _toma_distinta(a: dict, b: dict) -> bool:
@@ -307,6 +326,7 @@ class SesionDiseno(agente.Sesion):
         self.deshechos: set[int] = set()  # números de los puntos deshechos (la ruta los quita de crm_puntos)
         self.doc_tras_deshacer: dict | None = None
         self._etiqueta: Any = _SIN
+        self._agregado: tuple[str, str] | None = None
 
     # --- lo que ve el modelo ---
     def herramientas(self) -> list[dict]:
@@ -343,9 +363,20 @@ class SesionDiseno(agente.Sesion):
         return bool(PROMESA.search(respuesta))
 
     def afirma_sin_cambios(self, respuesta: str) -> str | None:
-        if afirma_cambio(respuesta) and not self.cambios:
+        """chat.js: afirma un cambio y ninguna herramienta cambió nada. «Afirma» = el vocabulario del laboratorio (afirma_cambio) o el de
+        Carlos (`_EXITO_D51`: «he agregado», «registré»…), las dos con la regla de D51."""
+        if not self.cambios and (afirma_cambio(respuesta) or afirma_con(respuesta, _EXITO_D51)):
             fallaron = f" (fallaron: {' | '.join(self.fallos[-2:])})" if self.fallos else ""
             return f"[Aviso interno] Dices que hiciste un cambio, pero ninguna herramienta cambió la pantalla{fallaron}. Llama a la herramienta o di la verdad."
+        return None
+
+    def logro_sin_herramienta(self, respuesta: str) -> str | None:
+        """Las frases de logro de Carlos (`agente._LOGROS`) con la regla de D51: «creé la sección y registré el cobro» con solo
+        crear_seccion sigue siendo mentira aunque algo haya cambiado. Las de datos del laboratorio cuentan como las de Carlos."""
+        for patron, herramientas in _LOGROS_D51:
+            hechas = herramientas | ({"agregar_registro", "editar_registro"} if "crear_seccion" not in herramientas else set())
+            if afirma_con(respuesta, patron) and not (hechas & self.hechas):
+                return agente.AVISO_LOGRO
         return None
 
     # --- ejecución ---
@@ -439,14 +470,35 @@ class SesionDiseno(agente.Sesion):
         s, error = self._seccion_datos(args.get("seccion"))
         if error:
             return False, error, None
-        visible = _visible(self.doc)
-        regs = sv.registros_de(visible, s["id"])
-        r = registros.ejecutar_dato(nombre, s, s["campos"], regs, args, hoy=self.hoy, pais=self.pais, confirmado=self.confirmado, dichos=self.dichos)
+        absurdo = self._monto_absurdo_en(s["campos"], args.get("valores"))
+        if absurdo:
+            return False, absurdo, None
+        regs = sv.registros_de(_visible(self.doc), s["id"])
+        # Registros idénticos (mismos valores) no se pueden distinguir: se toma el primero y el siguiente mensaje se ocupa del otro
+        # (regla medida de Carlos, `Sesion._registros`: antes se preguntaba «¿cuál?» sin salida).
+        unicos = regs if nombre == "agregar_registro" else _sin_identicos(regs)
+        r = registros.ejecutar_dato(nombre, s, s["campos"], unicos, args, hoy=self.hoy, pais=self.pais, confirmado=self.confirmado, dichos=self.dichos)
         if not r["ok"]:
             return False, r["resultado"], None
+        texto = r["resultado"]
+        if len(unicos) != len(regs):  # los números del texto son de TODOS los registros
+            texto = re.sub(r" Quedan \d+\.$", f" Quedan {len(regs) - 1}.", texto)
         if r["operacion"]:
             self._aplicar(s["id"], r["operacion"])
-        return True, r["resultado"], r["etiqueta"]
+        return True, texto, r["etiqueta"]
+
+    def _monto_absurdo_en(self, campos: list[dict], valores: Any) -> str | None:
+        """Un número de mil millones o más no se guarda hasta que la persona lo confirma (la regla 7 de Carlos, `_monto_absurdo`)."""
+        if not isinstance(valores, dict) or agente._CONFIRMA.search(self.texto or ""):
+            return None
+        for k, v in valores.items():
+            c = registros.campo_por_clave(campos, k)
+            if c and c.get("tipo") in ("numero", "dinero"):
+                n = parse_numero(v)
+                if n is not None and abs(n) >= MONTO_ABSURDO:
+                    return (f"No se pudo: El monto “{v}” en “{c['nombre']}” es exageradamente alto. NO lo guardes todavía: pregúntale UNA vez al "
+                            "usuario, amable, si es correcto.")
+        return None
 
     def _aplicar(self, sec_id: str, operacion: dict) -> None:
         """La operación que dijo `registros`, con `secciones_v`. Si la sección estaba oculta, se vuelve a mostrar (solo si se guardó)."""
@@ -456,12 +508,23 @@ class SesionDiseno(agente.Sesion):
         tipo = operacion["tipo"]
         if tipo == "agregar":
             d, _ = sv.registro_agregar(d, sec_id, operacion["valores"], self.ahora, canal="Chat", id=operacion["id"])
+            self._agregado = (sec_id, operacion["id"])
         elif tipo == "editar":
             d, _ = sv.registro_actualizar(d, sec_id, operacion["id"], operacion["cambios"], self.ahora)
         elif tipo == "borrar":
             d = sv.registro_eliminar(d, sec_id, operacion["id"], self.ahora)
         self.doc = d
         self.vista = sec_id
+
+    def _en_orden(self, nuevos: list[tuple[str, str]]) -> None:
+        """Los contactos nuevos entran primero, uno sobre otro: agregados de a uno quedarían al revés. Se ponen en el orden en que los
+        dijo, como cuando agregar_contactos los creaba de una vez. (Los registros de una sección propia ya quedaban del más nuevo al
+        más viejo con agregar_registros, y las tareas van al final: esos quedan como siempre.)"""
+        ids = [rid for s, rid in nuevos if s == CONTACTOS]
+        if len(ids) < 2:
+            return
+        por_id = {c["id"]: c for c in self.doc["contactos"]}
+        self.doc = {**self.doc, "contactos": [por_id[i] for i in ids if i in por_id] + [c for c in self.doc["contactos"] if c["id"] not in ids]}
 
     def _un_dato(self, nombre: str, args: dict) -> str:
         ok, texto, etiqueta = self._dato(nombre, args)
@@ -472,12 +535,16 @@ class SesionDiseno(agente.Sesion):
     def _varios(self, alias: str, nombre: str, lista: list[dict]) -> str:
         """Un alias de Carlos con varios registros: una herramienta de datos por registro. Si alguno no se pudo, el texto lo dice (y
         queda en `intentos`); si ninguno se pudo, es un error."""
-        hechos, errores, etiquetas = [], [], []
+        hechos, errores, etiquetas, nuevos = [], [], [], []
         for a in lista[:agente.MAX_CONTACTOS_POR_LLAMADA]:
+            self._agregado = None
             ok, texto, etiqueta = self._dato(nombre, a)
             (hechos if ok else errores).append(texto)
             if ok and etiqueta:
                 etiquetas.append(etiqueta)
+            if self._agregado:
+                nuevos.append(self._agregado)
+        self._en_orden(nuevos)
         if not hechos:
             return " ".join(errores) or "ERROR: no hay registros para agregar."
         if errores:
@@ -492,7 +559,8 @@ class SesionDiseno(agente.Sesion):
         lista = []
         for c in contactos:
             c = c if isinstance(c, dict) else {}
-            valores = {"nombre": c.get("nombre"), **{k: c[k] for k in ("detalle", "etapa") if c.get(k)},
+            nombre = _capitaliza(str(c.get("nombre") or ""))[:agente_chat.MAX_NOMBRE]  # como siempre lo guardó agregar_contactos
+            valores = {"nombre": nombre, **{k: c[k] for k in ("detalle", "etapa") if c.get(k)},
                        **(c["campos"] if isinstance(c.get("campos"), dict) else {})}
             lista.append({"seccion": CONTACTOS, "valores": valores})
         return self._varios("agregar_contactos", "agregar_registro", lista)
