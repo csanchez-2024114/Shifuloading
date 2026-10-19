@@ -758,6 +758,10 @@ class SesionDiseno(agente.Sesion):
         aqui = None if sec is None else sec["id"]
         if aqui == abierto_id:
             return None
+        if aqui is None and nombre != "quitar_bloque":
+            # Una pieza del inicio mirando una pestaña: para mover o cambiar, `edicion` ya guía a usar las piezas de esta pestaña (medido en
+            # banco_pestanas: «aquí pon arriba un resumen» lo resuelve así). Solo quitar —lo que borra— se frena aquí.
+            return None
         titulo = "Inicio" if sec is None else sec.get("titulo")
         if self._nombro(titulo, *( [] if sec is None else [sec["id"]])):
             return None
