@@ -41,7 +41,7 @@ async def test_el_modelo_ve_las_herramientas_de_bloques_y_leer_enlace(doc_lab, m
     for n in ("agregar_bloque", "mover_bloque", "cambiar_visual", "quitar_bloque", "leer_enlace", "crear_seccion"):
         assert n in nombres
     assert "definir_opciones" in nombres  # solo Carlos
-    estado = __import__("json").loads(modelo.recibidos[0][0].content.split("Estado del CRM (JSON):\n", 1)[1])
+    estado = __import__("json").loads(modelo.recibidos[0][0].content.split("Estado de la pantalla (JSON):\n", 1)[1])
     assert "bloques" in estado and estado["bloques"][0]["id"] == "b0"
 
 
@@ -91,11 +91,21 @@ async def test_cerco_lado_no_dispara_si_coincide():
 async def test_cerco_grafico_negado_cuando_si_existe(doc_lab):
     g = next(sec["graficos_posibles"][0] for sec in describir_pantalla(doc_lab)["secciones"] if sec.get("graficos_posibles"))
     nombre = re.sub(r" \d+ %", "", re.search(r"\((.*)\)", g).group(1)).lower()
-    r, _ = await correr(doc_lab, "quiero esa gráfica",
+    r, _ = await correr(doc_lab, f"quiero un gráfico de {nombre}",
                         dice(f"No puedo, no hay {nombre} para tus miembros."),
                         dice(f"No puedo, no hay {nombre} para tus miembros."),
                         dice(f"No puedo, no hay {nombre} para tus miembros."))
     assert r["avisos"] and "SÍ se puede dibujar" in r["avisos"][0]["aviso"]
+
+
+@pytest.mark.asyncio
+async def test_ofrecer_un_grafico_parecido_no_es_negarlo(doc_lab):
+    """«No hay velas japonesas; lo más parecido es X» nombra X como alternativa: no se le pide agregarlo (banco2 con la IA real)."""
+    g = next(sec["graficos_posibles"][0] for sec in describir_pantalla(doc_lab)["secciones"] if sec.get("graficos_posibles"))
+    nombre = re.sub(r" \d+ %", "", re.search(r"\((.*)\)", g).group(1)).lower()
+    r, modelo = await correr(doc_lab, "quiero un gráfico de velas japonesas",
+                             dice(f"No hay gráfico de velas japonesas. ¿Quieres {nombre}, que es lo más parecido?"))
+    assert r["avisos"] == [] and len(modelo.recibidos) == 1 and r["cambios"] == []
 
 
 @pytest.mark.asyncio

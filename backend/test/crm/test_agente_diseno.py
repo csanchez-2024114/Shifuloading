@@ -87,7 +87,7 @@ def _contacto(doc, nombre):
 def _estado(modelo) -> dict:
     sistema = modelo.recibidos[0][0]
     assert isinstance(sistema, SystemMessage)
-    return json.loads(sistema.content.split("Estado del CRM (JSON):\n", 1)[1])
+    return json.loads(sistema.content.split(agente_diseno._CABECERA_ESTADO_PANTALLA, 1)[1])
 
 
 # ───────── La bandera ─────────
@@ -97,6 +97,9 @@ async def test_sin_la_bandera_el_agente_es_el_de_siempre(doc, monkeypatch):
     monkeypatch.delenv("CRM_DISENO", raising=False)
     r, modelo = await correr(doc, "hola", dice("¡Hola! ¿En qué te ayudo?"))
     assert modelo.ataduras[0]["nombres"] == [h["function"]["name"] for h in agente.HERRAMIENTAS]
+    sistema = modelo.recibidos[0][0].content
+    assert sistema.startswith(agente.INSTRUCCIONES) and "Aquí editas el DISEÑO" not in sistema
+    assert "Estado del CRM (JSON):" in sistema
     assert "cambios" not in r and r["respuesta"] == "¡Hola! ¿En qué te ayudo?"
 
 
@@ -110,7 +113,12 @@ async def test_con_la_bandera_ve_las_herramientas_del_laboratorio_y_no_los_alias
         assert n not in nombres
     assert r["cambios"] == r["fallos"] == r["intentos"] == r["consultas"] == r["avisos"] == r["enlaces"] == []
     sistema = modelo.recibidos[0][0].content
-    assert sistema.startswith(agente.INSTRUCCIONES) and "Deshacer (pedidos_anteriores)" in sistema
+    assert sistema.startswith(agente_diseno.INSTRUCCIONES_LAB)
+    assert "asistente del CRM de una persona" not in sistema.split(agente_diseno._CABECERA_ESTADO_PANTALLA, 1)[0]
+    assert agente_diseno.INSTRUCCIONES_CARLOS_EXTRA.strip() in sistema
+    assert "No ves los registros, solo cuántos hay" in sistema
+    assert "Deshacer (pedidos_anteriores)" in sistema
+    assert "activar_automatizacion" not in nombres
     estado = _estado(modelo)
     assert estado["pedidos_anteriores"] == [] and estado["toma"] == {"activa": False}
     assert [s["id"] for s in estado["secciones"]] == ["contactos", "desarrollo"]

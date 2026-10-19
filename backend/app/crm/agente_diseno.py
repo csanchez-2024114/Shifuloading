@@ -1,6 +1,7 @@
 """Agente del chat con el sistema de diseño del laboratorio (D61). Solo con CRM_DISENO=1; apagado, todo va por `agente.py` como siempre.
 
-Es el agente de Carlos (modelo + herramientas + verificador, las mismas INSTRUCCIONES) con lo que el laboratorio midió en
+Es el agente de Carlos (modelo + herramientas + verificador) con el prompt del laboratorio (`INSTRUCCIONES_LAB`, copiado de
+`laboratorio/servidor/chat.js`) más herramientas y reglas que solo tiene el CRM, y lo que el laboratorio midió en
 `laboratorio/servidor/chat.js`:
 - Datos por chat: agregar_registro, editar_registro, borrar_registro y consultar_datos (esquemas LITERALES de `registros.py`) sobre
   TODAS las secciones con registros (`secciones_v`: contactos, tareas y secciones propias). El código entiende cada valor, encuentra
@@ -72,7 +73,9 @@ ALIAS_DE_DATOS = frozenset({"agregar_contactos", "cambiar_contacto", "eliminar_c
 ALIAS_ESTRUCTURA_CARLOS = frozenset({"crear_seccion", "agregar_campo", "renombrar_campo", "quitar_campo", "renombrar_seccion", "definir_opciones"})
 NOMBRES_EDICION = frozenset(h["function"]["name"] for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer")
 HERRAMIENTAS_CARLOS = [h for h in agente.HERRAMIENTAS if h["function"]["name"] not in ALIAS_DE_DATOS]
-HERRAMIENTAS_CARLOS_SIN_EDICION = [h for h in HERRAMIENTAS_CARLOS if h["function"]["name"] not in NOMBRES_EDICION]
+# En modo diseño las automatizaciones están en pausa: no se exponen al modelo.
+_SIN_EN_DISENO = frozenset({"activar_automatizacion"})
+HERRAMIENTAS_CARLOS_SIN_EDICION = [h for h in HERRAMIENTAS_CARLOS if h["function"]["name"] not in (NOMBRES_EDICION | _SIN_EN_DISENO)]
 _BORRAR = frozenset({"borrar_registro", "eliminar_contacto", "eliminar_registro"})
 _GUARDA_DATO = frozenset({"agregar_registro", "editar_registro", "agregar_contactos", "cambiar_contacto", "agregar_registros", "cambiar_registro"})
 
@@ -88,12 +91,56 @@ CATEGORIA: dict[str, str] = {
     **{n: "estructura" for n in ("definir_etapas", "mostrar_seccion", "definir_opciones", "mover_campo")},
 }
 
-INSTRUCCIONES_DISENO = """Datos, deshacer y diseño
-- Sus DATOS: agregas, cambias, borras y consultas sus registros con agregar_registro, editar_registro, borrar_registro y consultar_datos, en cualquiera de las “secciones” del Estado (contactos, tareas y secciones propias).
-- No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
+# Literal de `laboratorio/servidor/chat.js` L70–L89 (`INSTRUCCIONES`).
+INSTRUCCIONES_LAB = """Eres Shifu, el asistente del CRM. Aquí editas el DISEÑO del CRM de la persona: su marca (colores, fondos, tipografía, logo) y la pantalla de inicio: qué bloques hay,
+qué vista usa cada uno, su tamaño, su orden y los rangos de los vencimientos. Y sus DATOS: agregas, cambias, borras y consultas sus registros. No hay botones para editar: todo pasa por ti, y solo con tus herramientas.
+Reglas:
+- Usa SOLO las vistas, secciones y campos que aparecen en el estado. Si piden algo que no existe (por ejemplo un calendario, un mapa,
+  una gráfica de radar), dilo con honestidad y ofrece lo más parecido que SÍ existe. Nunca digas que hiciste algo que no hiciste.
+- Hazlo directamente: no anuncies "voy a". Si falta un dato imprescindible, pregunta solo eso.
+- Para cambiar grupos de vencimientos usa cambiar_rangos con la lista COMPLETA de rangos (los que se quedan y los nuevos).
+- Todo el inicio debe caber en una pantalla: si agregas bloques, considera achicar otros (ancho 3-4 para gráficas chicas).
 - Si una herramienta devuelve ERROR, corrige y vuelve a intentar, o explica la verdad.
+- Un pedido = el MÍNIMO de bloques. Varias cifras de un mismo campo (promedio, mediana, mínimo…) van en UN bloque "estadisticas". No agregues resúmenes que no pidieron.
+- Si piden LLEVAR algo que todavía no tiene sección (inventario, cobros, proveedores…): créalo YA con crear_seccion (campos sensatos) y, si piden verlo en el inicio, agrega el bloque (por ejemplo una tabla con filtro: cantidad menorOIgual mínimo). No preguntes umbrales: elige uno razonable y dilo.
+- Si piden un TIPO DE GRÁFICO o vista que no existe en el catálogo: no agregues nada todavía; di que no existe y OFRECE la alternativa más parecida, preguntando.
+- Antes de decir que un gráfico no existe, búscalo en graficos_posibles de TODAS las secciones.
+- Nunca copies textos internos como "Así se ve ahora".
+- Para decir DÓNDE quedó algo usa solo "donde_se_ve" / "Así se ve ahora" de los resultados; si no quedó donde pidieron, muévelo o ajusta anchos.
+- Si la persona pega un enlace (Notion, Drive, su web, una imagen o PDF), ábrelo con leer_enlace y usa lo que encuentres. Para branding usa los colores MEDIDOS (los que te da el código) y di de dónde salió cada uno; si no se midió ninguno y los tomas de la imagen o de lo que sabes de esa marca, dilo así ("no encontré colores en tu página; tomé el verde que se ve en tu imagen").
+- "Muéstrame / abre / ver X" es navegar: usa abrir_seccion y nada más.
+- Responde en español neutro de "tú" (nunca "vos": nada de "querés" o "tenés"), corto (1-3 líneas), cálido, sin tecnicismos: nunca digas uid, b1, kpis, vista, opciones, columnas ni números de ancho/alto. Di "el resumen", "la gráfica", "más chico", "a la derecha".
 - Deshacer (pedidos_anteriores): cada pedido que cambió algo queda en la lista con lo que dijo la persona y qué cambió. Si quiere anular algo ("eso no", "como estaba antes", "deshaz lo del color", "deshaz también la dona"), usa deshacer con el número del PEDIDO que quiere anular (el código revierte solo lo que ese pedido cambió) y di qué deshiciste. Para deshacer SIEMPRE usa deshacer, no quites ni cambies bloques a mano. Si la lista está vacía, no hay nada que deshacer: dilo.
 - Toma de diseño (estado.toma): si la persona pide diseñar o rehacer el inicio o un CRM completo, abre abrir_toma (no para cambios puntuales). Durante juntando/confirmando anota cada cosa concreta que pidan con anotar_bloque (qué ver + de qué parte; sin preguntar detalles técnicos) y el resto (objetivo, colores, letra, restricciones) con anotar_ficha, solo lo dicho en ESE mensaje; para cambiar un bloque de la ficha usa quitar_de_ficha + anotar_bloque; una pregunta por turno según instruccion_turno/FALTA. En confirmando muestra el RESUMEN y pregunta «¿Lo armo así?». No uses herramientas de pantalla hasta que el código confirme la ficha. Si charlan de otra cosa (digresión), contesta sin anotar ni cambiar la pantalla. cerrar_toma si abandonan."""
+
+INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
+- agregar_tarea: Agrega una tarea nueva en la columna Por hacer. AGENDAR una llamada, cita o recordatorio = agregar una tarea con fecha (y hora si la dieron) y, si es sobre alguien, su contacto.
+- cambiar_tarea: Cambia el texto, la fecha, la hora o el contacto de una tarea existente (por ejemplo, reprogramarla). `fecha` vacía le quita la fecha.
+- mover_tarea: Mueve una tarea a otra columna.
+- eliminar_tarea: Pide eliminar una tarea. NO la borra: deja una confirmación pendiente y tú debes preguntar si está seguro.
+- definir_etapas: Cambia las etapas del proceso de venta (de 2 a 8). Los contactos que estaban en una etapa que se conserva siguen ahí; los demás pasan a la etapa del mismo lugar.
+- mostrar_seccion: Vuelve a mostrar en el menú una sección integrada que estaba oculta.
+- definir_opciones: Convierte un campo que YA existe en una lista de opciones fijas (por ejemplo Estado = pendiente, realizado, cancelado), o cambia las opciones de una lista. Se conservan sus datos. Úsala en vez de quitar y volver a crear el campo.
+- mover_campo: Cambia el LUGAR de un campo en los contactos o en una sección propia (por ejemplo, ponerlo al principio). `posicion`: "inicio", "final" o un número (1 es el primero).
+- recordar: Guarda UN dato duradero que la persona te dijo sobre cómo quiere que la trates o sobre su negocio (por ejemplo “prefiere que le hablen de usted”, “vende los fines de semana”). Una frase corta. Nunca datos de sus clientes, contraseñas, tarjetas ni identificaciones.
+- agregar_vendedor: Agrega una persona nueva al equipo de ventas. Si ya es un contacto (cliente), primero confirma con la persona y luego repite con confirmado=true.
+- recordar_ciudad / buscar_en_internet: Guarda la ciudad del negocio (clima y datos locales) cuando te la digan; busca en internet información general que no está en el CRM (clima, noticias…), sin datos de clientes.
+- Automatizaciones en pausa: no tienes herramienta para encenderlas o apagarlas; si preguntan, dilo con honestidad."""
+
+# Solo lo que el prompt del laboratorio no cubre y es específico de este backend (contexto JSON del CRM).
+INSTRUCCIONES_DISENO = """Más de este CRM (Python)
+- No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
+- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado."""
+
+_CABECERA_ESTADO_PANTALLA = "Estado de la pantalla (JSON):\n"
+
+
+def prompt_sistema(persona: str | None, aviso_toma: str, contexto_json: str) -> str:
+    """Mismo orden que `chat.js` L137: instrucciones + extras + aviso del código + estado."""
+    sobre = f"\n\n{persona}" if persona else ""
+    del_codigo = f"\n\n[Aviso del código]\n{aviso_toma}" if aviso_toma else ""
+    return (f"{INSTRUCCIONES_LAB}\n\n{INSTRUCCIONES_CARLOS_EXTRA}\n\n{INSTRUCCIONES_DISENO}{sobre}{del_codigo}\n\n"
+            f"{_CABECERA_ESTADO_PANTALLA}{contexto_json}")
 
 # chat.js, literales.
 PROMESA = regex.compile(r"(?<!\p{L})(voy a|vamos a|procedo|creo una|agrego un|pongo un|armo una?)(?!\p{L})", regex.IGNORECASE)
@@ -248,13 +295,15 @@ def _gancho_grafico_negado(respuesta: str, sesion: "SesionDiseno") -> str | None
     if not _NEGADO_GRAFICO.search(respuesta):
         return None
     posibles = [(x["titulo"], g) for x in pantalla.describir_pantalla(sesion.doc)["secciones"] for g in (x.get("graficos_posibles") or [])]
-    bajo = respuesta.lower()
+    bajo, pedido = respuesta.lower(), (sesion.texto or "").lower()
     for _sec, g in posibles:
         par = re.search(r"\((.*)\)", g)
         if not par:
             continue
         nombre = re.sub(r" \d+ %", "", par.group(1).lower())
-        if nombre and nombre in bajo:
+        # Solo si niega el gráfico que la persona PIDIÓ: «no hay velas japonesas; lo más parecido es una cascada» nombra la cascada
+        # como alternativa y no la niega (medido en banco2: el aviso empujaba a agregar la cascada sin preguntar).
+        if nombre and nombre in bajo and nombre in pedido:
             donde = ", ".join(t for t, xg in posibles if xg == g)
             return (f"[Aviso interno] Dices que no se puede, pero «{g}» SÍ se puede dibujar con: {donde}. Hazlo con agregar_bloque/"
                     f'cambiar_visual (vista "grafico"), o explica bien qué es lo que no se puede.')
@@ -877,10 +926,8 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     doc_inicial = sesion.doc
     base = modelo or agente._modelo()
     mensajes = agente._mensajes(doc, texto, historial, ahora, con_captura, imagen, seccion, persona)
-    sobre = f"\n\n{persona}" if persona else ""
     aviso_toma = "\n".join(x for x in (prep["aviso"], prep["digresion"] and toma.AVISO_DIGRESION) if x)
-    del_codigo = f"\n\n[Aviso del código]\n{aviso_toma}" if aviso_toma else ""
-    mensajes[0] = SystemMessage(content=f"{agente.INSTRUCCIONES}\n\n{INSTRUCCIONES_DISENO}{sobre}{del_codigo}\n\nEstado del CRM (JSON):\n{sesion.contexto()}")
+    mensajes[0] = SystemMessage(content=prompt_sistema(persona, aviso_toma, sesion.contexto()))
 
     respuesta = ""
     ultimos: list[str] = []
