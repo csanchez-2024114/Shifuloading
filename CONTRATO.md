@@ -149,7 +149,7 @@ Cada evento: `data: <json>\n\n` (sin línea `event:`; el tipo va en el JSON). Un
 {"type": "token", "text": "Hola"}
 {"type": "tool_start", "id": "call_1", "name": "web_search", "args": {"query": "..."}}
 {"type": "tool_end", "id": "call_1", "name": "web_search", "output": "primeros 500 chars", "status": "success"|"error"|"skipped", "reason": "duplicate"|null, "engine": "duckduckgo"|"openai_web_search"|null}
-# "skipped": la herramienta NO se ejecutó (output "Not run: …", "Cancelled: …" o rechazo del usuario). La UI no pone "✓"
+# "skipped": la herramienta NO hizo lo pedido (output "Not run: …", "Cancelled: …", rechazo del usuario, "Not saved: …", "Not updated: …" o "Error: …" devuelto como texto). La UI no pone "✓"
 {"type": "interrupt", "id": "<interrupt id>", "action_requests": [{"name": "send_simulated_email", "args": {...}, "description": "..."}]}
 {"type": "effort", "level": "bajo"|"medio"|"alto", "max_calls": 5, "reasoning": "low", "source": "auto"|"regla"|"manual"}
 // primero, solo con MODEL_CALL_LIMIT=0. source: "auto" = clasificador, "regla" = mensaje corto sin señales (sin

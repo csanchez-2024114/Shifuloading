@@ -451,7 +451,10 @@
   "agent.NOT_RUN_PREFIXES": [
    "Not run:",
    "Cancelled:",
-   "User rejected the tool call"
+   "User rejected the tool call",
+   "Not saved:",
+   "Not updated:",
+   "Error:"
   ],
   "agent.NO_TOOLS_KEY": "no_tools",
   "agent.OLD_TOOL_NAMES": {

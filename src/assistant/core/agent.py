@@ -623,8 +623,10 @@ ANSWER:
 {answer}"""
 
 
-# resultados de herramientas que NO se ejecutaron: límites, cancelaciones por tope y rechazos del usuario
-NOT_RUN_PREFIXES = ("Not run:", "Cancelled:", "User rejected the tool call")
+# resultados de herramientas que NO hicieron lo pedido: límites, cancelaciones por tope, rechazos del usuario, recuerdos
+# no guardados o no actualizados y errores devueltos como texto ("Error: …" de la calculadora o de bigtool); la UI
+# nunca les pone "✓" (B1 de docs/PRUEBA_USUARIO_LARGA.md)
+NOT_RUN_PREFIXES = ("Not run:", "Cancelled:", "User rejected the tool call", "Not saved:", "Not updated:", "Error:")
 _REUSED_RESEARCH = "Not run: this conversation already has research"  # trae los resultados anteriores: sí es evidencia
 
 

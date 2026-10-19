@@ -45,7 +45,7 @@ $env:AGENT_PROFILE="generic"; .venv\Scripts\python -m uvicorn assistant.server:a
   - una variable nueva regenera SOLO la sección `config` (`UPDATE_SNAPSHOTS=1 pytest -k huella`) y se declara en `NEW_CONFIG_VARS`; `test_config_solo_cambia_por_las_variables_declaradas` lo fija;
   - un cambio de `packs/ui/index.html` cambia `index_html_sha256`: se propone con el sha nuevo, se aplica con OK del usuario y el commit dice los dos hashes;
   - `test_con_files_enabled_en_0_la_huella_es_la_de_3b9b903` exige que todo lo demás siga igual que en `3b9b903` con los defaults;
-  - las constantes siguen fijadas contra `05773c4`: si una cambia de módulo, va a `MOVED_CONSTANTS` con el mismo valor; si cambia un valor, detente y avisa.
+  - las constantes siguen fijadas contra `05773c4`: si una cambia de módulo, va a `MOVED_CONSTANTS` con el mismo valor; si cambia un valor, detente y avisa. Un cambio de valor autorizado por el usuario va a `CHANGED_CONSTANTS` (valor viejo y nuevo) y regenera solo esa clave.
 - No agregues constantes nuevas en MAYÚSCULAS a los módulos que recorre la huella (`CONST_MODULES`): ponlas en un módulo propio (como `untrusted.py`, `tracing.py`, `metrics.py`, `feedback.py` o `files/`) o en minúscula.
 - Todo cambio que vea el modelo va detrás de un interruptor con default 0 (ver `docs/ESTADO.md`).
 - `tests/test_dependencias.py` va en modo estricto, con la lista blanca vacía:

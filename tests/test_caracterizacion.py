@@ -93,6 +93,23 @@ MOVED_CONSTANTS = {
     "agent.EVIDENCE_TOOLS": "assistant.core.agent:evidence_tools()",
 }
 
+# Cambios de VALOR autorizados por el usuario, uno por uno: clave -> (valor en 05773c4, valor nuevo). Las huellas
+# congeladas se comparan con el valor viejo repuesto, y el valor actual debe ser exactamente el nuevo.
+CHANGED_CONSTANTS = {
+    # B1 de docs/PRUEBA_USUARIO_LARGA.md: "Not saved", "Not updated" y "Error" ya no se marcan con ✓
+    "agent.NOT_RUN_PREFIXES": (["Not run:", "Cancelled:", "User rejected the tool call"],
+                               ["Not run:", "Cancelled:", "User rejected the tool call", "Not saved:", "Not updated:",
+                                "Error:"]),
+}
+
+
+def _with_old_values(constants: dict) -> dict:
+    """Las constantes con los valores de 05773c4 repuestos en las claves de CHANGED_CONSTANTS."""
+    for key, (_, new) in CHANGED_CONSTANTS.items():
+        assert constants[key] == new, f"{key} no tiene el valor nuevo declarado en CHANGED_CONSTANTS"
+    return {**constants, **{key: old for key, (old, _) in CHANGED_CONSTANTS.items()}}
+
+
 CONST_MODULES = ("agent", "tools", "memory", "context", "citations", "auth", "bigtool_agent", "extra_tools",
                  "tool_spec", "config", "appdata", "server")
 
@@ -604,7 +621,7 @@ def _snapshot_constants() -> dict:
 def test_huella_de_constantes_es_la_de_05773c4():
     from hashlib import sha256
 
-    constants = _snapshot_constants()
+    constants = _with_old_values(_snapshot_constants())
     assert len(constants) == CONSTANTS_05773C4_COUNT
     assert sha256(_canon(constants).encode()).hexdigest() == CONSTANTS_05773C4_SHA256, "la huella se regeneró"
 
@@ -613,9 +630,9 @@ def test_multiconjunto_de_valores_igual_al_de_05773c4():
     """Los mismos valores, ni uno más ni uno menos, aunque hayan cambiado de módulo (con el mapa de reubicación)."""
     from collections import Counter
 
-    actual = _constants()
+    actual = _with_old_values(_constants())
     assert len(actual) == CONSTANTS_05773C4_COUNT
-    assert Counter(map(_canon, actual.values())) == Counter(map(_canon, _snapshot_constants().values()))
+    assert Counter(map(_canon, actual.values())) == Counter(map(_canon, _with_old_values(_snapshot_constants()).values()))
 
 
 def test_cada_valor_de_05773c4_sigue_existiendo_sin_el_mapa():
@@ -635,7 +652,7 @@ def test_cada_valor_de_05773c4_sigue_existiendo_sin_el_mapa():
     from assistant.core.context import prune_keep_tools
     found[_canon(_ser(prune_keep_tools()))] += 1
     found[_canon(_ser(evidence_tools()))] += 1
-    faltan = [k for k, v in _snapshot_constants().items() if found[_canon(v)] == 0]
+    faltan = [k for k, v in _snapshot_constants().items() if found[_canon(v)] == 0]  # las cambiadas, con su valor nuevo
     assert not faltan, f"valores de 05773c4 que ya no existen: {faltan}"
 
 
@@ -700,5 +717,6 @@ def test_con_files_enabled_en_0_la_huella_es_la_de_3b9b903(monkeypatch):
     actual = _huella(monkeypatch)
     assert _settings().files_enabled is False
     assert set(actual) == set(base)
+    actual["constants"] = _with_old_values(actual["constants"])  # cambios de valor autorizados (CHANGED_CONSTANTS)
     distintas = [k for k in base if k not in FREE_SECTIONS and actual[k] != base[k]]
     assert distintas == [], f"con FILES_ENABLED=0 cambiaron secciones fijas: {distintas}"
