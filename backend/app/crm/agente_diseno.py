@@ -285,6 +285,9 @@ def _gancho_lado(respuesta: str, sesion: "SesionDiseno") -> str | None:
     u = ubicar_todo(sesion.doc)
     ubicados = [_uid_de_cambio(c) for c in sesion.cambios if c["herramienta"] in _BLOQUES_TOCADOS]
     tocados = [x for x in ubicados if x] or [x for x in (_uid_de_cambio(c) for c in sesion.cambios) if x]
+    # Un bloque quitado ya no tiene lado: «quité la gráfica que estaba a la derecha» es verdad. Avisar ahí empujaba al modelo
+    # a achicar OTRO bloque que nadie pidió (banco_deshacer «quitar sin achicar otro», 0 de 3).
+    tocados = [i for i in tocados if i in u]
     if not tocados or any(u.get(i, {}).get("lado") == lado for i in tocados):
         return None
     donde = "; ".join(f"{i} → fila {u[i]['fila']}, {u[i]['lado']}" if i in u else f"{i} → ya no está" for i in tocados)

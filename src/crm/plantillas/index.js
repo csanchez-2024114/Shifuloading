@@ -9,6 +9,14 @@ import { tomarPiezas } from './seleccion.js'
 
 export const DISENO = import.meta.env.VITE_CRM_DISENO === '1'
 
+if (DISENO) import('./chat-diseno.css')
+
+/** Sugerencias del laboratorio (chunk pesado); null sin bandera. */
+export const cargarSugerencias = DISENO ? () => import('./sugerenciasCrm.js') : null
+
+/** Captura con piezas medidas (html2canvas del laboratorio); null sin bandera. */
+export const cargarCaptura = DISENO ? () => import('@lab/plantillas/captura.js') : null
+
 /** Inicio, listas, contactos y tareas los dibujan las piezas del laboratorio (lienzo, vistas y ficha). */
 export const DisenoCrm = DISENO ? lazy(() => import('./DisenoCrm.jsx')) : null
 
@@ -25,10 +33,11 @@ export const esVistaDiseno = (vista, crm) => DISENO && (vista === 'inicio' || vi
   || (vista.startsWith('l_') && !!crm?.listas?.some((l) => l.id === vista)))
 
 /** Atributos del marco .mc: el estilo decidido del laboratorio (Vivo + Compacto) y los tokens de la marca del negocio. */
-export function marcoDiseno(crm, tema) {
+export function marcoDiseno(crm, tema, chatAbierto = false) {
   if (!DISENO) return { className: 'mc' }
   const { logo_id: _logo, ...marca } = crm?.marca || {}
-  return { className: 'mc pl', 'data-estilo': 'vivo', 'data-densidad': 'compacto', style: { '--acento': '#22d3a6', '--vel': 2.2, ...tokensDeMarca(marca, tema).vars } }
+  const clase = ['mc', 'pl', chatAbierto ? 'con-chat' : ''].filter(Boolean).join(' ')
+  return { className: clase, 'data-estilo': 'vivo', 'data-densidad': 'compacto', style: { '--acento': '#22d3a6', '--vel': 2.2, ...tokensDeMarca(marca, tema).vars } }
 }
 
 /** Lo del sistema de diseño dentro del chat de Shifu (se carga aparte): los cambios con «Deshacer», «Quitar ejemplos» y las

@@ -876,7 +876,7 @@ def _mensajes(doc: dict, texto: str, historial: list[dict], ahora: datetime, con
             msgs.append(HumanMessage(content=t) if h.get("de") == "yo" else AIMessage(content=t))
     # El archivo adjunto va solo en el mensaje al modelo: los cercos y las reglas miran únicamente lo que escribió la persona
     # (un documento que diga «sí, bórralos todos» no confirma nada).
-    texto = f"{texto}{adjunto}" if adjunto else texto
+    texto = f"{texto}\n{adjunto.lstrip(chr(10))}" if adjunto else texto  # en su propia línea, como la nota del laboratorio
     if imagen:
         donde = f" Es una captura de la pantalla “{seccion}” de su CRM." if seccion else ""
         # La imagen viaja solo en este mensaje: no se guarda en el historial (pesa y la persona ya la vio).

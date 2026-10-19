@@ -48,6 +48,7 @@ from app.crm import puntos as pt
 from app.crm import repositorio as repo
 from app.crm import sembrar
 from app.crm.chat import responder, sanear_pendiente
+from app.crm.seleccion import nota_seleccion
 from app.crm.generador import generar
 from app.crm.vista import vista_crm
 from app.database import get_current_user
@@ -206,12 +207,19 @@ class Adjunto(BaseModel):
     datos: str = Field(..., max_length=MAX_ADJUNTO)
 
 
+class PiezaElegida(_Texto):
+    tipo: str = Field("", max_length=20)
+    id: str = Field("", max_length=60)
+    nombre: str = Field("", max_length=80)
+
+
 class ContextoChat(_Texto):
     historial: list[MensajePrevio] = Field(default_factory=list, max_length=20)  # últimos mensajes, para entender "y también a Pedro"
     pendiente: Optional[dict[str, Any]] = None
     imagen: Optional[str] = Field(None, max_length=MAX_IMAGEN)
     archivo: Optional[Adjunto] = None
     seccion: Optional[str] = Field(None, max_length=40)
+    seleccion: list[PiezaElegida] = Field(default_factory=list, max_length=12)
 
 
 class QuitarEjemplos(_Texto):
@@ -614,6 +622,9 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     if imagen or ctx.archivo:
         pendiente = None  # captura o documento: tema nuevo, sin borrado pendiente
     bloque_adjunto = adjuntos.para_el_modelo(adj_leido) if adj_leido and adj_leido.get("ok") else None
+    nota_sel = nota_seleccion([p.model_dump() for p in ctx.seleccion])
+    # Archivo y selección van al modelo por el mismo canal que `adjunto` en el agente (no en el texto de la persona).
+    extra_modelo = "\n".join(x for x in (nota_sel, bloque_adjunto) if x) or None
     # El historial y lo que Shifu recuerda de la persona viven en el servidor; lo que mande la pantalla solo sirve si todavía no hay nada guardado.
     try:
         conv = await mem.obtener(db, user["id"])
@@ -623,7 +634,7 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     historial = mem.historial_para_modelo(conv) or [m.model_dump() for m in ctx.historial]
     persona = mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None) if conv else None
     try:
-        doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona, bloque_adjunto)
+        doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona, extra_modelo)
     except op.ErrorCrm as e:
         return _error(e)
 
