@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import csv
 import io
 import json
 import logging
@@ -131,27 +132,102 @@ def _es_xlsx_zip(contenido: bytes) -> bool:
         return False
 
 
-def _leer_xlsx(contenido: bytes) -> str:
+def _separador(primera: str) -> str:
+    """El separador de esa fila (coma, punto y coma o tab), contando solo fuera de comillas. Vacío si es una sola columna."""
+
+    def cuenta(sep: str) -> int:
+        n = 0
+        comillas = False
+        for c in primera:
+            if c == '"':
+                comillas = not comillas
+            elif c == sep and not comillas:
+                n += 1
+        return n
+
+    mejor = max([",", ";", "\t"], key=cuenta)
+    return mejor if cuenta(mejor) else ""
+
+
+def _filas_tabla(texto: str) -> list[list[str]]:
+    """Filas de un CSV/TSV. No tira columnas: una celda entre comillas puede traer el separador."""
+    lineas = [ln for ln in (texto or "").splitlines() if ln.strip()]
+    if not lineas:
+        return []
+    sep = _separador(lineas[0])
+    if not sep:
+        return [[lineas[0].strip()]]
+    lector = csv.reader(io.StringIO("\n".join(lineas)), delimiter=sep)
+    return [[c.strip() for c in fila] for fila in lector if any(c.strip() for c in fila)]
+
+
+_NUMERO = re.compile(r"[-+]?\d+(?:[.,]\d+)?$")
+
+
+def columnas_titulo(filas: list[list[str]]) -> list[str]:
+    """La primera fila, si parece títulos (ninguna celda es un número suelto). Vacío si parece datos."""
+    if not filas or not filas[0]:
+        return []
+    if any(_NUMERO.match(c) for c in filas[0] if c):
+        return []
+    vistos: list[str] = []
+    for c in filas[0]:
+        if c and c not in vistos:
+            vistos.append(c)
+    return vistos
+
+
+def columnas_fuera(columnas: list[str], campos: list[dict]) -> list[str]:
+    """Columnas que no son un campo (mismo emparejamiento que al guardar: id, nombre o clave). Esas no entran solas."""
+    from app.crm.registros import campo_por_clave
+
+    return [c for c in columnas if c and campo_por_clave(campos, c) is None]
+
+
+def nota_columnas(fuera: list[str]) -> str:
+    """Lo que ve el modelo: el código ya midió qué columna no es un campo."""
+    if not fuera:
+        return ""
+    lista = ", ".join(f"«{c}»" for c in fuera)
+    return (f"[Aviso del código] Estas columnas del archivo no son un campo de ninguna sección: {lista}. "
+            "No las guardes en silencio: dile a la persona el nombre de cada una y pregúntale si agregas el campo.")
+
+
+def frase_columnas(fuera: list[str]) -> str:
+    """Lo que se le dice a la persona si la respuesta no nombró esas columnas."""
+    if len(fuera) == 1:
+        return f"No guardé la columna «{fuera[0]}»: no hay un campo con ese nombre. ¿La agrego?"
+    lista = ", ".join(f"«{c}»" for c in fuera)
+    return f"No guardé estas columnas porque no hay un campo con ese nombre: {lista}. ¿Las agrego?"
+
+
+def _leer_xlsx(contenido: bytes) -> tuple[str, list[str]]:
     from openpyxl import load_workbook
 
     if not _es_xlsx_zip(contenido):
         raise ValueError("firma")
     wb = load_workbook(io.BytesIO(contenido), read_only=True, data_only=True)
     partes: list[str] = []
+    columnas: list[str] = []
     for nombre in list(wb.sheetnames)[:MAX_HOJAS]:
         hoja = wb[nombre]
         partes.append(f"## Hoja: {nombre}")
+        filas_hoja: list[list[str]] = []
         filas = 0
         for row in hoja.iter_rows(values_only=True):
             vals = ["" if v is None else str(v).strip() for v in row]
             if not any(vals):
                 continue
+            filas_hoja.append(vals)
             partes.append(" | ".join(vals))
             filas += 1
             if filas >= MAX_FILAS:
                 break
+        for c in columnas_titulo(filas_hoja):
+            if c not in columnas:
+                columnas.append(c)
     wb.close()
-    return "\n".join(partes)
+    return "\n".join(partes), columnas
 
 
 def leer_adjunto(nombre: str, datos: str) -> dict[str, Any]:
@@ -183,15 +259,17 @@ def leer_adjunto(nombre: str, datos: str) -> dict[str, Any]:
             return {"ok": True, "nombre": nombre, "tipo": tipo, "texto": texto, "truncado": truncado}
 
         if tipo == "xlsx":
-            texto, truncado = _cortar(_leer_xlsx(contenido))
-            return {"ok": True, "nombre": nombre, "tipo": tipo, "texto": texto, "truncado": truncado}
+            texto_x, columnas = _leer_xlsx(contenido)
+            texto, truncado = _cortar(texto_x)
+            return {"ok": True, "nombre": nombre, "tipo": tipo, "texto": texto, "truncado": truncado, "columnas": columnas}
 
         if tipo in ("csv", "tsv", "txt", "md"):
             plano = _texto_plano(contenido)
             if plano is None:
                 return {"ok": False, "error": "No pude leer ese archivo."}
+            columnas = columnas_titulo(_filas_tabla(plano)) if tipo in ("csv", "tsv") else []
             texto, truncado = _cortar(plano)
-            return {"ok": True, "nombre": nombre, "tipo": tipo, "texto": texto, "truncado": truncado}
+            return {"ok": True, "nombre": nombre, "tipo": tipo, "texto": texto, "truncado": truncado, "columnas": columnas}
 
         if tipo == "json":
             plano = _texto_plano(contenido)
