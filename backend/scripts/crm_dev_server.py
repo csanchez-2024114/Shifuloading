@@ -51,6 +51,8 @@ _limitador.limiter = types.SimpleNamespace(limit=lambda *_a, **_k: (lambda f: f)
 sys.modules["app.database"] = _bd
 sys.modules["app.core.limiter"] = _limitador
 
+import os as _os  # noqa: E402
+
 from app.routes.crm.crmRoutes import router as crm_router  # noqa: E402
 
 
@@ -186,6 +188,10 @@ def crear_app() -> FastAPI:
         return {"ok": True}
 
     app.include_router(crm_router, prefix="/api/v1/crm")
+    if _os.getenv("CRM_LAB_ADAPTER", "0").strip() == "1":
+        from app.routes.crm import labRoutes as _lab_routes  # noqa: E402
+
+        app.include_router(_lab_routes.router, prefix="/api/v1/crm")
     return app
 
 

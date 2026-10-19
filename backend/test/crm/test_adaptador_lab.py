@@ -303,7 +303,8 @@ def test_ruta_lab_chat_fake_responder(cliente_lab):
     assert "grafica" in vistas or "grafico" in vistas
 
 
-def test_procesar_chat_lab_cadena_dos_turnos():
+@pytest.mark.asyncio
+async def test_procesar_chat_lab_cadena_dos_turnos():
     """Turno 2 reenvía el estado devuelto; el motor debe ver marca y el registro nuevo del turno 1."""
     turnos: list[dict] = []
 
@@ -343,12 +344,12 @@ def test_procesar_chat_lab_cadena_dos_turnos():
             "vista": "inicio",
         }
 
-    r1 = adp.procesar_chat_lab(
+    r1 = await adp.procesar_chat_lab(
         {"plantilla": "membresias", "estado": BANCO2_E, "texto": "marca y un miembro", "muestra": MUESTRA_DATOS},
         fake_responder,
         hoy=HOY,
     )
-    r2 = adp.procesar_chat_lab(
+    r2 = await adp.procesar_chat_lab(
         {
             "plantilla": "membresias",
             "estado": r1["estado"],

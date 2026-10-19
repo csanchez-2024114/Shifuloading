@@ -9,8 +9,9 @@ Puntos de deshacer: en el laboratorio viven en `estado.puntos` (con `foto` en fo
 from __future__ import annotations
 
 import copy
+import inspect
 from datetime import date, datetime, timezone
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from app.crm import ejemplos
 from app.crm import estructura as est
@@ -536,9 +537,36 @@ def normalizar_estado_lab(estado: dict) -> dict:
     return limpia(e)
 
 
-def procesar_chat_lab(
+def _kwargs_responder(responder: Callable[..., dict | Awaitable[dict]], kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Contrato §7: (doc, texto, historial, contexto, puntos=…); `imagen` solo si el callable la declara, si no va en contexto."""
+    try:
+        sig = inspect.signature(responder)
+    except (TypeError, ValueError):
+        return kwargs
+    params = sig.parameters
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return kwargs
+    filtrado = {k: v for k, v in kwargs.items() if k in params}
+    if kwargs.get("imagen") and "imagen" not in filtrado and "contexto" in params:
+        ctx = dict(filtrado.get("contexto") or {})
+        ctx["imagen"] = kwargs["imagen"]
+        filtrado["contexto"] = ctx
+    return filtrado
+
+
+async def _invocar_responder(
+    responder: Callable[..., dict | Awaitable[dict]],
+    **kwargs: Any,
+) -> dict:
+    r = responder(**_kwargs_responder(responder, kwargs))
+    if inspect.isawaitable(r):
+        return await r
+    return r
+
+
+async def procesar_chat_lab(
     cuerpo: dict,
-    responder: Callable[..., dict],
+    responder: Callable[..., dict | Awaitable[dict]],
     *,
     hoy: date | None = None,
 ) -> dict:
@@ -551,9 +579,17 @@ def procesar_chat_lab(
     doc = doc_desde_lab(plantilla_id, estado_in, muestra, hoy=hoy)
     puntos = puntos_doc_desde_lab(estado_in.get("puntos") or [], plantilla_id, muestra, hoy=hoy)
     contexto = {"muestra": _muestra_norm(muestra), "vista": estado_in.get("vista") or "inicio", "seleccion": cuerpo.get("seleccion")}
-    salida = responder(doc=doc, texto=str(cuerpo.get("texto") or ""), historial=cuerpo.get("historial") or [], contexto=contexto, puntos=puntos)
+    salida = await _invocar_responder(
+        responder,
+        doc=doc,
+        texto=str(cuerpo.get("texto") or ""),
+        historial=cuerpo.get("historial") or [],
+        contexto=contexto,
+        puntos=puntos,
+        imagen=cuerpo.get("imagen"),
+    )
     doc_fin = salida.get("doc") or doc
-    puntos_fin = salida.get("puntos") or puntos
+    puntos_fin = salida["puntos"] if salida.get("puntos") is not None else puntos  # [] tras deshacer el único punto: vale
     estado_out = lab_desde_doc(doc_fin, doc_sem, plantilla_id, vista=salida.get("vista") or contexto["vista"], puntos_doc=puntos_fin, muestra=muestra, hoy=hoy)
     return {
         "respuesta": salida.get("respuesta") or "",
