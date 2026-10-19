@@ -63,9 +63,9 @@ Cambios **aditivos** en archivos existentes (son los únicos):
 | Origen | Ejemplo local | Qué sirve | Cookies |
 |---|---|---|---|
 | App (existente) | `http://127.0.0.1:8000` | chat, rutas del dueño `/coder/*` | sesión `agente0_session` |
-| Sandbox (nuevo, proceso aparte) | `http://localhost:8100` (`CODER_SANDBOX_ORIGIN`) | `/p/<preview_token>/…`, `/s/<share_token>/…`, `/u/<handle>/…`, API de datos `…/__data/…`, SDK `…/__coder/sdk.js` | **ninguna**: no lee `Cookie` ni emite `Set-Cookie` |
+| Sandbox (nuevo, proceso aparte) | `http://127.0.0.2:8100` (`CODER_SANDBOX_ORIGIN`) | `/p/<preview_token>/…`, `/s/<share_token>/…`, `/u/<handle>/…`, API de datos `…/__data/…`, SDK `…/__coder/sdk.js` | **ninguna**: no lee `Cookie` ni emite `Set-Cookie` |
 
-Se usa otro **nombre de host**, no solo otro puerto. Las cookies no se aíslan por puerto: una cookie de `127.0.0.1` llegaría a `127.0.0.1:8100`. Con `localhost` frente a `127.0.0.1`, la cookie host-only nunca viaja al sandbox. Al arrancar se valida que el host del sandbox no esté en `TRUSTED_HOSTS` de la app y viceversa (ConfigError).
+Se usa otro **nombre de host**, no solo otro puerto. Las cookies no se aíslan por puerto: una cookie de `127.0.0.1` llegaría a `127.0.0.1:8100`. El sandbox escucha en `127.0.0.2`: también es loopback, pero para el navegador es otro host, así que la cookie host-only de la app (en `127.0.0.1` o `localhost`) nunca viaja al sandbox. Está comprobado en esta máquina (Windows y Edge headless, como página y como iframe), y no hace falta tocar `TRUSTED_HOSTS`. Al arrancar se valida que el host del sandbox no esté en `TRUSTED_HOSTS` de la app (ConfigError).
 
 El sandbox es otra app ASGI (`assistant.core.coder.sandbox:app`), lanzada con su propio `uvicorn … --port 8100 --no-server-header`. Lleva su **propio** `TrustedHostMiddleware` (solo el host del sandbox). La app principal **no relaja** `TRUSTED_HOSTS` ni el 403 por loopback. Si `AUTH_ENABLED=0`, el coder ni arranca (ConfigError), así que el 403 por loopback no entra en juego. Ambos procesos comparten solo la base de negocio.
 
@@ -80,11 +80,11 @@ Usuario ─chat─▶ /chat (app :8000) ─▶ agente perfil coder ─▶ herram
                                                             │ coder_data_*, coder_shares, coder_handles, coder_usage
                      preview_project ─▶ token de vista previa (TTL 30 min, hash en coder_preview_tokens)
                                                             ▼
-UI ─iframe sandbox="allow-scripts"─▶ localhost:8100/p/<token>/index.html  (CSP + CSP sandbox, origen opaco)
+UI ─iframe sandbox="allow-scripts"─▶ 127.0.0.2:8100/p/<token>/index.html  (CSP + CSP sandbox, origen opaco)
                                                             │ SDK ─▶ /p/<token>/__data/… (sin credenciales)
 share_project ─▶ tarjeta HITL (archivos + versión + avisos del analizador) ─▶ aprobar ─▶ coder_shares.published_version
                                                             ▼
-Visitante sin cuenta ─▶ localhost:8100/s/<share_token>/ o /u/<handle>/<slug>/
+Visitante sin cuenta ─▶ 127.0.0.2:8100/s/<share_token>/ o /u/<handle>/<slug>/
                         (solo la versión publicada; 404 uniforme; rate limit + ancho de banda)
 ```
 
@@ -160,7 +160,7 @@ Si se excede una cuota, la salida es `Not run: quota …` (en inglés para el mo
 **iframe en la UI:**
 ```html
 <iframe sandbox="allow-scripts" referrerpolicy="no-referrer" loading="lazy"
-        allow="" src="http://localhost:8100/p/<token>/index.html"></iframe>
+        allow="" src="http://127.0.0.2:8100/p/<token>/index.html"></iframe>
 ```
 No lleva `allow-same-origin`, `allow-forms`, `allow-popups`, `allow-top-navigation` ni `allow-modals`.
 
