@@ -9,3 +9,6 @@ laboratorio/grabaciones/
 
 # CRMs guardados en el laboratorio (D57): datos de prueba de cada navegador, no se versionan
 laboratorio/.guardado/
+
+# Trazas del chat del CRM (CRM_TRAZA=1): casos reales con texto de la persona, no se versionan
+backend/trazas_chat/

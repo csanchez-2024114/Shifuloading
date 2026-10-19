@@ -29,6 +29,7 @@ import json
 from collections import Counter
 import logging
 import re
+import time
 from datetime import date, datetime
 from typing import Any, Callable
 
@@ -38,6 +39,7 @@ from app.crm import agente
 from app.crm import edicion
 from app.crm import estructura as est
 from app.crm import operaciones as op
+from app.crm import traza
 from app.crm import pantalla
 from app.crm.lienzo import ubicar_todo
 from app.crm import puntos as pt
@@ -371,8 +373,10 @@ async def revisar_sustituto_final(respuesta: str, sesion: "SesionDiseno", doc_in
              "más parecido, y PREGUNTA si lo quiere. No digas que pusiste nada.")
     mensajes.extend([AIMessage(content=respuesta), HumanMessage(content=aviso)])
     try:
+        t_modelo = time.perf_counter()
         ia = await _atar(modelo or agente._modelo(), sesion.herramientas(), True).ainvoke(mensajes)
         t = (ia.content if isinstance(ia.content, str) else "").strip()
+        traza.paso_modelo(traza.ms_desde(t_modelo), [], t, etapa="sustituto")
         return t or "Eso no existe en el catálogo todavía. ¿Quieres que te proponga lo más parecido?"
     except Exception:
         return "Eso no existe en el catálogo todavía. ¿Quieres que te proponga lo más parecido?"
@@ -987,6 +991,28 @@ def pestana_abierta(doc: dict, seccion: str | None) -> str | None:
 async def responder(doc: dict, texto: str, historial: list[dict] | None = None, ahora: datetime | None = None, con_captura: bool = False,
                     modelo: Any = None, buscador: Any = None, imagen: str | None = None, seccion: str | None = None, persona: str | None = None,
                     puntos: list[dict] | None = None, lector_enlaces: Any = None, adjunto: str | None = None) -> dict:
+    """Un turno del chat (ver `_responder`). Con CRM_TRAZA=1 además deja su traza en el archivo del día (`traza`); sin ella, nada cambia."""
+    args = (doc, texto, historial, ahora, con_captura, modelo, buscador, imagen, seccion, persona, puntos, lector_enlaces, adjunto)
+    token = traza.empezar()
+    if token is None:
+        return await _responder(*args)
+    t0 = time.perf_counter()
+    datos = {"doc": doc, "texto": texto, "historial": historial, "seccion": seccion, "imagen": bool(imagen), "adjunto": adjunto, "ahora": ahora}
+    try:
+        salida = await _responder(*args)
+    except BaseException as e:
+        traza.escribir(traza.linea_turno(**datos, ms=traza.ms_desde(t0), error=e, pasos_turno=traza.pasos()))
+        raise
+    finally:
+        pasos_turno = traza.pasos()
+        traza.terminar(token)
+    traza.escribir(traza.linea_turno(**datos, ms=traza.ms_desde(t0), salida=salida, pasos_turno=pasos_turno))
+    return salida
+
+
+async def _responder(doc: dict, texto: str, historial: list[dict] | None = None, ahora: datetime | None = None, con_captura: bool = False,
+                     modelo: Any = None, buscador: Any = None, imagen: str | None = None, seccion: str | None = None, persona: str | None = None,
+                     puntos: list[dict] | None = None, lector_enlaces: Any = None, adjunto: str | None = None) -> dict:
     """Como `agente.responder`, más `cambios`, `fallos`, `intentos`, `consultas` y `avisos` (forma del laboratorio). Si en el turno se
     deshizo algo, `deshacer` = {deshechos, puntos (los que quedan, con foto), base (el CRM justo tras el último deshacer: el punto del
     turno se mide desde ahí)}. Lanza excepción si el modelo falla: quien llama usa las reglas."""
@@ -1020,9 +1046,11 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
         herr = sesion.herramientas()
         if tras_deshacer:
             herr = [h for h in herr if h["function"]["name"] != "deshacer" and CATEGORIA.get(h["function"]["name"], "bloques") in sesion.deshecho]
+        t_modelo = time.perf_counter()
         ia = await _atar(base, herr, solo_responder or (tras_deshacer and not herr)).ainvoke(mensajes)
         contenido = (ia.content if isinstance(ia.content, str) else "").strip()
         llamadas = [] if solo_responder or (tras_deshacer and not herr) else list(getattr(ia, "tool_calls", None) or [])
+        traza.paso_modelo(traza.ms_desde(t_modelo), llamadas, contenido)
         if tras_deshacer:
             permitidas = {h["function"]["name"] for h in herr}
             llamadas = [ll for ll in llamadas if ll.get("name") in permitidas]
@@ -1046,6 +1074,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
         sesion.planificar_cerco_masivo(llamadas)
         for ll in llamadas:
             nombre, args = ll.get("name", ""), ll.get("args") or {}
+            t_herr = time.perf_counter()
             if nombre == "leer_enlace":
                 resultado = await sesion.leer_enlace_tool(args, lector)
             elif nombre == "buscar_en_internet":
@@ -1060,6 +1089,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
                 resultado = sesion.deshacer(args)
             else:
                 resultado = sesion.ejecutar(nombre, args)
+            traza.paso_herramienta(nombre, args, resultado, traza.ms_desde(t_herr))
             ultimos.append(resultado)
             mensajes.append(ToolMessage(content=resultado, tool_call_id=ll.get("id") or nombre or "x"))
         if sesion._adjuntos_vuelta:

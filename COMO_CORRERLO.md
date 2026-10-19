@@ -121,6 +121,22 @@ VITE_CRM_DISENO=1 npx vite --port 5180
 
 Sin Mongo ni Redis también se puede probar con el servidor de desarrollo (todo en memoria, se pierde al apagarlo): `CRM_DISENO=1 python scripts/crm_dev_server.py --puerto 5193` y el frontend con `VITE_API_URL=http://localhost:5193/api/v1 VITE_CRM_DISENO=1 npx vite --port 5199`.
 
+## Guardar trazas de los turnos del chat (opcional)
+
+Para revisar después qué pasó en conversaciones reales (pruebas manuales, bancos), con `CRM_TRAZA=1` cada turno del chat del CRM generativo (`CRM_DISENO=1`) deja una línea JSON en un archivo por día:
+
+```bash
+CRM_DISENO=1 CRM_TRAZA=1 uvicorn main:app --reload --port 8001
+# o con otra carpeta: CRM_TRAZA_DIR=~/trazas_shifu
+```
+
+- Carpeta: `CRM_TRAZA_DIR` o, si no se define, `backend/trazas_chat/` (ignorada por git: tiene lo que escribió la persona, no se sube).
+- Archivo: `AAAA-MM-DD.jsonl` (día UTC), una línea por turno.
+- Cada línea trae: el texto de la persona, cada llamada al modelo y cada herramienta en orden (nombre, argumentos, resultado y milisegundos), los avisos del código, cambios, fallos, la respuesta final y el tiempo total (`ms_total`). Si el modelo falla, el tipo de error.
+- No guarda el CRM completo, la imagen, el contenido de archivos o enlaces adjuntos (solo su largo o la URL), el historial (solo cuántos mensajes) ni la configuración. Lo que parezca una clave (`sk-…`, `Bearer …`, JWT) se tapa y los textos largos se recortan.
+- Sin la variable no se mide ni se escribe nada. Si no se puede escribir el archivo, el chat responde igual (queda un aviso en el log). Los turnos que resuelven las reglas (sin IA) no dejan traza.
+- Para leerlas: `tail -n 5 backend/trazas_chat/$(date -u +%F).jsonl | python -m json.tool --json-lines`.
+
 ## Abrir el backend desde otro dominio o desde la red (opcional)
 
 El backend solo responde a peticiones dirigidas a `localhost`, `127.0.0.1`, `hypershifu.com`, `www.hypershifu.com` y `backend-hyper-shifu-nyzm.onrender.com`; con otro nombre responde `400 Invalid host header`. Para sumar más (un dominio propio, la IP de tu computadora en la red, un túnel), agrega en `backend/.env`:
