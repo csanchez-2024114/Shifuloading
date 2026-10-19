@@ -850,6 +850,15 @@ def test_la_siguiente_pregunta_no_pide_sesion_exige_lo_basico_y_sin_ia_manda_a_l
     assert cli.post("/api/v1/crm/siguiente-pregunta", json={**ok, "que_vendes": "x" * 1501}).status_code == 422  # tope 1500 (lista 24)
 
 
+def test_que_vendes_de_1200_caracteres_se_acepta_y_llega_completo_al_resumen_del_brief(cli):
+    from app.crm import diseno
+
+    que = "v" * 1200
+    ok = {"nombre": "Herrería El Yunque", "que_vendes": que, "ubicacion": {"pais": "gt", "ciudad": "Guatemala"}, "qa": []}
+    assert cli.post("/api/v1/crm/siguiente-pregunta", json=ok).status_code == 200
+    assert que in diseno.resumen_del_brief({"nombre": ok["nombre"], "que_vendes": que})
+
+
 def test_se_pueden_importar_varias_filas_a_una_seccion_de_un_solo_golpe(cli, db):
     crear(cli)
     l = _con_lista(db, "Productos", [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}, {"nombre": "Cantidad", "tipo": "numero"}])
