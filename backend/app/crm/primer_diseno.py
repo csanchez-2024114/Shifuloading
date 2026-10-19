@@ -404,13 +404,15 @@ def _campo(crudo: Any, usados: set[str]) -> dict | None:
         except ErrorCrm:
             usados.discard(campo["id"])
             return None  # un estado sin opciones válidas sería el «Estado como texto» del informe: no entra
-    elif tipo == "texto" and isinstance(extra, str) and _plano(extra).strip() == "persona":
+    elif tipo == "texto" and _es_persona(extra):
         campo["persona"] = True  # sin ejemplos: el generador pone nombres de personas distintos
     elif tipo == "texto" and isinstance(extra, list):
         ej = [" ".join(str(e).split())[:LARGO_EJEMPLO] for e in extra if isinstance(e, (str, int, float)) and not isinstance(e, bool)]
         ej = [e for e in dict.fromkeys(ej) if e][:MAX_EJEMPLOS_CAMPO]
         if ej:
             campo["ejemplos"] = ej
+    if tipo == "texto" and not campo.get("ejemplos") and not campo.get("persona") and campo["id"] != "nombre":
+        campo["sin_ejemplos"] = True  # sin valores de ESE negocio: se deja en blanco, no se rellena con nombres de personas
     elif tipo in ("numero", "dinero", "fecha") and isinstance(extra, list) and len(extra) == 2:
         a, b = _numero(extra[0]), _numero(extra[1])
         if a is not None and b is not None and a < b:
@@ -421,6 +423,12 @@ def _campo(crudo: Any, usados: set[str]) -> dict | None:
             elif a >= 0:
                 campo["rango"] = [int(a), int(b)] if b - a >= 2 else [a, b]
     return campo
+
+
+def _es_persona(extra: Any) -> bool:
+    if isinstance(extra, list) and len(extra) == 1:
+        extra = extra[0]
+    return isinstance(extra, str) and _plano(extra).strip() == "persona"
 
 
 def _por_tipo(campos: list[dict], tipos: list[str] | None) -> str | None:
@@ -547,6 +555,15 @@ def plantilla_de_propuesta(propuesta: Any, para_modelo: list[dict], pid: str, no
             secciones.append(sec)
     if not secciones:
         return None
+    if len(secciones) < MIN_SECCIONES:  # nunca casi vacío (21b): se completa con las piezas claras que no repiten título
+        for x in para_modelo:
+            if len(secciones) >= MIN_SECCIONES:
+                break
+            s = x["pieza"]["seccion"]
+            if x["pct"] < MIN_PCT_RESPALDO or _plano(s["titulo"]) in titulos or any(_clave_titulo(s["titulo"]) == _clave_titulo(y["titulo"]) for y in secciones):
+                continue
+            titulos.add(_plano(s["titulo"]))
+            secciones.append(_de_pieza(x["pieza"], usados))
     por_id = {s["id"]: s for s in secciones}
     inicio: list[dict] = []
     for b in (propuesta.get("inicio") if isinstance(propuesta.get("inicio"), list) else [])[:MAX_BLOQUES + 4]:
@@ -559,6 +576,17 @@ def plantilla_de_propuesta(propuesta: Any, para_modelo: list[dict], pid: str, no
         inicio = bloques_por_defecto(secciones, inicio)
     rubros = [_nombre(r, 60) for r in (propuesta.get("rubros") if isinstance(propuesta.get("rubros"), list) else []) if isinstance(r, str)][:4]
     return {"id": pid, "nombre": nombre, "secciones": secciones, "inicio": inicio, "_rubros": [r for r in rubros if r]}
+
+
+def _de_pieza(pieza: dict, usados: set[str]) -> dict:
+    """Una pieza del catálogo tal cual (sus campos con sus ejemplos de catálogo), con id libre y vista que se pueda dibujar."""
+    s = pieza["seccion"]
+    sec = {"id": _unico(_slug(s["id"]) or "seccion", usados), "titulo": s["titulo"], "grupo": 0,
+           "icono": s.get("icono") or ICONO_DE_VISTA.get(s.get("vista"), "tabla"), "vista": s.get("vista") or "tabla",
+           "opciones": copy.deepcopy(s.get("opciones") or {}), "campos": copy.deepcopy(s["campos"][:MAX_CAMPOS]), "_pieza": pieza["id"]}
+    if sec["vista"] not in VISTAS_SECCION or validar.revisar_vista(sec["vista"], sec["opciones"], sec["campos"], sec["titulo"]):
+        sec["vista"], sec["opciones"] = "tabla", {}  # una vista que apunta a un campo que el tope cortó vuelve a tabla
+    return sec
 
 
 def plantilla_de_respaldo(compat: list[dict], pid: str, nombre: str) -> dict:
@@ -577,18 +605,12 @@ def plantilla_de_respaldo(compat: list[dict], pid: str, nombre: str) -> dict:
     usados: set[str] = set()
     secciones, inicio = [], []
     for x in elegidas:
-        s = x["pieza"]["seccion"]
-        sid = _unico(_slug(s["id"]) or "seccion", usados)
-        secciones.append({"id": sid, "titulo": s["titulo"], "grupo": 0, "icono": s.get("icono") or ICONO_DE_VISTA.get(s.get("vista"), "tabla"),
-                          "vista": s.get("vista") or "tabla", "opciones": copy.deepcopy(s.get("opciones") or {}),
-                          "campos": copy.deepcopy(s["campos"][:MAX_CAMPOS]), "_pieza": x["pieza"]["id"]})
+        secciones.append(_de_pieza(x["pieza"], usados))
+        sid = secciones[-1]["id"]
         for b in x["pieza"]["bloques"][:2]:
             bloque = _bloque({**b, "seccion": sid}, {sid: secciones[-1]})
             if bloque and len(inicio) < MAX_BLOQUES:
                 inicio.append(bloque)
-    for s in secciones:  # una vista que apunta a un campo que el tope cortó vuelve a tabla
-        if validar.revisar_vista(s["vista"], s["opciones"], s["campos"], s["titulo"]):
-            s["vista"], s["opciones"] = "tabla", {}
     if len(inicio) < 2:
         inicio = bloques_por_defecto(secciones, inicio)
     return {"id": pid, "nombre": nombre, "secciones": secciones, "inicio": inicio, "_rubros": []}
@@ -729,10 +751,17 @@ async def crear(user_id: str, brief: dict, *, modelo: Any = None, ahora: datetim
         logger.warning("Primer diseño: la plantilla armada tiene errores: %s", errores[:3])
         plantilla["inicio"] = [b for i, b in enumerate(plantilla["inicio"]) if not any(e.startswith(f"Inicio, bloque {i + 1} ") for e in errores)]
     usadas = {s["titulo"]: s.pop("_pieza", None) for s in plantilla["secciones"]}
+    en_blanco = {s["id"]: {c["id"] for c in s["campos"] if c.get("sin_ejemplos")} for s in plantilla["secciones"]}
     rubros_ia = plantilla.pop("_rubros", [])
     porque = [f"{x['pieza']['seccion']['titulo']} ({x['pieza']['de']}) {x['pct']}%" for x in para_modelo[:6]]
     doc = sembrar.sembrar(base, plantilla, nivel=NIVEL, pais=(brief.get("ubicacion") or {}).get("pais"), porque=porque, origen="piezas", ahora=ahora)
     ordenar_fechas_y_horas(doc)
+    for l in doc["listas"]:
+        quitar = en_blanco.get(l["id"][len(sembrar.PREFIJO):]) or set()
+        for r in l["registros"]:
+            if r.get("ejemplo"):
+                for cid in quitar:
+                    r["valores"].pop(cid, None)
     doc["plantilla"].update({"respaldo": respaldo, "llamadas": llamadas, "rubros": rubros_ia or [r["rubro"] for r in rubros],
                              "piezas": usadas, **({"motivo": motivo} if respaldo else {})})
     doc["resumen_ia"] = resumen(doc, respaldo)

@@ -211,3 +211,15 @@ def test_resumen_no_nombra_lo_que_no_existe():
     assert r == ("Armé tu CRM con 1 sección: Pedidos. En el inicio tienes 1 bloque sobre Pedidos. Cada sección trae hasta 1 registro de "
                  "ejemplo para que veas cómo se usa; los quitas con «Quitar ejemplos». Lo demás lo vamos armando juntos.")
     assert pd.ejemplos_saludo(base) == ["en Pedidos, agrega «Pizza»", "agrega al inicio una gráfica de Pedidos"]
+
+
+@pytest.mark.asyncio
+async def test_un_texto_sin_ejemplos_queda_en_blanco_y_no_con_nombres_de_personas():
+    propuesta = {"secciones": [{"id": "cobros", "titulo": "Cobros", "campos": [
+        ["cliente", "Cliente", "texto", ["persona"]], ["pedido", "Pedido", "texto"], ["total", "Total", "dinero", [10, 90]], ["estado", "Estado", "estado", ["Pendiente", "Cobrado"]]]}],
+        "inicio": []}
+    doc = await pd.crear("u1", PEPESCORE, modelo=Modelo(propuesta), ahora=AHORA)
+    assert len(doc["listas"]) == pd.MIN_SECCIONES and doc["listas"][0]["nombre"] == "Cobros"  # una sola sección: se completa con piezas claras
+    regs = doc["listas"][0]["registros"]
+    assert all("pedido" not in r["valores"] for r in regs)  # el modelo no dio valores de ese negocio: en blanco
+    assert all(r["valores"]["cliente"] in ejemplos.NOMBRES for r in regs)  # ["persona"] también vale
