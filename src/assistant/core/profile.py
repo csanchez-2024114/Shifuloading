@@ -17,7 +17,7 @@ from assistant.core.i18n import REQUIRED_TEXTS, TextCatalog
 PROFILES_PACKAGE = "assistant.profiles"  # única referencia del núcleo a los perfiles: un nombre, no un import
 DEFAULT_PROFILE = "default"
 
-Effect = Literal["read", "write", "send", "delete"]
+Effect = Literal["read", "write", "send", "delete", "publish"]  # publish: hace algo visible fuera de la app
 NEVER = re.compile(r"(?!)")  # patrón que no reconoce nada: default de las reglas (el núcleo no asume idioma)
 
 
