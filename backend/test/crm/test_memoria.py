@@ -162,9 +162,9 @@ async def test_se_guardan_los_dos_lados_de_la_charla_y_se_cuenta_para_actualizar
     conv, toca = await mem.registrar_turno(db, "u1", "mensaje 3", "respuesta 3", AHORA)
     assert toca is True and len(conv["mensajes"]) == 8 and conv["mensajes"][0] == {"de": "yo", "t": "mensaje 0", "ts": AHORA, "n": 1}
     assert [m["n"] for m in conv["mensajes"]] == list(range(1, 9))  # numerados: el resumen rodante sabe hasta dónde llegó
-    # La ventana es por presupuesto de tokens: con 30 tokens caben los 4 últimos (cada uno pesa ~7), siempre al menos 2.
-    assert [m["de"] for m in mem.historial_para_modelo(conv, 30)] == ["yo", "shifu", "yo", "shifu"]
-    assert len(mem.historial_para_modelo(conv, 1)) == mem.MIN_VENTANA
+    # Al modelo van los 8 (caben en los 16). Un tope menor recorta por cantidad, no por tokens.
+    assert len(mem.historial_para_modelo(conv)) == 8
+    assert [m["t"] for m in mem.historial_para_modelo(conv, 2)] == ["mensaje 3", "respuesta 3"]
 
 
 @pytest.mark.asyncio

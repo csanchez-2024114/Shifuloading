@@ -3,12 +3,13 @@
 Es el agente de Carlos (modelo + herramientas + verificador) con el prompt del laboratorio (`INSTRUCCIONES_LAB`, copiado de
 `laboratorio/servidor/chat.js`) más herramientas y reglas que solo tiene el CRM, y lo que el laboratorio midió en
 `laboratorio/servidor/chat.js`:
-- Datos por chat: agregar_registro, editar_registro, borrar_registro y consultar_datos (esquemas LITERALES de `registros.py`) sobre
-  TODAS las secciones con registros (`secciones_v`: contactos, tareas y secciones propias). El código entiende cada valor, encuentra
-  el registro y dice qué cambiar (`registros.ejecutar_dato`); aquí solo se aplica con `secciones_v.registro_*`, con el id ya generado.
-  Las herramientas de Carlos que hacían lo mismo (agregar_contactos, cambiar_contacto, eliminar_contacto, agregar_registros,
-  cambiar_registro, eliminar_registro) ya no se le muestran al modelo, pero si las llama siguen funcionando: van a los mismos
-  handlers (alias por una versión, contrato §8). consultar_datos no cambia nada: va a `consultas`, no a `cambios`.
+- Datos por chat: agregar_registro, editar_registro, borrar_registro y consultar_datos (esquemas de `registros.py`) sobre
+  TODAS las secciones con registros (`secciones_v`: contactos, tareas y secciones propias). `agregar_registro` acepta además una
+  lista (`registros`) en el mismo nombre: varios de una sección son una acción, no una herramienta nueva. El código entiende cada
+  valor, encuentra el registro y dice qué cambiar (`registros.ejecutar_dato`); aquí solo se aplica con `secciones_v.registro_*`,
+  con el id ya generado. Las herramientas de Carlos que hacían lo mismo (agregar_contactos, cambiar_contacto, eliminar_contacto,
+  agregar_registros, cambiar_registro, eliminar_registro) ya no se le muestran al modelo, pero si las llama siguen funcionando:
+  van a los mismos handlers (alias por una versión, contrato §8). consultar_datos no cambia nada: va a `consultas`, no a `cambios`.
 - Deshacer por pedido (`deshacer`, resuelto por el código con `puntos.deshacer`; la lista va en `pedidos_anteriores`). Reglas de
   chat.js: tras un deshacer solo (sin otra herramienta en esa vuelta) el turno se cierra y el modelo responde sin herramientas; tras
   deshacer, en el mismo mensaje solo se puede cambiar LO MISMO; si lo único que pasó fue deshacer, la respuesta la escribe el código.
@@ -71,20 +72,33 @@ HERR_DESHACER = {"type": "function", "function": {
 
 # Las de Carlos que hacen lo mismo que las de datos del laboratorio: no se muestran, pero si el modelo las llama van al mismo handler.
 ALIAS_DE_DATOS = frozenset({"agregar_contactos", "cambiar_contacto", "eliminar_contacto", "agregar_registros", "cambiar_registro", "eliminar_registro"})
-# Carga por lotes: `agregar_registros` de Carlos SÍ se muestra en diseño, con valores como agregar_registro (id o nombre del campo, tal como lo
-# dijo la persona). Va al mismo handler (`_h_agregar_registros` → `_varios`): cada registro pasa por `registros.ejecutar_dato`, uno por uno,
-# pero cuenta como UNA acción. Medido (prueba del 19-oct y banco_memoria): con agregar_registro de a uno, 18 registros + 3 secciones chocaban
-# con el tope de 12 acciones y quedaban 8–10 de 18.
-HERR_AGREGAR_VARIOS = {"type": "function", "function": {
-    "name": "agregar_registros",
-    "description": "Agrega VARIOS registros a UNA sección en una sola llamada (los 5 empleados, las 3 ventas…). Cada registro: campo (id o nombre) → "
-                   "valor TAL COMO lo dijo la persona; el código entiende y valida cada uno igual que en agregar_registro. Para 2 o más registros "
-                   "de una misma sección usa esta, no agregar_registro uno por uno. No inventes lo que no dijo: queda vacío.",
-    "parameters": {"type": "object", "properties": {
-        "seccion": {"type": "string"},
-        "registros": {"type": "array", "maxItems": agente.MAX_CONTACTOS_POR_LLAMADA,
-                      "items": {"type": "object", "description": "campo (id o nombre) → valor como lo dijo la persona"}}},
-        "required": ["seccion", "registros"]}}}
+
+
+def _agregar_registro_con_lote() -> dict:
+    """El `agregar_registro` de david, que además acepta una lista. Mismo nombre: una herramienta nueva en el catálogo
+    (medida: banco_datos y banco_pestañas bajaron al ver `agregar_registros` siempre) le hacía contestar con la config
+    de la pantalla o preguntar en vez de hacer la gráfica. Varios de una sección siguen siendo UNA acción (`_varios`)."""
+    base = copy.deepcopy(next(h for h in registros.HERRAMIENTAS_DATOS if h["function"]["name"] == "agregar_registro"))
+    fn = base["function"]
+    fn["description"] += (" Si son VARIOS de la misma sección, una sola llamada: la lista va en «registros» "
+                          "(cada objeto es campo → valor, tal como lo dijo) y «valores» puede ir vacío.")
+    fn["parameters"]["properties"]["registros"] = {
+        "type": "array", "maxItems": agente.MAX_CONTACTOS_POR_LLAMADA,
+        "items": {"type": "object", "description": "campo (id o nombre) → valor como lo dijo la persona"}}
+    return base
+
+
+HERR_AGREGAR_REGISTRO = _agregar_registro_con_lote()
+
+
+def _lista_de_agregar(args: dict) -> list[dict] | None:
+    """Varios registros en la misma llamada a `agregar_registro`. None si es uno solo (`valores` objeto): ese camino no cambia."""
+    regs = args.get("registros")
+    if not (isinstance(regs, list) and regs) and isinstance(args.get("valores"), list) and args.get("valores"):
+        regs = args["valores"]
+    if not (isinstance(regs, list) and regs):
+        return None
+    return [{"seccion": args.get("seccion"), "valores": r if isinstance(r, dict) else {}} for r in regs]
 # Mismo nombre que el laboratorio pero esquema de Carlos (`nombre`/`destino`…): no se muestran; si las llama, van a los `_h_*` de Carlos (contrato §8).
 ALIAS_ESTRUCTURA_CARLOS = frozenset({"crear_seccion", "agregar_campo", "renombrar_campo", "quitar_campo", "renombrar_seccion", "definir_opciones"})
 NOMBRES_EDICION = frozenset(h["function"]["name"] for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer")
@@ -147,8 +161,7 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 # Solo lo que el prompt del laboratorio no cubre y es específico de este backend (contexto JSON del CRM).
 INSTRUCCIONES_DISENO = """Más de este CRM (Python)
 - No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
-- En agregar_registro, agregar_registros, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado.
-- Si la persona pasa VARIOS registros (una lista de empleados, productos, ventas…), usa agregar_registros: una llamada por sección con todos los de esa sección."""
+- En agregar_registro, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado."""
 
 _CABECERA_ESTADO_PANTALLA = "Estado de la pantalla (JSON):\n"
 
@@ -480,8 +493,8 @@ class SesionDiseno(agente.Sesion):
         """Carlos (sin alias ni nombres que ya trae edicion.js), herramientas de diseño con el mismo filtro que chat.js, toma, deshacer, datos y leer_enlace."""
         lab = [h for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer"
                and (self._tiene_imagen() or h["function"]["name"] != "usar_logo")]
-        return [*HERRAMIENTAS_CARLOS_SIN_EDICION, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *registros.HERRAMIENTAS_DATOS, HERR_AGREGAR_VARIOS,
-                edicion.HERR_ENLACE]
+        datos = [HERR_AGREGAR_REGISTRO if h["function"]["name"] == "agregar_registro" else h for h in registros.HERRAMIENTAS_DATOS]
+        return [*HERRAMIENTAS_CARLOS_SIN_EDICION, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *datos, edicion.HERR_ENLACE]
 
     def contexto(self) -> str:
         """El Estado del CRM de Carlos (hoy, contactos, tareas, equipo, automatizaciones…) más la pantalla como chat.js
@@ -741,6 +754,10 @@ class SesionDiseno(agente.Sesion):
             if r["ok"] and _toma_distinta(self.doc, r["doc"]):
                 self.doc = r["doc"]
             return r["resultado"]
+        if nombre == "agregar_registro":
+            lote = _lista_de_agregar(args)
+            if lote is not None:  # varios en la misma llamada: una sola acción (el tope de 12 no se come la carga)
+                return self._varios("agregar_registro", "agregar_registro", lote)
         if nombre in registros.HERR_DATOS:
             return self._un_dato(nombre, args)
         if self._es_alias_estructura_carlos(nombre, args):

@@ -632,7 +632,7 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     except Exception as e:  # la memoria nunca debe impedir que el chat conteste
         logger.warning("No se pudo leer la memoria de Shifu: %s", type(e).__name__)
         conv = None
-    # Al modelo: lo que sabe de la persona, el resumen rodante de lo viejo y la charla reciente que cabe en el presupuesto de tokens.
+    # Al modelo: lo que sabe de la persona, el resumen de lo que ya no cabe en los 16 mensajes, y esos 16 completos.
     historial = mem.historial_para_modelo(conv) or [m.model_dump() for m in ctx.historial]
     persona = "\n\n".join(x for x in (mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None), mem.bloque_resumen(conv)) if x) or None if conv else None
     try:

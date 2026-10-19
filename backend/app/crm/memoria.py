@@ -5,7 +5,8 @@ Guardado en un documento por persona (colección `crm_conversaciones`, aparte de
   no la pantalla: así sobrevive a recargar la página y a cambiar de dispositivo, y nadie puede meter mensajes falsos de Shifu desde el navegador.
   Antes se cortaba a 600 caracteres y, tras un mensaje largo con datos, el turno siguiente ya no los tenía («ya te los pasé» → «no veo datos»).
 - `resumen`: el resumen rodante de lo que ya salió de la ventana (`{"texto", "hasta": n}`), como el `conversation_compactor` de Alan. Al
-  modelo va resumen + ventana por presupuesto de tokens (`ventana`), no una cantidad fija de mensajes: el prompt deja de crecer con el chat.
+  modelo van los mismos 16 mensajes que antes, pero completos (`ventana`); el resumen solo entra si hay mensajes más viejos que esos 16.
+  Una ventana por tokens metía más charla corta que david y cambiaba las respuestas de un turno normal.
 - `por_hacer`: lo que quedó pendiente, anotado por el CÓDIGO (`por_hacer.py`), para el turno siguiente.
 - `memoria`: lo que Shifu aprendió de la persona: su estilo (de tú o de usted, breve o detallado, emojis), datos duraderos de su negocio y en qué
   trabajaron la última vez. Se actualiza en segundo plano con el modelo, y todo pasa por `sanear_memoria`: el modelo propone, el código limita.
@@ -27,9 +28,6 @@ logger = logging.getLogger(__name__)
 
 MAX_MENSAJES = 200
 MAX_TEXTO = 16_000          # caracteres por mensaje guardado (un mensaje de la persona llega con 2000 como máximo; 200 × 16k ≈ 3 MB < 16 MB de Mongo)
-PRESUPUESTO_VENTANA = 3_000  # tokens (estimados) de historial que van al modelo en cada turno (antes: 16 mensajes × 500 caracteres ≈ 2 500)
-CARACTERES_POR_TOKEN = 3.2   # medido con o200k_base (gpt-4.1-mini) sobre el mensaje del banco de memoria: 1196 caracteres → 375 tokens
-MIN_VENTANA = 2              # los 2 últimos mensajes van siempre, aunque pasen el presupuesto
 MAX_RESUMEN = 2_500          # caracteres del resumen rodante
 MAX_PARA_RESUMIR = 2_000     # caracteres de cada mensaje que ve el resumen (como `_MAX_CHARS` del compactor de Alan)
 MAX_HECHOS = 12
@@ -264,24 +262,15 @@ async def _guardar(db, user_id: str, doc: dict) -> None:
     await _col(db).replace_one({"user_id": user_id}, doc, upsert=True)
 
 
-def tokens(texto: str) -> int:
-    """Tokens estimados de un mensaje (sin tokenizador: el camino de la respuesta no carga nada más). +4 por mensaje (rol y separadores)."""
-    return int(len(texto or "") / CARACTERES_POR_TOKEN) + 4
+def ventana(mensajes: list[dict] | None, tope: int = MAX_HISTORIAL_AL_MODELO) -> list[dict]:
+    """Los últimos `tope` mensajes (en un turno normal, los mismos 16 que david), cada uno COMPLETO hasta `MAX_TEXTO`.
 
-
-def ventana(mensajes: list[dict] | None, presupuesto: int = PRESUPUESTO_VENTANA) -> list[dict]:
-    """Los mensajes más recientes que caben en `presupuesto` tokens, en orden. Siempre van los `MIN_VENTANA` últimos (cada uno con tope
-    `MAX_TEXTO`). Por tokens y no por cantidad: diez «sí» pesan menos que un mensaje con 18 registros, y ese no se debe cortar."""
-    salida: list[dict] = []
-    usados = 0
-    for m in reversed(mensajes or []):
-        t = str(m.get("t", ""))[:MAX_TEXTO]
-        costo = tokens(t)
-        if len(salida) >= MIN_VENTANA and usados + costo > presupuesto:
-            break
-        salida.append({**m, "t": t})
-        usados += costo
-    return salida[::-1]
+    No se recortan a 500 caracteres: el mensaje largo con los registros sigue en el turno siguiente («ya te los pasé»).
+    No entran más de `tope`: una charla de mensajes cortos no le muestra al modelo más historia que david."""
+    msgs = list(mensajes or [])
+    if tope < len(msgs):
+        msgs = msgs[-tope:] if tope > 0 else []
+    return [{**m, "t": str(m.get("t", ""))[:MAX_TEXTO]} for m in msgs]
 
 
 def _hasta(conv: dict | None) -> int:
@@ -294,9 +283,9 @@ def sin_resumir(conv: dict | None) -> list[dict]:
     return [m for m in (conv or {}).get("mensajes", []) if int(m.get("n") or 0) > hasta]
 
 
-def historial_para_modelo(conv: dict | None, presupuesto: int = PRESUPUESTO_VENTANA) -> list[dict]:
-    """Lo que el modelo ve de la charla: los mensajes que no están en el resumen y caben en el presupuesto (el resumen va en el prompt)."""
-    return [{"de": m["de"], "t": m["t"]} for m in ventana(sin_resumir(conv), presupuesto)]
+def historial_para_modelo(conv: dict | None, tope: int = MAX_HISTORIAL_AL_MODELO) -> list[dict]:
+    """Lo que el modelo ve de la charla: los últimos `tope` mensajes, completos. Lo más viejo, si lo hay, va en el resumen del prompt."""
+    return [{"de": m["de"], "t": m["t"]} for m in ventana((conv or {}).get("mensajes"), tope)]
 
 
 def bloque_resumen(conv: dict | None) -> str | None:
@@ -391,11 +380,11 @@ def sanear_resumen(crudo: Any) -> str | None:
 
 
 def a_plegar(conv: dict | None) -> list[dict]:
-    """Lo que sale de la ventana y entra al resumen: los mensajes sin resumir menos los recientes que caben en MEDIO presupuesto (así,
-    tras resumir, la ventana tiene lugar para los mensajes que vienen)."""
-    pendientes = sin_resumir(conv)
-    quedan = ventana(pendientes, PRESUPUESTO_VENTANA // 2)
-    return pendientes[:len(pendientes) - len(quedan)]
+    """Lo que sale de la ventana (los últimos 16) y entra al resumen. Con 16 mensajes o menos no hay nada que plegar:
+    un turno normal no lleva resumen."""
+    mensajes = (conv or {}).get("mensajes") or []
+    en_ventana = {m.get("n") for m in mensajes[-MAX_HISTORIAL_AL_MODELO:]}
+    return [m for m in sin_resumir(conv) if m.get("n") not in en_ventana]
 
 
 async def actualizar_memoria(db, user_id: str, modelo: Any = None) -> None:

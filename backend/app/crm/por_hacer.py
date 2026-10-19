@@ -58,6 +58,12 @@ def titulo_de(valores: dict, sec: dict | None) -> str:
 def de_llamada(doc: dict, nombre: str, args: Any) -> dict:
     """Lo pendiente de una llamada que no alcanzó a correr."""
     args = args if isinstance(args, dict) else {}
+    if nombre == "agregar_registro":
+        regs = args.get("registros")
+        if not (isinstance(regs, list) and regs) and isinstance(args.get("valores"), list):
+            regs = args["valores"]
+        if isinstance(regs, list) and regs:
+            return de_registros(doc, args.get("seccion"), regs)
     if nombre in _DE_DATOS:
         lista = args.get(_DE_DATOS[nombre])
         lista = [lista] if nombre == "agregar_registro" else (lista if isinstance(lista, list) else [])
@@ -156,7 +162,7 @@ def bloque(items: list[dict] | None) -> str | None:
     texto = "\n".join(lineas)[:MAX_BLOQUE]
     return ("Pendiente de mensajes anteriores (lo anotó el CÓDIGO; todavía NO está hecho):\n" + texto +
             "\nSi la persona pide seguir («sigue», «sí», «ya te los pasé», «lo que falta»), hazlo ahora con las herramientas (varios registros de una "
-            "sección: agregar_registros). Si pide otra cosa, atiende eso. No digas que ya está hecho.")
+            "sección: una sola llamada a agregar_registro con la lista en registros). Si pide otra cosa, atiende eso. No digas que ya está hecho.")
 
 
 def linea(items: list[dict], respuesta: str) -> str | None:

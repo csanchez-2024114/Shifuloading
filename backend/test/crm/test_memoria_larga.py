@@ -36,7 +36,7 @@ def _registros(doc, sid):
     return [r["valores"] for r in next(l for l in doc["listas"] if l["id"] == sid)["registros"]]
 
 
-# ───────── 4 · Memoria: completo, ventana por tokens y resumen rodante ─────────
+# ───────── 4 · Memoria: completo, 16 mensajes al modelo y resumen de lo que se sale ─────────
 
 @pytest.mark.asyncio
 async def test_un_mensaje_largo_se_guarda_completo_y_llega_completo_al_modelo():
@@ -48,12 +48,13 @@ async def test_un_mensaje_largo_se_guarda_completo_y_llega_completo_al_modelo():
     assert [m["t"] for m in mem.ventana(historial)] == [LARGO, "Agregué 12; faltan los demás."]
 
 
-def test_la_ventana_es_por_tokens_no_por_cantidad():
-    cortos = [{"de": "yo" if i % 2 == 0 else "shifu", "t": "sí"} for i in range(40)]
-    assert len(mem.ventana(cortos)) == 40  # 40 mensajes cortos caben (antes: solo 16)
-    largos = [{"de": "yo", "t": "x" * 6000} for _ in range(5)]
-    assert len(mem.ventana(largos)) == mem.MIN_VENTANA  # 5 enormes no: van los 2 últimos
-    assert sum(mem.tokens(m["t"]) for m in mem.ventana(cortos)) <= mem.PRESUPUESTO_VENTANA
+def test_la_ventana_son_los_mismos_16_pero_completos():
+    cortos = [{"de": "yo" if i % 2 == 0 else "shifu", "t": f"m{i}"} for i in range(40)]
+    assert len(mem.ventana(cortos)) == mem.MAX_HISTORIAL_AL_MODELO == 16  # no más que david
+    assert mem.ventana(cortos)[0]["t"] == "m24"  # se quedan los últimos, no los primeros
+    largo = "x" * 2000
+    v = mem.ventana([*cortos[:-1], {"de": "yo", "t": largo}])
+    assert len(v) == 16 and v[-1]["t"] == largo and len(v[-1]["t"]) > 500  # el largo no se recorta a 500
 
 
 @pytest.mark.asyncio
@@ -65,9 +66,28 @@ async def test_agente_no_corta_el_historial_a_500(doc):
 
 
 @pytest.mark.asyncio
+async def test_un_turno_normal_ve_16_mensajes_completos_y_sin_avisos_vacios(doc):
+    """Lo que ve el modelo en un turno sin pendientes: los mismos 16 de david, sin recortar, y sin bloque de pendientes ni de campos vacíos."""
+    historial = [{"de": "yo" if i % 2 == 0 else "shifu", "t": f"m{i}"} for i in range(20)]
+    historial[-2] = {"de": "yo", "t": "Z" * 800}
+    _, modelo = await correr(doc, "hola", dice("Hola."), historial=historial)
+    charla = modelo.recibidos[0][1:-1]  # entre el sistema y el mensaje de ahora
+    assert len(charla) == 16 and charla[0].content == "m4" and charla[-2].content == "Z" * 800
+    assert "Pendiente de mensajes anteriores" not in modelo.recibidos[0][0].content
+    assert not any(isinstance(m, HumanMessage) and "campos vacíos" in m.content for m in modelo.recibidos[0])
+
+
+def test_con_16_o_menos_no_se_pliega_nada_aunque_sean_largos():
+    conv = {"mensajes": [{"de": "yo", "t": "x" * 3000, "n": i} for i in range(1, 17)], "resumen": {}}
+    assert mem.a_plegar(conv) == [] and mem.bloque_resumen(conv) is None
+    conv["mensajes"].append({"de": "shifu", "t": "y", "n": 17})
+    assert [m["n"] for m in mem.a_plegar(conv)] == [1]
+
+
+@pytest.mark.asyncio
 async def test_el_resumen_rodante_pliega_lo_viejo_en_la_misma_llamada_de_memoria():
     base = _Db()
-    for i in range(6):
+    for i in range(12):  # 24 mensajes: salen de la ventana los 8 primeros; con 16 o menos no se resume
         await mem.registrar_turno(base, "u1", f"Venta {i}: " + "dato " * 400, f"Registré la venta {i}.", AHORA)
     conv = await mem.obtener(base, "u1")
     salen = mem.a_plegar(conv)
@@ -81,7 +101,7 @@ async def test_el_resumen_rodante_pliega_lo_viejo_en_la_misma_llamada_de_memoria
     assert c["resumen"] == {"texto": "- Registró las ventas 0 a 3 con sus datos", "hasta": salen[-1]["n"]}  # la credencial no se guarda
     assert all(m["n"] > salen[-1]["n"] for m in mem.sin_resumir(c))
     assert "Registró las ventas 0 a 3" in mem.bloque_resumen(c)
-    assert len(c["mensajes"]) == 12  # los mensajes completos se quedan (la pantalla los sigue mostrando)
+    assert len(c["mensajes"]) == 24  # los mensajes completos se quedan (la pantalla los sigue mostrando)
 
 
 @pytest.mark.asyncio
@@ -104,16 +124,22 @@ async def test_los_mensajes_guardados_antes_de_numerar_reciben_su_numero():
 
 # ───────── 5 · Varios registros en una llamada y lo que no alcanza queda pendiente ─────────
 
+def test_un_lote_que_no_alcanza_a_correr_guarda_la_lista(doc):
+    d, sid = _productos(doc)
+    item = ph.de_llamada(d, "agregar_registro", {"seccion": sid, "registros": [{"Producto": "Teclado"}, {"Producto": "Mouse"}]})
+    assert item["tipo"] == "registros" and item["nombres"] == ["Teclado", "Mouse"]
+
+
 @pytest.mark.asyncio
-async def test_agregar_registros_en_diseno_mete_varios_con_una_sola_accion(doc):
+async def test_agregar_registro_acepta_una_lista_y_cuenta_como_una_accion(doc):
     d, sid = _productos(doc)
     r, modelo = await correr(d, "agrega laptop HP marca HP a 5800 y monitor Samsung marca Samsung a 1500",
-                             dice("", llamar("agregar_registros", seccion=sid, registros=[{"Producto": "laptop HP", "Marca": "HP", "Precio": "5800"},
-                                                                                         {"Producto": "monitor Samsung", "Marca": "Samsung", "Precio": "1500"}])),
+                             dice("", llamar("agregar_registro", seccion=sid, registros=[{"Producto": "laptop HP", "Marca": "HP", "Precio": "5800"},
+                                                                                        {"Producto": "monitor Samsung", "Marca": "Samsung", "Precio": "1500"}])),
                              dice("Agregué los 2 productos."))
     assert len(_registros(r["doc"], sid)) == 2
-    assert [c["herramienta"] for c in r["cambios"]] == ["agregar_registros"] and r["por_hacer"] == []
-    assert "agregar_registros" in modelo.ataduras[0]["nombres"]
+    assert [c["herramienta"] for c in r["cambios"]] == ["agregar_registro"] and r["por_hacer"] == []
+    assert "agregar_registros" not in modelo.ataduras[0]["nombres"] and modelo.ataduras[0]["nombres"].count("agregar_registro") == 1
 
 
 @pytest.mark.asyncio
@@ -141,7 +167,7 @@ async def test_si_la_respuesta_no_dice_lo_pendiente_lo_dice_el_codigo(doc):
 async def test_el_turno_siguiente_recibe_lo_pendiente_y_al_hacerlo_se_quita(doc):
     d, sid = _productos(doc)
     previo = [ph.de_registros(d, sid, [{"Producto": "Teclado K120", "Precio": "150"}, {"Producto": "Impresora L3250", "Precio": "1800"}])]
-    r, modelo = await correr(d, "ya te los pasé", dice("", llamar("agregar_registros", seccion=sid, registros=[{"Producto": "Teclado K120", "Precio": "150"}])),
+    r, modelo = await correr(d, "ya te los pasé", dice("", llamar("agregar_registro", seccion=sid, registros=[{"Producto": "Teclado K120", "Precio": "150"}])),
                              dice("Agregué el teclado."), por_hacer=previo)
     sistema = modelo.recibidos[0][0].content
     assert "Pendiente de mensajes anteriores (lo anotó el CÓDIGO" in sistema and "Producto: Impresora L3250, Precio: 1800" in sistema
@@ -203,8 +229,8 @@ async def test_campos_vacios_con_el_dato_en_el_texto_se_avisan_sin_llamada_extra
     d, sid = _productos(doc)
     texto = "agrega laptop HP Pavilion marca HP a 5800 y laptop Dell Inspiron marca Dell a 5500"
     r, modelo = await correr(d, texto,
-                             dice("", llamar("agregar_registros", seccion=sid, registros=[{"Producto": "laptop HP Pavilion", "Marca": "HP", "Precio": "5800"},
-                                                                                         {"Producto": "laptop Dell Inspiron", "Precio": "5500"}])),
+                             dice("", llamar("agregar_registro", seccion=sid, registros=[{"Producto": "laptop HP Pavilion", "Marca": "HP", "Precio": "5800"},
+                                                                                        {"Producto": "laptop Dell Inspiron", "Precio": "5500"}])),
                              dice("", llamar("editar_registro", seccion=sid, registro="laptop Dell Inspiron", valores={"Marca": "Dell"})),
                              dice("Agregué las 2 laptops."))
     aviso = [m.content for m in modelo.recibidos[1] if isinstance(m, HumanMessage) and m.content.startswith("[Aviso del código] Registros")]
@@ -219,12 +245,12 @@ async def test_sin_hueco_o_sin_el_dato_en_el_texto_no_hay_aviso(doc):
     d, sid = _productos(doc)
     # Todos parejos: nada que avisar.
     _, modelo = await correr(d, "agrega laptop HP a 5800 y monitor LG a 1500",
-                             dice("", llamar("agregar_registros", seccion=sid, registros=[{"Producto": "laptop HP", "Precio": "5800"}, {"Producto": "monitor LG", "Precio": "1500"}])),
+                             dice("", llamar("agregar_registro", seccion=sid, registros=[{"Producto": "laptop HP", "Precio": "5800"}, {"Producto": "monitor LG", "Precio": "1500"}])),
                              dice("Listo."))
     assert not any(isinstance(m, HumanMessage) and "[Aviso del código] Registros" in m.content for m in modelo.recibidos[1])
     # La marca de uno salió del texto, pero el otro registro no está en lo que escribió la persona: no hay de dónde completar.
     _, modelo = await correr(d, "agrega laptop HP marca HP",
-                             dice("", llamar("agregar_registros", seccion=sid, registros=[{"Producto": "laptop HP", "Marca": "HP"}, {"Producto": "Otro equipo"}])),
+                             dice("", llamar("agregar_registro", seccion=sid, registros=[{"Producto": "laptop HP", "Marca": "HP"}, {"Producto": "Otro equipo"}])),
                              dice("Listo."))
     assert not any(isinstance(m, HumanMessage) and "[Aviso del código] Registros" in m.content for m in modelo.recibidos[1])
 
@@ -233,7 +259,7 @@ async def test_sin_hueco_o_sin_el_dato_en_el_texto_no_hay_aviso(doc):
 
 def test_la_ruta_guarda_el_mensaje_completo_y_lo_pendiente_llega_al_turno_siguiente(cli, db, monkeypatch):
     llamadas = [llamar("agregar_registro", seccion="contactos", valores={"Nombre": f"Cliente {i}"}) for i in range(agente.MAX_ACCIONES + 2)]
-    modelo = _con_modelo(monkeypatch, dice("", *llamadas), dice("Agregué 12 clientes."), dice("", llamar("agregar_registros", seccion="contactos",
+    modelo = _con_modelo(monkeypatch, dice("", *llamadas), dice("Agregué 12 clientes."), dice("", llamar("agregar_registro", seccion="contactos",
                          registros=[{"Nombre": "Cliente 12"}, {"Nombre": "Cliente 13"}])), dice("Listo, agregué los que faltaban."))
     largo = "agrega a estos clientes: " + ", ".join(f"Cliente {i}" for i in range(14)) + ". " + "Nota: " + "x" * 900
     r = cli.post(f"{URL}/chat", json={"texto": largo}, headers=H).json()

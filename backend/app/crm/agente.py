@@ -871,8 +871,8 @@ def _mensajes(doc: dict, texto: str, historial: list[dict], ahora: datetime, con
 
     sobre = f"\n\n{persona}" if persona else ""
     msgs: list[Any] = [SystemMessage(content=f"{INSTRUCCIONES}{sobre}\n\nEstado del CRM (JSON):\n{contexto_crm(doc, ahora)}")]
-    # La charla que cabe en el presupuesto de tokens (`memoria.ventana`), con cada mensaje completo: cortarlos a 500 caracteres hacía que
-    # «ya te los pasé» no encontrara los datos de un mensaje largo (prueba del 19-oct). Lo más viejo va en el resumen rodante.
+    # Los mismos 16 mensajes que david (`memoria.ventana`), pero completos: cortarlos a 500 caracteres hacía que «ya te los pasé»
+    # no encontrara los datos de un mensaje largo (prueba del 19-oct). No van más de 16. Lo que se sale va en el resumen rodante.
     for h in _sin_negativas_viejas(memoria.ventana(historial or [])):
         t = str(h.get("t", ""))
         if t:
