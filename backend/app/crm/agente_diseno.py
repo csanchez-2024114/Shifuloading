@@ -47,7 +47,7 @@ from app.crm.afirma import afirma_cambio, afirma_con
 from app.crm import chat as agente_chat
 from app.crm.chat import _capitaliza, _norm
 from app.crm.regional import PAISES
-from app.crm.valores import parse_numero
+from app.crm.valores import fecha_larga, parse_numero
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,7 @@ CATEGORIA: dict[str, str] = {
 
 INSTRUCCIONES_DISENO = """Datos, deshacer y diseño
 - Sus DATOS: agregas, cambias, borras y consultas sus registros con agregar_registro, editar_registro, borrar_registro y consultar_datos, en cualquiera de las “secciones” del Estado (contactos, tareas y secciones propias).
+- No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
 - Si una herramienta devuelve ERROR, corrige y vuelve a intentar, o explica la verdad.
 - Deshacer (pedidos_anteriores): cada pedido que cambió algo queda en la lista con lo que dijo la persona y qué cambió. Si quiere anular algo ("eso no", "como estaba antes", "deshaz lo del color", "deshaz también la dona"), usa deshacer con el número del PEDIDO que quiere anular (el código revierte solo lo que ese pedido cambió) y di qué deshiciste. Para deshacer SIEMPRE usa deshacer, no quites ni cambies bloques a mano. Si la lista está vacía, no hay nada que deshacer: dilo.
 - Toma de diseño (estado.toma): si la persona pide diseñar o rehacer el inicio o un CRM completo, abre abrir_toma (no para cambios puntuales). Durante juntando/confirmando anota cada cosa concreta que pidan con anotar_bloque (qué ver + de qué parte; sin preguntar detalles técnicos) y el resto (objetivo, colores, letra, restricciones) con anotar_ficha, solo lo dicho en ESE mensaje; para cambiar un bloque de la ficha usa quitar_de_ficha + anotar_bloque; una pregunta por turno según instruccion_turno/FALTA. En confirmando muestra el RESUMEN y pregunta «¿Lo armo así?». No uses herramientas de pantalla hasta que el código confirme la ficha. Si charlan de otra cosa (digresión), contesta sin anotar ni cambiar la pantalla. cerrar_toma si abandonan."""
@@ -329,6 +330,22 @@ class SesionDiseno(agente.Sesion):
         """El Estado del CRM de Carlos (hoy, contactos, tareas, equipo, automatizaciones…) más la pantalla como chat.js
         (`pantalla.describir_pantalla`: bloques, secciones con sus campos, gráficos posibles, pedidos que se pueden deshacer y toma)."""
         base = json.loads(agente.contexto_crm(self.doc, self.ahora))
+        # Como chat.js, el modelo no ve los registros: lo que se calcula con ellos lo calcula el código (consultar_datos). Se quedan
+        # los totales. Las secciones con sus campos ya van en la pantalla.
+        # La fecha en partes y como la entiende `valores.parse_fecha`: «domingo 18 de octubre de 2026, 19:36» copiado tal cual a un
+        # campo de fecha no se entiende (medido en banco_datos).
+        hoy = re.search(r"fecha (\d{4}-\d{2}-\d{2})", str(base.get("hoy") or ""))
+        hora = re.search(r", (\d{2}:\d{2})", str(base.get("hoy") or ""))
+        if hoy:
+            base["hoy"] = {"fecha": fecha_larga(hoy.group(1)), "dia": str(base["hoy"]).split()[0], **({"hora": hora.group(1)} if hora else {})}
+        for sp in base.get("secciones_propias") or []:
+            sp.pop("registros", None)
+        base.pop("contactos", None)
+        # Si los contactos no se ven en su pantalla, el modelo tampoco los ve: con «0 contactos» y sus etapas a la vista buscaba a
+        # cualquier persona entre los contactos («no encontré a Ana López») en vez de en la sección donde está (medido en banco_datos).
+        if ((base.get("secciones_integradas") or {}).get("contactos") or {}).get("oculta"):
+            for k in ("total_contactos", "contactos_por_etapa", "etapas", "campos_extra_de_contactos"):
+                base.pop(k, None)
         base.update(pantalla.describir_pantalla(self.doc, self.vista or "inicio", self.puntos))
         return json.dumps(base, ensure_ascii=False, default=str)
 

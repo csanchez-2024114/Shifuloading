@@ -98,8 +98,8 @@ def _valor(campo: dict, r: Callable[[], float], hoy: date, i: int = 0, n: int = 
         return lista[math.floor(r() * len(lista))]
 
     tipo, cid = campo.get("tipo"), campo.get("id")
-    if tipo == "estado":
-        return de(campo["opciones"])
+    if tipo == "estado":  # sin opciones (una sección recién creada), vacío: como `undefined` en ejemplos.js
+        return de(campo["opciones"]) if campo.get("opciones") else None
     if tipo == "fecha":
         a, b = campo.get("rango") or RANGO_FECHA.get(cid) or [-60, 30]
         return iso_dia(hoy + timedelta(days=ent(a, b)))
