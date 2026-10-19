@@ -180,6 +180,16 @@ def plantilla_efectiva(doc: dict, secciones: list[dict] | None = None) -> dict:
     return {"id": (doc.get("plantilla") or {}).get("id") or "crm", "nombre": nombre_plantilla(doc), "secciones": secs}
 
 
+FUERA_DEL_MENU = ("automatizaciones",)  # en el sistema de diseño están en pausa: el menú no las muestra (src/crm/plantillas/index.js)
+
+
+def secciones_visibles(doc: dict) -> list[dict]:
+    """Las pestañas que la persona VE en su menú, en orden: las que tienen registros y las fijas que no ocultó (sin las que el menú del
+    sistema de diseño no muestra). Es la única fuente de «lo que se ve» para borrar en masa: lo oculto nunca entra (prueba del 19-oct:
+    «borra todo» propuso Compradores, Pedidos e Importar, que estaban ocultas, y dejó fuera las que la persona veía)."""
+    return [s for s in plantilla_efectiva(doc)["secciones"] if s["id"] not in FUERA_DEL_MENU]
+
+
 def ficha_de(seccion: dict, campos: list[dict]) -> dict:
     """Cómo se ve la ficha de un registro: la que definió la persona o, por defecto, todos sus campos en un grupo."""
     ids = {c["id"] for c in campos}

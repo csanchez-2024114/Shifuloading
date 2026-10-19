@@ -19,6 +19,7 @@ from app.crm import plantillas as catalogo
 from app.crm import puntos as pt
 from app.crm import sembrar
 from app.crm.generador import generar
+from app.crm import chat as chat_reglas
 from app.crm.secciones import IDS_SECCION
 from app.crm.secciones_v import registros_de as regs_de
 
@@ -579,6 +580,14 @@ async def procesar_chat_lab(
     doc = doc_desde_lab(plantilla_id, estado_in, muestra, hoy=hoy)
     puntos = puntos_doc_desde_lab(estado_in.get("puntos") or [], plantilla_id, muestra, hoy=hoy)
     contexto = {"muestra": _muestra_norm(muestra), "vista": estado_in.get("vista") or "inicio", "seleccion": cuerpo.get("seleccion")}
+    pendiente = chat_reglas.sanear_pendiente(cuerpo.get("pendiente"))
+    if pendiente:
+        # Como la ruta del chat (`crmRoutes._turno_de_chat`): con un borrado pendiente, el «sí» lo resuelven las reglas, sin la IA.
+        r = chat_reglas.responder(doc, str(cuerpo.get("texto") or ""), pendiente)
+        cambio = r["doc"] is not doc
+        estado_out = lab_desde_doc(r["doc"], doc_sem, plantilla_id, vista=contexto["vista"], puntos_doc=puntos, muestra=muestra, hoy=hoy)
+        return {"respuesta": r["respuesta"], "estado": estado_out, "cambios": [{"herramienta": "confirmar_pendiente", "args": pendiente, "resultado": r["respuesta"]}] if cambio else [],
+                "fallos": [], "intentos": [], "consultas": [], "avisos": [], "estadoCambio": cambio}
     salida = await _invocar_responder(
         responder,
         doc=doc,
@@ -600,4 +609,5 @@ async def procesar_chat_lab(
         "consultas": salida.get("consultas") or [],
         "avisos": salida.get("avisos") or [],
         "estadoCambio": bool(salida.get("cambios")) or salida.get("estadoCambio"),
+        **({"pendiente": salida["pendiente"]} if salida.get("pendiente") else {}),
     }

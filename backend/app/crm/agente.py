@@ -782,7 +782,7 @@ Cómo trabajas
 
 Qué es cada sección (explícalo así si preguntan, con los nombres que aparecen en el Estado; no inventes funciones)
 - Contactos (Compradores, Pacientes…): la lista de clientes, cada uno en una etapa.
-- Tablero de trabajo (Pedidos, Proyectos…): tarjetas en Por hacer, En curso y Hecho. Un pedido, proyecto o cita se lleva ahí como tarea con fecha y, si hay, su cliente.
+- Tablero de trabajo (Pendientes, Proyectos…): tarjetas en Por hacer, En curso y Hecho. Un pedido, proyecto o cita se lleva ahí como tarea con fecha y, si hay, su cliente.
 - Cobros (Caja…): TODAVÍA NO ESTÁ ACTIVA, aún no guarda datos. Dilo con sinceridad. Si necesitan llevar cobros o gastos ya, usa o crea una sección propia (si ya hay una parecida, esa).
 - Actividad (Movimiento…): el historial automático de lo que se hace en el CRM.
 - Equipo (Vendedores…): las personas que venden contigo.
@@ -900,8 +900,8 @@ _EXITO = re.compile(r"\b(he |ya )?(agregad|cread|registrad|agendad|actualizad|ca
 # Frases de logro que solo son verdad si la herramienta correspondiente funcionó en este mensaje.
 _LOGROS = [
     (re.compile(r"\b(registr[eé]|registrad[oa]s?|guard[eé]|guardad[oa]s?|us[eé] la secci[oó]n)\b", re.I),
-     {"agregar_registros", "cambiar_registro", "agregar_tarea", "cambiar_tarea", "agregar_contactos", "cambiar_contacto", "recordar"}),
-    (re.compile(r"\b(agend[eé]|agendad[oa]s?|reprogram[eé]|reprogramad[oa]s?)\b", re.I), {"agregar_tarea", "cambiar_tarea"}),
+     {"agregar_registros", "cambiar_registro", "agregar_tarea", "cambiar_tarea", "agregar_contactos", "cambiar_contacto", "recordar", "agendar"}),
+    (re.compile(r"\b(agend[eé]|agendad[oa]s?|reprogram[eé]|reprogramad[oa]s?)\b", re.I), {"agregar_tarea", "cambiar_tarea", "agendar"}),
     (re.compile(r"\b(cre[eé]|cread[oa]) la secci[oó]n\b", re.I), {"crear_seccion"}),
 ]
 

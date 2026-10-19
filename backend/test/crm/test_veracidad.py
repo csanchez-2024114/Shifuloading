@@ -2,16 +2,23 @@
 corrió en el turno. Casos de la prueba manual del 19-oct (PepesCore). Sin IA real: el modelo es un guion."""
 import pytest
 
+from lab_doc import doc_de_lab
 from test_agente_diseno import con_diseno, correr, dice, doc, llamar  # noqa: F401  (con_diseno y doc son fixtures)
 
 # AHORA en test_agente_diseno = martes 13-oct-2026 09:00 en Guatemala: «mañana» = 2026-10-14, «el jueves» = 2026-10-15.
-CITA = dict(texto="Cita con Ramires", fecha="2026-10-14", hora="15:00")
+# Desde el 19-oct una cita es un registro en la agenda (`agendar`), no una tarea: el CRM de estas pruebas tiene la pestaña «Citas».
+CITA = dict(dia="mañana", hora="3 de la tarde", valores={"cliente": "Ramires"})
+
+
+@pytest.fixture
+def agenda():
+    return doc_de_lab("agenda", {"vista": "inicio", "bloques": []})[0]
 PIDE = "agéndame una cita con Ramires mañana a las 3 y también cada jueves a la misma hora"
 
 
 @pytest.mark.asyncio
-async def test_afirmar_las_citas_de_los_jueves_con_una_sola_tarea_pide_la_verdad(doc):
-    r, modelo = await correr(doc, PIDE, dice("", llamar("agregar_tarea", **CITA)),
+async def test_afirmar_las_citas_de_los_jueves_con_una_sola_cita_pide_la_verdad(agenda):
+    r, modelo = await correr(agenda, PIDE, dice("", llamar("agendar", **CITA)),
                              dice("Ya estaba la cita de mañana a las 3 con Ramires, pero puse las de los jueves a la misma hora."),
                              dice("Agendé la cita de mañana a las 3 con Ramires. Las de los jueves todavía no las agendé: ¿las agrego?"))
     assert len(r["avisos"]) == 1 and "ningún cambio de este mensaje tiene esa fecha" in r["avisos"][0]["aviso"]
@@ -19,8 +26,8 @@ async def test_afirmar_las_citas_de_los_jueves_con_una_sola_tarea_pide_la_verdad
 
 
 @pytest.mark.asyncio
-async def test_lo_que_si_se_hizo_pasa_sin_corregir_ni_llamar_otra_vez(doc):
-    r, modelo = await correr(doc, PIDE, dice("", llamar("agregar_tarea", **CITA)), dice("Agendé la cita de mañana a las 3 con Ramires."))
+async def test_lo_que_si_se_hizo_pasa_sin_corregir_ni_llamar_otra_vez(agenda):
+    r, modelo = await correr(agenda, PIDE, dice("", llamar("agendar", **CITA)), dice("Agendé la cita de mañana a las 3 con Ramires."))
     assert r["avisos"] == [] and len(modelo.recibidos) == 2  # el camino normal no agrega llamadas
 
 
@@ -45,16 +52,16 @@ async def test_hablar_de_hoy_sin_cambios_con_fecha_no_es_mentira(doc):
 
 
 @pytest.mark.asyncio
-async def test_preguntas_y_planes_no_cuentan_como_afirmar(doc):
-    r, _ = await correr(doc, PIDE, dice("", llamar("agregar_tarea", **CITA)),
+async def test_preguntas_y_planes_no_cuentan_como_afirmar(agenda):
+    r, _ = await correr(agenda, PIDE, dice("", llamar("agendar", **CITA)),
                         dice("Agendé la de mañana. ¿Quieres que ponga también las de los jueves?"))
     assert r["avisos"] == []
 
 
 @pytest.mark.asyncio
-async def test_si_tras_corregir_sigue_sin_respaldo_responde_el_codigo(doc):
+async def test_si_tras_corregir_sigue_sin_respaldo_responde_el_codigo(agenda):
     mala = "Puse las citas de los jueves con Ramires."
-    r, _ = await correr(doc, PIDE, dice("", llamar("agregar_tarea", **CITA)), dice(mala), dice(mala), dice(mala))
+    r, _ = await correr(agenda, PIDE, dice("", llamar("agendar", **CITA)), dice(mala), dice(mala), dice(mala))
     assert r["respuesta"] != mala and "jueves" not in r["respuesta"]
     assert any(a["aviso"].startswith("sin respaldo tras corregir") for a in r["avisos"])
 

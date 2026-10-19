@@ -64,6 +64,8 @@ async def responder_real(
     }
     if r.get("vista"):
         salida["vista"] = r["vista"]
+    if r.get("pendiente"):
+        salida["pendiente"] = r["pendiente"]  # un borrado que espera el «sí» (como la ruta del chat: el banco lo reenvía)
     # Como chat.js: también cambió si la ficha se abrió o se cerró sin herramientas (p. ej. «mejor olvídalo» la cierra el código).
     if salida["cambios"] or (doc_fin.get("toma") or None) != (doc.get("toma") or None):
         salida["estadoCambio"] = True

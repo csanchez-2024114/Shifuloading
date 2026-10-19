@@ -227,12 +227,19 @@ async def test_un_negocio_de_tacos_recibe_menu_pedidos_gastos_y_trabajadores():
 
 @pytest.mark.asyncio
 async def test_el_tablero_se_renombra_antes_para_poder_crear_una_seccion_propia_con_el_nombre_que_tenia():
-    # En comercio el tablero integrado se llama "Pedidos": solo se puede crear una sección "Pedidos" si antes se renombró el tablero.
+    # En comercio el tablero integrado se llama "Pendientes": solo se puede crear una sección "Pendientes" si antes se renombró el tablero.
     doc = generar("u1", {"rubro": "comercio"}, AHORA)
-    nuevo, aplicado = diseno.aplicar_propuesta(doc, {"nombres": {"desarrollo": "Pendientes"}, "secciones": [{"nombre": "Pedidos", "campos": [{"nombre": "Cliente"}]}]}, AHORA)
-    assert [l["nombre"] for l in nuevo["listas"]] == ["Pedidos"] and nuevo["secciones"]["desarrollo"] == "Pendientes"
-    sin_renombrar, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Pedidos"}]}, AHORA)
+    nuevo, aplicado = diseno.aplicar_propuesta(doc, {"nombres": {"desarrollo": "Tareas"}, "secciones": [{"nombre": "Pendientes", "campos": [{"nombre": "Cliente"}]}]}, AHORA)
+    assert [l["nombre"] for l in nuevo["listas"]] == ["Pendientes"] and nuevo["secciones"]["desarrollo"] == "Tareas"
+    sin_renombrar, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Pendientes"}]}, AHORA)
     assert sin_renombrar["listas"] == []  # sin renombrar el tablero, chocaría
+
+
+async def test_en_comercio_los_pedidos_son_una_seccion_propia_sin_chocar_con_el_tablero():
+    # Pendientes 2 y 43 (19-oct): el tablero de tareas ya no se llama «Pedidos»; los pedidos (cliente, productos, total) caben como sección propia.
+    doc = generar("u1", {"rubro": "comercio"}, AHORA)
+    nuevo, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Pedidos", "campos": [{"nombre": "Cliente"}]}]}, AHORA)
+    assert [l["nombre"] for l in nuevo["listas"]] == ["Pedidos"]
 
 
 def test_los_cobros_integrados_se_ocultan_porque_todavia_no_funcionan():

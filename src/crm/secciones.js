@@ -7,7 +7,7 @@ export const COLUMNAS = [['porHacer', 'Por hacer'], ['enCurso', 'En curso'], ['h
 const SECCIONES = {
   servicios: ['Clientes', 'Facturación', 'Proyectos', 'Bitácora', 'Equipo'],
   agencia: ['Clientes', 'Presupuestos y pagos', 'Campañas', 'Línea de tiempo', 'Talento'],
-  comercio: ['Compradores', 'Caja', 'Pedidos', 'Movimiento', 'Vendedores'],
+  comercio: ['Compradores', 'Caja', 'Pendientes', 'Movimiento', 'Vendedores'],
   salud: ['Pacientes', 'Pagos y consultas', 'Tratamientos', 'Historial', 'Especialistas'],
   educacion: ['Alumnos', 'Mensualidades', 'Clases', 'Novedades', 'Docentes'],
   tecnologia: ['Cuentas', 'Suscripciones', 'Desarrollo', 'Registro', 'Equipo técnico'],
