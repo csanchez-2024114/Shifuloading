@@ -74,3 +74,6 @@ def install_coder_routes(app, settings, profile, appdata) -> None:
         return
     check_settings(settings, profile, appdata)
     app.state.coder = Projects(_repo(appdata), settings)
+    from assistant.core.coder import runtime
+
+    runtime.set_current(app.state.coder)  # lo usan las herramientas del perfil al ejecutarse

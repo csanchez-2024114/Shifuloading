@@ -111,3 +111,14 @@ def test_combinacion_valida_usa_la_base_de_negocio_y_no_crea_nada_al_arrancar(mo
         assert "coder_projects" in mongo_client[name].list_collection_names()
     finally:
         mongo_client.drop_database(name)
+
+
+def test_la_app_fija_los_proyectos_activos_para_las_herramientas():
+    from assistant.core.coder import runtime
+
+    runtime.set_current(None)
+    _app()  # sin codificador: no se fija nada
+    assert runtime.current() is None
+    app = _app(**VALIDO)
+    assert runtime.current() is app.state.coder
+    runtime.set_current(None)
