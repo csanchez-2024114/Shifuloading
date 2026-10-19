@@ -248,6 +248,23 @@ Con `AUTH_ENABLED=1`: sin sesión, 401. Las peticiones que cambian estado (POST/
 - `DELETE /threads/{id}` y `/auth/delete-account` borran también los archivos de ese hilo o de ese usuario, aunque el interruptor esté apagado.
 - Herramientas nuevas: `read_file` y `search_in_file`, con salida envuelta en `<untrusted_file_content>`. Sus `tool_end` tienen el formato de siempre.
 
+### Agente codificador (`CODER_ENABLED=1`; exige `AUTH_ENABLED=1`; con todos los `CODER_*` en 0 estas rutas no existen)
+
+| Método | Ruta | Body / respuesta |
+|---|---|---|
+| POST | `/coder/projects/{project_id}/preview` | Sesión, mismo origen y CSRF → `{"url", "version", "expires", "findings": [{"code", "severity", "path", "line", "detail"}]}`. La `url` apunta al sandbox con un token de 30 minutos. **404** `{"detail": "No existe ese proyecto."}` tanto si el proyecto es ajeno como si no existe |
+
+Sandbox (proceso aparte, `CODER_SANDBOX_ORIGIN`, por defecto `http://127.0.0.2:8100`):
+- Sirve solo `GET`/`HEAD /p/<token>/<ruta>`: la versión del token, de solo lectura, con la CSP de `docs/CODER_PLAN.md` §4.
+- Todo lo demás responde el mismo 404 byte a byte. Un host ajeno da 400.
+- No lee cookies ni emite `Set-Cookie`.
+- Los tokens inválidos repetidos desde una IP llevan a 429.
+
+Herramientas del perfil `coder`:
+- `create_project`, `list_projects`, `list_project_files`, `read_project_file`, `write_project_file`, `edit_project_file`, `delete_project_file`, `preview_project`, `list_project_versions`, `diff_project_versions`, `restore_project_version` y `delete_project`.
+- `restore_project_version` y `delete_project` piden tarjeta (evento `interrupt` con `description` en español).
+- Sus fallos empiezan por `Not run:`, así que su `tool_end` llega con `status: "skipped"`.
+
 ### Métricas (`TURN_METRICS=1`; con 0 la ruta no existe y no se escribe nada)
 
 Cada `/chat` y `/resume` deja una fila en la colección `turn_metrics` de la base de negocio, **sin contenido de mensajes**: `turn_id` (el `run_id` si `TRACE_METADATA=1`), `run_id`, `thread_id`, `user_id`, `kind` (`chat`/`resume`), `ts`, `latency_ms`, `tokens_total`/`tokens_input`/`tokens_output` (los de `TurnTokens`), `tools` (`[{"name", "status"}]`), `approved` y `rejected` (decisiones de ese `/resume`), `status` (`done`, `interrupted`, `cap`, `time_cap`, `recursion`, `error` o `disconnected`), `effort`, `effort_source`, `model` y `profile`. Caduca a los `METRICS_TTL_DAYS` días (índice TTL; 0 = nunca). Sin base de negocio, el servidor no arranca.

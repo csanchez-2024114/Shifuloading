@@ -66,6 +66,7 @@ Todos los booleanos están en `0` por defecto. Sin ellos, la huella es idéntica
 | `USE_BIGTOOL`, `BIGTOOL_DEMO_TOOLS` | 0 | agente con langgraph-bigtool y sus demos |
 | `ENABLE_HITL_DEMO` | 0 | email simulado con aprobación |
 | `AUTH_ENABLED` | 0 | cuentas y base de negocio |
+| `CODER_ENABLED` (+ `CODER_DATA_ENABLED`, `CODER_SHARING_ENABLED`, `CODER_PUBLIC_WRITE_ENABLED`) | 0 | agente codificador (en construcción, rama `feat/agente-codificador`): exige `AUTH_ENABLED=1` y `AGENT_PROFILE=coder`; sandbox en `CODER_SANDBOX_ORIGIN` (`http://127.0.0.2:8100`). Solo probado con modelos falsos y Playwright. Plan y límites: `docs/CODER_PLAN.md` |
 
 Valores no booleanos que importan: `TURN_TOKEN_CAP` 150000, `MAX_MESSAGE_CHARS` 50000, `MODEL_CALL_LIMIT` 0 (esfuerzo automático), `TRUSTED_HOSTS` `localhost,127.0.0.1`, `AGENT_PROFILE` vacía (= `default`). La tabla completa está en el README.
 

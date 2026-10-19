@@ -170,11 +170,11 @@ Content-Security-Policy: sandbox allow-scripts; default-src 'none';
   script-src <B> 'unsafe-inline'; style-src <B> 'unsafe-inline'; img-src <B> data: blob:;
   media-src <B>; font-src <B>; connect-src <B>__data/; form-action 'none';
   frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none';
-  base-uri 'none'; frame-ancestors <APP_ORIGIN> (en /p/) | * (en /s/ y /u/)
+  base-uri 'none'; frame-ancestors http(s)://<cada host de TRUSTED_HOSTS>:* (en /p/) | * (en /s/ y /u/)
 X-Content-Type-Options: nosniff
 Referrer-Policy: no-referrer
 Cross-Origin-Opener-Policy: same-origin
-Cross-Origin-Resource-Policy: same-origin
+Access-Control-Allow-Origin: * (sin credenciales)
 Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
 Cache-Control: no-store (vista previa y publicado; revocar tiene efecto inmediato)
 ```
@@ -183,6 +183,12 @@ Cache-Control: no-store (vista previa y publicado; revocar tiene efecto inmediat
 - La directiva `sandbox` de la CSP da origen opaco **también al abrir el enlace de primer nivel**, es decir, para el visitante.
 - La API de datos responde `Access-Control-Allow-Origin: *` **sin** credenciales. La autoriza el token de la ruta, no una cookie.
 - **Librerías:** ninguna desde CDN. En v1 no hay vendorizadas (decidido).
+- **Implementado en la Fase C** (`core/coder/sandbox.py`), con dos cambios respecto a esta lista:
+  - No se envía `Cross-Origin-Resource-Policy: same-origin`: la página aislada tiene origen opaco, y el navegador trataría la carga de sus propios scripts y estilos como de otro origen.
+  - Se envía `Access-Control-Allow-Origin: *` sin credenciales, para que pueda cargar sus módulos JS.
+- Todo lo que no se sirve responde un único 404 (`Not found`, CSP `sandbox; default-src 'none'; frame-ancestors 'none'`), idéntico byte a byte.
+- Tras `CODER_TOKEN_FAIL_MAX` tokens inválidos por IP en `CODER_TOKEN_FAIL_WINDOW_MINUTES`, la respuesta es 429, también para un token válido: no revela si el token existía.
+- Arranque: `.venv\Scripts\python -m uvicorn assistant.core.coder.sandbox:app --host 127.0.0.2 --port 8100 --no-server-header`.
 
 **Cómo se prueba que aísla:**
 - (0 tokens, httpx) Las cabeceras exactas aparecen en cada respuesta del sandbox.
@@ -417,7 +423,7 @@ Si quieres un tope de tokens menor y propio del perfil, ver R1.
 - **R6. Arnés de evals:** `evals/runner.py` necesita un campo `profile` por caso y `checks.py` dos checks (`project_contains` y `project_not_contains`). Además, `tests/test_evals.py:CATEGORIES` suma dos categorías. Son aditivos, pero tocan archivos de prueba existentes.
 
 **Riesgos técnicos:**
-- **R7. Autonavegación del iframe** a una URL externa (§1.4): solo se mitiga con el analizador. Riesgo residual bajo, porque no hay secretos que robar.
+- **R7. Autonavegación** a una URL externa (§1.4). Medido en la Fase C con Edge headless (`tests/test_coder_aislamiento_navegador.py`): el navegador **sí la permite**, tanto en el iframe sandbox como abriendo el enlace de primer nivel. El documento se navega a sí mismo y la URL externa recibe lo que el proyecto ponga en ella. La app (top) no se mueve, y no viajan cookies ni datos de la app. El analizador la marca como bloqueante para publicar (`external_navigation`). Riesgo residual bajo, porque no hay secretos que robar.
 - **R8. Rate limit en memoria:** vale con un worker por proceso, igual que el candado por hilo. Con varios, hay que moverlo a Mongo o a Redis.
 - **R9. Revocación y caché:** decidido `no-store`. Más ancho de banda, controlado por el tope diario.
 - **R10. Despliegue público:** hoy todo es `127.0.0.1` y un worker. Compartir fuera de localhost requiere:
