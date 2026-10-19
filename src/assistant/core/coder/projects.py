@@ -127,9 +127,15 @@ class Projects:
         if len(self.repo.list_projects(user_id)) >= self.s.coder_max_projects_per_user:
             raise CoderError("quota_projects", limit=self.s.coder_max_projects_per_user)
         now = _now()
-        doc = {"user_id": user_id, "project_id": "p_" + secrets.token_hex(6), "nombre": nombre, "tipo": kind,
-               "creado": now, "actualizado": now, "version_actual": 0, "bytes": 0, "pinned_versions": []}
-        self.repo.insert_project(doc)
+        for attempt in range(3):  # project_id es único entre usuarios: ante un choque (improbable), otro id
+            doc = {"user_id": user_id, "project_id": "p_" + secrets.token_hex(6), "nombre": nombre, "tipo": kind,
+                   "creado": now, "actualizado": now, "version_actual": 0, "bytes": 0, "pinned_versions": []}
+            try:
+                self.repo.insert_project(doc)
+                break
+            except Duplicate:
+                if attempt == 2:
+                    raise CoderError("conflict") from None
         self.repo.insert_version({"project_id": doc["project_id"], "user_id": user_id, "version": 0, "archivos": {},
                                   "origen": "create", "nota": "", "desde_version": None, "creado": now})
         return summary(doc)

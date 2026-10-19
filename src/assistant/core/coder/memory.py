@@ -17,7 +17,7 @@ class MemoryCoderRepo:
     def insert_project(self, doc):
         with self._lock:
             key = (doc["user_id"], doc["project_id"])
-            if key in self.projects:
+            if any(pid == doc["project_id"] for _, pid in self.projects):  # project_id único entre usuarios
                 raise Duplicate(key)
             self.projects[key] = copy.deepcopy(doc)
 
