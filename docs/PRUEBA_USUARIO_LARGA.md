@@ -215,3 +215,92 @@ Propuesta:
    - Costaría unos 8–12 M para mostrar algo que ya se sabe: sin compactación y con `TURN_TOKEN_CAP=150000`, el hilo deja de servir hacia el mensaje 70.
    - Eso se puede fijar con un test de 0 tokens.
    - Mi recomendación para el `.env` es `MEMORY_SUMMARIZE=1`, como en la configuración validada.
+
+---
+
+# Validación real de B1 y B2 (modo A corto, 2026-10-18)
+
+**Sobre `main` en `8e3554b`**, que ya incluye B2 (`8d78d25`) y B1 (`ba7008c`). **Gasto: 196 360 tokens** de un tope duro de 600 000. El servidor nunca respondió 429.
+
+## Resultado
+
+| Comprobación | Resultado |
+|---|---|
+| **B2:** la corrección tras compactar llega a la memoria larga y el hilo nuevo dice 4 | ✅ "Tienes **4 empleadas**; una trabaja medio tiempo y otra empezó esta semana." |
+| **B1:** un "Error:" de la calculadora sale sin ✓ | ✅ chip "– 🧮 Cálculo (no realizada)", `status: "skipped"` (al segundo intento) |
+| Los 3 datos pedidos, en el mismo hilo tras compactar | ✅ 3/3 |
+| Los 3 datos pedidos, en un hilo nuevo | ✅ 3/3 |
+| Seguridad | ✅ 0 de 3 enlaces sin respaldo; métricas sin contenido de mensajes (17 filas) |
+
+## Montaje
+
+Es el del modo A:
+- **Instancia y bases:** `scripts/eval_server.py` sin cambios, en `:8001`, con `assistant_ux_tmp_20261018190731` y `…_app`. Las dos se borraron al terminar; en el clúster quedan solo `admin`, `assistant` y `local`.
+- **Variables en el entorno del proceso:** `CONTEXT_WINDOW_TOKENS=24000`, `MEMORY_SUMMARIZE=1` y `MEMORY_UPDATE_PRIOR_EVIDENCE=1`.
+- **Por `--set`:** `URL_FILTER_ALWAYS=1`, `MEMORY_REQUIRE_QUOTE=1`, `UNTRUSTED_WRAP=1`, `TRACE_METADATA=1` y `TURN_METRICS=1`.
+- **Topes:** `TURN_TOKEN_CAP=150000`.
+- **Interfaz:** UI real con el plugin `playwright@claude-plugins-official`.
+- **Datos y volumen:** usuario `marta-demo`, datos inventados. 16 mensajes más 1 re-pregunta, en 2 hilos (`marta-corta-1`: 14; `marta-corta-2`: 3).
+
+## Paso a paso
+
+| # | Mensaje (resumido) | Herramientas | Tokens | Acumulado | Resultado |
+|---|---|---|---|---|---|
+| 1–3 | Siembra de los 3 datos pedidos (tienda, presupuesto, tono) | `save_memory` ×3 | 17 489 | 17 489 | 3 recuerdos con cita literal |
+| 4 | "recuerda también que los proveedores me entregan los jueves y que tengo 3 empleadas, una de medio tiempo" | `save_memory` ×2 | 6 804 | 24 293 | Los guardó **separados**: "Sus proveedores entregan los jueves." y "Tiene 3 empleadas; una trabaja medio tiempo." |
+| 5 | B1, intento 1: "con la calculadora resuélveme 3x + 5 = 20" | `calculator` ✓ | 6 551 | 30 844 | El modelo pasó una expresión válida (x = 5): no se reprodujo |
+| 6 | B1, intento 2: "mete en la calculadora exactamente esto: precio_potus * 12 + iva" | `calculator` **skipped** | 6 841 | 37 685 | ✅ "– 🧮 Cálculo (no realizada)" y "La calculadora no aceptó la expresión tal cual: contiene variables…" |
+| 7 | Reglamento ficticio de la Expo Verde (~1 500 palabras), resumen | — | 5 343 | 43 028 | Resumen correcto |
+| 8 | Plan día por día de 3 semanas | `calculator` | 17 406 | 60 434 | Plan largo |
+| 9 | Letreros de 12 plantas con precio y cuidados | `web_search` (por su cuenta) | 38 070 | 98 504 | Buscó precios sin que se le pidiera |
+| 10 | Inventario de 120 cajas: total y planta con más piezas | `calculator` | 32 617 | 131 121 | ⚠️ "981 piezas… monstera, con 99". Lo correcto es **963** y monstera **93** (ver hallazgos) |
+| 11 | 12 preguntas frecuentes | — | 14 391 | 145 512 | **Compactación: 16,3k → 9,2k.** Después, `/history` solo tiene el último mensaje del usuario: la siembra ya está resumida |
+| 12 | "corrección: no son 3 empleadas, son 4. entró una nueva esta semana" | `search_memories`, `update_memory` ✓ | 16 296 | 161 808 | ✅ "Memory updated." y chip "✏️ Recuerdo actualizado" |
+| 12b | Re-pregunta: "no borres lo de que una va medio tiempo, deja las dos cosas" | `update_memory` ✓ | 11 748 | 173 556 | ✅ Recuerdo con los 2 datos |
+| 13 | "¿cómo se llamaba mi tienda, cuánto es mi presupuesto y cómo te pedí que te hablaras?" | — | 5 905 | 179 461 | ✅ "Tu tienda se llama Raíz Morada. Tu presupuesto mensual para compras es de 18,500 pesos. Me pediste que te hablara de tú, directo y sin rodeos, con respuestas breves y sin adornos." |
+| 14 | **Hilo nuevo:** tienda y presupuesto | `search_memories` | 5 327 | 184 788 | ✅ "Tu tienda se llama Raíz Morada y me dijiste que tu presupuesto mensual para compras es de 18,500 pesos." |
+| 15 | **Hilo nuevo:** tono | `search_memories` | 5 658 | 190 446 | ✅ "Me pediste que te hablara de tú, directo y sin rodeos, con respuestas breves y sin adornos." |
+| 16 | **Hilo nuevo:** "¿cuántas empleadas tengo?" | `search_memories` | 5 914 | **196 360** | ✅ "Tienes 4 empleadas; una trabaja medio tiempo y otra empezó esta semana." |
+
+## B2 en la base temporal: el recuerdo de empleadas (clave `c434df96`), literal
+
+| Momento | Texto | Evidencia (cita) | `previous_text` |
+|---|---|---|---|
+| Antes (m4) | Tiene 3 empleadas; una trabaja medio tiempo. | "recuerda tambien q los proveedores me entregan los jueves y q tengo 3 empleadas, una de medio tiempo" | — |
+| Tras m12 | Tiene 4 empleadas; una nueva empezó esta semana. | "ah oye una correccion: no son 3 empleadas, son **4**. entro una nueva esta semana" | Tiene 3 empleadas; una trabaja medio tiempo. |
+| Tras m12b (final) | **Tiene 4 empleadas; una trabaja medio tiempo y una nueva empezó esta semana.** | "oye pero no borres lo de q una va medio tiempo eh, eso sigue igual. deja las dos cosas en tu recuerdo" | Tiene 4 empleadas; una nueva empezó esta semana. |
+
+- **Sin duplicado:** hay un solo recuerdo de empleadas; el valor viejo solo queda en `previous_text`, que es el historial de ese recuerdo.
+- **"cuatro" contra "4":** el texto dice "4", no "cuatro". Es el mismo valor, pero no la palabra literal que se pidió.
+- **La cita "son 4":** está en la evidencia de m12. La evidencia final es la de m12b, porque cada actualización guarda la cita de su propio mensaje.
+
+**Qué demuestra y qué no:**
+- **Demuestra:** con `MEMORY_UPDATE_PRIOR_EVIDENCE=1`, el arreglo funciona de punta a punta en real. Tras compactar, la corrección se guarda en la memoria larga y el hilo nuevo dice 4.
+- **No queda aislado:** en m12 el modelo reescribió el recuerdo **solo** con lo dicho en ese mensaje y dejó fuera "una de medio tiempo", así que no necesitó la cita guardada. En m12b el usuario repitió el dato. El camino nuevo de B2, verificar con la cita guardada lo que no cambia, no se ejercitó en real. Lo fija de forma determinista `tests/test_memoria_compactada.py`: con el interruptor apagado reproduce el rechazo, y encendido lo corrige.
+- **Lo que no midió esta prueba:** que el arreglo era necesario. Antes, en el modo A, el modelo sí intentó conservar el dato viejo y la verificación lo rechazó.
+
+## Hallazgos nuevos (sin corregir)
+
+- **El modelo pierde datos al reescribir un recuerdo.** En m12 borró "una de medio tiempo", que el usuario no había corregido. Hizo falta m12b para recuperarlo. Propuesta: que la descripción de `update_memory` pida conservar lo que no cambia. Es un texto que ve el modelo, así que necesitaría interruptor.
+- **Suma equivocada con calculadora (m10).** "981 piezas… monstera, con 99"; lo correcto es 963 y 93 (recalculado aparte). Usó la calculadora, pero con una suma mal transcrita desde la lista, y la respuesta se presenta como calculada. Es un límite del modelo con listas largas, no del código. Mitigación posible: una herramienta que sume o agrupe una tabla pegada.
+- **`web_search` sin pedirse (m9).** Para unos letreros buscó precios y gastó 38k. Es correcto según el prompt, pero caro; se suma a O3.
+- **Cosmético:** el chip dice "Cálculo (no realizada)", con el género del texto de respaldo; debería ser "Cálculo no realizado". Está en `index.html`, así que cambia su sha256.
+
+## Gasto
+
+| Bloque | Mensajes | Tokens |
+|---|---|---|
+| Siembra | m1–m4 | 24 293 |
+| B1 | m5–m6 | 13 392 |
+| Llenado y compactación | m7–m11 | 107 827 |
+| B2: corrección y re-pregunta | m12, m12b | 28 044 |
+| Sondeo en el mismo hilo | m13 | 5 905 |
+| Hilo nuevo | m14–m16 | 16 899 |
+| **Total** | 16 + 1 re-pregunta | **196 360** |
+
+La estimación fue de ~250–320k. Salió por debajo porque hubo una sola compactación y los sondeos son baratos (~6k).
+
+**Capturas** (sin secretos: solo la UI, ids de hilo y datos inventados):
+- `docs/e2e/t6_01_b1_calculadora_sin_check.png`
+- `docs/e2e/t6_02_tras_compactar.png`
+- `docs/e2e/t6_03_hilo_nuevo_cuatro.png`
