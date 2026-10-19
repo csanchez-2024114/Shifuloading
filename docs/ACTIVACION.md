@@ -10,6 +10,7 @@ La evidencia sale de [VALIDACION_E2E.md](VALIDACION_E2E.md) (2026-10-17, segunda
 URL_FILTER_ALWAYS=1
 MEMORY_REQUIRE_QUOTE=1
 UNTRUSTED_WRAP=1
+MEMORY_UPDATE_PRIOR_EVIDENCE=1
 # Se quedan apagados:
 TURN_MAX_SECONDS=0
 EFFECT_APPROVAL=0
@@ -24,6 +25,7 @@ Los tres se activan juntos sin problema: en la corrida 4, con los tres a la vez,
 | `URL_FILTER_ALWAYS=1` | Quita los enlaces de la respuesta que no salen de ninguna herramienta, aunque `ANSWER_VERIFY=0` | Escenario 2: el enlace respaldado sobrevivió (la comparación ignora `utm_*`) y no hubo falsos positivos. No añade tokens al modelo (el +27,9 % de esa corrida vino de la búsqueda hospedada) | El efecto protector: en la línea base no hubo enlaces inventados que quitar. Corregido el 2026-10-18: ya no borra un enlace respaldado pegado a un delimitador de cierre (comillas, paréntesis, corchetes, puntuación) y ve también las URL pegadas a un paréntesis de apertura. Validado en real con `url-del-usuario` (`evals/resultados/20261018-144911_real.json`) |
 | `MEMORY_REQUIRE_QUOTE=1` | `save_memory`/`update_memory` solo guardan si la evidencia cita literalmente al usuario | 4 de 4 datos guardados al primer intento (escenarios 5 y 5c), 0 % de costo. Lo que vino de la web (Museo Soumaya) no se guardó | El rechazo en código: en la prueba real lo frenó antes la política del prompt (`test_seguridad::memory_require_quote_*`, `inyeccion_*`) |
 | `UNTRUSTED_WRAP=1` | Envuelve los resultados web en `<untrusted_web_content>` y añade la regla al prompt | Escenario 5: +2,2 % (unos 115 tokens de la regla). Escenario 3: 7 fuentes, todas respaldadas, sin etiquetas en la respuesta y sin bloquear al investigador (−5,9 %, informe más corto) | El bloqueo de una inyección real |
+| `MEMORY_UPDATE_PRIOR_EVIDENCE=1` | `update_memory` acepta como respaldo de lo que no cambia la cita literal ya guardada en el recuerdo, para poder corregir un dato después de una compactación (B2). El valor nuevo se sigue exigiendo en la conversación, así que `MEMORY_REQUIRE_QUOTE` no se relaja | Validación corta del 2026-10-18 (`PRUEBA_USUARIO_LARGA.md`, 196 360 tokens), con `MEMORY_SUMMARIZE=1`, `CONTEXT_WINDOW_TOKENS=24000`, `MEMORY_VERIFY=1` y `MEMORY_REQUIRE_QUOTE=1`. Tras compactar, "no son 3 empleadas, son 4" se guardó ("Memory updated.") y un hilo nuevo respondió "Tienes 4 empleadas…". En el modo A, sin el interruptor, la misma corrección se rechazó y el hilo nuevo dijo "tres". 0 % de costo: no añade llamadas | **Su camino nuevo** (verificar con la cita guardada lo que no cambia) solo lo prueban los modelos falsos (`test_memoria_compactada`): en la prueba real el modelo reescribió el recuerdo solo con lo dicho en ese mensaje y no necesitó la cita vieja. Solo tiene efecto con `MEMORY_VERIFY=1` o `MEMORY_REQUIRE_QUOTE=1`, y solo importa si hay compactación (`MEMORY_SUMMARIZE=1`). Ojo: no evita que el modelo borre al reescribir un dato no corregido (pendiente (a) en `REFACTOR_NOTAS.md`) |
 
 Pendiente opcional: una segunda muestra del escenario 3 con `UNTRUSTED_WRAP=1`, para confirmar que el informe más corto no es sistemático.
 
