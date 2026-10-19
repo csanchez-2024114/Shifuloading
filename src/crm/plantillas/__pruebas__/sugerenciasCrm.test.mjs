@@ -39,5 +39,38 @@ caso('las ideas cambian con la vista', () => {
   assert.notDeepEqual(a.map((x) => x[1]), b.map((x) => x[1]))
 })
 
+const T = { contactos: 'Socios', desarrollo: 'Pendientes' }
+const conGrafica = { ...crm, inicio: [...crm.inicio, { uid: 'g1', vista: 'grafico', seccion: 'l_miembros', opciones: { tipo: 'dona', por: 'estado' }, ancho: 6, alto: 2 }] }
+const textos = (ideas) => ideas.map((x) => x[1])
+
+caso('como mucho 3 ideas', () => {
+  for (const v of ['inicio', 'l_miembros', 'contactos']) assert.ok(ideasDe(conGrafica, v, 0, T).length <= 3)
+})
+
+caso('lo de una gráfica del inicio solo se ofrece en el inicio (no desde otra pestaña)', () => {
+  const todas = (v) => [0, 1, 2, 3, 4, 5].flatMap((t) => textos(ideasDe(conGrafica, v, t, T, 20)))
+  assert.ok(todas('inicio').some((t) => /gráfica de miembros/i.test(t)), 'en el inicio sí')
+  assert.ok(!todas('l_miembros').some((t) => /gráfica de miembros (más chica|por)/i.test(t) || /^Cambia la gráfica/.test(t)), 'en Miembros no')
+})
+
+caso('sin gráfica en pantalla no hay ideas sobre una gráfica', () => {
+  const todas = [0, 1, 2, 3, 4, 5].flatMap((t) => textos(ideasDe(crm, 'inicio', t, T, 20)))
+  assert.ok(!todas.some((t) => /^(Cambia|Haz) la gráfica/.test(t)))
+})
+
+caso('sin ningún dato no se pregunta qué gráficas poner «con mis datos»', () => {
+  const vacio = { ...crm, contactos: [], tareas: { porHacer: [], enCurso: [], hecho: [] }, listas: crm.listas.map((l) => ({ ...l, registros: [] })) }
+  const todas = [0, 1, 2, 3].flatMap((t) => textos(ideasDe(vacio, 'inicio', t, T, 20)))
+  assert.ok(!todas.includes('¿Qué gráficas puedo poner con mis datos?'))
+  assert.ok([0, 1, 2, 3].flatMap((t) => textos(ideasDe(crm, 'inicio', t, T, 20))).includes('¿Qué gráficas puedo poner con mis datos?'))
+})
+
+caso('con logo puesto no se ofrece «Agrega mi logo»', () => {
+  const conLogo = { ...crm, marca: { primario: '#3fb8ff', logo_id: 'logo_x' } }
+  const todas = [0, 1, 2, 3].flatMap((t) => textos(ideasDe(conLogo, 'inicio', t, T, 20)))
+  assert.ok(!todas.some((t) => /logo/i.test(t)))
+  assert.ok([0, 1, 2, 3].flatMap((t) => textos(ideasDe(crm, 'inicio', t, T, 20))).some((t) => /Agrega mi logo/.test(t)))
+})
+
 console.log(`\n${ok} pruebas bien`)
 await v.close()
