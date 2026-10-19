@@ -22,9 +22,15 @@ _ORACION = regex.compile(r"(?<=[.!\n;:])")
 
 def afirma_cambio(texto: Any) -> bool:
     """True si alguna oración afirma un cambio (un verbo de cambio en pasado, sin negación delante y fuera de una pregunta)."""
+    return afirma_con(texto, _VERBO)
+
+
+def afirma_con(texto: Any, verbo: Any) -> bool:
+    """La misma regla con otro vocabulario (`verbo`: un patrón con `finditer`): las preguntas y lo negado no cuentan. La usa el agente
+    para las frases de logro de Carlos («registré», «he agregado»…) con el sistema de diseño."""
     sin_preguntas = _PREGUNTA_SIN_ABRIR.sub(" ", _PREGUNTA.sub(" ", str(texto or "")))
     for oracion in _ORACION.split(sin_preguntas):
-        for m in _VERBO.finditer(oracion):
+        for m in verbo.finditer(oracion):
             if not _NIEGA.search(oracion[: m.start()]):
                 return True
     return False
