@@ -931,6 +931,10 @@ def revisar_respuesta(respuesta: str, sesion: "Sesion", doc_inicial: dict) -> st
         aviso = sesion.revisar_pantalla(respuesta)  # lado, gráfico negado, sustituto (ganchos de E2) y lo que faltó anotar en la ficha
         if aviso:
             return aviso
+        # Las preguntas sobre los datos son justo donde se inventan cifras: se revisa antes de la salida de las preguntas.
+        aviso = sesion.aviso_numero_inventado(respuesta)
+        if aviso:
+            return aviso
     if not sesion.acciones and _ES_PREGUNTA.search(sesion.texto or ""):
         return None  # una pregunta sin acciones: la respuesta puede hablar de cosas ya hechas antes sin que sea un falso éxito
     if diseno:
@@ -941,7 +945,13 @@ def revisar_respuesta(respuesta: str, sesion: "Sesion", doc_inicial: dict) -> st
         if _PROMESA.search(respuesta) or sesion.promete(respuesta):
             return ("[Aviso interno] No anuncies lo que vas a hacer: hazlo AHORA llamando a las herramientas. Si de verdad falta un dato imprescindible, "
                     "pregunta solo eso en una línea, sin decir “voy a”. Si tu respuesta no hablaba de acciones en el CRM (era una charla o una explicación), ignora este aviso y repítela igual.")
-        return sesion.afirma_sin_cambios(respuesta) or sesion.logro_sin_herramienta(respuesta)
+        aviso = sesion.afirma_sin_cambios(respuesta) or sesion.logro_sin_herramienta(respuesta)
+        if aviso:
+            return aviso
+        if sesion.fallos and _EXITO.search(respuesta):
+            return ("[Aviso interno] Dices que lograste algo, pero una herramienta falló: " + " | ".join(sesion.fallos[-3:]) +
+                    ". Arregla el problema (por ejemplo crea el campo que falta o corrige el dato) y vuelve a llamar la herramienta; si no se puede, dile la verdad a la persona.")
+        return None
     cambio = sesion.doc is not doc_inicial
     if sesion.fallos and _EXITO.search(respuesta):
         return ("[Aviso interno] Dices que lograste algo, pero una herramienta falló: " + " | ".join(sesion.fallos[-3:]) +
