@@ -46,3 +46,23 @@
 .mcd-piezas .lab-piezas { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--tx); }
 .mcd-piezas .lab-piezas i { font-style: normal; padding: 2px 8px; border-radius: 999px; background: rgba(34, 211, 166, .2); font-size: 12px; }
 .mcd-piezas > span:not(.lab-piezas) { flex: 1; }
+
+/* Chat a pantalla completa en móvil y panel fijo en tablet (mismas reglas que plantillas.css D39; aquí cargan desde el primer render). */
+@media (max-width: 700px) {
+  .mc-chat-panel { position: fixed; inset: 0; width: 100%; height: 100dvh; max-height: none; border-radius: 0; border: 0; z-index: 1250; }
+  .mc-chat:has(.mc-chat-panel:not([hidden])) .mc-chat-btn { display: none; }
+}
+@media (min-width: 701px) and (max-width: 1099px) {
+  .mc-chat-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 44vw); height: 100dvh; max-height: none; border-radius: 0; border-width: 0 0 0 1px; z-index: 60; }
+  .pl.con-chat { padding-right: min(400px, 44vw); box-sizing: border-box; }
+  .mc-chat:has(.mc-chat-panel:not([hidden])) .mc-chat-btn { display: none; }
+}
+
+/* Celular: botones de la cabecera del chat de 40 px (medido: 28 px), el consejo del cuaderno no tapa las sugerencias y la
+ * bienvenida no se come la primera pantalla (se lee completa al tocarla). */
+@media (max-width: 700px) {
+  .mc-chat-panel header button, .mc-main > .mc-shifu > button { min-width: 40px; min-height: 40px; }
+  .mc-main > .mc-shifu p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .mc-main > .mc-shifu:active p, .mc-main > .mc-shifu:focus-within p { -webkit-line-clamp: unset; }
+}
+@media (max-width: 1099px) { .mc-chat-panel .mc-consejo { display: none; } } /* con el panel acoplado tapaba las sugerencias */

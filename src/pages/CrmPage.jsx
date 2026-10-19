@@ -12,7 +12,7 @@ import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { DISENO, ChatDiseno, DisenoCrm, conInicio, esVistaDiseno, marcoDiseno, tomarSeleccion } from '../crm/plantillas' // sistema de diseño (D61), solo con VITE_CRM_DISENO=1
+import { DISENO, ChatDiseno, DisenoCrm, cargarCaptura, cargarSugerencias, conInicio, esVistaDiseno, marcoDiseno, tomarSeleccion } from '../crm/plantillas' // sistema de diseño (D61), solo con VITE_CRM_DISENO=1
 import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb, LuTrash2, LuImagePlus, LuPaperclip, LuSparkles, LuSettings, LuPencil, LuDownload } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
@@ -740,7 +740,7 @@ function sugerenciasDe(contactos) {
   return primero ? [...base, ['Medición', `Mueve a ${primero} a Cliente`], ['Estructura', `Elimina a ${primero}`]] : base
 }
 
-function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, diseno }) {
+function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, diseno, capturaLab }) {
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null) // captura o imagen pegada, lista para mandar con el mensaje
   const [documento, setDocumento] = useState(null) // PDF, Excel, etc. (no imagen)
@@ -767,9 +767,15 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
     return () => window.removeEventListener('shifu:subir-foto', f)
   }, [setAbierto])
   useEffect(() => { fin.current?.scrollIntoView?.({ block: 'end' }) }, [mensajes, escribiendo, abierto])
+  const puedeMandar = () => {
+    if (escribiendo) return false
+    if (documento || imagen?.url) return true
+    if (capturaLab && imagen?.piezas?.length) return !!txt.trim()
+    return !!txt.trim()
+  }
   const enviar = (e) => {
     e?.preventDefault()
-    if ((!txt.trim() && !imagen && !documento) || escribiendo) return
+    if (!puedeMandar()) return
     onEnviar(txt, imagen, documento); setTxt(''); setImagen(null); setDocumento(null); setErrorImg('')
   }
   const usarArchivo = async (archivo) => {
@@ -788,7 +794,18 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
   const elegida = async (region) => {
     setEligiendo(false); setCapturando(true); setErrorImg('')
     await new Promise((r) => setTimeout(r, 60)) // deja que la capa del selector desaparezca antes de dibujar
-    try { setImagen(await capturarRegion(region)) } catch { setErrorImg('No pude tomar la captura. Inténtalo de nuevo o pega una imagen.') }
+    if (capturaLab) {
+      const piezas = capturaLab.piezasEnRegion(region)
+      try {
+        setImagen({ ...(await capturaLab.capturarRegionLab(region)), piezas })
+      } catch (e) {
+        console.error('[captura]', e)
+        setImagen({ url: null, piezas })
+        setErrorImg(piezas.length ? 'No pude dibujar la imagen, pero sé qué elegiste.' : 'No pude tomar la captura. Inténtalo de nuevo o pega una imagen.')
+      }
+    } else {
+      try { setImagen(await capturarRegion(region)) } catch { setErrorImg('No pude tomar la captura. Inténtalo de nuevo o pega una imagen.') }
+    }
     setCapturando(false)
     setTimeout(() => campo.current?.focus(), 0)
   }
@@ -838,16 +855,17 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
             {sugerencias.map(([p, s]) => <button key={s} type="button" disabled={escribiendo} onClick={() => onEnviar(s)}><em>{p}</em>{s}</button>)}
           </div>
           {diseno}
-          {(imagen || documento || errorImg) && (
+          {(imagen?.url || imagen?.piezas?.length || documento || errorImg) && (
             <div className="mc-adjunto" role="status">
-              {imagen && <img src={imagen.url} alt="Imagen lista para enviar" />}
-              <span>{imagen ? 'Foto lista. Dime qué hago con ella, por ejemplo: “pasa esto a mi lista”.'
-                : documento ? `Archivo listo (${documento.nombre}). Dime qué hago con él, por ejemplo: “pasa estas filas a mi lista”.`
-                  : errorImg}</span>
+              {imagen?.url && <img src={imagen.url} alt="Imagen lista para enviar" />}
+              <span>{imagen?.url ? 'Foto lista. Dime qué hago con ella, por ejemplo: “pasa esto a mi lista”.'
+                : imagen?.piezas?.length ? `Piezas en el recorte: ${imagen.piezas.map((p) => p.nombre || p.id).join(', ')}. Dime qué quieres hacer con ellas.`
+                  : documento ? `Archivo listo (${documento.nombre}). Dime qué hago con él, por ejemplo: “pasa estas filas a mi lista”.`
+                    : errorImg}</span>
               <button type="button" onClick={() => { setImagen(null); setDocumento(null); setErrorImg('') }} aria-label="Quitar el adjunto"><LuX /></button>
             </div>
           )}
-          {consejo && !imagen && !documento && !errorImg && (
+          {consejo && !imagen?.url && !imagen?.piezas?.length && !documento && !errorImg && (
             <div className="mc-consejo" role="note">
               <button type="button" className="mc-consejo-x" onClick={cerrarConsejo} aria-label="Cerrar el consejo"><LuX /></button>
               <p><b>📷 ¿Tienes tus datos en un cuaderno?</b> Toca el botón de foto, súbela y yo los paso aquí.</p>
@@ -858,7 +876,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
             <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); docRef.current?.click() }} disabled={escribiendo} aria-label="Adjuntar un documento" title="Adjuntar PDF, Excel, Word…"><LuPaperclip /></button>
             <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); setEligiendo(true) }} disabled={escribiendo} aria-label="Capturar una parte de la pantalla" title="Capturar una parte de la pantalla"><LuCamera /></button>
             <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres hacer con esta foto…' : documento ? 'Qué quieres hacer con este archivo…' : 'Escribe, sube una foto o adjunta un archivo…'} aria-label="Mensaje para Shifu" maxLength={2000} />
-            <button type="submit" disabled={(!txt.trim() && !imagen && !documento) || escribiendo} aria-label="Enviar"><LuSend /></button>
+            <button type="submit" disabled={!puedeMandar()} aria-label="Enviar"><LuSend /></button>
           </form>
         </section>
       )}
@@ -981,10 +999,35 @@ export default function CrmPage() {
   const [escribiendo, setEscribiendo] = useState(false)
   const [modo, setModo] = useState('ia') // "ia" o "reglas" (si la IA no pudo contestar)
   const pendiente = useRef(null)
+  const [ideasMod, setIdeasMod] = useState(null)
+  const [capturaMod, setCapturaMod] = useState(null)
+  useEffect(() => {
+    if (!DISENO) return undefined
+    cargarSugerencias?.().then(setIdeasMod)
+    cargarCaptura?.().then(setCapturaMod)
+    return undefined
+  }, [])
+
+  const sugerencias = useMemo(() => {
+    if (DISENO && ideasMod && crm) {
+      const lab = ideasMod.ideasDe(crm, vista, mensajes.length, { contactos: tit('contactos'), desarrollo: tit('desarrollo') })
+      if (lab?.length) return lab
+    }
+    return sugerenciasDe(crm?.contactos ?? [])
+  }, [crm, vista, mensajes.length, ideasMod]) // eslint-disable-line react-hooks/exhaustive-deps -- tit depende de crm
+
   const enviar = async (texto, imagen, documento) => {
     const t = texto.trim()
-    if (!t && !imagen && !documento) return
     const sel = tomarSeleccion() // piezas elegidas en el lienzo (D61); sin la bandera, null
+    const ids = new Set()
+    const seleccion = []
+    for (const p of [...(sel?.contexto?.seleccion || []), ...(imagen?.piezas || [])]) {
+      const clave = p.id || p.nombre
+      if (!clave || ids.has(clave)) continue
+      ids.add(clave)
+      seleccion.push(p)
+    }
+    if (!t && !imagen?.url && !documento && !seleccion.length) return
     const etiquetaDoc = documento ? `${t ? ' ' : ''}📎 ${documento.nombre}` : ''
     setMensajes((l) => [...l, mensaje('yo', (sel?.prefijo || '') + t + etiquetaDoc, imagen?.url)])
     setEscribiendo(true)
@@ -996,7 +1039,7 @@ export default function CrmPage() {
         archivo: documento ? { nombre: documento.nombre, datos: documento.datos } : undefined,
         seccion: tit(vista),
         historial,
-        ...sel?.contexto,
+        ...(seleccion.length ? { seleccion } : {}),
       })
       pendiente.current = r.pendiente || null
       if (r.modo) setModo(r.modo)
@@ -1057,7 +1100,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
   const conDiseno = esVistaDiseno(vista, crm)
 
   return (
-    <div {...marcoDiseno(crm, tema)} data-tema={tema}>
+    <div {...marcoDiseno(crm, tema, chatAbierto)} data-tema={tema}>
       <header className="mc-top">
         <Link to="/" aria-label="Shifu"><Logo height={24} color="var(--tx)" /></Link>
         <span className="mc-negocio">{d.nombre}</span>
@@ -1075,7 +1118,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
               <h2>{g}</h2>
               <ul>
                 {menu.filter((m) => m.grupo === gi).map(({ id, t, I }) => (
-                  <li key={id}><button type="button" title={t} className={vista === id ? 'on' : ''} aria-current={vista === id ? 'page' : undefined} onClick={() => ir(id)}><I aria-hidden="true" /><span>{t}</span></button></li>
+                  <li key={id}><button type="button" title={t} data-seccion={id} className={vista === id ? 'on' : ''} aria-current={vista === id ? 'page' : undefined} onClick={() => ir(id)}><I aria-hidden="true" /><span>{t}</span></button></li>
                 ))}
               </ul>
             </div>
@@ -1122,7 +1165,7 @@ Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
         <ImportarALista lista={crm.listas.find((l) => l.id === importando)} onImportar={(filas, lote) => importarLote(importando, filas, lote)} onQuitar={(loteId) => quitarImportacion(importando, loteId)} onCerrar={() => setImportando(null)} />
       )}
       {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
-      <ChatShifu modo={modo} sugerencias={sugerenciasDe(crm.contactos)} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} diseno={ChatDiseno && <ChatDiseno crm={crm} aplicar={aplicar} />} />
+      <ChatShifu modo={modo} sugerencias={sugerencias} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} diseno={ChatDiseno && <ChatDiseno crm={crm} aplicar={aplicar} />} capturaLab={DISENO ? capturaMod : null} />
     </div>
   )
 }

@@ -88,6 +88,16 @@ async def test_cerco_lado_no_dispara_si_coincide():
 
 
 @pytest.mark.asyncio
+async def test_cerco_lado_no_dispara_por_un_bloque_quitado(doc_lab):
+    # «Quité la gráfica que estaba a la derecha» es verdad: un bloque quitado no tiene lado que verificar (antes el aviso
+    # empujaba al modelo a achicar otro bloque).
+    uid = doc_lab["inicio"][-1]["uid"]
+    r, modelo = await correr(doc_lab, "quita esto", dice("", llamar("quitar_bloque", bloque=uid)),
+                             dice("Quité la gráfica que estaba a la derecha."))
+    assert r["avisos"] == [] and len(modelo.recibidos) == 2
+
+
+@pytest.mark.asyncio
 async def test_cerco_grafico_negado_cuando_si_existe(doc_lab):
     g = next(sec["graficos_posibles"][0] for sec in describir_pantalla(doc_lab)["secciones"] if sec.get("graficos_posibles"))
     nombre = re.sub(r" \d+ %", "", re.search(r"\((.*)\)", g).group(1)).lower()
