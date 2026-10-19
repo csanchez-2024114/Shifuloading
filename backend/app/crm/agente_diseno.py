@@ -35,7 +35,9 @@ from typing import Any, Callable
 import regex  # \p{L} igual que en JS
 
 from app.crm import agente
+from app.crm import conceptos
 from app.crm import edicion
+from app.crm.diseno import resumen_del_brief
 from app.crm import estructura as est
 from app.crm import operaciones as op
 from app.crm import pantalla
@@ -110,12 +112,16 @@ Reglas:
 - Para decir DÓNDE quedó algo usa solo "donde_se_ve" / "Así se ve ahora" de los resultados; si no quedó donde pidieron, muévelo o ajusta anchos.
 - Si la persona pega un enlace (Notion, Drive, su web, una imagen o PDF), ábrelo con leer_enlace y usa lo que encuentres. Para branding usa los colores MEDIDOS (los que te da el código) y di de dónde salió cada uno; si no se midió ninguno y los tomas de la imagen o de lo que sabes de esa marca, dilo así ("no encontré colores en tu página; tomé el verde que se ve en tu imagen").
 - "Muéstrame / abre / ver X" es navegar: usa abrir_seccion y nada más.
-- Responde en español neutro de "tú" (nunca "vos": nada de "querés" o "tenés"), corto (1-3 líneas), cálido, sin tecnicismos: nunca digas uid, b1, kpis, vista, opciones, columnas ni números de ancho/alto. Di "el resumen", "la gráfica", "más chico", "a la derecha".
+- Responde en español neutro de "tú" (nunca "vos": nada de "querés" o "tenés"), corto (1-3 líneas), cálido, sin tecnicismos: nunca digas uid, b1, kpis, vista, opciones, columnas ni números de ancho/alto. Di "el resumen", "la gráfica", "más chico", "a la derecha". Nunca digas "propia", "integrada", nombres de herramientas ni ids internos.
+- Casi todo se puede deshacer: haz cambios de diseño y datos directo, sin pedir "¿confirmas?" ni "¿estás seguro?". Solo pide un "sí" explícito antes de borrar muchos registros de una vez o algo irreversible.
+- Si preguntas algo, ofrece 2 o 3 opciones concretas y marca cuál recomiendas; si la persona responde solo "sí", "dale" u "ok", cuenta como que aceptó la recomendada.
+- Si preguntan qué gráficas pueden poner, propón solo 2 o 3 (con una recomendada), no listes decenas. Si la sección no tiene datos, avisa y ofrece cargar o importar antes de poner la gráfica.
 - Deshacer (pedidos_anteriores): cada pedido que cambió algo queda en la lista con lo que dijo la persona y qué cambió. Si quiere anular algo ("eso no", "como estaba antes", "deshaz lo del color", "deshaz también la dona"), usa deshacer con el número del PEDIDO que quiere anular (el código revierte solo lo que ese pedido cambió) y di qué deshiciste. Para deshacer SIEMPRE usa deshacer, no quites ni cambies bloques a mano. Si la lista está vacía, no hay nada que deshacer: dilo.
 - Toma de diseño (estado.toma): si la persona pide diseñar o rehacer el inicio o un CRM completo, abre abrir_toma (no para cambios puntuales). Durante juntando/confirmando anota cada cosa concreta que pidan con anotar_bloque (qué ver + de qué parte; sin preguntar detalles técnicos) y el resto (objetivo, colores, letra, restricciones) con anotar_ficha, solo lo dicho en ESE mensaje; para cambiar un bloque de la ficha usa quitar_de_ficha + anotar_bloque; una pregunta por turno según instruccion_turno/FALTA. En confirmando muestra el RESUMEN y pregunta «¿Lo armo así?». No uses herramientas de pantalla hasta que el código confirme la ficha. Si charlan de otra cosa (digresión), contesta sin anotar ni cambiar la pantalla. cerrar_toma si abandonan."""
 
 INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
-- agregar_tarea: Agrega una tarea nueva en la columna Por hacer. AGENDAR una llamada, cita o recordatorio = agregar una tarea con fecha (y hora si la dieron) y, si es sobre alguien, su contacto.
+- agregar_tarea: Tarea interna en el tablero de desarrollo (columna Por hacer): pendientes del equipo, no citas con clientes.
+- CITA con cliente (agendar, reservar hora): registro en una pestaña con vista agenda (agregar_registro o crear_seccion con vista agenda si no existe). NUNCA uses agregar_tarea para una cita.
 - cambiar_tarea: Cambia el texto, la fecha, la hora o el contacto de una tarea existente (por ejemplo, reprogramarla). `fecha` vacía le quita la fecha.
 - mover_tarea: Mueve una tarea a otra columna.
 - eliminar_tarea: Pide eliminar una tarea. NO la borra: deja una confirmación pendiente y tú debes preguntar si está seguro.
@@ -137,11 +143,12 @@ INSTRUCCIONES_DISENO = """Más de este CRM (Python)
 _CABECERA_ESTADO_PANTALLA = "Estado de la pantalla (JSON):\n"
 
 
-def prompt_sistema(persona: str | None, aviso_toma: str, contexto_json: str) -> str:
-    """Mismo orden que `chat.js` L137: instrucciones + extras + aviso del código + estado."""
+def prompt_sistema(persona: str | None, aviso_toma: str, contexto_json: str, conceptos_txt: str) -> str:
+    """Mismo orden que `chat.js` L137: instrucciones + extras + aviso del código + conceptos + estado."""
     sobre = f"\n\n{persona}" if persona else ""
     del_codigo = f"\n\n[Aviso del código]\n{aviso_toma}" if aviso_toma else ""
-    return (f"{INSTRUCCIONES_LAB}\n\n{INSTRUCCIONES_CARLOS_EXTRA}\n\n{INSTRUCCIONES_DISENO}{sobre}{del_codigo}\n\n"
+    cat = f"\n\n{conceptos_txt}" if conceptos_txt else ""
+    return (f"{INSTRUCCIONES_LAB}\n\n{INSTRUCCIONES_CARLOS_EXTRA}\n\n{INSTRUCCIONES_DISENO}{sobre}{del_codigo}{cat}\n\n"
             f"{_CABECERA_ESTADO_PANTALLA}{contexto_json}")
 
 # chat.js, literales.
@@ -428,7 +435,8 @@ class SesionDiseno(agente.Sesion):
         if self.confirmado or self._confirmado_masivo(self.texto or ""):
             self._masivo_plan = None
             return
-        masivo_txt = bool(MASIVO.search(self.texto or ""))
+        masivo_txt = conceptos.masivo_destruye_registros(self.texto or "")
+        masivo_bloques = conceptos.masivo_destruye_bloques(self.texto or "")
         n_sec = sum(1 for ll in llamadas if ll.get("name") == "quitar_seccion")
         n_bloq = sum(1 for ll in llamadas if ll.get("name") == "quitar_bloque")
         n_camp = sum(1 for ll in llamadas if ll.get("name") == "quitar_campo")
@@ -441,7 +449,7 @@ class SesionDiseno(agente.Sesion):
         # se frena en _cerco con ya>=2, no aquí contando el lote entero.
         self._masivo_plan = {
             "secciones": masivo_txt or (n_sec + ya_s) >= 2,
-            "bloques": masivo_txt,
+            "bloques": masivo_bloques,
             "campos": masivo_txt or (n_camp + ya_c) >= 3,
             "registros": masivo_txt or todos_borr,
         }
@@ -618,15 +626,15 @@ class SesionDiseno(agente.Sesion):
             if bloque in self.en_error and not confirmado:
                 return ERROR_QUITAR_BLOQUE_EN_ERROR
             ya_b = sum(1 for c in self.cambios if c["herramienta"] == "quitar_bloque")
-            if not confirmado and (plan.get("bloques") or MASIVO.search(self.texto or "") or ya_b >= 2):
+            if not confirmado and (plan.get("bloques") or conceptos.masivo_destruye_bloques(self.texto or "") or ya_b >= 2):
                 return ERROR_MASIVO_BLOQUES
         if nombre == "quitar_seccion":
             ya_s = sum(1 for c in self.cambios if c["herramienta"] == "quitar_seccion")
-            if not confirmado and (plan.get("secciones") or ya_s >= 1 or MASIVO.search(self.texto or "")):
+            if not confirmado and (plan.get("secciones") or ya_s >= 1 or conceptos.masivo_destruye_registros(self.texto or "")):
                 return ERROR_MASIVO_SECCIONES
         if nombre == "quitar_campo":
             ya_c = sum(1 for c in self.cambios if c["herramienta"] == "quitar_campo")
-            if not confirmado and (plan.get("campos") or MASIVO.search(self.texto or "") or ya_c >= 2):
+            if not confirmado and (plan.get("campos") or conceptos.masivo_destruye_registros(self.texto or "") or ya_c >= 2):
                 return ERROR_MASIVO_CAMPOS
         if nombre not in toma.NOMBRES_TOMA:  # las de la toma lo revisan ellas mismas
             return toma.bloqueo_en_toma(self.doc, nombre, self.digresion)
@@ -1001,15 +1009,24 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     if prep["construir"]:
         return _construir(doc_turno)
 
-    sesion = SesionDiseno(doc_turno, ahora, texto, bool(imagen), historial=historial, puntos=puntos, digresion=prep["digresion"],
+    texto_turno = conceptos.texto_tras_afirmacion(texto or "", historial) or (texto or "")
+    sesion = SesionDiseno(doc_turno, ahora, texto_turno, bool(imagen), historial=historial, puntos=puntos, digresion=prep["digresion"],
                           toma_entrada=bool((doc.get("toma") or {}).get("activa")))
     sesion.abierta = pestana_abierta(doc_turno, seccion)
     doc_inicial = sesion.doc
     base = modelo or agente._modelo()
     sesion.adjunto = adjunto or ""
-    mensajes = agente._mensajes(doc, texto, historial, ahora, con_captura, imagen, seccion, persona, adjunto)
-    aviso_toma = "\n".join(x for x in (prep["aviso"], prep["digresion"] and toma.AVISO_DIGRESION) if x)
-    mensajes[0] = SystemMessage(content=prompt_sistema(persona, aviso_toma, sesion.contexto()))
+    brief = doc_turno.get("brief") or {}
+    persona_brief = f"Lo que contó de su negocio:\n{resumen_del_brief(brief)}" if brief.get("que_vendes") or brief.get("nombre") else None
+    persona_final = "\n\n".join(x for x in (persona, persona_brief) if x) or None
+    vista_ctx = seccion or (doc_turno.get("vista") if isinstance(doc_turno.get("vista"), str) else None) or "inicio"
+    avisos_codigo = conceptos.avisos_turno(doc_turno, texto_turno, historial, sesion.abierta or vista_ctx)
+    if texto_turno != (texto or ""):
+        avisos_codigo.append("La persona respondió «sí» a tu pregunta anterior: ejecuta la opción que recomendaste, sin repetir la pregunta.")
+    mensajes = agente._mensajes(doc, texto_turno, historial, ahora, con_captura, imagen, seccion, persona_final, adjunto)
+    aviso_toma = "\n".join(x for x in (prep["aviso"], prep["digresion"] and toma.AVISO_DIGRESION, *avisos_codigo) if x)
+    conceptos_txt = conceptos.bloque_para_prompt(texto_turno, None)
+    mensajes[0] = SystemMessage(content=prompt_sistema(persona_final, aviso_toma, sesion.contexto(), conceptos_txt))
 
     respuesta = ""
     ultimos: list[str] = []
@@ -1082,7 +1099,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     respuesta = await revisar_sustituto_final(respuesta, sesion, doc_inicial, mensajes, base, sesion._tiene_imagen())
     if correcciones >= agente.MAX_CORRECCIONES and (vl := sesion.verdad_lado_final(respuesta)):
         respuesta += f"\n\nOjo: en realidad quedó en {vl}."
-    respuesta = agente.limpiar_respuesta(respuesta)
+    respuesta = conceptos.sin_jerga(agente.limpiar_respuesta(respuesta))
     if respuesta and correcciones >= agente.MAX_CORRECCIONES and sesion.afirma_sin_respaldo(respuesta):
         # Agotadas las correcciones, lo que no tiene respaldo no se entrega (Alan, «Te mandé la prueba»): habla el código con lo que pasó.
         sesion.avisos.append({"aviso": "sin respaldo tras corregir: respondió el código", "descartada": respuesta[:300]})

@@ -58,6 +58,7 @@ def cuantas_graficas(texto):
 
 
 JERGA = re.compile(r"integrad|\bpropia\b|\bl_\w+|\bp_\w+|\bb\d+\b|\b[a-z]+_[a-z_]+\b|pestanas_base|graficos_posibles", re.I)
+PIDE_SI = re.compile(r"seguro|confirm|responde .?s[ií]", re.I)  # pedir «sí» antes de hacerlo (otra pregunta al final no cuenta)
 VACIA = re.compile(r"no (tiene|tienes|hay)\b|vac[ií]a|sin (datos|registros)|todav[ií]a no|a[uú]n no|ning[uú]n (registro|pago|dato)", re.I)
 
 H_RECOMENDADA = [{"de": "yo", "t": "¿qué gráficas puedo poner?"},
@@ -79,7 +80,7 @@ CASOS = [  # (descripción, plantilla, estado, texto, historial, muestra, brief,
     ("19 cobros a crédito", "pedidos", E(bloques=[]), "vendo a crédito y quiero llevar quién me debe, cuánto y cuándo me tiene que pagar", None, POCOS, None,
      lambda d: "crear_seccion" in hechas(d) and {"dinero", "fecha"} <= tipos_nuevos(d)),
     ("7 «sí» suelto acepta la recomendada", "membresias", E(), "sí", H_RECOMENDADA, POCOS, None,
-     lambda d: any(b["vista"] == "grafico" and (b.get("opciones") or {}).get("tipo") == "dona" for b in bloques(d)) and not pregunta(d)),
+     lambda d: [b["uid"] for b in bloques(d)][:2] == ["b0", "b1"] and any(b["vista"] == "grafico" and (b.get("opciones") or {}).get("tipo") == "dona" for b in bloques(d))),
     ("7 «sí» suelto a una pregunta abierta no la repite", "membresias", E(), "sí", H_ABIERTA, POCOS, None,
      lambda d: any(b["vista"] == "grafico" for b in bloques(d)) or bool(re.search(r"recomiend", d["respuesta"], re.I))),
     ("8 sin jerga: ¿por qué no veo nada?", "membresias", E("pagos"), "¿por qué no veo nada aquí?", None, VACIO, None,
@@ -87,9 +88,9 @@ CASOS = [  # (descripción, plantilla, estado, texto, historial, muestra, brief,
     ("8 sin jerga: qué es cada pestaña", "membresias", E(), "¿para qué sirve cada pestaña de mi CRM?", None, POCOS, None,
      lambda d: bool(d["respuesta"].strip()) and not JERGA.search(d["respuesta"])),
     ("20 quitar una pieza: directo", "membresias", E(), "quita los vencimientos del inicio", None, POCOS, None,
-     lambda d: [b["uid"] for b in bloques(d)] == ["b0"] and not pregunta(d)),
+     lambda d: [b["uid"] for b in bloques(d)] == ["b0"] and not PIDE_SI.search(d["respuesta"])),
     ("20 «todos» en el texto no pide sí para una pieza", "membresias", E(bloques=[*B, DONA]), "quita la dona de todos los miembros", None, POCOS, None,
-     lambda d: [b["uid"] for b in bloques(d)] == ["b0", "b1"] and not pregunta(d)),
+     lambda d: [b["uid"] for b in bloques(d)] == ["b0", "b1"] and not PIDE_SI.search(d["respuesta"])),
     ("20 borrado masivo sigue pidiendo sí", "membresias", E(), "borra a todos los miembros", None, POCOS, None,
      lambda d: not borrados(d, "miembros") and pregunta(d)),
     ("12 recomienda sobre el negocio, no la plantilla", "membresias", E(), "¿qué me recomiendas para ordenar mi negocio?", None, POCOS, PEPES,
