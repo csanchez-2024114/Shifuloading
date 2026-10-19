@@ -439,22 +439,26 @@ async def test_toma_sin_piezas_nombradas_no_anota_y_pide_las_que_faltan(doc):
     assert len(r["doc"]["toma"]["ficha"]["bloques"]) == 2 and r["avisos"][0]["aviso"].startswith("[Aviso del código] En este mensaje pidió 2 cosas")
 
 
-def test_sin_lienzo_el_acomodo_y_la_validacion_no_hacen_nada(monkeypatch):
-    monkeypatch.setattr(agente_diseno, "_modulo", lambda nombre: None)
-    bloques = [{"uid": "a", "vista": "tabla", "seccion": "contactos", "ancho": 6, "alto": 2}]
-    assert agente_diseno.acomodar(bloques) is bloques and agente_diseno.validar({"inicio": bloques}) == []
-    assert agente_diseno.revisar_vista("tabla", {}, [], "x") == [] and "Inter" in agente_diseno.fuentes()
+def test_la_toma_usa_la_pantalla_de_c2(doc):
+    from app.crm import marca, pantalla
+
+    cat = agente_diseno.catalogo(doc)
+    assert cat.fuentes == list(marca.FUENTES) and [s["id"] for s in cat.secciones] == [s["id"] for s in pantalla.plantilla_efectiva(doc)["secciones"]]
 
 
-def test_con_lienzo_se_usa_el_de_c2(monkeypatch):
-    import types
+def test_armar_con_una_ficha_invalida_no_cambia_nada(doc):
+    # La validación es la de C2 (validar.validar_plantilla sobre la plantilla efectiva): una vista que no está en el catálogo no se arma.
+    d = {**doc, "toma": {**agente_diseno.toma.toma_vacia(), "activa": True, "fase": "confirmando"}}
+    d["toma"]["ficha"] = {**d["toma"]["ficha"], "bloques": [{"vista": "no_existe", "seccion": "contactos"}]}
+    r = agente_diseno._construir(d)
+    assert r["fallos"] and r["cambios"] == [] and r["doc"].get("inicio") == doc.get("inicio") and r["respuesta"].startswith("No pude armarlo:")
 
-    falso = types.SimpleNamespace(acomodar=lambda bs: [{**b, "ancho": 12} for b in bs],
-                                  validar_plantilla=lambda p: ["Inicio, bloque 1: no sirve.", "«Pacientes»: algo de antes."])
-    monkeypatch.setattr(agente_diseno, "_modulo", lambda nombre: falso if nombre in ("lienzo", "validar") else None)
-    assert agente_diseno.acomodar([{"uid": "a", "ancho": 6}])[0]["ancho"] == 12
-    assert agente_diseno.validar({"inicio": [], "etapas": ["A", "B"], "secciones": {}, "listas": [], "contactos": [], "campos_contacto": [],
-                                  "tareas": {"porHacer": [], "enCurso": [], "hecho": []}}) == ["Inicio, bloque 1: no sirve."]
+
+def test_las_etiquetas_son_las_de_c2_con_los_nombres_de_carlos():
+    assert agente_diseno.etiqueta_cambio({"herramienta": "crear_seccion", "args": {"nombre": "Cobros"}}) == "creó la pestaña «Cobros»"
+    assert agente_diseno.etiqueta_cambio({"herramienta": "crear_seccion", "args": {"titulo": "Cobros"}}) == "creó la pestaña «Cobros»"
+    assert agente_diseno.etiqueta_cambio({"herramienta": "agregar_registro", "args": {}, "etiqueta": "agregó a Ana"}) == "agregó a Ana"
+    assert agente_diseno.etiqueta_cambio({"herramienta": "anotar_bloque", "args": {}}) is None
 
 
 # ───────── La ruta del chat ─────────

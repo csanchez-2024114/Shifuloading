@@ -16,14 +16,13 @@ Es el agente de Carlos (modelo + herramientas + verificador, las mismas INSTRUCC
   registros con confirmación, y los errores de duplicado y de procedencia de `registros` como errores de la herramienta.
 - La toma de diseño (`toma.py`): el código abre, cierra y confirma la ficha, y al «sí» arma el inicio sin el modelo.
 
-Ganchos que llena E2 con la pantalla de C2 (`lienzo`, `edicion`): el lado (derecha/izquierda), el gráfico negado y el sustituto
-impuesto (`GANCHOS_PANTALLA`, `revisar_sustituto_final`). Si `lienzo`/`validar` todavía no existen, el acomodo y la validación de
-`construir_desde_ficha` quedan en identidad / sin errores (se detecta con importlib, así funciona solo cuando C2 llegue).
+La pantalla es la de C2: el catálogo de la toma sale de `pantalla.catalogo_toma` y el «sí» a la ficha arma el inicio con
+`edicion.construir_desde_ficha` (acomodo de `lienzo` y validación de `validar`, una sola versión). Cercos de lado y gráfico negado con
+`lienzo.ubicar_todo` y `pantalla.describir_pantalla` (chat.js). El sustituto impuesto queda para E2 al exponer las herramientas de
+bloques (`edicion.HERRAMIENTAS_EDICION`, `revisar_sustituto_final`).
 """
 from __future__ import annotations
 
-import importlib
-import importlib.util
 import json
 import logging
 import re
@@ -33,9 +32,11 @@ from typing import Any, Callable
 import regex  # \p{L} igual que en JS
 
 from app.crm import agente
+from app.crm import edicion
 from app.crm import estructura as est
 from app.crm import operaciones as op
-from app.crm import plantillas
+from app.crm import pantalla
+from app.crm.lienzo import ubicar_todo
 from app.crm import puntos as pt
 from app.crm import registros
 from app.crm import secciones_v as sv
@@ -95,69 +96,20 @@ SUSTITUTO = re.compile(r"m[aá]s parecid|en su lugar|como alternativa|no hay for
                        r"|solo puedo (mostrar|hacer|poner)|no existe[^.]*\.[^?]*\bya (agregu|puse)", re.IGNORECASE)  # para el gancho de E2
 ERROR_MASIVO_REGISTROS = ("ERROR: borrar varios registros de una vez necesita confirmación. No borres nada más: di cuáles se borrarían y pregunta "
                           "si está seguro (que responda \"sí\").")
-NOMBRE_VISTA = toma.NOMBRE_VISTA
 # Las frases de logro de Carlos con la regla de D51 para el subjuntivo: solo con tilde («registré» afirma, «que registre» no).
 _LOGROS_D51 = [(re.compile(p.pattern.replace("[eé]", "é"), p.flags), h) for p, h in agente._LOGROS]
 # El vocabulario de logro de Carlos (`agente._EXITO`) solo en las formas que AFIRMAN que Shifu lo hizo: «he agregado», «agregué». El
 # participio suelto («tus contactos agregados», «la sección fue creada») también describe lo que ya había: no cuenta (D51).
 _EXITO_D51 = re.compile(agente._EXITO.pattern.replace(r"\b(he |ya )?", r"\b(he|hemos|ya he|ya hemos)\s+", 1), agente._EXITO.flags)
 MONTO_ABSURDO = 1_000_000_000  # como `Sesion._monto_absurdo` de Carlos: mil millones o más casi siempre es un error de dedo
-# Las 12 tipografías de la marca (marca.js), por si `marca.py` de C2 todavía no está.
-_FUENTES_MARCA = ["Inter", "Poppins", "Nunito", "Montserrat", "DM Sans", "Rubik", "Work Sans", "Lato", "Playfair Display", "Lora", "Merriweather", "Outfit"]
 
 
-# ───────── Lo que pone C2 (lienzo, validar, marca): se usa si ya está ─────────
-
-def _modulo(nombre: str) -> Any:
-    """El módulo `app.crm.<nombre>` si existe; None si todavía no (o si no carga: se dice en el log y se sigue sin él)."""
-    try:
-        if importlib.util.find_spec(f"app.crm.{nombre}") is None:
-            return None
-        return importlib.import_module(f"app.crm.{nombre}")
-    except Exception:
-        logger.exception("No se pudo cargar app.crm.%s; el agente sigue sin él", nombre)
-        return None
-
-
-def _de_c2(atributo: str, modulos: tuple[str, ...] = ("lienzo", "validar")) -> Any:
-    for m in modulos:
-        f = getattr(_modulo(m), atributo, None)
-        if f is not None:
-            return f
-    return None
-
-
-def acomodar(bloques: list[dict]) -> list[dict]:
-    """El acomodo automático del lienzo (`lienzo.acomodar`); sin lienzo, los bloques quedan como vienen."""
-    f = _de_c2("acomodar")
-    return f(bloques) if callable(f) else bloques
-
-
-def revisar_vista(vista: str, opciones: dict, campos: list[dict], donde: str) -> list[str]:
-    """Los errores de las opciones de una vista (`validar.revisar_vista`); sin validar, ninguno."""
-    f = _de_c2("revisar_vista")
-    return list(f(vista, opciones, campos, donde)) if callable(f) else []
-
-
-def validar(doc: dict) -> list[str]:
-    """Los errores del inicio que arma `construir_desde_ficha` (`validar.validar_plantilla` sobre las secciones del CRM).
-    Solo cuentan los de los bloques del inicio: lo demás ya estaba antes de la ficha y no lo arregla rehacer el inicio."""
-    f = _de_c2("validar_plantilla")
-    if not callable(f):
-        return []
-    errores = f({"id": "crm", "nombre": "CRM", "secciones": sv.secciones_de(_visible(doc)), "inicio": doc.get("inicio") or []})
-    return [e for e in errores if str(e).startswith("Inicio")]
-
-
-def fuentes() -> list[str]:
-    f = _de_c2("FUENTES", ("marca",))
-    return list(f) if f else list(_FUENTES_MARCA)
-
+# ───────── La pantalla de C2 ─────────
 
 def catalogo(doc: dict) -> toma.Catalogo:
-    """Lo que la toma necesita del CRM: sus secciones (secciones_v), los gráficos posibles y la revisión de vistas."""
-    return toma.Catalogo(secciones=sv.secciones_de(_visible(doc)), compatibles=plantillas.compatibles, opciones_por_defecto=plantillas.opciones_por_defecto,
-                         revisar_vista=revisar_vista, graficos=plantillas.graficos(), fuentes=fuentes())
+    """Lo que la toma necesita del CRM (sus secciones tal como se ven, los gráficos posibles, la revisión de vistas y las letras de la
+    marca): el mismo de C2, así lo que se anota en la ficha es lo que `edicion.construir_desde_ficha` valida al armar."""
+    return pantalla.catalogo_toma(pantalla.plantilla_efectiva(doc))
 
 
 # ───────── Ayudas ─────────
@@ -208,37 +160,12 @@ def _js(v: Any) -> str:
 
 
 def etiqueta_cambio(c: dict) -> str | None:
-    """Cada cambio dicho en simple (`etiquetaCambio` de edicion.js). None = no se muestra."""
-    if "etiqueta" in c:
-        return c["etiqueta"]
+    """Cada cambio dicho en simple (`pantalla.etiqueta_cambio`, de edicion.js). Las de Carlos nombran la sección con `nombre` (las
+    del laboratorio, con `titulo`). None = no se muestra."""
     a = c.get("args") or {}
-    donde = f" en «{a['pestana']}»" if a.get("pestana") and a.get("pestana") != "inicio" else ""
-    v = NOMBRE_VISTA.get(a.get("vista")) or ("gráfica" if a.get("vista") == "grafico" else "pieza")
-    h = c.get("herramienta")
-    fijas = {"quitar_bloque": "quitó una pieza", "mover_bloque": "movió una pieza", "cambiar_tamano": "cambió el tamaño de una pieza",
-             "cambiar_rangos": "cambió los grupos de lo que vence", "cambiar_opciones_estado": "cambió las opciones de un estado",
-             "cambiar_ficha": "cambió la ficha", "cambiar_tarjeta": "cambió las tarjetas del tablero", "cambiar_marca": "cambió colores o letra",
-             "usar_logo": "puso tu logo", "restablecer_marca": "volvió al diseño base", "deshacer": "deshizo un pedido",
-             "construir_desde_ficha": "armó tu inicio nuevo"}
-    if h in fijas:
-        return fijas[h]
-    if h == "agregar_bloque":
-        return f"agregó {'una pieza' if v == 'pieza' else f'«{v}»'}{donde}"
-    if h == "cambiar_visual":
-        return f"cambió una pieza a «{v}»"
-    if h == "crear_seccion":  # el laboratorio la nombra con `titulo`; Carlos, con `nombre`
-        return f"creó la pestaña «{a.get('titulo') or a.get('desde') or a.get('nombre') or 'nueva'}»"
-    if h == "agregar_campo":
-        return f"agregó el campo «{a.get('nombre')}»"
-    if h == "quitar_campo":
-        return f"quitó el campo «{a.get('campo')}»"
-    if h == "renombrar_campo":
-        return f"renombró un campo a «{a.get('nombre')}»"
-    if h == "renombrar_seccion":
-        return f"renombró una pestaña a «{a.get('titulo') or a.get('nombre')}»"
-    if h == "quitar_seccion":
-        return f"quitó la pestaña «{a.get('seccion')}»"
-    return None  # navegar y anotar en la ficha no cambian la pantalla
+    if c.get("herramienta") in ("crear_seccion", "renombrar_seccion") and not a.get("titulo") and a.get("nombre"):
+        c = {**c, "args": {**a, "titulo": a["nombre"]}}
+    return pantalla.etiqueta_cambio(c)
 
 
 def creado_sin_decir(doc_antes: dict, cambios: list[dict], respuesta: str = "") -> list[str]:
@@ -272,21 +199,56 @@ def _opciones_antes(doc: dict, seccion: Any, campo: Any) -> list:
     return list((c or {}).get("opciones") or [])
 
 
-# ───────── Ganchos de la pantalla (los llena E2 con lienzo/edicion de C2) ─────────
+# ───────── Ganchos de la pantalla (chat.js; bloques cuando E2 conecte edicion.HERRAMIENTAS_EDICION) ─────────
+
+_LADO = re.compile(r"\b(derecha|izquierda)\b", re.IGNORECASE)
+_NEGADO_GRAFICO = re.compile(r"\bno (hay|existe|tengo|se puede|puedo)\b", re.IGNORECASE)
+_BLOQUES_TOCADOS = frozenset({"agregar_bloque", "mover_bloque"})
+
+
+def _uid_de_cambio(c: dict) -> str | None:
+    """El bloque que tocó una herramienta de lienzo en este turno (chat.js: args.bloque o «Agregado el bloque …»)."""
+    a = c.get("args") or {}
+    if a.get("bloque"):
+        return str(a["bloque"])
+    m = re.search(r"Agregado el bloque (\S+):", c.get("resultado") or "")
+    return m.group(1) if m else None
+
 
 def _gancho_lado(respuesta: str, sesion: "SesionDiseno") -> str | None:
-    # TODO(E2): si dice «derecha»/«izquierda», algún bloque agregado o movido en este mensaje debe haber quedado ahí
-    # (chat.js con `edicion.ubicarTodo`; aquí `lienzo.ubicar_todo`). Tras MAX_CORRECCIONES, el código agrega «Ojo: en realidad quedó…».
-    return None
+    m = _LADO.search(respuesta)
+    if not m or not sesion.cambios:
+        return None
+    lado = m.group(1).lower()
+    u = ubicar_todo(sesion.doc)
+    ubicados = [_uid_de_cambio(c) for c in sesion.cambios if c["herramienta"] in _BLOQUES_TOCADOS]
+    tocados = [x for x in ubicados if x] or [x for x in (_uid_de_cambio(c) for c in sesion.cambios) if x]
+    if not tocados or any(u.get(i, {}).get("lado") == lado for i in tocados):
+        return None
+    donde = "; ".join(f"{i} → fila {u[i]['fila']}, {u[i]['lado']}" if i in u else f"{i} → ya no está" for i in tocados)
+    return (f'[Aviso interno] Dices "{lado}", pero lo que cambiaste quedó así: {donde}. Muévelo/ajusta anchos para que quede a la '
+            f"{lado}, o di dónde quedó de verdad.")
 
 
 def _gancho_grafico_negado(respuesta: str, sesion: "SesionDiseno") -> str | None:
-    # TODO(E2): «no hay / no se puede» nombrando un gráfico que SÍ está en graficos_posibles (describir_pantalla de C2).
+    if not _NEGADO_GRAFICO.search(respuesta):
+        return None
+    posibles = [(x["titulo"], g) for x in pantalla.describir_pantalla(sesion.doc)["secciones"] for g in (x.get("graficos_posibles") or [])]
+    bajo = respuesta.lower()
+    for _sec, g in posibles:
+        par = re.search(r"\((.*)\)", g)
+        if not par:
+            continue
+        nombre = re.sub(r" \d+ %", "", par.group(1).lower())
+        if nombre and nombre in bajo:
+            donde = ", ".join(t for t, xg in posibles if xg == g)
+            return (f"[Aviso interno] Dices que no se puede, pero «{g}» SÍ se puede dibujar con: {donde}. Hazlo con agregar_bloque/"
+                    f'cambiar_visual (vista "grafico"), o explica bien qué es lo que no se puede.')
     return None
 
 
 def _gancho_sustituto(respuesta: str, sesion: "SesionDiseno") -> str | None:
-    # TODO(E2): SUSTITUTO con agregar_bloque/cambiar_visual en `cambios`: el código vuelve al CRM del principio y pide preguntar.
+    # TODO(E2): SUSTITUTO + agregar_bloque/cambiar_visual: revertir al doc del inicio del turno y corregir (chat.js).
     return None
 
 
@@ -357,6 +319,20 @@ class SesionDiseno(agente.Sesion):
                 return aviso
         # Ficha: si pidió VARIAS cosas en este mensaje y anotó menos, el código le pide las que faltan.
         return toma.aviso_piezas_faltantes(self.doc, self.texto, sum(1 for c in self.cambios if c["herramienta"] == "anotar_bloque"))
+
+    def verdad_lado_final(self, respuesta: str) -> str | None:
+        """Tras agotar correcciones: si aún dice un lado que no coincide con ubicar_todo, se añade la verdad (chat.js verdadLado)."""
+        m = _LADO.search(respuesta)
+        if not m or not self.cambios:
+            return None
+        lado = m.group(1).lower()
+        u = ubicar_todo(self.doc)
+        ubicados = [_uid_de_cambio(c) for c in self.cambios if c["herramienta"] in _BLOQUES_TOCADOS]
+        tocados = [x for x in ubicados if x] or [x for x in (_uid_de_cambio(c) for c in self.cambios) if x]
+        if not tocados or any(u.get(i, {}).get("lado") == lado for i in tocados):
+            return None
+        partes = [f"la fila {u[i]['fila']}, {u[i]['lado']}" for i in tocados if i in u]
+        return "; ".join(partes) if partes else None
 
     @staticmethod
     def promete(respuesta: str) -> bool:
@@ -692,7 +668,7 @@ def _traza(sesion: SesionDiseno) -> dict:
 
 def _construir(doc: dict) -> dict:
     """«Sí» a la ficha: el CÓDIGO arma el inicio (sin llamar al modelo): rápido, completo y sin fallos a medias."""
-    r = toma.construir_desde_ficha(doc, acomodar, validar, fuentes())
+    r = edicion.construir_desde_ficha(doc)
     salida: dict[str, Any] = {"respuesta": toma.respuesta_construida(r), "modo": "ia", "fallos": list(r["errores"]), "intentos": [], "consultas": [], "avisos": []}
     if r["errores"]:
         return {**salida, "doc": doc, "cambios": []}
@@ -776,6 +752,8 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
         respuesta = " ".join(ultimos)  # el modelo no terminó: se le dice a la persona lo que sí se hizo
 
     revisar_sustituto_final(respuesta, sesion)
+    if correcciones >= agente.MAX_CORRECCIONES and (vl := sesion.verdad_lado_final(respuesta)):
+        respuesta += f"\n\nOjo: en realidad quedó en {vl}."
     respuesta = agente.limpiar_respuesta(respuesta)
     if not respuesta:
         respuesta = sesion.respuesta_del_codigo(ultimos)
