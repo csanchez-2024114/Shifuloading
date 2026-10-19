@@ -2,6 +2,8 @@
 cuaderno en blanco. Verifica el ESTADO final (dónde quedó cada pieza), no solo qué herramienta llamó.
 Uso: python3 laboratorio/pruebas/banco_pestanas.py [repeticiones=1]"""
 import json, re, sys, time, urllib.request
+import os
+CHAT = os.environ.get("BASE", "http://localhost:5190") + os.environ.get("RUTA_CHAT", "/api/lab/chat")  # D61: el mismo banco mide el laboratorio o el CRM
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 B = [{"uid": "b0", "vista": "kpis", "seccion": "miembros", "opciones": {"por": "estado"}, "ancho": 12, "alto": 1},
      {"uid": "b1", "vista": "vencimientos", "seccion": "miembros", "opciones": {"fecha": "vence", "titulo": "nombre", "dias": 30}, "ancho": 12, "alto": 2}]
@@ -9,7 +11,7 @@ def E(vista="inicio", paginas=None):
     return {"vista": vista, "bloques": B, **({"estructura": {"paginas": paginas}} if paginas else {})}
 def pide(est, txt, sel=None):
     a = time.time()
-    d = json.load(urllib.request.urlopen(urllib.request.Request("http://localhost:5190/api/lab/chat", data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, **({"seleccion": sel} if sel else {})}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
+    d = json.load(urllib.request.urlopen(urllib.request.Request(CHAT, data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, **({"seleccion": sel} if sel else {})}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
     return (d["estado"] if (d["cambios"] or d.get("estadoCambio")) else est), d, time.time() - a
 pag = lambda e, pid: ((e.get("estructura") or {}).get("paginas") or {}).get(pid) or []
 inicio_v = lambda e: [b["vista"] for b in e["bloques"]]

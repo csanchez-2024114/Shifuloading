@@ -4,6 +4,8 @@ Meter, cambiar, borrar y consultar datos por chat existe desde D50.
 Guarda TODO (herramientas, argumentos, fallos, respuesta) en un JSON para etiquetar a mano (método de Alan).
 Uso: python3 laboratorio/pruebas/jornada.py [salida.json]"""
 import json, sys, time, urllib.request
+import os
+CHAT = os.environ.get("BASE", "http://localhost:5190") + os.environ.get("RUTA_CHAT", "/api/lab/chat")  # D61: el mismo banco mide el laboratorio o el CRM
 SALIDA = sys.argv[1] if len(sys.argv) > 1 else "/tmp/jornada.json"
 B = [{"uid": "b0", "vista": "kpis", "seccion": "miembros", "opciones": {"por": "estado"}, "ancho": 12, "alto": 1},
      {"uid": "b1", "vista": "vencimientos", "seccion": "miembros", "opciones": {"fecha": "vence", "titulo": "nombre", "dias": 30}, "ancho": 6, "alto": 2},
@@ -39,7 +41,7 @@ CASOS = [  # (área, qué existe hoy, estado, texto)
 res = []
 for area, existe, est, txt in CASOS:
     a = time.time()
-    d = json.load(urllib.request.urlopen(urllib.request.Request("http://localhost:5190/api/lab/chat", data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, "muestra": {"nivel": "pocos", "ejemplos": True, "pais": "gt"}}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
+    d = json.load(urllib.request.urlopen(urllib.request.Request(CHAT, data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, "muestra": {"nivel": "pocos", "ejemplos": True, "pais": "gt"}}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
     t = round(time.time() - a, 1)
     fila = {"area": area, "existe": existe, "texto": txt, "seg": t, "hizo": [{"h": c["herramienta"], "args": c["args"]} for c in d["cambios"]], "intentos": d.get("intentos", []), "consultas": d.get("consultas", []), "datos": (d.get("estado") or {}).get("datos"), "respuesta": d["respuesta"]}
     res.append(fila)

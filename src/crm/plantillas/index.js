@@ -1,10 +1,11 @@
 /* Puntos de enganche del sistema de diseño (D61) en CrmPage. Todo está detrás de VITE_CRM_DISENO=1: con la bandera
  * apagada, DISENO es la constante `false`, estas funciones devuelven lo mismo que reciben y la pantalla del sistema de diseño
  * (DisenoCrm, con sus estilos) ni siquiera entra al paquete: se carga aparte, solo cuando la bandera está prendida. */
-import { lazy } from 'react'
+import { Suspense, createElement, lazy } from 'react'
 import { LuLayoutDashboard } from 'react-icons/lu'
 import { tokensDeMarca } from '@lab/plantillas/marca.js'
 import { tieneInicio } from './desdeCrm.js'
+import { tomarPiezas } from './seleccion.js'
 
 export const DISENO = import.meta.env.VITE_CRM_DISENO === '1'
 
@@ -24,3 +25,11 @@ export function marcoDiseno(crm, tema) {
   const { logo_id: _logo, ...marca } = crm?.marca || {}
   return { className: 'mc pl', 'data-estilo': 'vivo', 'data-densidad': 'compacto', style: { '--acento': '#22d3a6', '--vel': 2.2, ...tokensDeMarca(marca, tema).vars } }
 }
+
+/** Lo del sistema de diseño dentro del chat de Shifu (se carga aparte): los cambios con «Deshacer», «Quitar ejemplos» y las
+ * piezas elegidas en el lienzo. Props: crm, aplicar (la de CrmPage). */
+const ChatDisenoAparte = DISENO ? lazy(() => import('./ChatDiseno.jsx')) : null
+export const ChatDiseno = DISENO ? (props) => createElement(Suspense, { fallback: null }, createElement(ChatDisenoAparte, props)) : null
+
+/** Las piezas elegidas para el mensaje que sale: { prefijo, contexto: { seleccion } } o null (sin bandera, siempre null). */
+export const tomarSeleccion = DISENO ? tomarPiezas : () => null

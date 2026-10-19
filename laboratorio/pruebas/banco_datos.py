@@ -3,6 +3,8 @@
 Datos: membresías con 8 ejemplos (Ana López = miembros-0, Carlos Pérez = miembros-1, Luis Hernández = miembros-3…).
 Uso: python3 laboratorio/pruebas/banco_datos.py [repeticiones=1]"""
 import datetime, json, re, sys, time, urllib.request
+import os
+CHAT = os.environ.get("BASE", "http://localhost:5190") + os.environ.get("RUTA_CHAT", "/api/lab/chat")  # D61: el mismo banco mide el laboratorio o el CRM
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 HOY = datetime.date.today()
 MUESTRA = {"nivel": "pocos", "ejemplos": True, "pais": "gt"}
@@ -14,7 +16,7 @@ UN_JUAN = {"n": 1, "nuevos": {"miembros": [{"id": "miembros-p1", "valores": {"no
 DOS_ANAS = {"n": 1, "nuevos": {"miembros": [{"id": "miembros-p1", "valores": {"nombre": "Ana Martínez", "plan": "Trimestral", "estado": "Activa"}}]}}
 def pide(est, txt, hist=None):  # noqa
     a = time.time()
-    d = json.load(urllib.request.urlopen(urllib.request.Request("http://localhost:5190/api/lab/chat", data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, "muestra": MUESTRA, **({"historial": hist} if hist else {})}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
+    d = json.load(urllib.request.urlopen(urllib.request.Request(CHAT, data=json.dumps({"plantilla": "membresias", "estado": est, "texto": txt, "muestra": MUESTRA, **({"historial": hist} if hist else {})}).encode(), headers={"Content-Type": "application/json"}), timeout=120))
     return d, time.time() - a
 datos = lambda d: (d.get("estado") or {}).get("datos") or {}
 nuevos = lambda d, s="miembros": datos(d).get("nuevos", {}).get(s, [])
