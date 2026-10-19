@@ -267,14 +267,15 @@ def _lista(doc: dict, lista_id: str) -> dict:
     return l
 
 
-def lista_crear(doc: dict, nombre: Any, campos: list[dict] | None = None, ahora: datetime | None = None) -> dict:
-    """Crea una sección propia. `campos` es [{nombre, tipo}]; si no hay ninguno, lleva un campo "Nombre"."""
+def lista_crear(doc: dict, nombre: Any, campos: list[dict] | None = None, ahora: datetime | None = None, libres: Any = ()) -> dict:
+    """Crea una sección propia. `campos` es [{nombre, tipo}]; si no hay ninguno, lleva un campo "Nombre".
+    `libres`: secciones integradas cuyo nombre no cuenta como ocupado (el sistema de diseño pasa las ocultas)."""
     ahora = ahora or ahora_utc()
     if len(doc["listas"]) >= MAX_LISTAS:
         raise ErrorCrm(422, f"Puedes tener hasta {MAX_LISTAS} secciones propias.")
     n = _nombre(nombre, LARGO_NOMBRE, "el nombre de la sección")
     rubro = (doc.get("brief") or {}).get("rubro")
-    nombres_en_uso = [titulo_seccion(rubro, i, doc["secciones"]) for i in IDS_SECCION] + [l["nombre"] for l in doc["listas"]]
+    nombres_en_uso = [titulo_seccion(rubro, i, doc["secciones"]) for i in IDS_SECCION if i not in libres] + [l["nombre"] for l in doc["listas"]]
     if any(_igual(n, x) for x in nombres_en_uso):
         raise ErrorCrm(422, f"Ya hay una sección llamada “{n}”.")
     lista_campos: list[dict] = []

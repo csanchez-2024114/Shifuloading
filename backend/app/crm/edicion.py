@@ -619,7 +619,9 @@ def _crear_seccion(doc: dict, args: dict, ctx: dict, secciones: list[dict], no, 
         return no(" ".join(errores))
 
     def escribir() -> dict:
-        out = estructura.lista_crear(doc, titulo, [{"nombre": c["nombre"], "tipo": c["tipo"], "opciones": c.get("opciones")} for c in campos], ctx.get("ahora"))
+        # Una integrada oculta (p. ej. «Cobros» de Carlos, que aún no guarda datos) no ocupa el nombre: la persona no la ve.
+        out = estructura.lista_crear(doc, titulo, [{"nombre": c["nombre"], "tipo": c["tipo"], "opciones": c.get("opciones")} for c in campos], ctx.get("ahora"),
+                                     libres=set(doc.get("ocultas") or []))
         l = out["listas"].pop()
         l["id"] = sid
         for guardado, c in zip(l["campos"], campos):
