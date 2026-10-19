@@ -43,6 +43,14 @@ def _html(body: str, head: str = "") -> dict:
 def test_bloqueantes(files, code):
     assert (code, "block") in _codes(files)
     assert blockers(analyze(files))
+    if code == "external_navigation":  # un solo hallazgo: no se repite como aviso de navegación calculada
+        assert _codes(files, "warn") == set()
+
+
+@pytest.mark.parametrize("js", ["location.href = 'pagina2.html'", "location = './nivel2.html?x=' + n",
+                                "location.href = '#arriba'"])
+def test_navegacion_local_sin_hallazgos(js):
+    assert analyze(_html(f"<script>{js}</script>")) == []
 
 
 @pytest.mark.parametrize("files, code", [
