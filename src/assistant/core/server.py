@@ -373,6 +373,8 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
             from assistant.core.files import store as fstore
 
             fstore.delete_user(store, uid)
+        if settings.coder_enabled:  # proyectos del codificador, con sus versiones (base de negocio)
+            app.state.coder.delete_user(uid)
         appdata.turn_metrics.delete_for_user(uid)
         appdata.feedback.delete_for_user(uid)
         appdata.sessions.delete_for_user(uid)
