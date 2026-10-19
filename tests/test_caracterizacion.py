@@ -720,3 +720,24 @@ def test_con_files_enabled_en_0_la_huella_es_la_de_3b9b903(monkeypatch):
     actual["constants"] = _with_old_values(actual["constants"])  # cambios de valor autorizados (CHANGED_CONSTANTS)
     distintas = [k for k in base if k not in FREE_SECTIONS and actual[k] != base[k]]
     assert distintas == [], f"con FILES_ENABLED=0 cambiaron secciones fijas: {distintas}"
+
+
+# --------------------------------------------------------------------------- CODER_ENABLED=0: nada cambia
+
+# Huella completa en el tag pre-agente-codificador (beba666), congelada. Con CODER_ENABLED=0 (y los demás interruptores
+# del codificador en su default) la huella de hoy debe ser idéntica salvo "config" (variables CODER_*, declaradas en
+# NEW_CONFIG_VARS) e "index_html_sha256" (el panel de la UI, con el sha acordado).
+HUELLA_PRE_CODER = Path(__file__).parent / "snapshots" / "huella_pre_agente_codificador.json"
+HUELLA_PRE_CODER_SHA256 = "39a5e22722131be72af8bb5398c00e13ee1d90a793ee035079e78fa0120c5279"
+
+
+def test_con_coder_enabled_en_0_la_huella_es_la_de_pre_agente_codificador(monkeypatch):
+    from hashlib import sha256
+
+    base = json.loads(HUELLA_PRE_CODER.read_text(encoding="utf-8"))
+    assert sha256(_canon(base).encode()).hexdigest() == HUELLA_PRE_CODER_SHA256, "la huella congelada cambió"
+    assert getattr(_settings(), "coder_enabled", False) is False
+    actual = _huella(monkeypatch)
+    assert set(actual) == set(base)
+    distintas = [k for k in base if k not in FREE_SECTIONS and actual[k] != base[k]]
+    assert distintas == [], f"con CODER_ENABLED=0 cambiaron secciones fijas: {distintas}"

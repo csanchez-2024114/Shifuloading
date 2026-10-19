@@ -1,0 +1,1762 @@
+{
+ "bigtool_index_docs": {
+  "acos": "acos: Return the arc cosine (measured in radians) of x.\n\nThe result is between 0 and pi.",
+  "acosh": "acosh: Return the inverse hyperbolic cosine of x.",
+  "add_days_to_date": "add_days_to_date: Add (or subtract, with a negative number) a number of days to a date (YYYY-MM-DD).",
+  "add_sales_tax": "add_sales_tax: Add sales tax / VAT (IVA, 16% in Mexico by default) to an amount, or break it down if the amount already includes it.",
+  "age_from_birthdate": "age_from_birthdate: Compute someone's exact age (years, months, days) from a birthdate (YYYY-MM-DD).",
+  "asin": "asin: Return the arc sine (measured in radians) of x.\n\nThe result is between -pi/2 and pi/2.",
+  "asinh": "asinh: Return the inverse hyperbolic sine of x.",
+  "atan": "atan: Return the arc tangent (measured in radians) of x.\n\nThe result is between -pi/2 and pi/2.",
+  "atan2": "atan2: Return the arc tangent (measured in radians) of y/x.\n\nUnlike atan(y/x), the signs of both x and y are considered.",
+  "atanh": "atanh: Return the inverse hyperbolic tangent of x.",
+  "base64_decode": "base64_decode: Decode a Base64 string back to text.",
+  "base64_encode": "base64_encode: Encode a text in Base64.",
+  "body_mass_index": "body_mass_index: Body mass index (BMI) from weight in kg and height in meters, with the WHO category.",
+  "business_days_between": "business_days_between: Count working days (Monday to Friday) between two dates (YYYY-MM-DD), both included. Ignores holidays.",
+  "calculator": "calculator: Calculator: evaluates a math expression and returns the exact result.\n\nSupports + - * / // % ** and parentheses, plus math functions/constants (sqrt, sin, cos, tan,\nlog, log10, exp, factorial, abs, round, min, max, pi, e...). Example: \"sqrt(144) + 2**10 / 4\".\nAlways use it for arithmetic instead of computing from memory.",
+  "cbrt": "cbrt: Return the cube root of x.",
+  "ceil": "ceil: Return the ceiling of x as an Integral.\n\nThis is the smallest integer >= x.",
+  "check_python_syntax": "check_python_syntax: Check whether Python code is syntactically valid WITHOUT running it (it is only parsed). Use it before giving\nthe user Python code longer than 15 lines, and fix any error it reports. Returns OK, or the error with its line\nand column.",
+  "compound_interest": "compound_interest: Future value of savings/investment with monthly compounding and optional monthly contributions.",
+  "convert_currency": "convert_currency: Convert money between currencies (ISO codes like USD, MXN, EUR, GBP, JPY) using today's official\nEuropean Central Bank exchange rate (Frankfurter API).",
+  "convert_timezone": "convert_timezone: Convert a date-time (ISO format, e.g. 2026-10-15 09:30) from one IANA time zone to another\n(e.g. America/Mexico_City -> Europe/Madrid).",
+  "convert_units": "convert_units: Convert a value between measurement units: length (mm, cm, m, km, in, ft, yd, mi, nmi), mass (mg, g,\nkg, t, oz, lb), volume (ml, l, m3, tsp, tbsp, cup, floz, gal), speed (m/s, km/h, mph, knot), area (m2,\nkm2, ha, ft2, acre), data size (b, kb, mb, gb, tb, kib, mib, gib) and temperature (c, f, k).",
+  "copysign": "copysign: Return a float with the magnitude (absolute value) of x but the sign of y.\n\nOn platforms that support signed zeros, copysign(1.0, -0.0)\nreturns -1.0.",
+  "cos": "cos: Return the cosine of x (measured in radians).",
+  "cosh": "cosh: Return the hyperbolic cosine of x.",
+  "count_characters": "count_characters: Count the characters in a text (including spaces).",
+  "count_words": "count_words: Count the words in a text.",
+  "crm_create_order": "App: crm | Resource: order | Action: create\nTool: crm create order (crm_create_order)\nSummary: Create a new order for a CRM customer (simulated, in memory).\nWhen to use: The user wants to place or register a new order or purchase for a customer.\nWhen NOT to use: To see existing orders use crm_list_orders.\nParameters: product (Product name or SKU.); quantity (Number of units.); customer_id (CRM customer id. Get it with crm_find_customer_by_email or crm_list_customers.); customer_email (Customer email; used to resolve customer_id automatically when it is missing.)\nPrerequisites: Requires customer_id: get it first with crm_find_customer_by_email or crm_list_customers.\nTags: order, purchase, sale, buy\nExample requests: \"place an order of 3 laptops for ana@example.com\" | \"crea un pedido de 2 monitores para Luis\" | \"register a purchase of 5 keyboards for customer c-003\"",
+  "crm_find_customer_by_email": "App: crm | Resource: customer | Action: find_by_email\nTool: crm find customer by email (crm_find_customer_by_email)\nSummary: Find a CRM customer by their email address and return the customer record (id, name, email, city).\nWhen to use: You have a customer's email and need their customer_id or details.\nWhen NOT to use: If you only know the name, use crm_list_customers with name_contains.\nParameters: email (Exact customer email address.)\nTags: customer, client, lookup, email, id\nExample requests: \"find the customer with email ana@example.com\" | \"busca al cliente ana@example.com\" | \"what is the customer id for luis@example.com\"",
+  "crm_get_customer": "App: crm | Resource: customer | Action: get\nTool: crm get customer (crm_get_customer)\nSummary: Get the full record of a CRM customer by customer_id.\nWhen to use: You already have a customer_id and need the customer's details.\nWhen NOT to use: To find a customer without an id use crm_find_customer_by_email or crm_list_customers.\nParameters: customer_id (CRM customer id (e.g. c-001).)\nPrerequisites: Requires customer_id: get it first with crm_find_customer_by_email or crm_list_customers.\nTags: customer, details, profile\nExample requests: \"show details of customer c-001\" | \"dame los datos del cliente c-002\"",
+  "crm_list_customers": "App: crm | Resource: customer | Action: list\nTool: crm list customers (crm_list_customers)\nSummary: List CRM customers (id, name, email), optionally filtered by part of the name.\nWhen to use: You need a customer_id but only know the customer's name, or the user wants to see customers.\nWhen NOT to use: If you have the exact email, crm_find_customer_by_email is more precise.\nParameters: name_contains (Optional case-insensitive part of the customer name to filter by.)\nTags: customers, clients, list, directory, search by name\nExample requests: \"list all customers\" | \"muéstrame los clientes\" | \"which customers are called Luis\"",
+  "crm_list_orders": "App: crm | Resource: order | Action: list\nTool: crm list orders (crm_list_orders)\nSummary: List the orders of a CRM customer.\nWhen to use: The user asks what a customer has ordered or bought, or for their order history.\nWhen NOT to use: To create a new order use crm_create_order.\nParameters: customer_id (CRM customer id. Get it with crm_find_customer_by_email or crm_list_customers.)\nPrerequisites: Requires customer_id: get it first with crm_find_customer_by_email or crm_list_customers.\nTags: orders, purchases, history\nExample requests: \"what orders does Luis have\" | \"¿qué pedidos tiene luis@example.com?\" | \"order history of customer c-002\"",
+  "current_datetime": "current_datetime: Returns the current date and time (ISO 8601) and the day of the week.\n\n`time_zone` is optional: \"local\" (default) or an IANA time zone name,\ne.g. \"America/Mexico_City\", \"Europe/Madrid\", \"UTC\".",
+  "day_of_week": "day_of_week: Return the day of the week for a given date (YYYY-MM-DD).",
+  "days_between_dates": "days_between_dates: Count the calendar days between two dates (ISO format YYYY-MM-DD).",
+  "deep_research": "deep_research: Delegates in-depth research to a sub-agent that runs several web searches and\nreturns a summary with sources. Use it for questions that need cross-checking several\nsources; for a single fact use web_search. Do not call it again for follow-up questions about research\nalready done in this conversation: answer from those results unless a needed fact is missing. Call it\ndirectly; the app asks the user to confirm before it runs.",
+  "degrees": "degrees: Convert angle x from radians to degrees.",
+  "describe_numbers": "describe_numbers: Descriptive statistics of a list of numbers: count, sum, mean, median, mode, standard deviation, min, max.",
+  "dist": "dist: Return the Euclidean distance between two points p and q.\n\nThe points should be specified as sequences (or iterables) of\ncoordinates.  Both inputs must have the same dimension.\n\nRoughly equivalent to:\n    sqrt(sum((px - qx) ** 2.0 for px, qx in zip(p, q)))",
+  "distance_between_places": "distance_between_places: Straight-line (great-circle) distance in km between two cities or places.",
+  "erf": "erf: Error function at x.",
+  "erfc": "erfc: Complementary error function at x.",
+  "exp": "exp: Return e raised to the power of x.",
+  "exp2": "exp2: Return 2 raised to the power of x.",
+  "expm1": "expm1: Return exp(x)-1.\n\nThis function avoids the loss of precision involved in the direct evaluation of exp(x)-1 for small x.",
+  "extract_emails_and_urls": "extract_emails_and_urls: Extract all email addresses and web URLs found in a text.",
+  "fabs": "fabs: Return the absolute value of the float x.",
+  "floor": "floor: Return the floor of x as an Integral.\n\nThis is the largest integer <= x.",
+  "fma": "fma: Fused multiply-add operation.\n\nCompute (x * y) + z with a single round.",
+  "fmod": "fmod: Return fmod(x, y), according to platform C.\n\nx % y may differ.",
+  "format_json": "format_json: Validate a JSON text and return it pretty-printed (or the syntax error location).",
+  "frexp": "frexp: Return the mantissa and exponent of x, as pair (m, e).\n\nm is a float and e is an int, such that x = m * 2.**e.\nIf x is 0, m and e are both 0.  Else 0.5 <= abs(m) < 1.0.",
+  "fsum": "fsum: Return an accurate floating-point sum of values in the iterable seq.\n\nAssumes IEEE-754 floating-point arithmetic.",
+  "gamma": "gamma: Gamma function at x.",
+  "generate_password": "generate_password: Generate a cryptographically secure random password.",
+  "generate_uuid": "generate_uuid: Generate one or more random UUID v4 identifiers.",
+  "geocode_place": "geocode_place: Find a city or place: country, region, latitude/longitude, population and time zone.",
+  "hash_text": "hash_text: Compute the hash of a text (md5, sha1, sha256, sha512).",
+  "is_palindrome": "is_palindrome: Check whether a text is a palindrome, ignoring spaces, case and accents.",
+  "isclose": "isclose: Determine whether two floating-point numbers are close in value.\n\n  rel_tol\n    maximum difference for being considered \"close\", relative to the\n    magnitude of the input values\n  abs_tol\n    maximum difference for being considered \"close\", regardless of the\n    magnitude of the input values\n\nReturn True if a is close in value to b, and False otherwise.\n\nFor the values to be considered close, the difference between them\nmust be smaller than at least one of the tolerances.\n\n-inf, inf and NaN behave similarly to the IEEE 754 Standard.  That\nis, NaN is not close to anything, even itself.  inf and -inf are\nonly close to themselves.",
+  "isfinite": "isfinite: Return True if x is neither an infinity nor a NaN, and False otherwise.",
+  "isinf": "isinf: Return True if x is a positive or negative infinity, and False otherwise.",
+  "isnan": "isnan: Return True if x is a NaN (not a number), and False otherwise.",
+  "isqrt": "isqrt: Return the integer part of the square root of the input.",
+  "ldexp": "ldexp: Return x * (2**i).\n\nThis is essentially the inverse of frexp().",
+  "lgamma": "lgamma: Natural logarithm of absolute value of Gamma function at x.",
+  "linear_regression": "linear_regression: Fit a straight line y = slope*x + intercept to data points and report the correlation (r and r²).\nUseful for trends and simple forecasts.",
+  "loan_payment": "loan_payment: Fixed monthly payment of a loan or mortgage (French amortization), plus total paid and total interest.",
+  "log10": "log10: Return the base 10 logarithm of x.",
+  "log1p": "log1p: Return the natural logarithm of 1+x (base e).\n\nThe result is computed in a way which is accurate for x near zero.",
+  "log2": "log2: Return the base 2 logarithm of x.",
+  "modf": "modf: Return the fractional and integer parts of x.\n\nBoth results carry the sign of x and are floats.",
+  "nextafter": "nextafter: Return the floating-point value the given number of steps after x towards y.\n\nIf steps is not specified or is None, it defaults to 1.\n\nRaises a TypeError, if x or y is not a double, or if steps is not an integer.\nRaises ValueError if steps is negative.",
+  "percentage_change": "percentage_change: Percentage increase or decrease from an old value to a new value.",
+  "pow": "pow: Return x**y (x to the power of y).",
+  "radians": "radians: Convert angle x from degrees to radians.",
+  "random_choice": "random_choice: Pick one or more random options from a list (without repetition), e.g. to decide or draw lots.",
+  "remainder": "remainder: Difference between x and the closest integer multiple of y.\n\nReturn x - n*y where n*y is the closest integer multiple of y.\nIn the case where x is exactly halfway between two multiples of\ny, the nearest even value of n is used. The result is always exact.",
+  "remove_accents": "remove_accents: Remove accents/diacritics from a text (an accented vowel becomes the plain vowel).",
+  "reverse_text": "reverse_text: Reverse the characters of a text.",
+  "roll_dice": "roll_dice: Roll one or more dice with the given number of sides.",
+  "save_memory": "save_memory: Saves a precise fact about the user to long-term memory, which is shared by all of the\nuser's conversations. Use it ONLY when the user explicitly asks you to remember something, states a durable personal\nfact that is clearly useful in other conversations (where they live, their job, their pets or family, a stable\npreference or a lasting technical constraint), or wants a specific dated event remembered. Never save conversation\ncontent: explanations, tasks, calculations, tool or search results, topics discussed or details of the current\nrequest. Only save what the user explicitly said about themselves, never your own assumptions.\n\nArgs:\n    text: The fact as a short, self-contained sentence in the user's language, in neutral form with no subject:\n        never start with \"The user\" or its equivalent in the user's language (e.g. \"Lives in Madrid\",\n        \"Works as a data engineer\", \"Birthday is on March 3\").\n    evidence: The user's exact words that state this fact, copied verbatim from their message.",
+  "search_memories": "search_memories: Searches long-term memory for what is known about the user. Pass topic keywords in the\nlanguage the memories were saved in, or an empty string to get the most recent memories.\nEach result starts with its id, which update_memory needs.",
+  "sin": "sin: Return the sine of x (measured in radians).",
+  "sinh": "sinh: Return the hyperbolic sine of x.",
+  "slugify": "slugify: Convert a text to a URL slug (lowercase, hyphens, no accents).",
+  "split_bill": "split_bill: Split a restaurant bill between people, including the tip.",
+  "sqrt": "sqrt: Return the square root of x.",
+  "sumprod": "sumprod: Return the sum of products of values from two iterables p and q.\n\nRoughly equivalent to:\n\n    sum(itertools.starmap(operator.mul, zip(p, q, strict=True)))\n\nFor float and mixed int/float inputs, the intermediate products\nand sums are computed with extended precision.",
+  "tan": "tan: Return the tangent of x (measured in radians).",
+  "tanh": "tanh: Return the hyperbolic tangent of x.",
+  "title_case": "title_case: Capitalize The First Letter Of Each Word.",
+  "to_lowercase": "to_lowercase: Convert text to lowercase.",
+  "to_uppercase": "to_uppercase: Convert text to UPPERCASE.",
+  "trunc": "trunc: Truncates the Real x to the nearest Integral toward 0.\n\nUses the __trunc__ magic method.",
+  "ulp": "ulp: Return the value of the least significant bit of the float x.",
+  "update_memory": "update_memory: Replaces the text of an EXISTING memory (get its id from search_memories). Use it when the\nuser confirms that a saved fact changed, instead of saving a second, contradictory memory. Only use it with what\nthe user explicitly said; never with your own assumptions. It cannot delete memories.\n\nArgs:\n    id: The memory id shown by search_memories.\n    text: The new fact as a complete, self-contained sentence in the user's language.\n    evidence: The user's exact words that state the new value, copied verbatim from their message.",
+  "validate_curp": "validate_curp: Validate a Mexican CURP (personal ID code): format, birth date, sex, state and check digit.",
+  "weather_forecast": "weather_forecast: Current weather and the forecast for the next 3 days in a city (temperature, rain probability, wind).",
+  "web_search": "web_search: Searches the web for current information and returns a summary with sources. Use it for\nnews, recent data or anything that may have changed.",
+  "wikipedia_summary": "wikipedia_summary: Short encyclopedia summary of a topic, person, place or concept from Wikipedia (language code: es, en...).",
+  "word_frequency": "word_frequency: Most frequent words in a text (ignores words shorter than 3 letters)."
+ },
+ "bigtool_prompt": "\n\nYour tools are not loaded up front: there is a registry with many of them (math, text, web, memory, date, research). For any calculation, current fact, memory lookup or text transformation, ALWAYS use a tool, even if you think you know the answer: first call retrieve_tools with an English description of what you need, then call the tool it returns. Only for conversation (greetings, opinions, small talk) reply directly without retrieve_tools.",
+ "bigtool_registry": [
+  "add_days_to_date",
+  "add_sales_tax",
+  "age_from_birthdate",
+  "base64_decode",
+  "base64_encode",
+  "body_mass_index",
+  "business_days_between",
+  "calculator",
+  "check_python_syntax",
+  "compound_interest",
+  "convert_currency",
+  "convert_timezone",
+  "convert_units",
+  "current_datetime",
+  "day_of_week",
+  "days_between_dates",
+  "deep_research",
+  "describe_numbers",
+  "distance_between_places",
+  "extract_emails_and_urls",
+  "format_json",
+  "generate_password",
+  "generate_uuid",
+  "geocode_place",
+  "hash_text",
+  "linear_regression",
+  "loan_payment",
+  "percentage_change",
+  "random_choice",
+  "roll_dice",
+  "save_memory",
+  "search_memories",
+  "split_bill",
+  "update_memory",
+  "validate_curp",
+  "weather_forecast",
+  "web_search",
+  "wikipedia_summary",
+  "word_frequency"
+ ],
+ "bigtool_registry_demo": [
+  "acos",
+  "acosh",
+  "add_days_to_date",
+  "add_sales_tax",
+  "age_from_birthdate",
+  "asin",
+  "asinh",
+  "atan",
+  "atan2",
+  "atanh",
+  "base64_decode",
+  "base64_encode",
+  "body_mass_index",
+  "business_days_between",
+  "calculator",
+  "cbrt",
+  "ceil",
+  "check_python_syntax",
+  "compound_interest",
+  "convert_currency",
+  "convert_timezone",
+  "convert_units",
+  "copysign",
+  "cos",
+  "cosh",
+  "count_characters",
+  "count_words",
+  "crm_create_order",
+  "crm_find_customer_by_email",
+  "crm_get_customer",
+  "crm_list_customers",
+  "crm_list_orders",
+  "current_datetime",
+  "day_of_week",
+  "days_between_dates",
+  "deep_research",
+  "degrees",
+  "describe_numbers",
+  "dist",
+  "distance_between_places",
+  "erf",
+  "erfc",
+  "exp",
+  "exp2",
+  "expm1",
+  "extract_emails_and_urls",
+  "fabs",
+  "floor",
+  "fma",
+  "fmod",
+  "format_json",
+  "frexp",
+  "fsum",
+  "gamma",
+  "generate_password",
+  "generate_uuid",
+  "geocode_place",
+  "hash_text",
+  "is_palindrome",
+  "isclose",
+  "isfinite",
+  "isinf",
+  "isnan",
+  "isqrt",
+  "ldexp",
+  "lgamma",
+  "linear_regression",
+  "loan_payment",
+  "log10",
+  "log1p",
+  "log2",
+  "modf",
+  "nextafter",
+  "percentage_change",
+  "pow",
+  "radians",
+  "random_choice",
+  "remainder",
+  "remove_accents",
+  "reverse_text",
+  "roll_dice",
+  "save_memory",
+  "search_memories",
+  "sin",
+  "sinh",
+  "slugify",
+  "split_bill",
+  "sqrt",
+  "sumprod",
+  "tan",
+  "tanh",
+  "title_case",
+  "to_lowercase",
+  "to_uppercase",
+  "trunc",
+  "ulp",
+  "update_memory",
+  "validate_curp",
+  "weather_forecast",
+  "web_search",
+  "wikipedia_summary",
+  "word_frequency"
+ ],
+ "config": {
+  "defaults": {
+   "answer_verify": false,
+   "app_mongodb_db": "",
+   "app_mongodb_uri": "",
+   "auth_enabled": false,
+   "bigtool_demo_tools": false,
+   "compact_first_message": false,
+   "compact_keep_pct": 20,
+   "compact_keep_tokens": 0,
+   "compact_model": "",
+   "compact_prune_age": 6,
+   "compact_prune_tools": false,
+   "compact_structured": false,
+   "compact_summary_max_tokens": 1200,
+   "compact_trigger_pct": 80,
+   "compact_warn_pct": 70,
+   "context_window_tokens": 0,
+   "cookie_secure": "auto",
+   "effect_approval": false,
+   "effort_high_max_calls": 15,
+   "effort_high_max_tokens": 12000,
+   "embedding_model": "text-embedding-3-small",
+   "enable_hitl_demo": false,
+   "feedback_enabled": false,
+   "file_extract_timeout": 20.0,
+   "file_image_max_px": 1568,
+   "file_max_bytes": 10000000,
+   "file_max_chars": 200000,
+   "file_max_pages": 50,
+   "file_max_per_message": 5,
+   "files_enabled": false,
+   "investigator_max_searches": 4,
+   "investigator_max_tokens": 6000,
+   "investigator_token_budget": 120000,
+   "llm_max_retries": 2,
+   "llm_model": "gpt-6-luna",
+   "llm_timeout_seconds": 300.0,
+   "login_lock_minutes": 10,
+   "login_max_fails": 5,
+   "login_max_fails_ip": 20,
+   "max_message_chars": 50000,
+   "max_tokens": 8000,
+   "memory_dedup": false,
+   "memory_dedup_score": 0.85,
+   "memory_max_per_turn": 3,
+   "memory_min_score": 0.68,
+   "memory_require_quote": false,
+   "memory_save_policy": "strict",
+   "memory_search_economy": false,
+   "memory_semantic": false,
+   "memory_summarize": false,
+   "memory_update_prior_evidence": false,
+   "memory_verify": false,
+   "metrics_ttl_days": 90,
+   "model_call_limit": 0,
+   "mongodb_db": "assistant",
+   "mongodb_uri": "mongodb://127.0.0.1:27017",
+   "openai_api_key": "",
+   "recursion_limit": 100,
+   "search_context_size": "low",
+   "search_cost_estimate": 15000,
+   "search_max_tool_calls": 1,
+   "session_ttl_days": 14,
+   "sse_ping_seconds": 15.0,
+   "summary_keep_tokens": 0,
+   "summary_trigger_tokens": 0,
+   "tool_error_detail_hidden": false,
+   "tool_repeat_limit": 8,
+   "trace_metadata": false,
+   "trusted_hosts": [
+    "localhost",
+    "127.0.0.1"
+   ],
+   "turn_max_searches": 6,
+   "turn_max_seconds": 0.0,
+   "turn_metrics": false,
+   "turn_token_cap": 150000,
+   "untrusted_wrap": false,
+   "url_filter_always": false,
+   "use_bigtool": false
+  },
+  "env_vars": [
+   "AI_MONGODB_DB",
+   "AI_MONGODB_URI",
+   "ANSWER_VERIFY",
+   "APP_MONGODB_DB",
+   "APP_MONGODB_URI",
+   "AUTH_ENABLED",
+   "BIGTOOL_DEMO_TOOLS",
+   "COMPACT_FIRST_MESSAGE",
+   "COMPACT_KEEP_PCT",
+   "COMPACT_KEEP_TOKENS",
+   "COMPACT_MODEL",
+   "COMPACT_PRUNE_AGE",
+   "COMPACT_PRUNE_TOOLS",
+   "COMPACT_STRUCTURED",
+   "COMPACT_SUMMARY_MAX_TOKENS",
+   "COMPACT_TRIGGER_PCT",
+   "COMPACT_WARN_PCT",
+   "CONTEXT_WINDOW_TOKENS",
+   "COOKIE_SECURE",
+   "EFFECT_APPROVAL",
+   "EFFORT_HIGH_MAX_CALLS",
+   "EFFORT_HIGH_MAX_TOKENS",
+   "EMBEDDING_MODEL",
+   "ENABLE_HITL_DEMO",
+   "FEEDBACK_ENABLED",
+   "FILES_ENABLED",
+   "FILE_EXTRACT_TIMEOUT",
+   "FILE_IMAGE_MAX_PX",
+   "FILE_MAX_BYTES",
+   "FILE_MAX_CHARS",
+   "FILE_MAX_PAGES",
+   "FILE_MAX_PER_MESSAGE",
+   "INVESTIGATOR_MAX_SEARCHES",
+   "INVESTIGATOR_MAX_TOKENS",
+   "INVESTIGATOR_TOKEN_BUDGET",
+   "LLM_MAX_RETRIES",
+   "LLM_MODEL",
+   "LLM_TIMEOUT_SECONDS",
+   "LOGIN_LOCK_MINUTES",
+   "LOGIN_MAX_FAILS",
+   "LOGIN_MAX_FAILS_PER_EMAIL",
+   "LOGIN_MAX_FAILS_PER_IP",
+   "MAX_MESSAGE_CHARS",
+   "MAX_TOKENS",
+   "MEMORY_DEDUP",
+   "MEMORY_DEDUP_SCORE",
+   "MEMORY_MAX_PER_TURN",
+   "MEMORY_MIN_SCORE",
+   "MEMORY_REQUIRE_QUOTE",
+   "MEMORY_SAVE_POLICY",
+   "MEMORY_SEARCH_ECONOMY",
+   "MEMORY_SEMANTIC",
+   "MEMORY_SUMMARIZE",
+   "MEMORY_UPDATE_PRIOR_EVIDENCE",
+   "MEMORY_VERIFY",
+   "METRICS_TTL_DAYS",
+   "MODEL_CALL_LIMIT",
+   "MONGODB_DB",
+   "MONGODB_URI",
+   "OPENAI_API_KEY",
+   "RECURSION_LIMIT",
+   "SEARCH_CONTEXT_SIZE",
+   "SEARCH_COST_ESTIMATE",
+   "SEARCH_MAX_TOOL_CALLS",
+   "SESSION_TTL_DAYS",
+   "SSE_PING_SECONDS",
+   "SUMMARY_KEEP_TOKENS",
+   "SUMMARY_TRIGGER_TOKENS",
+   "TOOL_ERROR_DETAIL_HIDDEN",
+   "TOOL_REPEAT_LIMIT",
+   "TRACE_METADATA",
+   "TRUSTED_HOSTS",
+   "TURN_MAX_SEARCHES",
+   "TURN_MAX_SECONDS",
+   "TURN_METRICS",
+   "TURN_TOKEN_CAP",
+   "UNTRUSTED_WRAP",
+   "URL_FILTER_ALWAYS",
+   "USE_BIGTOOL"
+  ]
+ },
+ "constants": {
+  "agent.CANCELLED_TOOL_MSG": "Cancelled: this message reached its token cap before the tool finished.",
+  "agent.CLASSIFIER_PROMPT": "Classify the effort this message requires from an assistant with tools. Reply with ONLY one of these words: low, medium, high.\nlow = greeting, small talk, a simple fact, a single quick lookup or calculation, or a request the assistant cannot do (set alarms, send messages, call someone);\nmedium = a web search, a short multi-step calculation, a normal explanation, ordinary code (a script, a query, a fix) or a plan or text written from the details given;\nhigh = ONLY when the user asks for in-depth research or a comparison across several sources, or for a genuinely hard problem (a proof, a complex optimization, debugging a large program). A trip or study plan, ordinary code or anything the assistant cannot do is never high.\n\nMessage: ",
+  "agent.CONFIG_KEY_RUNTIME": "__pregel_runtime",
+  "agent.CONTINUE_NOTE": "Your previous answer was cut by the output limit (the system removed its cut notice). The user asked you to continue: continue exactly where it stopped. Do not repeat, summarize or rewrite anything already written. If it stopped inside a code block, open a new code block with the same language and continue from the next line.",
+  "agent.CUT_NOTE": "\n\n⚠️ La respuesta se cortó por el límite de longitud (MAX_TOKENS). Escribe «continúa» y sigo justo donde me quedé, sin repetir lo anterior.",
+  "agent.DUPLICATE_PREFIX": "Not run: an equivalent memory already exists",
+  "agent.ESFUERZOS": {
+   "alto": [
+    15,
+    "high"
+   ],
+   "bajo": [
+    5,
+    "low"
+   ],
+   "medio": [
+    15,
+    "medium"
+   ]
+  },
+  "agent.ESFUERZO_SIN_CLASIFICAR": "bajo",
+  "agent.EVIDENCE_TOOLS": [
+   "web_search",
+   "deep_research"
+  ],
+  "agent.FIRST_MESSAGE_CHARS": 200,
+  "agent.FIRST_MESSAGE_PREFIX": "FIRST USER MESSAGE (from the summary, verbatim): ",
+  "agent.HISTORY_CAP_NOTE": "This conversation is already longer than this message's token budget, so no tools are available in this turn. Answer with what you already know from the conversation; if the request needs a tool (search, research, calculation...), say so in one short line, in the user's language, and suggest asking it in a new conversation.",
+  "agent.LAST_STEP_NOTE": "This is your last step for this message: do not call tools. Answer now with what you already have and say in one short line, in the user's language, that you stopped at the step limit and they can ask you to continue.",
+  "agent.LIMIT_MSG": "Se alcanzó el límite de llamadas al modelo para este mensaje; detuve el proceso. Escribe «continúa» para seguir.",
+  "agent.MODEL_NODES": [
+   "model",
+   "agent"
+  ],
+  "agent.NOT_RUN_PREFIXES": [
+   "Not run:",
+   "Cancelled:",
+   "User rejected the tool call",
+   "Not saved:",
+   "Not updated:",
+   "Error:"
+  ],
+  "agent.NO_TOOLS_KEY": "no_tools",
+  "agent.OLD_TOOL_NAMES": {
+   "actualizar_recuerdo": "update_memory",
+   "buscar_recuerdos": "search_memories",
+   "buscar_web": "web_search",
+   "calculadora": "calculator",
+   "enviar_email_simulado": "send_simulated_email",
+   "fecha_hora": "current_datetime",
+   "guardar_recuerdo": "save_memory",
+   "investigador_profundo": "deep_research"
+  },
+  "agent.OUTPUT_PREVIEW_CHARS": 500,
+  "agent.REMOVE_ALL_MESSAGES": "__remove_all__",
+  "agent.REPEAT_LIMIT_MSG": "Not run: {name} was already used {limit} times for this message (limit). Do not call it again: answer with what you already have and tell the user the work was cut at the tool limit.",
+  "agent.SHORT_MESSAGE_CHARS": 60,
+  "agent.SOFT_CAP_NOTE": "This message is close to its token budget: do not call tools. Answer now using only what you already retrieved, and tell the user in one short line, in their language, what you could not complete and that they can ask for it in a new, narrower message.",
+  "agent.SOFT_CAP_RATIO": 0.8,
+  "agent.SOURCED_SUMMARY_HEADER": "Summary of the OLDEST part of this conversation. It replaces the earliest messages; the messages after it are more recent. Questions about how the conversation started refer to this summary. When answering from this summary or from its FIRST USER MESSAGE line, say that the information comes from the summary.\n\n",
+  "agent.STRUCTURED_SUMMARY_PROMPT": "You maintain the running summary of the OLDEST part of a conversation between a user and an assistant. The summary replaces those messages, so anything you leave out is lost.\n\nYou receive the PREVIOUS SUMMARY (may be empty) and NEW MESSAGES that follow it. Return the updated summary:\n- Keep every item of the previous summary unless the new messages contradict it. On a contradiction keep both values:\n  write the new value and add \"(previously: <old value>)\".\n- Add what matters from the new messages.\n- Include only what appears in the previous summary or the messages. Never infer, guess or add facts. If unsure, omit.\n\nUse exactly these sections, in this order (keep the headings as written, even if empty; write \"-\" for an empty one):\nUSER FACTS: facts the user stated literally about themselves or their situation, each with a short verbatim quote of\nthe user's words in quotation marks.\nDECISIONS AND PREFERENCES: what the user decided, chose, rejected or prefers, with their reasons.\nTASKS DONE: requests already answered, oldest first, each with its key result verbatim (numbers, names, chosen option,\nURLs that matter). Mark results that came from tools (web search, calculator).\nOPEN ITEMS: questions or tasks still pending.\nCONTEXT: anything else needed to continue the conversation.\n\nWrite everything except the headings in the conversation's language; never mix languages within a sentence. Short\nbullet points, no preamble. At most {max_tokens} tokens: if space runs short, shorten CONTEXT and TASKS DONE first,\nnever USER FACTS.\n\nPREVIOUS SUMMARY:\n{previous}\n\nNEW MESSAGES:\n{messages}",
+  "agent.SUMMARY_HEADER": "Summary of the OLDEST part of this conversation. It replaces the earliest messages; the messages after it are more recent. Questions about how the conversation started refer to this summary.\n\n",
+  "agent.SUMMARY_PROMPT": "Summarize the earlier part of a conversation between a user and an assistant so the assistant can continue it without the original messages. The summary replaces those messages, so anything you leave out is lost.\n\nKeep VERBATIM (exact spelling, values and units):\n- names of people, places, products, projects and organizations;\n- every number, amount, date, time, quantity and result of calculations;\n- decisions the user made and options they rejected, with their reasons;\n- the user's stated preferences, likes, dislikes and personal facts (name, job, city...), attributed to the user;\n- open questions, pending tasks and commitments the assistant made.\n\nAlways end with a section headed exactly \"Problems solved so far\" (keep this heading in English, as written): one\nbullet per problem, question or task already answered (the oldest first), each with its final result or answer\nverbatim (numbers, names, chosen option). Keep every item from the earlier summary's list and add the new ones;\nnever drop one. If nothing has been answered yet, write a single \"-\" under the heading.\n\nRules:\n- If the messages start with an earlier summary, merge it in: keep all of its facts unless the user corrected them.\n- Attribute the user's facts to the user, with the attribution itself translated into the conversation's language\n  (never an English \"The user said\" followed by words in another language). Do not add facts, guesses or\n  interpretations.\n- Mark clearly what came from tools (web results, calculations) versus from the user.\n- Write everything except the heading above in the conversation's language; never mix languages within a sentence.\n- The summary must not contradict itself: never write that nothing was solved, or that something is pending, when\n  another bullet shows it done.\n- Use short bullet points grouped by topic. No preamble.\n\n<messages>\n{messages}\n</messages>",
+  "agent.SUMMARY_SOURCE": "summarization",
+  "agent.TURN_CAP_MSG": "\n\n⚠️ Detuve este mensaje: superó el tope de {cap} tokens por mensaje (TURN_TOKEN_CAP). Lo que alcancé a hacer puede estar incompleto; si lo necesitas, pídemelo con una pregunta más acotada.",
+  "agent.UNVERIFIED_NOTE": "No verificada: este mensaje llegó a su tope de tokens (TURN_TOKEN_CAP)",
+  "agent.VERIFY_ANSWER_PROMPT": "You are a fact-checker. Given an ANSWER and the EVIDENCE the assistant retrieved in this turn, check every factual claim in the ANSWER (names, numbers, dates, quotes, citations).\nA claim is SUPPORTED only if the EVIDENCE states it or directly implies it.\nCommon general knowledge, opinions, advice and things the user said need no support.\nCitations are checked separately: two URLs are the same if domain and path match (ignore ?utm_source and other query\nparameters). Never remove or change a citation link whose URL appears in the EVIDENCE.\n\nOutput:\n- If every claim is supported: output exactly OK (do not rewrite or rephrase a correct answer).\n- Otherwise: output only the corrected answer. Keep the language, wording, structure, citation links and supported\n  content unchanged; remove or soften only the unsupported claims (e.g. \"I couldn't verify X\", in the answer's\n  language); fix wrong numbers using the EVIDENCE. Never add new claims, numbers or dates.\n\nEVIDENCE:\n{evidence}\n\nANSWER:\n{answer}",
+  "agent._CLASSIFIER_LEVELS": {
+   "high": "alto",
+   "low": "bajo",
+   "medium": "medio"
+  },
+  "agent._CONTINUE_RE": {
+   "flags": 34,
+   "pattern": "^\\W*(contin[uú]a|continuar|sigue|segu[ií]|seguir|dale|continue|go on|keep going)\\b"
+  },
+  "agent._EVIDENCE_CHARS": 12000,
+  "agent._FIRST_MESSAGE_MARK": "FIRST USER MESSAGE",
+  "agent._OLD_HEADER": "Here is a summary of the conversation to date:\n\n",
+  "agent._REUSED_RESEARCH": "Not run: this conversation already has research",
+  "agent._SIGNAL_RE": {
+   "flags": 32,
+   "pattern": "\\d|[+*/=^%×÷√<>]|```"
+  },
+  "agent._SIGNAL_WORDS": [
+   "calcul",
+   "resuelv",
+   "resolv",
+   "optimi",
+   "demuestr",
+   "demostr",
+   "plan",
+   "disen",
+   "codigo",
+   "program",
+   "investig",
+   "compar",
+   "analiz",
+   "calculate",
+   "solve",
+   "optimiz",
+   "prove",
+   "design",
+   "code",
+   "research",
+   "compare",
+   "ultim",
+   "hoy",
+   "ayer",
+   "gano",
+   "ganador",
+   "precio",
+   "noticia",
+   "cotiza",
+   "latest",
+   "last",
+   "today",
+   "yesterday",
+   "won",
+   "winner",
+   "price",
+   "news"
+  ],
+  "appdata.MAX_TITLE_CHARS": 80,
+  "appdata.TITLE_CHARS": 48,
+  "appdata.TITLE_WORDS": 6,
+  "auth.CSRF_HEADER": "X-CSRF-Token",
+  "auth.LOCKED_ERROR": "Demasiados intentos fallidos. Espera unos minutos y vuelve a intentarlo.",
+  "auth.LOGIN_ERROR": "Correo o contraseña incorrectos.",
+  "auth.MAX_PASSWORD_LEN": 256,
+  "auth.MIN_PASSWORD_LEN": 10,
+  "auth.PASSWORD_RULE": "La contraseña debe tener al menos 10 caracteres.",
+  "auth.REGISTER_ERROR": "No se pudo crear la cuenta con esos datos.",
+  "auth.SESSION_COOKIE": "agente0_session",
+  "auth._EMAIL_RE": {
+   "flags": 32,
+   "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+  },
+  "bigtool_agent.ACTUALIZAR_RECUERDO_DOC": "Replaces the text of an EXISTING memory (get its id from search_memories). Use it when the\nuser confirms that a saved fact changed, instead of saving a second, contradictory memory. Only use it with what\nthe user explicitly said; never with your own assumptions. It cannot delete memories.\n\nArgs:\n    id: The memory id shown by search_memories.\n    text: The new fact as a complete, self-contained sentence in the user's language.\n    evidence: The user's exact words that state the new value, copied verbatim from their message.\n",
+  "bigtool_agent.BIGTOOL_PROMPT": "\n\nYour tools are not loaded up front: there is a registry with many of them (math, text, web, memory, date, research). For any calculation, current fact, memory lookup or text transformation, ALWAYS use a tool, even if you think you know the answer: first call retrieve_tools with an English description of what you need, then call the tool it returns. Only for conversation (greetings, opinions, small talk) reply directly without retrieve_tools.",
+  "bigtool_agent.BUSCAR_RECUERDOS_DOC": "Searches long-term memory for what is known about the user. Pass topic keywords in the\nlanguage the memories were saved in, or an empty string to get the most recent memories.\nEach result starts with its id, which update_memory needs.",
+  "bigtool_agent.DEEP_RESEARCH_CONFIRM": "Esto tardará unos 1-2 minutos y consume bastante más; ¿sigo?",
+  "bigtool_agent.FOLLOW_UP_MSG": "Not run: this conversation already has research on this. This is a short follow-up, so answer it from the earlier research results below; use web_search only for one specific missing fact.\n\nEarlier research results:\n{previous}",
+  "bigtool_agent.INVESTIGADOR_DOC": "Delegates in-depth research to a sub-agent that runs several web searches and\nreturns a summary with sources. Use it for questions that need cross-checking several\nsources; for a single fact use web_search. Do not call it again for follow-up questions about research\nalready done in this conversation: answer from those results unless a needed fact is missing. Call it\ndirectly; the app asks the user to confirm before it runs.",
+  "bigtool_agent.NAMESPACE": [
+   "tools"
+  ],
+  "bigtool_agent.OLD_TOOL_NAMES": {
+   "actualizar_recuerdo": "update_memory",
+   "buscar_recuerdos": "search_memories",
+   "buscar_web": "web_search",
+   "calculadora": "calculator",
+   "enviar_email_simulado": "send_simulated_email",
+   "fecha_hora": "current_datetime",
+   "guardar_recuerdo": "save_memory",
+   "investigador_profundo": "deep_research"
+  },
+  "bigtool_agent.RESEARCH_DECLINED_MSG": "Not run: the user declined the in-depth research. Answer with what you already know, without searching, and say in one line that it was not researched in depth.",
+  "bigtool_agent.RETRIEVE_LIMIT": 3,
+  "bigtool_agent._EXCLUIR_MATH": [
+   "comb",
+   "factorial",
+   "perm",
+   "prod"
+  ],
+  "citations._BARE_URL": {
+   "flags": 32,
+   "pattern": "(?<![(\\[])https?://[^\\s)\\]\\\"'>]+"
+  },
+  "citations._HEADING": {
+   "flags": 40,
+   "pattern": "^\\s*#{1,6}\\s"
+  },
+  "citations._MD_LINK": {
+   "flags": 32,
+   "pattern": "\\[([^\\]]*)\\]\\((https?://[^\\s)]+)\\)"
+  },
+  "citations._NUMBER": {
+   "flags": 32,
+   "pattern": "\\d+(?:[.,]\\d+)*"
+  },
+  "citations._SOURCES_HEADING": {
+   "flags": 42,
+   "pattern": "^\\s*(#{1,6}\\s*)?(\\*\\*|__)?\\s*(fuentes|sources|referencias|references|bibliograf\\w*)\\b[^\\n]*$"
+  },
+  "config.DEFAULT_CONTEXT_WINDOW": 128000,
+  "context.MESSAGE_OVERHEAD": 4,
+  "context.PRUNED_MSG": "[tool result pruned: {name}, {tokens} tokens. Ask again or re-run the tool if needed.]",
+  "context.PRUNE_KEEP_TOOLS": [
+   "save_memory",
+   "search_memories",
+   "update_memory",
+   "guardar_recuerdo",
+   "buscar_recuerdos",
+   "actualizar_recuerdo"
+  ],
+  "context.PRUNE_MIN_TOKENS": 60,
+  "context.SUMMARY_SOURCE": "summarization",
+  "context.TOOL_OVERHEAD": 2,
+  "context._PRUNED_PREFIX": "[tool result pruned:",
+  "extra_tools._CURP_CHARS": "0123456789ABCDEFGHIJKLMNÑOPQRSTUVWXYZ",
+  "extra_tools._FACTORS": {
+   "acre": [
+    "area",
+    4046.8564224
+   ],
+   "b": [
+    "data",
+    1
+   ],
+   "cm": [
+    "length",
+    0.01
+   ],
+   "cup": [
+    "volume",
+    0.236588
+   ],
+   "floz": [
+    "volume",
+    0.0295735
+   ],
+   "ft": [
+    "length",
+    0.3048
+   ],
+   "ft2": [
+    "area",
+    0.09290304
+   ],
+   "g": [
+    "mass",
+    0.001
+   ],
+   "gal": [
+    "volume",
+    3.785411784
+   ],
+   "gb": [
+    "data",
+    1000000000.0
+   ],
+   "gib": [
+    "data",
+    1073741824
+   ],
+   "ha": [
+    "area",
+    10000.0
+   ],
+   "in": [
+    "length",
+    0.0254
+   ],
+   "kb": [
+    "data",
+    1000.0
+   ],
+   "kg": [
+    "mass",
+    1
+   ],
+   "kib": [
+    "data",
+    1024
+   ],
+   "km": [
+    "length",
+    1000
+   ],
+   "km/h": [
+    "speed",
+    0.2777777777777778
+   ],
+   "km2": [
+    "area",
+    1000000.0
+   ],
+   "knot": [
+    "speed",
+    0.514444
+   ],
+   "l": [
+    "volume",
+    1
+   ],
+   "lb": [
+    "mass",
+    0.45359237
+   ],
+   "m": [
+    "length",
+    1
+   ],
+   "m/s": [
+    "speed",
+    1
+   ],
+   "m2": [
+    "area",
+    1
+   ],
+   "m3": [
+    "volume",
+    1000
+   ],
+   "mb": [
+    "data",
+    1000000.0
+   ],
+   "mg": [
+    "mass",
+    1e-06
+   ],
+   "mi": [
+    "length",
+    1609.344
+   ],
+   "mib": [
+    "data",
+    1048576
+   ],
+   "ml": [
+    "volume",
+    0.001
+   ],
+   "mm": [
+    "length",
+    0.001
+   ],
+   "mph": [
+    "speed",
+    0.44704
+   ],
+   "nmi": [
+    "length",
+    1852
+   ],
+   "oz": [
+    "mass",
+    0.028349523125
+   ],
+   "t": [
+    "mass",
+    1000
+   ],
+   "tb": [
+    "data",
+    1000000000000.0
+   ],
+   "tbsp": [
+    "volume",
+    0.0147868
+   ],
+   "tsp": [
+    "volume",
+    0.00492892
+   ],
+   "yd": [
+    "length",
+    0.9144
+   ]
+  },
+  "extra_tools._UA": "Agente0/0.1 (local personal assistant prototype; https://github.com/langchain-ai) python-httpx",
+  "extra_tools._WMO": {
+   "0": "clear",
+   "1": "mainly clear",
+   "2": "partly cloudy",
+   "3": "overcast",
+   "45": "fog",
+   "48": "fog",
+   "51": "drizzle",
+   "53": "drizzle",
+   "55": "drizzle",
+   "61": "light rain",
+   "63": "rain",
+   "65": "heavy rain",
+   "71": "snow",
+   "73": "snow",
+   "75": "heavy snow",
+   "80": "showers",
+   "81": "showers",
+   "82": "violent showers",
+   "95": "thunderstorm",
+   "96": "thunderstorm with hail",
+   "99": "thunderstorm with hail"
+  },
+  "memory.DEDUP_CONTAINMENT": 0.8,
+  "memory.DEDUP_MIN_STEMS": 2,
+  "memory.DUPLICATE_MSG": "Not run: an equivalent memory already exists (id: {key}): \"{text}\". Do not save it again. If the fact changed, call update_memory with that id and the new value.",
+  "memory.DUPLICATE_PREFIX": "Not run: an equivalent memory already exists",
+  "memory.EMBEDDING_DIMS": 1536,
+  "memory.EMBEDDING_MODEL": "text-embedding-3-small",
+  "memory.KEYWORD_MARK": "(keyword match, less reliable)",
+  "memory.MEMORY_POLICIES": {
+   "broad": "## Saving to long-term memory\n- When the user shares stable personal facts (name, likes, preferences, lasting decisions, job and role), save them with save_memory, written in the user's language, and pass in evidence the user's exact words copied verbatim.\n- Also save the user's durable technical constraints when they state them explicitly: language or library versions (e.g. \"only Python 3.12\"), libraries they cannot use or install, their operating system or runtime environment. Pass their exact words as evidence.\n- Stable facts the user mentions while asking for something else (where they live, their diet, what they like, their job) are still facts about them: save them.\n- Do not save passing details of a single task: file names, row counts, data values, error messages, amounts, the dates or budget of a one-off plan, or what the user is working on today (\"today I'm working on file X\" is not a fact about the user).\n- Only save what the user explicitly said about themselves. Never save your own assumptions, inferences or things you said.",
+   "strict": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.\n- Save at most {max_per_turn} memories per message."
+  },
+  "memory.NOT_FOUND_MSG": "Not updated: there is no memory with that id. Use search_memories to get the ids.",
+  "memory.NO_MATCH_HEADER": "No memory shares words with this query; these are the most recent memories (check if one answers it):",
+  "memory.NO_MEMORIES_MSG": "No memories saved for this user.",
+  "memory.NO_RELEVANT_MSG": "No relevant memories for this query.",
+  "memory.RECENT_FALLBACK": 5,
+  "memory.SAME_DB_MSG": "APP_MONGODB_URI/APP_MONGODB_DB apuntan a la misma base que la IA (AI_MONGODB_*/MONGODB_*). Deben ser bases distintas: la de la IA nunca guarda correos, contraseñas ni datos de login, y la de negocio nunca guarda mensajes ni recuerdos. Usa otro nombre de base (y, en Atlas, otro usuario).",
+  "memory.SAVED_MSG": "Memory saved.",
+  "memory.SEARCH_ECONOMY_RULE": "## Looking up memories\n- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation.",
+  "memory.STORE_COLLECTION": "memories",
+  "memory.SUMMARY_SOURCE": "summarization",
+  "memory.TURN_LIMIT_MSG": "Not run: the limit of {limit} memories per message was reached, so this was not saved. Tell the user which fact was not saved; they can ask again in another message.",
+  "memory.UPDATED_MSG": "Memory updated.",
+  "memory.VERIFY_MEMORY_PROMPT": "You check whether a memory about the user is backed by what the user actually said.\n\nUSER MESSAGES (only things the user wrote, oldest first):\n{messages}\n\nCANDIDATE MEMORY:\n{candidate}\n\nThe memory is SUPPORTED only if the user explicitly stated it (or asked to remember it) in the messages above.\nAssumptions, inferences, guesses and things the assistant said are NOT supported.\nReply with JSON only: {{\"supported\": true or false, \"quote\": \"<the user's exact words that state it, copied verbatim, or empty>\"}}",
+  "memory._SEARCH_WINDOW": 200,
+  "memory._STOPWORDS": [
+   "a",
+   "about",
+   "actual",
+   "ahora",
+   "al",
+   "algo",
+   "and",
+   "are",
+   "at",
+   "called",
+   "como",
+   "con",
+   "cosa",
+   "cosas",
+   "cual",
+   "cuales",
+   "cuando",
+   "cuanto",
+   "dame",
+   "dato",
+   "datos",
+   "de",
+   "del",
+   "dime",
+   "do",
+   "does",
+   "donde",
+   "e",
+   "el",
+   "ella",
+   "ellos",
+   "en",
+   "entre",
+   "era",
+   "es",
+   "esa",
+   "ese",
+   "eso",
+   "esta",
+   "estan",
+   "este",
+   "esto",
+   "estoy",
+   "favorita",
+   "favoritas",
+   "favorite",
+   "favorito",
+   "favoritos",
+   "favourite",
+   "fecha",
+   "for",
+   "fue",
+   "gusta",
+   "gustan",
+   "gusto",
+   "ha",
+   "hace",
+   "hago",
+   "hay",
+   "her",
+   "his",
+   "how",
+   "in",
+   "informacion",
+   "is",
+   "know",
+   "la",
+   "las",
+   "le",
+   "les",
+   "like",
+   "likes",
+   "llama",
+   "llamada",
+   "llamado",
+   "llamas",
+   "llamo",
+   "lo",
+   "los",
+   "mas",
+   "me",
+   "mi",
+   "mis",
+   "muy",
+   "my",
+   "name",
+   "named",
+   "no",
+   "nombre",
+   "nombres",
+   "nos",
+   "o",
+   "of",
+   "on",
+   "or",
+   "para",
+   "pero",
+   "por",
+   "prefer",
+   "preferencia",
+   "preferencias",
+   "preferida",
+   "preferido",
+   "prefers",
+   "prefiere",
+   "prefieres",
+   "prefiero",
+   "que",
+   "quien",
+   "recuerda",
+   "recuerdas",
+   "recuerdo",
+   "recuerdos",
+   "remember",
+   "saber",
+   "sabes",
+   "se",
+   "sea",
+   "ser",
+   "si",
+   "sin",
+   "sobre",
+   "son",
+   "soy",
+   "su",
+   "sus",
+   "tambien",
+   "te",
+   "tener",
+   "tengo",
+   "the",
+   "their",
+   "ti",
+   "tiene",
+   "to",
+   "tu",
+   "tus",
+   "un",
+   "una",
+   "uno",
+   "unos",
+   "user",
+   "usuaria",
+   "usuario",
+   "was",
+   "what",
+   "when",
+   "where",
+   "which",
+   "who",
+   "with",
+   "y",
+   "ya",
+   "yo",
+   "your"
+  ],
+  "memory._SUBJECT": {
+   "flags": 34,
+   "pattern": "^\\s*(?:(?:el|la)\\s+usuari[oa](?:/[oa])?|al\\s+usuario|a\\s+la\\s+usuaria|the\\s+user)\\s+"
+  },
+  "memory._TOPICS": {
+   "alime": "~comida",
+   "city": "~vivir",
+   "ciuda": "~vivir",
+   "comer": "~comida",
+   "comid": "~comida",
+   "domic": "~vivir",
+   "eat": "~comida",
+   "eats": "~comida",
+   "emple": "~trabajo",
+   "food": "~comida",
+   "job": "~trabajo",
+   "live": "~vivir",
+   "lives": "~vivir",
+   "mud": "~vivir",
+   "ofici": "~trabajo",
+   "profe": "~trabajo",
+   "puest": "~trabajo",
+   "radic": "~vivir",
+   "resid": "~vivir",
+   "traba": "~trabajo",
+   "viv": "~vivir",
+   "vivo": "~vivir",
+   "work": "~trabajo",
+   "works": "~trabajo"
+  },
+  "server.CSRF_HEADER": "X-CSRF-Token",
+  "server.MAX_TITLE_CHARS": 80,
+  "server.PING": ": ping\n\n",
+  "server.SESSION_COOKIE": "agente0_session",
+  "tool_spec.EFFECTS": [
+   "read",
+   "write"
+  ],
+  "tool_spec.MIN_EXAMPLES": 2,
+  "tools.ACTUALIZAR_RECUERDO_DOC": "Replaces the text of an EXISTING memory (get its id from search_memories). Use it when the\nuser confirms that a saved fact changed, instead of saving a second, contradictory memory. Only use it with what\nthe user explicitly said; never with your own assumptions. It cannot delete memories.\n\nArgs:\n    id: The memory id shown by search_memories.\n    text: The new fact as a complete, self-contained sentence in the user's language.\n    evidence: The user's exact words that state the new value, copied verbatim from their message.\n",
+  "tools.BUSCAR_RECUERDOS_DOC": "Searches long-term memory for what is known about the user. Pass topic keywords in the\nlanguage the memories were saved in, or an empty string to get the most recent memories.\nEach result starts with its id, which update_memory needs.",
+  "tools.BUSCAR_WEB_DOC": "Searches the web for current information and returns a summary with sources. Use it for\nnews, recent data or anything that may have changed.",
+  "tools.DEEP_RESEARCH_CONFIRM": "Esto tardará unos 1-2 minutos y consume bastante más; ¿sigo?",
+  "tools.FOLLOW_UP_MAX_CHARS": 200,
+  "tools.FOLLOW_UP_MSG": "Not run: this conversation already has research on this. This is a short follow-up, so answer it from the earlier research results below; use web_search only for one specific missing fact.\n\nEarlier research results:\n{previous}",
+  "tools.GUARDAR_RECUERDO_DOC": "Saves a lasting fact about the user to long-term memory: name, likes, preferences, job and\nrole, and durable technical constraints (language or library versions they must use, libraries they cannot install,\ntheir operating system or environment). Only save what the user explicitly said about themselves, never your own\nassumptions. Stable facts mentioned in passing while asking for something else (where they live, their diet, what\nthey like, their job) are still facts about the user: save them. Never save details of the current task: file names,\nrow counts, data values, error messages, amounts, dates or budget of a one-off plan, or what they are working on\ntoday. Those are not facts about the user.\n\nArgs:\n    text: The fact as a short, self-contained sentence in the user's language, in neutral form with no subject:\n        never start with \"The user\" or its equivalent in the user's language (e.g. \"Lives in Madrid\",\n        \"Works as a data engineer\", \"Favorite food is pozole\").\n    evidence: The user's exact words that state this fact, copied verbatim from their message.\n",
+  "tools.GUARDAR_RECUERDO_STRICT_DOC": "Saves a precise fact about the user to long-term memory, which is shared by all of the\nuser's conversations. Use it ONLY when the user explicitly asks you to remember something, states a durable personal\nfact that is clearly useful in other conversations (where they live, their job, their pets or family, a stable\npreference or a lasting technical constraint), or wants a specific dated event remembered. Never save conversation\ncontent: explanations, tasks, calculations, tool or search results, topics discussed or details of the current\nrequest. Only save what the user explicitly said about themselves, never your own assumptions.\n\nArgs:\n    text: The fact as a short, self-contained sentence in the user's language, in neutral form with no subject:\n        never start with \"The user\" or its equivalent in the user's language (e.g. \"Lives in Madrid\",\n        \"Works as a data engineer\", \"Birthday is on March 3\").\n    evidence: The user's exact words that state this fact, copied verbatim from their message.\n",
+  "tools.INVESTIGADOR_DOC": "Delegates in-depth research to a sub-agent that runs several web searches and\nreturns a summary with sources. Use it for questions that need cross-checking several\nsources; for a single fact use web_search. Do not call it again for follow-up questions about research\nalready done in this conversation: answer from those results unless a needed fact is missing. Call it\ndirectly; the app asks the user to confirm before it runs.",
+  "tools.NO_WEB_NOTE": "[No web search could be run for this research: the summary below comes from the researcher's own knowledge, not from the web, and has no sources. Tell the user the web could not be consulted; do not present any link as a consulted source.]",
+  "tools.OLD_TOOL_NAMES": {
+   "actualizar_recuerdo": "update_memory",
+   "buscar_recuerdos": "search_memories",
+   "buscar_web": "web_search",
+   "calculadora": "calculator",
+   "enviar_email_simulado": "send_simulated_email",
+   "fecha_hora": "current_datetime",
+   "guardar_recuerdo": "save_memory",
+   "investigador_profundo": "deep_research"
+  },
+  "tools.ONE_SEARCH_MSG": "Not run: one search per step. Answer with what you have or ask the user; if another search is really needed, run it in your next step.",
+  "tools.RESEARCH_DECLINED_MSG": "Not run: the user declined the in-depth research. Answer with what you already know, without searching, and say in one line that it was not researched in depth.",
+  "tools.SEARCH_LIMIT_MSG": "LIMIT REACHED: no more searches allowed. Write the final summary now with what you already found.",
+  "tools.SYNTAX_MAX_CHARS": 200000,
+  "tools.SYNTAX_OK_MSG": "OK: no syntax errors. The code was only parsed, not run, so runtime errors are still possible.",
+  "tools.TURN_CAP_TOOL_MSG": "Not run: this message is close to its token cap. Do not search again: answer now with what you already have and tell the user the result may be incomplete.",
+  "tools.WEB_BUDGET_MSG": "Not run: the web search budget for this message is used up. Do not search again: answer with what you already have and tell the user the result may be incomplete.",
+  "tools.WEB_LIMIT_MSG": "Not run: the maximum number of web searches for this message was reached. Do not search again: answer with what you already have and tell the user the result may be incomplete.",
+  "tools._EXPLICIT_RESEARCH": {
+   "flags": 32,
+   "pattern": "\\b(investig\\w*|research\\w*|a fondo|en profundidad|exhaustiv\\w*|in[- ]depth|thorough\\w*|deep dive)\\b"
+  },
+  "tools._INVESTIGADOR_PROMPT": "You are a researcher. For the given task, run 2 to {max_searches} web searches with the web_search tool (vary the queries; never more than {max_searches}), cross-check the sources and return a clear, concise summary with the sources (URLs) at the end. If something could not be confirmed, say so. If web_search answers that the limit was reached, stop searching and write the summary with what you already found, saying it is partial. Only cite URLs that appear in your web_search results; never write a URL from memory. If no search returned results, do not include a sources section and say that the web could not be consulted. Reply in the task's language.",
+  "tools._MAX_POW": 10000,
+  "tools._NAMES": {
+   "e": 2.718281828459045,
+   "inf": Infinity,
+   "pi": 3.141592653589793,
+   "tau": 6.283185307179586
+  },
+  "tools._RAW_FINDINGS_CHARS": 8000,
+  "tools._RESEARCH_AGAIN": {
+   "flags": 32,
+   "pattern": "\\b(investiga\\w*|busca\\w*|de nuevo|otra vez|nuevamente|actualiza\\w*|research\\w*|search\\w*|look (it )?up|again)\\b"
+  }
+ },
+ "graph_all_flags": {
+  "edges": [
+   [
+    "AnswerVerifier.after_agent",
+    "MedidorContexto.after_agent",
+    false
+   ],
+   [
+    "AvisoCorte.after_model",
+    "HumanInTheLoopMiddleware.after_model",
+    false
+   ],
+   [
+    "HumanInTheLoopMiddleware.after_model",
+    "LimiteLlamadas.after_model",
+    false
+   ],
+   [
+    "LimiteLlamadas.after_model",
+    "MedidorContexto.after_model",
+    false
+   ],
+   [
+    "LimiteLlamadas.before_model",
+    "AnswerVerifier.after_agent",
+    true
+   ],
+   [
+    "LimiteLlamadas.before_model",
+    "model",
+    true
+   ],
+   [
+    "MedidorContexto.after_agent",
+    "__end__",
+    false
+   ],
+   [
+    "MedidorContexto.after_model",
+    "AnswerVerifier.after_agent",
+    true
+   ],
+   [
+    "MedidorContexto.after_model",
+    "ResumenPorTurno.before_model",
+    true
+   ],
+   [
+    "MedidorContexto.after_model",
+    "tools",
+    true
+   ],
+   [
+    "ResumenPorTurno.before_model",
+    "LimiteLlamadas.before_model",
+    false
+   ],
+   [
+    "__start__",
+    "ResumenPorTurno.before_model",
+    false
+   ],
+   [
+    "model",
+    "AvisoCorte.after_model",
+    false
+   ],
+   [
+    "tools",
+    "ResumenPorTurno.before_model",
+    true
+   ]
+  ],
+  "nodes": [
+   "__start__",
+   "model",
+   "tools",
+   "MedidorContexto.after_model",
+   "MedidorContexto.after_agent",
+   "ResumenPorTurno.before_model",
+   "LimiteLlamadas.before_model",
+   "LimiteLlamadas.after_model",
+   "HumanInTheLoopMiddleware.after_model",
+   "AvisoCorte.after_model",
+   "AnswerVerifier.after_agent",
+   "__end__"
+  ]
+ },
+ "graph_default": {
+  "edges": [
+   [
+    "AvisoCorte.after_model",
+    "HumanInTheLoopMiddleware.after_model",
+    false
+   ],
+   [
+    "HumanInTheLoopMiddleware.after_model",
+    "LimiteLlamadas.after_model",
+    false
+   ],
+   [
+    "LimiteLlamadas.after_model",
+    "MedidorContexto.after_model",
+    false
+   ],
+   [
+    "LimiteLlamadas.before_model",
+    "MedidorContexto.after_agent",
+    true
+   ],
+   [
+    "LimiteLlamadas.before_model",
+    "model",
+    true
+   ],
+   [
+    "MedidorContexto.after_agent",
+    "__end__",
+    false
+   ],
+   [
+    "MedidorContexto.after_model",
+    "LimiteLlamadas.before_model",
+    true
+   ],
+   [
+    "MedidorContexto.after_model",
+    "MedidorContexto.after_agent",
+    true
+   ],
+   [
+    "MedidorContexto.after_model",
+    "tools",
+    true
+   ],
+   [
+    "__start__",
+    "LimiteLlamadas.before_model",
+    false
+   ],
+   [
+    "model",
+    "AvisoCorte.after_model",
+    false
+   ],
+   [
+    "tools",
+    "LimiteLlamadas.before_model",
+    true
+   ]
+  ],
+  "nodes": [
+   "__start__",
+   "model",
+   "tools",
+   "MedidorContexto.after_model",
+   "MedidorContexto.after_agent",
+   "LimiteLlamadas.before_model",
+   "LimiteLlamadas.after_model",
+   "HumanInTheLoopMiddleware.after_model",
+   "AvisoCorte.after_model",
+   "__end__"
+  ]
+ },
+ "index_html_sha256": "f0c7945845ba5898efe8978f32c006b7ae0f2955d11f78a5d70ac1e6b2690ee5",
+ "memory_policies": {
+  "broad|0|False": "## Saving to long-term memory\n- When the user shares stable personal facts (name, likes, preferences, lasting decisions, job and role), save them with save_memory, written in the user's language, and pass in evidence the user's exact words copied verbatim.\n- Also save the user's durable technical constraints when they state them explicitly: language or library versions (e.g. \"only Python 3.12\"), libraries they cannot use or install, their operating system or runtime environment. Pass their exact words as evidence.\n- Stable facts the user mentions while asking for something else (where they live, their diet, what they like, their job) are still facts about them: save them.\n- Do not save passing details of a single task: file names, row counts, data values, error messages, amounts, the dates or budget of a one-off plan, or what the user is working on today (\"today I'm working on file X\" is not a fact about the user).\n- Only save what the user explicitly said about themselves. Never save your own assumptions, inferences or things you said.",
+  "broad|0|True": "## Saving to long-term memory\n- When the user shares stable personal facts (name, likes, preferences, lasting decisions, job and role), save them with save_memory, written in the user's language, and pass in evidence the user's exact words copied verbatim.\n- Also save the user's durable technical constraints when they state them explicitly: language or library versions (e.g. \"only Python 3.12\"), libraries they cannot use or install, their operating system or runtime environment. Pass their exact words as evidence.\n- Stable facts the user mentions while asking for something else (where they live, their diet, what they like, their job) are still facts about them: save them.\n- Do not save passing details of a single task: file names, row counts, data values, error messages, amounts, the dates or budget of a one-off plan, or what the user is working on today (\"today I'm working on file X\" is not a fact about the user).\n- Only save what the user explicitly said about themselves. Never save your own assumptions, inferences or things you said.\n\n## Looking up memories\n- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation.",
+  "broad|3|False": "## Saving to long-term memory\n- When the user shares stable personal facts (name, likes, preferences, lasting decisions, job and role), save them with save_memory, written in the user's language, and pass in evidence the user's exact words copied verbatim.\n- Also save the user's durable technical constraints when they state them explicitly: language or library versions (e.g. \"only Python 3.12\"), libraries they cannot use or install, their operating system or runtime environment. Pass their exact words as evidence.\n- Stable facts the user mentions while asking for something else (where they live, their diet, what they like, their job) are still facts about them: save them.\n- Do not save passing details of a single task: file names, row counts, data values, error messages, amounts, the dates or budget of a one-off plan, or what the user is working on today (\"today I'm working on file X\" is not a fact about the user).\n- Only save what the user explicitly said about themselves. Never save your own assumptions, inferences or things you said.",
+  "broad|3|True": "## Saving to long-term memory\n- When the user shares stable personal facts (name, likes, preferences, lasting decisions, job and role), save them with save_memory, written in the user's language, and pass in evidence the user's exact words copied verbatim.\n- Also save the user's durable technical constraints when they state them explicitly: language or library versions (e.g. \"only Python 3.12\"), libraries they cannot use or install, their operating system or runtime environment. Pass their exact words as evidence.\n- Stable facts the user mentions while asking for something else (where they live, their diet, what they like, their job) are still facts about them: save them.\n- Do not save passing details of a single task: file names, row counts, data values, error messages, amounts, the dates or budget of a one-off plan, or what the user is working on today (\"today I'm working on file X\" is not a fact about the user).\n- Only save what the user explicitly said about themselves. Never save your own assumptions, inferences or things you said.\n\n## Looking up memories\n- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation.",
+  "otra|0|False": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.",
+  "otra|0|True": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.\n\n## Looking up memories\n- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation.",
+  "otra|3|False": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.\n- Save at most 3 memories per message.",
+  "otra|3|True": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.\n- Save at most 3 memories per message.\n\n## Looking up memories\n- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation.",
+  "strict|0|False": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.",
+  "strict|0|True": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.\n\n## Looking up memories\n- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation.",
+  "strict|3|False": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.\n- Save at most 3 memories per message.",
+  "strict|3|True": "## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.\n- Save at most 3 memories per message.\n\n## Looking up memories\n- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation."
+ },
+ "routes": [
+  [
+   "/",
+   [
+    "GET"
+   ]
+  ],
+  [
+   "/auth/delete-account",
+   [
+    "POST"
+   ]
+  ],
+  [
+   "/auth/login",
+   [
+    "POST"
+   ]
+  ],
+  [
+   "/auth/logout",
+   [
+    "POST"
+   ]
+  ],
+  [
+   "/auth/me",
+   [
+    "GET"
+   ]
+  ],
+  [
+   "/auth/register",
+   [
+    "POST"
+   ]
+  ],
+  [
+   "/chat",
+   [
+    "POST"
+   ]
+  ],
+  [
+   "/docs",
+   [
+    "GET",
+    "HEAD"
+   ]
+  ],
+  [
+   "/docs/oauth2-redirect",
+   [
+    "GET",
+    "HEAD"
+   ]
+  ],
+  [
+   "/health",
+   [
+    "GET"
+   ]
+  ],
+  [
+   "/history/{thread_id}",
+   [
+    "GET"
+   ]
+  ],
+  [
+   "/me/memories",
+   [
+    "GET"
+   ]
+  ],
+  [
+   "/me/memories/{key}",
+   [
+    "DELETE"
+   ]
+  ],
+  [
+   "/memories/{user_id}",
+   [
+    "GET"
+   ]
+  ],
+  [
+   "/memories/{user_id}/{key}",
+   [
+    "DELETE"
+   ]
+  ],
+  [
+   "/openapi.json",
+   [
+    "GET",
+    "HEAD"
+   ]
+  ],
+  [
+   "/redoc",
+   [
+    "GET",
+    "HEAD"
+   ]
+  ],
+  [
+   "/resume",
+   [
+    "POST"
+   ]
+  ],
+  [
+   "/threads",
+   [
+    "GET"
+   ]
+  ],
+  [
+   "/threads",
+   [
+    "POST"
+   ]
+  ],
+  [
+   "/threads/{thread_id}",
+   [
+    "DELETE"
+   ]
+  ],
+  [
+   "/threads/{thread_id}",
+   [
+    "PATCH"
+   ]
+  ],
+  [
+   "/threads/{thread_id}/compact",
+   [
+    "POST"
+   ]
+  ],
+  [
+   "/threads/{thread_id}/context",
+   [
+    "GET"
+   ]
+  ]
+ ],
+ "sse": {
+  "hitl_approve": [
+   {
+    "args": {
+     "body": "B",
+     "recipient": "a@b.com",
+     "subject": "S"
+    },
+    "id": "call_1",
+    "name": "send_simulated_email",
+    "type": "tool_start"
+   },
+   {
+    "action_requests": [
+     {
+      "args": {
+       "body": "B",
+       "recipient": "a@b.com",
+       "subject": "S"
+      },
+      "description": "Tool execution requires approval\n\nTool: send_simulated_email\nArgs: {'recipient': 'a@b.com', 'subject': 'S', 'body': 'B'}",
+      "name": "send_simulated_email"
+     }
+    ],
+    "id": "<id>",
+    "type": "interrupt"
+   },
+   {
+    "thread_id": "hilo-fijo",
+    "type": "done"
+   },
+   {
+    "engine": null,
+    "id": "call_1",
+    "name": "send_simulated_email",
+    "output": "Simulated email sent to a@b.com with subject 'S' (1 characters).",
+    "reason": null,
+    "status": "success",
+    "type": "tool_end"
+   },
+   {
+    "text": "Enviado.",
+    "type": "token"
+   },
+   {
+    "thread_id": "hilo-fijo",
+    "type": "done"
+   }
+  ],
+  "plain": [
+   {
+    "text": "Hola, ",
+    "type": "token"
+   },
+   {
+    "text": "¿qué ",
+    "type": "token"
+   },
+   {
+    "text": "tal?",
+    "type": "token"
+   },
+   {
+    "thread_id": "hilo-fijo",
+    "type": "done"
+   }
+  ],
+  "research_rejected": [
+   {
+    "args": {
+     "task": "algo"
+    },
+    "id": "call_1",
+    "name": "deep_research",
+    "type": "tool_start"
+   },
+   {
+    "action_requests": [
+     {
+      "args": {
+       "task": "algo"
+      },
+      "description": "Esto tardará unos 1-2 minutos y consume bastante más; ¿sigo?",
+      "name": "deep_research"
+     }
+    ],
+    "id": "<id>",
+    "type": "interrupt"
+   },
+   {
+    "thread_id": "hilo-fijo",
+    "type": "done"
+   },
+   {
+    "engine": null,
+    "id": "call_1",
+    "name": "deep_research",
+    "output": "User rejected the tool call for `deep_research` with id call_1. The tool was not executed. Do not retry this tool call unless the user explicitly requests it.",
+    "reason": null,
+    "status": "skipped",
+    "type": "tool_end"
+   },
+   {
+    "text": "Sin ",
+    "type": "token"
+   },
+   {
+    "text": "investigar.",
+    "type": "token"
+   },
+   {
+    "thread_id": "hilo-fijo",
+    "type": "done"
+   }
+  ],
+  "web_search": [
+   {
+    "args": {
+     "query": "clima"
+    },
+    "id": "call_1",
+    "name": "web_search",
+    "type": "tool_start"
+   },
+   {
+    "engine": "duckduckgo",
+    "id": "call_1",
+    "name": "web_search",
+    "output": "[engine: duckduckgo]\nResultado falso para clima",
+    "reason": null,
+    "status": "success",
+    "type": "tool_end"
+   },
+   {
+    "text": "Hace ",
+    "type": "token"
+   },
+   {
+    "text": "sol.",
+    "type": "token"
+   },
+   {
+    "thread_id": "hilo-fijo",
+    "type": "done"
+   }
+  ]
+ },
+ "system_md_sha256": "a1b4df37d430357ab4d662d06eb6c8120b9ee838bd0c096a3761f1a30969b241",
+ "system_prompt_all_flags": "﻿You are Agente 0, a conversational assistant.\n\n- LANGUAGE: Always reply in the same language the user writes in. Tool results are in English; never copy them verbatim to the user: explain them in the user's language. This holds even though these instructions, your memories or the tool results are in another language.\n- Natural, direct tone. Get to the point: no filler, no empty pleasantries.\n- Use your tools when they improve the answer: search the web for current topics or facts that may have changed, use the calculator for any math, check the date and time when it matters.\n- Searching costs time and money: run at most one web_search per step, and only when the answer depends on current or uncertain facts. If one search is not enough, answer with what you have and offer to look further.\n- Use deep_research only when the user explicitly asks for in-depth research or a comparison across several sources. Plans, quick facts and follow-ups do not need it: answer directly or with one web_search. When research is needed, call deep_research directly: the app itself asks the user to confirm, so never ask for confirmation in text first. If they decline, answer without it. When you use it, trust its result: don't repeat its searches; only search again if a specific fact is missing.\n- Short follow-up questions about something already researched in this conversation (\"which of those…\", \"and for X?\"): answer from the results already in the conversation. Do not call deep_research or web_search again unless the user asks you to research again or the fact you need is not there.\n- If a tool result says it was cut, partial or stopped at a limit, tell the user in one line that the result is partial.\n- When the user asks for a long text (a plan, essay, report, guide), do not ask for missing details first: assume reasonable defaults, state your assumptions in one line at the top, and write the full text.\n- If a tool fails, read the error and try another approach before giving up.\n- Before giving the user Python code longer than 15 lines, check it with check_python_syntax and fix any error it reports. It only parses the code; it does not run it.\n- If your previous answer was cut by the output limit and the user asks you to continue, continue exactly where it stopped: do not repeat, summarize or rewrite what you already wrote.\n- Use simple markdown (bold, lists, code blocks) when it helps readability.\n- NEVER use LaTeX: no \\( \\), \\[ \\], $…$ or $$…$$ delimiters and no commands like \\frac, \\cdot, \\sum, \\binom, \\le. The chat cannot render them. Write math as plain text with Unicode symbols: a_n = a_(n-1) + a_(n-2), 3/4, x², √2, ×, ·, ≤, ≥, ≠, ≈, Σ, π. Put longer derivations in a code block.\n\n## Where your facts come from\nKeep these sources apart, in this order of trust, and make clear which one you are using when it matters:\n1. Tool results from this conversation (web search, research, calculator). Say so: \"according to <source>…\".\n2. Memories (search_memories) and what the user told you: facts the user stated; they may be outdated. Say \"you told me…\".\n3. Your own knowledge: only for stable, general facts. Never for prices, news, schedules, versions, statistics or anything that may have changed: search first.\n\n## Honesty\n- If you don't know something and your tools don't give it to you, say so plainly (\"I don't know\" / \"I don't have that information\", in the user's language). A wrong answer is worse than admitting you don't know. Never invent names, numbers, dates, quotes or sources.\n- Do not state current facts (news, prices, recent events, \"the latest…\") without having searched in this conversation.\n- When you use web search, cite the sources as [title](url), using only URLs that appear in the tool results. Never make up or guess a URL.\n- If a memory contradicts what the user says now, do not pick one: point out the difference and ask which one is right.\n- Never promise to do something later, \"in a moment\" or \"in the next message\": there is no later. Either do it in this reply (use your tools now if needed) or say plainly that it can't be done.\n\n## Memory\n- Memories are never added to this prompt: look them up with search_memories when they help.\n- If save_memory answers that it was not saved, tell the user.\n- When the user confirms that a saved fact changed, update the old memory with update_memory (id from search_memories) instead of saving another one. If memories contradict each other, ask once, then update. Never use it for things the user hasn't said. You cannot delete memories; the user deletes them from the 🧠 panel.\n- At the start of a conversation, or whenever it helps to personalize, check search_memories.\n- Search memories with short queries, one per topic, phrased as a short question about the user in the language the memories are written in (e.g. \"what is the user's job\", then \"where does the user live\", then \"the user's favorite drink\"), never one query that mixes several topics.\n- Results marked \"(keyword match, less reliable)\" only share a word with your query: use them only if they clearly answer what was asked.\n- Use a memory only if it answers exactly what was asked. Never infer or invent facts about the user from related but different memories (a dog's name is not a cat's name; a sister's birthday is not the user's).\n- Before saying you don't know something about the user, also check the current conversation (including any summary of it). If neither the memories nor the conversation state it, say you don't have that information; never guess.\n\n## Long conversations\n- If the conversation starts with a summary of its oldest part, that summary covers how the conversation began: questions about what was said or asked first (\"what did I ask at the start?\") refer to it, not to the first message you can still see.\n\n\n## Saving to long-term memory\n- When the user shares stable personal facts (name, likes, preferences, lasting decisions, job and role), save them with save_memory, written in the user's language, and pass in evidence the user's exact words copied verbatim.\n- Also save the user's durable technical constraints when they state them explicitly: language or library versions (e.g. \"only Python 3.12\"), libraries they cannot use or install, their operating system or runtime environment. Pass their exact words as evidence.\n- Stable facts the user mentions while asking for something else (where they live, their diet, what they like, their job) are still facts about them: save them.\n- Do not save passing details of a single task: file names, row counts, data values, error messages, amounts, the dates or budget of a one-off plan, or what the user is working on today (\"today I'm working on file X\" is not a fact about the user).\n- Only save what the user explicitly said about themselves. Never save your own assumptions, inferences or things you said.\n\n## Looking up memories\n- If the answer is already in the visible conversation or in its summary, answer directly; call search_memories only when the information is not available in this conversation. This takes precedence over checking memories at the start of a conversation.\n\nUser's current local date and time: <DATE> (UTC<TZ>). Treat it as 'today'; never infer the date from search results.",
+ "system_prompt_default": "﻿You are Agente 0, a conversational assistant.\n\n- LANGUAGE: Always reply in the same language the user writes in. Tool results are in English; never copy them verbatim to the user: explain them in the user's language. This holds even though these instructions, your memories or the tool results are in another language.\n- Natural, direct tone. Get to the point: no filler, no empty pleasantries.\n- Use your tools when they improve the answer: search the web for current topics or facts that may have changed, use the calculator for any math, check the date and time when it matters.\n- Searching costs time and money: run at most one web_search per step, and only when the answer depends on current or uncertain facts. If one search is not enough, answer with what you have and offer to look further.\n- Use deep_research only when the user explicitly asks for in-depth research or a comparison across several sources. Plans, quick facts and follow-ups do not need it: answer directly or with one web_search. When research is needed, call deep_research directly: the app itself asks the user to confirm, so never ask for confirmation in text first. If they decline, answer without it. When you use it, trust its result: don't repeat its searches; only search again if a specific fact is missing.\n- Short follow-up questions about something already researched in this conversation (\"which of those…\", \"and for X?\"): answer from the results already in the conversation. Do not call deep_research or web_search again unless the user asks you to research again or the fact you need is not there.\n- If a tool result says it was cut, partial or stopped at a limit, tell the user in one line that the result is partial.\n- When the user asks for a long text (a plan, essay, report, guide), do not ask for missing details first: assume reasonable defaults, state your assumptions in one line at the top, and write the full text.\n- If a tool fails, read the error and try another approach before giving up.\n- Before giving the user Python code longer than 15 lines, check it with check_python_syntax and fix any error it reports. It only parses the code; it does not run it.\n- If your previous answer was cut by the output limit and the user asks you to continue, continue exactly where it stopped: do not repeat, summarize or rewrite what you already wrote.\n- Use simple markdown (bold, lists, code blocks) when it helps readability.\n- NEVER use LaTeX: no \\( \\), \\[ \\], $…$ or $$…$$ delimiters and no commands like \\frac, \\cdot, \\sum, \\binom, \\le. The chat cannot render them. Write math as plain text with Unicode symbols: a_n = a_(n-1) + a_(n-2), 3/4, x², √2, ×, ·, ≤, ≥, ≠, ≈, Σ, π. Put longer derivations in a code block.\n\n## Where your facts come from\nKeep these sources apart, in this order of trust, and make clear which one you are using when it matters:\n1. Tool results from this conversation (web search, research, calculator). Say so: \"according to <source>…\".\n2. Memories (search_memories) and what the user told you: facts the user stated; they may be outdated. Say \"you told me…\".\n3. Your own knowledge: only for stable, general facts. Never for prices, news, schedules, versions, statistics or anything that may have changed: search first.\n\n## Honesty\n- If you don't know something and your tools don't give it to you, say so plainly (\"I don't know\" / \"I don't have that information\", in the user's language). A wrong answer is worse than admitting you don't know. Never invent names, numbers, dates, quotes or sources.\n- Do not state current facts (news, prices, recent events, \"the latest…\") without having searched in this conversation.\n- When you use web search, cite the sources as [title](url), using only URLs that appear in the tool results. Never make up or guess a URL.\n- If a memory contradicts what the user says now, do not pick one: point out the difference and ask which one is right.\n- Never promise to do something later, \"in a moment\" or \"in the next message\": there is no later. Either do it in this reply (use your tools now if needed) or say plainly that it can't be done.\n\n## Memory\n- Memories are never added to this prompt: look them up with search_memories when they help.\n- If save_memory answers that it was not saved, tell the user.\n- When the user confirms that a saved fact changed, update the old memory with update_memory (id from search_memories) instead of saving another one. If memories contradict each other, ask once, then update. Never use it for things the user hasn't said. You cannot delete memories; the user deletes them from the 🧠 panel.\n- At the start of a conversation, or whenever it helps to personalize, check search_memories.\n- Search memories with short queries, one per topic, phrased as a short question about the user in the language the memories are written in (e.g. \"what is the user's job\", then \"where does the user live\", then \"the user's favorite drink\"), never one query that mixes several topics.\n- Results marked \"(keyword match, less reliable)\" only share a word with your query: use them only if they clearly answer what was asked.\n- Use a memory only if it answers exactly what was asked. Never infer or invent facts about the user from related but different memories (a dog's name is not a cat's name; a sister's birthday is not the user's).\n- Before saying you don't know something about the user, also check the current conversation (including any summary of it). If neither the memories nor the conversation state it, say you don't have that information; never guess.\n\n## Long conversations\n- If the conversation starts with a summary of its oldest part, that summary covers how the conversation began: questions about what was said or asked first (\"what did I ask at the start?\") refer to it, not to the first message you can still see.\n\n\n## Saving to long-term memory\n- Long-term memory is shared by all of this user's conversations, so it holds only a few precise facts. Call save_memory ONLY when:\n  (a) the user explicitly asks you to remember something (\"remember that…\");\n  (b) the user states a durable personal fact that will clearly be useful in other conversations: where they live, their job, their pets or family, a stable preference or a lasting technical constraint (e.g. \"only Python 3.12\");\n  (c) the user wants a specific dated event remembered (a birthday, an appointment).\n- Never save conversation content: what you explained, tasks, calculations and their results, tool or search results, the topics discussed, or details of the current request (file names, amounts, the dates or budget of a one-off plan, what they are working on today). The conversation itself keeps that.\n- Only save what the user explicitly said about themselves, written in the user's language, and pass in evidence the user's exact words copied verbatim. Never save your own assumptions or inferences.\n- Save at most 3 memories per message.\n\nUser's current local date and time: <DATE> (UTC<TZ>). Treat it as 'today'; never infer the date from search results.",
+ "tools_all_flags": [
+  {
+   "args": {
+    "query": {
+     "title": "Query",
+     "type": "string"
+    }
+   },
+   "description": "Searches the web for current information and returns a summary with sources. Use it for\nnews, recent data or anything that may have changed.",
+   "name": "web_search"
+  },
+  {
+   "args": {
+    "expression": {
+     "title": "Expression",
+     "type": "string"
+    }
+   },
+   "description": "Calculator: evaluates a math expression and returns the exact result.\n\nSupports + - * / // % ** and parentheses, plus math functions/constants (sqrt, sin, cos, tan,\nlog, log10, exp, factorial, abs, round, min, max, pi, e...). Example: \"sqrt(144) + 2**10 / 4\".\nAlways use it for arithmetic instead of computing from memory.",
+   "name": "calculator"
+  },
+  {
+   "args": {
+    "time_zone": {
+     "default": "local",
+     "title": "Time Zone",
+     "type": "string"
+    }
+   },
+   "description": "Returns the current date and time (ISO 8601) and the day of the week.\n\n`time_zone` is optional: \"local\" (default) or an IANA time zone name,\ne.g. \"America/Mexico_City\", \"Europe/Madrid\", \"UTC\".",
+   "name": "current_datetime"
+  },
+  {
+   "args": {
+    "code": {
+     "title": "Code",
+     "type": "string"
+    }
+   },
+   "description": "Check whether Python code is syntactically valid WITHOUT running it (it is only parsed). Use it before giving\nthe user Python code longer than 15 lines, and fix any error it reports. Returns OK, or the error with its line\nand column.",
+   "name": "check_python_syntax"
+  },
+  {
+   "args": {
+    "evidence": {
+     "default": "",
+     "title": "Evidence",
+     "type": "string"
+    },
+    "text": {
+     "title": "Text",
+     "type": "string"
+    }
+   },
+   "description": "Saves a lasting fact about the user to long-term memory: name, likes, preferences, job and\nrole, and durable technical constraints (language or library versions they must use, libraries they cannot install,\ntheir operating system or environment). Only save what the user explicitly said about themselves, never your own\nassumptions. Stable facts mentioned in passing while asking for something else (where they live, their diet, what\nthey like, their job) are still facts about the user: save them. Never save details of the current task: file names,\nrow counts, data values, error messages, amounts, dates or budget of a one-off plan, or what they are working on\ntoday. Those are not facts about the user.\n\nArgs:\n    text: The fact as a short, self-contained sentence in the user's language, in neutral form with no subject:\n        never start with \"The user\" or its equivalent in the user's language (e.g. \"Lives in Madrid\",\n        \"Works as a data engineer\", \"Favorite food is pozole\").\n    evidence: The user's exact words that state this fact, copied verbatim from their message.",
+   "name": "save_memory"
+  },
+  {
+   "args": {
+    "query": {
+     "title": "Query",
+     "type": "string"
+    }
+   },
+   "description": "Searches long-term memory for what is known about the user. Pass topic keywords in the\nlanguage the memories were saved in, or an empty string to get the most recent memories.\nEach result starts with its id, which update_memory needs.",
+   "name": "search_memories"
+  },
+  {
+   "args": {
+    "evidence": {
+     "default": "",
+     "title": "Evidence",
+     "type": "string"
+    },
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "text": {
+     "title": "Text",
+     "type": "string"
+    }
+   },
+   "description": "Replaces the text of an EXISTING memory (get its id from search_memories). Use it when the\nuser confirms that a saved fact changed, instead of saving a second, contradictory memory. Only use it with what\nthe user explicitly said; never with your own assumptions. It cannot delete memories.\n\nArgs:\n    id: The memory id shown by search_memories.\n    text: The new fact as a complete, self-contained sentence in the user's language.\n    evidence: The user's exact words that state the new value, copied verbatim from their message.",
+   "name": "update_memory"
+  },
+  {
+   "args": {
+    "task": {
+     "title": "Task",
+     "type": "string"
+    }
+   },
+   "description": "Delegates in-depth research to a sub-agent that runs several web searches and\nreturns a summary with sources. Use it for questions that need cross-checking several\nsources; for a single fact use web_search. Do not call it again for follow-up questions about research\nalready done in this conversation: answer from those results unless a needed fact is missing. Call it\ndirectly; the app asks the user to confirm before it runs.",
+   "name": "deep_research"
+  },
+  {
+   "args": {
+    "body": {
+     "title": "Body",
+     "type": "string"
+    },
+    "recipient": {
+     "title": "Recipient",
+     "type": "string"
+    },
+    "subject": {
+     "title": "Subject",
+     "type": "string"
+    }
+   },
+   "description": "Sends an email (SIMULATED: nothing is actually sent). Requires human approval\nbefore it runs.",
+   "name": "send_simulated_email"
+  }
+ ],
+ "tools_default": [
+  {
+   "args": {
+    "query": {
+     "title": "Query",
+     "type": "string"
+    }
+   },
+   "description": "Searches the web for current information and returns a summary with sources. Use it for\nnews, recent data or anything that may have changed.",
+   "name": "web_search"
+  },
+  {
+   "args": {
+    "expression": {
+     "title": "Expression",
+     "type": "string"
+    }
+   },
+   "description": "Calculator: evaluates a math expression and returns the exact result.\n\nSupports + - * / // % ** and parentheses, plus math functions/constants (sqrt, sin, cos, tan,\nlog, log10, exp, factorial, abs, round, min, max, pi, e...). Example: \"sqrt(144) + 2**10 / 4\".\nAlways use it for arithmetic instead of computing from memory.",
+   "name": "calculator"
+  },
+  {
+   "args": {
+    "time_zone": {
+     "default": "local",
+     "title": "Time Zone",
+     "type": "string"
+    }
+   },
+   "description": "Returns the current date and time (ISO 8601) and the day of the week.\n\n`time_zone` is optional: \"local\" (default) or an IANA time zone name,\ne.g. \"America/Mexico_City\", \"Europe/Madrid\", \"UTC\".",
+   "name": "current_datetime"
+  },
+  {
+   "args": {
+    "code": {
+     "title": "Code",
+     "type": "string"
+    }
+   },
+   "description": "Check whether Python code is syntactically valid WITHOUT running it (it is only parsed). Use it before giving\nthe user Python code longer than 15 lines, and fix any error it reports. Returns OK, or the error with its line\nand column.",
+   "name": "check_python_syntax"
+  },
+  {
+   "args": {
+    "evidence": {
+     "default": "",
+     "title": "Evidence",
+     "type": "string"
+    },
+    "text": {
+     "title": "Text",
+     "type": "string"
+    }
+   },
+   "description": "Saves a precise fact about the user to long-term memory, which is shared by all of the\nuser's conversations. Use it ONLY when the user explicitly asks you to remember something, states a durable personal\nfact that is clearly useful in other conversations (where they live, their job, their pets or family, a stable\npreference or a lasting technical constraint), or wants a specific dated event remembered. Never save conversation\ncontent: explanations, tasks, calculations, tool or search results, topics discussed or details of the current\nrequest. Only save what the user explicitly said about themselves, never your own assumptions.\n\nArgs:\n    text: The fact as a short, self-contained sentence in the user's language, in neutral form with no subject:\n        never start with \"The user\" or its equivalent in the user's language (e.g. \"Lives in Madrid\",\n        \"Works as a data engineer\", \"Birthday is on March 3\").\n    evidence: The user's exact words that state this fact, copied verbatim from their message.",
+   "name": "save_memory"
+  },
+  {
+   "args": {
+    "query": {
+     "title": "Query",
+     "type": "string"
+    }
+   },
+   "description": "Searches long-term memory for what is known about the user. Pass topic keywords in the\nlanguage the memories were saved in, or an empty string to get the most recent memories.\nEach result starts with its id, which update_memory needs.",
+   "name": "search_memories"
+  },
+  {
+   "args": {
+    "evidence": {
+     "default": "",
+     "title": "Evidence",
+     "type": "string"
+    },
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "text": {
+     "title": "Text",
+     "type": "string"
+    }
+   },
+   "description": "Replaces the text of an EXISTING memory (get its id from search_memories). Use it when the\nuser confirms that a saved fact changed, instead of saving a second, contradictory memory. Only use it with what\nthe user explicitly said; never with your own assumptions. It cannot delete memories.\n\nArgs:\n    id: The memory id shown by search_memories.\n    text: The new fact as a complete, self-contained sentence in the user's language.\n    evidence: The user's exact words that state the new value, copied verbatim from their message.",
+   "name": "update_memory"
+  },
+  {
+   "args": {
+    "task": {
+     "title": "Task",
+     "type": "string"
+    }
+   },
+   "description": "Delegates in-depth research to a sub-agent that runs several web searches and\nreturns a summary with sources. Use it for questions that need cross-checking several\nsources; for a single fact use web_search. Do not call it again for follow-up questions about research\nalready done in this conversation: answer from those results unless a needed fact is missing. Call it\ndirectly; the app asks the user to confirm before it runs.",
+   "name": "deep_research"
+  }
+ ]
+}
