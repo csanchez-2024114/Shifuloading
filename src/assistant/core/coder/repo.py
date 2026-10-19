@@ -6,6 +6,8 @@ Formato (colecciones con prefijo coder_ en la base de negocio):
 - coder_files: {project_id, user_id, ruta, contenido, tipo_mime, hash, bytes, version}; filas inmutables, `version`
   es la versión en la que nació ese contenido
 - coder_versions: {project_id, user_id, version, archivos {ruta: version_de_fila}, origen, nota, desde_version, creado}
+- coder_preview_tokens: {token_hash, user_id, project_id, version, creado, expira}; el token nunca se guarda, solo su
+  sha256; caduca a los 30 minutos (TTL en Mongo y comprobación explícita al leer)
 """
 from typing import Protocol
 
@@ -35,3 +37,8 @@ class CoderRepo(Protocol):
     def list_versions(self, project_id: str, limit: int = 0) -> list[dict]: ...  # de la más nueva a la más vieja
     def delete_version_docs(self, project_id: str, versions: list[int]) -> None: ...
     def delete_versions(self, project_id: str) -> None: ...
+
+    # tokens de vista previa
+    def insert_preview_token(self, doc: dict) -> None: ...
+    def get_preview_token(self, token_hash: str) -> dict | None: ...
+    def delete_preview_tokens(self, project_id: str) -> None: ...

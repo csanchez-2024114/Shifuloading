@@ -13,6 +13,7 @@ _indexes = {
                        ([("user_id", 1), ("actualizado", -1)], False)],
     "coder_files": [([("project_id", 1), ("ruta", 1), ("version", 1)], True), ([("project_id", 1), ("hash", 1)], False)],
     "coder_versions": [([("project_id", 1), ("version", 1)], True)],
+    "coder_preview_tokens": [([("token_hash", 1)], True), ([("project_id", 1)], False)],
 }
 
 
@@ -30,6 +31,7 @@ class MongoCoderRepo:
         self.projects = db["coder_projects"]
         self.files = db["coder_files"]
         self.versions = db["coder_versions"]
+        self.previews = db["coder_preview_tokens"]
         self._ready: set[str] = set()
 
     def _ensure(self, col) -> None:
@@ -37,6 +39,8 @@ class MongoCoderRepo:
             return
         for keys, unique in _indexes[col.name]:
             col.create_index(keys, unique=unique)
+        if col.name == "coder_preview_tokens":  # Mongo los borra al caducar (además de comprobarlo al leer)
+            col.create_index("expira", expireAfterSeconds=0)
         self._ready.add(col.name)
 
     def _insert(self, col, doc: dict) -> None:
@@ -100,3 +104,13 @@ class MongoCoderRepo:
 
     def delete_versions(self, project_id):
         self.versions.delete_many({"project_id": project_id})
+
+    # tokens de vista previa
+    def insert_preview_token(self, doc):
+        self._insert(self.previews, doc)
+
+    def get_preview_token(self, token_hash):
+        return _doc(self.previews.find_one({"token_hash": token_hash}))
+
+    def delete_preview_tokens(self, project_id):
+        self.previews.delete_many({"project_id": project_id})

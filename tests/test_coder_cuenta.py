@@ -57,6 +57,7 @@ def test_borrar_la_cuenta_borra_sus_proyectos(appdata):
         pid = projects.create(ana, nombre)["project_id"]
         projects.write_file(ana, pid, "index.html", "<h1>x</h1>")
         projects.edit_file(ana, pid, "index.html", [{"old": "x", "new": "y"}], expected_version=1)
+        token = projects.issue_preview(ana, pid)["token"]  # un token de vista previa vigente también se borra
         suyos.append(pid)
     de_beto = projects.create(beto, "suyo")["project_id"]
     projects.write_file(beto, de_beto, "index.html", "b")
@@ -66,6 +67,7 @@ def test_borrar_la_cuenta_borra_sus_proyectos(appdata):
     r = a.post("/auth/delete-account", json={"password": PW})
     assert r.status_code == 200, r.text
     assert projects.list_projects(ana) == []
+    assert projects.resolve_preview(token) is None
     assert all(_todo(repo, pid) == 0 for pid in suyos)
     assert [p["project_id"] for p in projects.list_projects(beto)] == [de_beto]
     assert _todo(repo, de_beto) == 3

@@ -12,6 +12,7 @@ class MemoryCoderRepo:
         self.projects: dict[tuple[str, str], dict] = {}
         self.files: dict[tuple[str, str, int], dict] = {}
         self.versions: dict[tuple[str, int], dict] = {}
+        self.previews: dict[str, dict] = {}
 
     # proyectos
     def insert_project(self, doc):
@@ -90,3 +91,18 @@ class MemoryCoderRepo:
         with self._lock:
             for key in [k for k in self.versions if k[0] == project_id]:
                 del self.versions[key]
+
+    # tokens de vista previa
+    def insert_preview_token(self, doc):
+        with self._lock:
+            if doc["token_hash"] in self.previews:
+                raise Duplicate(doc["token_hash"])
+            self.previews[doc["token_hash"]] = copy.deepcopy(doc)
+
+    def get_preview_token(self, token_hash):
+        return copy.deepcopy(self.previews.get(token_hash))
+
+    def delete_preview_tokens(self, project_id):
+        with self._lock:
+            for key in [k for k, d in self.previews.items() if d["project_id"] == project_id]:
+                del self.previews[key]

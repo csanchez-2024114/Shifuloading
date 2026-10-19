@@ -6,13 +6,14 @@ import difflib
 import hashlib
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from assistant.core.coder.errors import CoderError
 from assistant.core.coder.paths import TEXT_TYPES, extension, mime_for, safe_name, safe_path
 from assistant.core.coder.repo import CoderRepo, Duplicate
 
 kinds = ("landing", "game", "tool", "other")
+preview_minutes = 30
 max_edits = 20
 _project_id = re.compile(r"p_[0-9a-f]{12}")
 
@@ -190,6 +191,7 @@ class Projects:
         self.get(user_id, project_id)
         self.repo.delete_files(project_id)
         self.repo.delete_versions(project_id)
+        self.repo.delete_preview_tokens(project_id)
         self.repo.delete_project(user_id, project_id)
 
     def delete_user(self, user_id: str) -> int:
@@ -197,6 +199,53 @@ class Projects:
         for p in projects:
             self.delete_project(user_id, p["project_id"])
         return len(projects)
+
+    # ------------------------------------------------------------------ vista previa
+
+    def issue_preview(self, user_id: str, project_id: str) -> dict:
+        """Token de vista previa de la versión actual: 32 bytes aleatorios; solo se guarda su sha256 y caduca a los
+        30 minutos. Quien lo tenga ve esa versión (solo lectura) mientras no caduque."""
+        project = self.get(user_id, project_id)
+        token = secrets.token_urlsafe(32)
+        now = _now()
+        expires = now + timedelta(minutes=preview_minutes)
+        self.repo.insert_preview_token({"token_hash": hashlib.sha256(token.encode()).hexdigest(), "user_id": user_id,
+                                        "project_id": project_id, "version": project["version_actual"],
+                                        "creado": now, "expira": expires})
+        return {"token": token, "version": project["version_actual"], "expires": expires}
+
+    def resolve_preview(self, token: str) -> dict | None:
+        """{project_id, version} de un token vigente, o None (inexistente, caducado, mal formado o de un proyecto
+        borrado: siempre lo mismo, sin distinguir)."""
+        if not isinstance(token, str) or not re.fullmatch(r"[A-Za-z0-9_-]{30,64}", token):
+            return None
+        doc = self.repo.get_preview_token(hashlib.sha256(token.encode()).hexdigest())
+        if doc is None or doc["expira"] <= _now():
+            return None
+        if self.repo.get_project(doc["user_id"], doc["project_id"]) is None:
+            return None
+        return {"project_id": doc["project_id"], "version": doc["version"]}
+
+    def version_file(self, project_id: str, version: int, path: str) -> dict | None:
+        """Archivo de una versión concreta para servirlo, o None si la ruta no es válida o no está en esa versión."""
+        try:
+            ruta = safe_path(path)
+            manifest = self.manifest(project_id, version)
+        except CoderError:
+            return None
+        if ruta not in manifest:
+            return None
+        row = self.repo.get_file(project_id, ruta, manifest[ruta])
+        return None if row is None else {"path": ruta, "content": row["contenido"], "mime": row["tipo_mime"],
+                                         "hash": row["hash"]}
+
+    def version_texts(self, project_id: str, version: int) -> dict[str, str]:
+        """{ruta: contenido} de los archivos de texto de una versión (para el analizador)."""
+        out = {}
+        for ruta, v in self.manifest(project_id, version).items():
+            if extension(ruta) in TEXT_TYPES and (row := self.repo.get_file(project_id, ruta, v)) is not None:
+                out[ruta] = row["contenido"]
+        return out
 
     # ------------------------------------------------------------------ internos
 
