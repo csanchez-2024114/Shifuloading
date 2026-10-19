@@ -19,12 +19,14 @@ const fechaDe = (iso) => {
   return m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))) : null
 }
 
-/** Una celda con el formato que le toca a su tipo: números como números y fechas como fechas (no como texto). */
-const ESDINERO = /precio|monto|total|costo|valor|pago|deuda|saldo|ganancia|sueldo|salario|importe|\bq\b|\$/i
-function celda(tipo, valor, nombre) {
+/** Una celda con el formato que le toca al TIPO del campo: números y dinero como números (para que en Excel se puedan sumar y ordenar),
+ * el dinero siempre con dos decimales, y fechas como fechas (no como texto). Lo que no es un número válido queda como texto tal cual. */
+const FORMATO_NUMERO = { numero: '#,##0.##', dinero: '#,##0.00' }
+export function celda(tipo, valor) {
   if (valor === undefined || valor === null || valor === '') return null
-  // Números como números (los precios y montos con dos decimales) para que en Excel se puedan sumar y ordenar.
-  if (tipo === 'numero' && Number.isFinite(Number(valor))) return { value: Number(valor), type: Number, format: ESDINERO.test(nombre || '') ? '#,##0.00' : '#,##0.##' }
+  if (FORMATO_NUMERO[tipo] && typeof valor !== 'boolean' && String(valor).trim() !== '' && Number.isFinite(Number(valor))) {
+    return { value: Number(valor), type: Number, format: FORMATO_NUMERO[tipo] }
+  }
   if (tipo === 'fecha') { const d = fechaDe(valor); if (d) return { value: d, type: Date, format: 'dd/mm/yyyy' } }
   return { value: String(valor), type: String }
 }
@@ -43,10 +45,10 @@ export function hojasDelCrm(crm, titulos = {}) {
     const extra = crm.camposContacto || []
     agregar(titulos.contactos || 'Clientes', ['Nombre', 'Teléfono o correo', 'Canal', 'Etapa', 'Responsable', ...extra.map((c) => c.nombre), 'Días sin contacto'],
       crm.contactos.map((c) => [celda('texto', c.n), celda('texto', c.det), celda('texto', c.canal), celda('texto', c.etapa), celda('texto', c.dueno),
-        ...extra.map((e) => celda(e.tipo, c.extra?.[e.id], e.nombre)), celda('numero', c.dias, 'Días')]))
+        ...extra.map((e) => celda(e.tipo, c.extra?.[e.id])), celda('numero', c.dias)]))
   }
   for (const l of crm.listas || []) {
-    agregar(l.nombre, l.campos.map((c) => c.nombre), l.registros.map((r) => l.campos.map((c) => celda(c.tipo, r.valores[c.id], c.nombre))))
+    agregar(l.nombre, l.campos.map((c) => c.nombre), l.registros.map((r) => l.campos.map((c) => celda(c.tipo, r.valores[c.id]))))
   }
   const tareas = COLUMNAS_TAREAS.flatMap(([k, estado]) => (crm.tareas?.[k] || []).map((x) => [celda('texto', x.t), celda('texto', estado), celda('fecha', x.vence), celda('texto', x.hora), celda('texto', x.contacto)]))
   if (!ocultas.has('desarrollo')) agregar(titulos.desarrollo || 'Pendientes', ['Tarea', 'Estado', 'Fecha', 'Hora', 'Cliente'], tareas)
