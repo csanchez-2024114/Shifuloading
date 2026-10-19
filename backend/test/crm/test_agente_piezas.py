@@ -1,0 +1,117 @@
+"""Piezas del inicio y cercos de pantalla del agente con diseño (E2): herramientas de edicion, etiquetas, lado, gráfico negado y sustituto."""
+import copy
+import re
+
+import pytest
+
+pytest.importorskip("langchain_core")
+from langchain_core.messages import AIMessage  # noqa: E402
+
+from app.crm import agente  # noqa: E402
+from app.crm import operaciones as op  # noqa: E402
+from app.crm.generador import generar  # noqa: E402
+from app.crm.pantalla import describir_pantalla  # noqa: E402
+from test_agente_diseno import AHORA, BRIEF, correr, dice, llamar  # noqa: E402
+from lab_doc import doc_de_lab  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def diseno(monkeypatch):
+    monkeypatch.setenv("CRM_DISENO", "1")
+
+
+@pytest.fixture
+def doc():
+    d = generar("u1", BRIEF, AHORA)
+    return op.contactos_crear(d, [{"n": n} for n in ["Ana Morales", "Luis Pérez"]], "WhatsApp", ahora=AHORA)
+
+E = {"bloques": [{"uid": "b0", "vista": "kpis", "seccion": "miembros", "opciones": {"por": "estado"}, "ancho": 12, "alto": 1}]}
+
+
+@pytest.fixture
+def doc_lab():
+    return doc_de_lab("membresias", E)[0]
+
+
+@pytest.mark.asyncio
+async def test_el_modelo_ve_las_herramientas_de_bloques_y_leer_enlace(doc_lab, monkeypatch):
+    monkeypatch.setenv("CRM_DISENO", "1")
+    _, modelo = await correr(doc_lab, "hola", dice("Hola."))
+    nombres = modelo.ataduras[0]["nombres"]
+    for n in ("agregar_bloque", "mover_bloque", "cambiar_visual", "quitar_bloque", "leer_enlace", "crear_seccion"):
+        assert n in nombres
+    assert "definir_opciones" in nombres  # solo Carlos
+    estado = __import__("json").loads(modelo.recibidos[0][0].content.split("Estado del CRM (JSON):\n", 1)[1])
+    assert "bloques" in estado and estado["bloques"][0]["id"] == "b0"
+
+
+@pytest.mark.asyncio
+async def test_agregar_bloque_deja_cambio_y_etiqueta(doc_lab):
+    antes = copy.deepcopy(doc_lab["inicio"])
+    r, _ = await correr(doc_lab, "agrega una lista de miembros",
+                        dice("", llamar("agregar_bloque", seccion="l_miembros", vista="tabla")),
+                        dice("Listo, agregué la lista."))
+    assert len(r["doc"]["inicio"]) == len(antes) + 1
+    c = r["cambios"][0]
+    assert c["herramienta"] == "agregar_bloque" and c.get("etiqueta") and "agregó" in c["etiqueta"]
+
+
+@pytest.mark.asyncio
+async def test_crear_seccion_con_nombre_de_carlos_sigue_siendo_alias(doc):
+    r, _ = await correr(doc, "lleva mis cobros",
+                        dice("", llamar("crear_seccion", nombre="Cobros", campos=[{"nombre": "Cliente"}])),
+                        dice("Creé la sección Cobros."))
+    assert r["doc"]["listas"][0]["nombre"] == "Cobros"
+    assert r["cambios"][0]["herramienta"] == "crear_seccion"
+
+
+@pytest.mark.asyncio
+async def test_cerco_lado_cuando_no_coincide(doc_lab):
+    # Sola en su fila, el acomodo (lienzo.acomodar, como en el laboratorio) la estira a ancho completo: no queda «a la derecha».
+    r, modelo = await correr(doc_lab, "pon una lista a la derecha",
+                             dice("", llamar("agregar_bloque", seccion="l_miembros", vista="tabla", ancho=6)),
+                             dice("Listo, quedó a la derecha."),
+                             dice("Listo, quedó a la derecha."),
+                             dice("Listo, quedó a la derecha."))
+    assert any(a["aviso"].startswith('[Aviso interno] Dices "derecha"') for a in r["avisos"])
+    assert len(modelo.recibidos) == 4 and "Ojo: en realidad quedó en la fila 2, ancho completo." in r["respuesta"]
+
+
+@pytest.mark.asyncio
+async def test_cerco_lado_no_dispara_si_coincide():
+    # Con media fila libre al lado de b0, la tabla nueva queda a la derecha y decirlo es verdad.
+    d = doc_de_lab("membresias", {"bloques": [{**E["bloques"][0], "ancho": 6}]})[0]
+    r, modelo = await correr(d, "pon una lista a la derecha",
+                             dice("", llamar("agregar_bloque", seccion="l_miembros", vista="tabla", ancho=6)),
+                             dice("Listo, quedó a la derecha."))
+    assert r["avisos"] == [] and len(modelo.recibidos) == 2
+
+
+@pytest.mark.asyncio
+async def test_cerco_grafico_negado_cuando_si_existe(doc_lab):
+    g = next(sec["graficos_posibles"][0] for sec in describir_pantalla(doc_lab)["secciones"] if sec.get("graficos_posibles"))
+    nombre = re.sub(r" \d+ %", "", re.search(r"\((.*)\)", g).group(1)).lower()
+    r, _ = await correr(doc_lab, "quiero esa gráfica",
+                        dice(f"No puedo, no hay {nombre} para tus miembros."),
+                        dice(f"No puedo, no hay {nombre} para tus miembros."),
+                        dice(f"No puedo, no hay {nombre} para tus miembros."))
+    assert r["avisos"] and "SÍ se puede dibujar" in r["avisos"][0]["aviso"]
+
+
+@pytest.mark.asyncio
+async def test_sustituto_impuesto_revierte_el_doc(doc_lab):
+    inicio = copy.deepcopy(doc_lab["inicio"])
+    r, _ = await correr(doc_lab, "mapa de calor por ciudad",
+                        dice("", llamar("agregar_bloque", seccion="l_miembros", vista="tabla")),
+                        dice("No hay forma de hacer el mapa; puse una lista como alternativa."),
+                        dice("Eso no existe todavía. ¿Quieres una lista en su lugar?"))
+    assert r["doc"]["inicio"] == inicio
+    assert any("sustituto" in a["aviso"].lower() for a in r["avisos"])
+
+
+@pytest.mark.asyncio
+async def test_sin_bandera_no_cambia_herramientas(doc, monkeypatch):
+    monkeypatch.delenv("CRM_DISENO", raising=False)
+    _, modelo = await correr(doc, "hola", dice("Hola."))
+    assert "agregar_bloque" not in modelo.ataduras[0]["nombres"]
+    assert modelo.ataduras[0]["nombres"] == [h["function"]["name"] for h in agente.HERRAMIENTAS]

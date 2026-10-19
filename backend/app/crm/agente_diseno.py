@@ -17,12 +17,13 @@ Es el agente de Carlos (modelo + herramientas + verificador, las mismas INSTRUCC
 - La toma de diseño (`toma.py`): el código abre, cierra y confirma la ficha, y al «sí» arma el inicio sin el modelo.
 
 La pantalla es la de C2: el catálogo de la toma sale de `pantalla.catalogo_toma` y el «sí» a la ficha arma el inicio con
-`edicion.construir_desde_ficha` (acomodo de `lienzo` y validación de `validar`, una sola versión). Cercos de lado y gráfico negado con
-`lienzo.ubicar_todo` y `pantalla.describir_pantalla` (chat.js). El sustituto impuesto queda para E2 al exponer las herramientas de
-bloques (`edicion.HERRAMIENTAS_EDICION`, `revisar_sustituto_final`).
+`edicion.construir_desde_ficha` (acomodo de `lienzo` y validación de `validar`, una sola versión). Herramientas de bloques y estructura
+del laboratorio (`edicion.HERRAMIENTAS_EDICION`, mismo filtro que `chat.js`), contexto con `pantalla.describir_pantalla`, y cercos de lado,
+gráfico negado y sustituto impuesto (`revisar_sustituto_final`).
 """
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import re
@@ -67,7 +68,11 @@ HERR_DESHACER = {"type": "function", "function": {
 
 # Las de Carlos que hacen lo mismo que las de datos del laboratorio: no se muestran, pero si el modelo las llama van al mismo handler.
 ALIAS_DE_DATOS = frozenset({"agregar_contactos", "cambiar_contacto", "eliminar_contacto", "agregar_registros", "cambiar_registro", "eliminar_registro"})
+# Mismo nombre que el laboratorio pero esquema de Carlos (`nombre`/`destino`…): no se muestran; si las llama, van a los `_h_*` de Carlos (contrato §8).
+ALIAS_ESTRUCTURA_CARLOS = frozenset({"crear_seccion", "agregar_campo", "renombrar_campo", "quitar_campo", "renombrar_seccion", "definir_opciones"})
+NOMBRES_EDICION = frozenset(h["function"]["name"] for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer")
 HERRAMIENTAS_CARLOS = [h for h in agente.HERRAMIENTAS if h["function"]["name"] not in ALIAS_DE_DATOS]
+HERRAMIENTAS_CARLOS_SIN_EDICION = [h for h in HERRAMIENTAS_CARLOS if h["function"]["name"] not in NOMBRES_EDICION]
 _BORRAR = frozenset({"borrar_registro", "eliminar_contacto", "eliminar_registro"})
 _GUARDA_DATO = frozenset({"agregar_registro", "editar_registro", "agregar_contactos", "cambiar_contacto", "agregar_registros", "cambiar_registro"})
 
@@ -199,7 +204,7 @@ def _opciones_antes(doc: dict, seccion: Any, campo: Any) -> list:
     return list((c or {}).get("opciones") or [])
 
 
-# ───────── Ganchos de la pantalla (chat.js; bloques cuando E2 conecte edicion.HERRAMIENTAS_EDICION) ─────────
+# ───────── Ganchos de la pantalla (chat.js) ─────────
 
 _LADO = re.compile(r"\b(derecha|izquierda)\b", re.IGNORECASE)
 _NEGADO_GRAFICO = re.compile(r"\bno (hay|existe|tengo|se puede|puedo)\b", re.IGNORECASE)
@@ -248,16 +253,38 @@ def _gancho_grafico_negado(respuesta: str, sesion: "SesionDiseno") -> str | None
 
 
 def _gancho_sustituto(respuesta: str, sesion: "SesionDiseno") -> str | None:
-    # TODO(E2): SUSTITUTO + agregar_bloque/cambiar_visual: revertir al doc del inicio del turno y corregir (chat.js).
-    return None
+    if not SUSTITUTO.search(respuesta or ""):
+        return None
+    if not any(c["herramienta"] in ("agregar_bloque", "cambiar_visual") for c in sesion.cambios):
+        return None
+    sesion.doc = copy.deepcopy(sesion.doc_inicial)
+    sesion.cambios.clear()
+    return ("[Aviso interno] Aplicaste un sustituto sin preguntar y ya lo deshice (la pantalla está como al principio). Di que eso no existe y "
+            "PREGUNTA si quiere la alternativa; no llames herramientas.")
 
 
 GANCHOS_PANTALLA: list[Callable[[str, "SesionDiseno"], str | None]] = [_gancho_lado, _gancho_grafico_negado, _gancho_sustituto]
 
 
-def revisar_sustituto_final(respuesta: str, sesion: "SesionDiseno") -> None:
-    # TODO(E2): si tras las correcciones insiste en imponer un sustituto, deshacerlo sí o sí y rehacer la respuesta sin herramientas.
-    return None
+async def revisar_sustituto_final(respuesta: str, sesion: "SesionDiseno", doc_inicial: dict, mensajes: list, modelo: Any, imagen: bool) -> str:
+    """Si tras las correcciones insiste en imponer un sustituto con bloques ya aplicados, revierte y rehace la respuesta sin herramientas (chat.js)."""
+    if not SUSTITUTO.search(respuesta or ""):
+        return respuesta
+    if not any(c["herramienta"] in ("agregar_bloque", "cambiar_visual") for c in sesion.cambios):
+        return respuesta
+    from langchain_core.messages import AIMessage, HumanMessage
+
+    sesion.doc = copy.deepcopy(doc_inicial)
+    sesion.cambios.clear()
+    aviso = ("[Aviso interno] Deshice el sustituto: la pantalla quedó como al principio. Responde en 1-2 líneas: eso no existe, cuál sería lo "
+             "más parecido, y PREGUNTA si lo quiere. No digas que pusiste nada.")
+    mensajes.extend([AIMessage(content=respuesta), HumanMessage(content=aviso)])
+    try:
+        ia = await _atar(modelo or agente._modelo(), sesion.herramientas(), True).ainvoke(mensajes)
+        t = (ia.content if isinstance(ia.content, str) else "").strip()
+        return t or "Eso no existe en el catálogo todavía. ¿Quieres que te proponga lo más parecido?"
+    except Exception:
+        return "Eso no existe en el catálogo todavía. ¿Quieres que te proponga lo más parecido?"
 
 
 # ───────── La sesión ─────────
@@ -289,22 +316,20 @@ class SesionDiseno(agente.Sesion):
         self.doc_tras_deshacer: dict | None = None
         self._etiqueta: Any = _SIN
         self._agregado: tuple[str, str] | None = None
+        self.doc_inicial: dict = copy.deepcopy(doc)
 
     # --- lo que ve el modelo ---
     def herramientas(self) -> list[dict]:
-        """Las de Carlos (sin las que ahora son alias), las de la toma según el estado, deshacer y las de datos del laboratorio."""
-        return [*HERRAMIENTAS_CARLOS, *toma.herramientas_para(self.doc), HERR_DESHACER, *registros.HERRAMIENTAS_DATOS]
+        """Carlos (sin alias ni nombres que ya trae edicion.js), herramientas de diseño con el mismo filtro que chat.js, toma, deshacer, datos y leer_enlace."""
+        lab = [h for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer"
+               and (self.con_imagen or h["function"]["name"] != "usar_logo")]
+        return [*HERRAMIENTAS_CARLOS_SIN_EDICION, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *registros.HERRAMIENTAS_DATOS, edicion.HERR_ENLACE]
 
     def contexto(self) -> str:
-        """El Estado del CRM de Carlos, más lo del laboratorio: las secciones con sus campos (ids para las herramientas de datos), los
-        pedidos que se pueden deshacer y la ficha de diseño."""
+        """El Estado del CRM de Carlos (hoy, contactos, tareas, equipo, automatizaciones…) más la pantalla como chat.js
+        (`pantalla.describir_pantalla`: bloques, secciones con sus campos, gráficos posibles, pedidos que se pueden deshacer y toma)."""
         base = json.loads(agente.contexto_crm(self.doc, self.ahora))
-        base["secciones"] = [{"id": s["id"], "titulo": s["titulo"], "campos": [{"id": c["id"], "nombre": c["nombre"], "tipo": c["tipo"],
-                                                                               **({"opciones": c["opciones"]} if c.get("opciones") else {})} for c in s["campos"]]}
-                             for s in sv.secciones_de(_visible(self.doc))]
-        base["pedidos_anteriores"] = [{"pedido": p["n"], "dijo": p.get("antes_de"), "cambio": p.get("cambio") or ["bloques", "marca", "estructura"],
-                                       "hora": p.get("hora")} for p in self.puntos]
-        base["toma"] = toma.contexto_toma(self.doc, catalogo(self.doc))
+        base.update(pantalla.describir_pantalla(self.doc, self.vista or "inicio", self.puntos))
         return json.dumps(base, ensure_ascii=False, default=str)
 
     def solo_toma(self) -> bool:
@@ -404,10 +429,41 @@ class SesionDiseno(agente.Sesion):
             return r["resultado"]
         if nombre in registros.HERR_DATOS:
             return self._un_dato(nombre, args)
+        if self._es_alias_estructura_carlos(nombre, args):
+            funcion = getattr(self, f"_h_{nombre}", None)
+            if funcion is not None:
+                return funcion(**args)
+        if nombre in NOMBRES_EDICION:
+            return self._edicion(nombre, args)
         funcion = getattr(self, f"_h_{nombre}", None)
         if funcion is None:
             return f"La herramienta {nombre} no existe."
         return funcion(**args)
+
+    @staticmethod
+    def _es_alias_estructura_carlos(nombre: str, args: dict) -> bool:
+        """Mismo nombre que el laboratorio pero argumentos de Carlos: sigue el handler de `agente.Sesion`."""
+        if nombre == "definir_opciones":
+            return True
+        if nombre == "crear_seccion" and args.get("nombre") and not args.get("titulo") and not args.get("desde"):
+            return True
+        if nombre == "renombrar_seccion" and args.get("nombre") and not args.get("titulo"):
+            return True
+        if nombre in ("agregar_campo", "renombrar_campo", "quitar_campo") and args.get("destino") and not args.get("seccion"):
+            return True
+        return False
+
+    def _edicion(self, nombre: str, args: dict) -> str:
+        """Herramientas de `edicion.py` (bloques, marca, estructura del laboratorio)."""
+        ctx: dict[str, Any] = {"vista": self.vista or "inicio", "texto": self.texto, "digresion": self.digresion, "confirmado": self.confirmado,
+                               "dichos": self.dichos, "ahora": self.ahora, "imagen": self.con_imagen}
+        r = edicion.ejecutar(self.doc, nombre, args, ctx)
+        if r["ok"]:
+            self.doc = r["doc"]
+            if r.get("vista"):
+                self.vista = r["vista"]
+            self._etiqueta = r.get("etiqueta")
+        return r["resultado"]
 
     @staticmethod
     def es_fallo(resultado: str) -> bool:
@@ -751,7 +807,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     else:
         respuesta = " ".join(ultimos)  # el modelo no terminó: se le dice a la persona lo que sí se hizo
 
-    revisar_sustituto_final(respuesta, sesion)
+    respuesta = await revisar_sustituto_final(respuesta, sesion, doc_inicial, mensajes, base, bool(imagen))
     if correcciones >= agente.MAX_CORRECCIONES and (vl := sesion.verdad_lado_final(respuesta)):
         respuesta += f"\n\nOjo: en realidad quedó en {vl}."
     respuesta = agente.limpiar_respuesta(respuesta)
