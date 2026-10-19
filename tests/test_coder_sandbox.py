@@ -153,3 +153,37 @@ def test_el_sandbox_real_no_arranca_sin_coder_enabled(monkeypatch):
     monkeypatch.delenv("CODER_ENABLED", raising=False)
     with pytest.raises(ConfigError, match="CODER_ENABLED=1"):
         sandbox._real_app()
+
+
+def _rutas_del_sandbox(env, token_b: str, pid_b: str) -> list[str]:
+    """Todas las rutas que el sandbox atiende o podría atender, incluidas las que intentan alcanzar el proyecto B
+    con el token de A. Al sumar rutas al sandbox (recursos, datos, compartir), se suman aquí."""
+    t = env.token
+    return [
+        f"/p/{t}/", f"/p/{t}/index.html", f"/p/{t}/js/app.js", f"/p/{t}/no.html",
+        f"/p/{t}/secreto.html",  # existe solo en B
+        f"/p/{t}/../{token_b}/secreto.html", f"/p/{t}/..%2f{token_b}%2fsecreto.html",
+        f"/p/{t}/{pid_b}/secreto.html", f"/p/{t}/%2e%2e/%2e%2e/p/{token_b}/secreto.html",
+        f"/p/{t}/__data/x", f"/p/{t}/assets/x.png",
+        f"/p/{token_b}/secreto.html", "/", "/p/", f"/s/{t}/", "/u/x/",
+    ]
+
+
+def test_ninguna_ruta_cambia_con_la_cookie_ni_da_datos_de_otro_proyecto(env):
+    p = env.projects
+    pid_b = p.create(B, "de b")["project_id"]
+    p.write_file(B, pid_b, "secreto.html", "DATOS-DEL-PROYECTO-B")
+    token_b = p.issue_preview(B, pid_b)["token"]
+    galletas = {"Cookie": f"agente0_session=secreta; token={token_b}; project_id={pid_b}"}
+    for ruta in _rutas_del_sandbox(env, token_b, pid_b):
+        for metodo in ("GET", "HEAD", "POST"):
+            sin = env.client.request(metodo, ruta)
+            con = env.client.request(metodo, ruta, headers=galletas)
+            assert _snapshot(con) == _snapshot(sin), (metodo, ruta)
+            assert "set-cookie" not in con.headers
+            # con el token de A nunca sale nada de B (el cliente, como un navegador, resuelve "/p/A/../B/" a
+            # "/p/B/" antes de enviar: esa petición ya lleva el token de B y no cuenta)
+            if not con.url.path.startswith(f"/p/{token_b}/"):
+                assert b"DATOS-DEL-PROYECTO-B" not in con.content, (metodo, ruta, con.url.path)
+    # con el token de B sí se ve lo de B (control: el contenido existe y el test podría detectarlo)
+    assert env.client.get(f"/p/{token_b}/secreto.html").text == "DATOS-DEL-PROYECTO-B"
