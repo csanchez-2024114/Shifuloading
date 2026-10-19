@@ -258,7 +258,11 @@ def _ejecutar_sin(doc: dict, nombre: str, args: dict, ctx: dict) -> tuple[dict, 
             return no(f"la sección «{js(arg(args, 'seccion'))}» no existe. Secciones: {ids_con_registros()}.")
         vista = arg(args, "vista")
         if vista not in VISTAS_INICIO:
-            return no(f"la vista «{js(vista)}» no existe en el inicio. Vistas posibles: {', '.join(VISTAS_INICIO)}.")
+            # Un tipo de gráfico pedido como vista («estadisticas», «radar»): sí existe, va dentro de la vista grafico. Medido en banco2
+            # («cuánto me paga cada miembro en promedio»): con solo «no existe» el modelo se rendía y ofrecía otra cosa (3 de 3).
+            g = plantillas.graficos().get(vista) if isinstance(vista, str) else None
+            como = f" «{vista}» es un tipo de gráfico ({g['nombre']}): usa vista \"grafico\" con opciones {{tipo: \"{vista}\"}}." if g else ""
+            return no(f"la vista «{js(vista)}» no existe en el inicio. Vistas posibles: {', '.join(VISTAS_INICIO)}.{como}")
         crudas = args.get("opciones")
         opciones = normalizar_opciones(vista, crudas if verdad(crudas) and isinstance(crudas, dict) else {})
         campos = campos_de(s, por_id)

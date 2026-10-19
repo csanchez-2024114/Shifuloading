@@ -119,6 +119,38 @@ async def test_ofrecer_un_grafico_parecido_no_es_negarlo(doc_lab):
 
 
 @pytest.mark.asyncio
+async def test_con_pestana_abierta_los_bloques_del_inicio_cambian_de_nombre(doc_lab):
+    # «aquí pon…» mirando Miembros llamaba cambiar_visual sobre b0 del inicio (1 de 3 en la línea base; el error nombraba b1).
+    # El estado sigue trayendo esos bloques, con un nombre que dice que no se ven ahora.
+    from test_agente_diseno import ModeloFalso
+    modelo = ModeloFalso(dice("Hola."))
+    await agente.responder(doc_lab, "aquí pon arriba un resumen", [], AHORA, False, modelo=modelo, seccion="Miembros")
+    estado = __import__("json").loads(modelo.recibidos[0][0].content.split("Estado de la pantalla (JSON):\n", 1)[1])
+    assert "bloques" not in estado
+    assert estado["bloques_del_inicio_no_se_ven_ahora"][0]["id"] == "b0"
+    assert estado["pestana_abierta"] != "inicio"
+
+
+@pytest.mark.asyncio
+async def test_negar_otra_cosa_no_niega_la_dona_pedida(doc_lab):
+    # «tiene dona, pero no hay nube» no es negar la dona (el aviso empujaba a agregar y quitar).
+    r, modelo = await correr(doc_lab, "agrega una dona por estado y una nube de palabras de los planes",
+                             dice("La sección tiene gráfica de dona, pero no hay nube de palabras."))
+    assert r["avisos"] == [] and len(modelo.recibidos) == 1
+
+
+@pytest.mark.asyncio
+async def test_el_sustituto_no_deshace_la_pieza_que_si_pidieron(doc_lab):
+    # Compuesto: la dona se queda aunque la respuesta ofrezca una alternativa para la nube.
+    r, _ = await correr(doc_lab, "agrega una dona por estado y una nube de palabras de los planes",
+                        dice("", llamar("agregar_bloque", seccion="l_miembros", vista="grafico",
+                                        opciones={"tipo": "dona", "estado": "estado"})),
+                        dice("Agregué la dona por estado. La nube de palabras no existe; lo más parecido sería barras. ¿La quieres?"))
+    assert any((b.get("opciones") or {}).get("tipo") == "dona" for b in r["doc"]["inicio"])
+    assert not any("sustituto" in a["aviso"].lower() for a in r["avisos"])
+
+
+@pytest.mark.asyncio
 async def test_sustituto_impuesto_revierte_el_doc(doc_lab):
     inicio = copy.deepcopy(doc_lab["inicio"])
     r, _ = await correr(doc_lab, "mapa de calor por ciudad",

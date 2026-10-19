@@ -60,6 +60,16 @@ async def test_prompt_diseno_usa_lab_y_no_carlos_primero(doc):
     json.loads(s.split(agente_diseno._CABECERA_ESTADO_PANTALLA, 1)[1])
 
 
+def test_el_prompt_no_niega_lo_que_el_catalogo_tiene():
+    # Línea base banco_pestanas «calendario» 3/3: el ejemplo decía que un calendario no existe y el modelo ofrecía en vez de ponerlo.
+    # banco2 «promedio»: «un bloque estadisticas» hacía pedir esa vista. banco_pestanas compuesto 3/3: no agregaba la dona.
+    t = agente_diseno.INSTRUCCIONES_LAB
+    assert "por ejemplo un calendario" not in t
+    assert "una gráfica de radar" not in t
+    assert 'vista "grafico", tipo "estadisticas"' in t
+    assert "Lo que sí existe en ese mismo pedido, hazlo en este turno." in t
+
+
 @pytest.mark.asyncio
 async def test_prompt_diseno_sin_bandera_es_carlos(doc, monkeypatch):
     monkeypatch.delenv("CRM_DISENO", raising=False)

@@ -27,6 +27,12 @@ DIFERENCIAS: dict[tuple[str, int], tuple[bool, str, str, bool]] = {
         True, "Sección «Miembros» quitada del menú con sus registros (se puede deshacer). También se quitaron sus bloques del inicio. Así se ve ahora: .",
         "El laboratorio valida contra el inicio POR DEFECTO de la plantilla (que usa Miembros) aunque no esté en pantalla; el CRM no tiene "
         "ese inicio: valida las secciones y quita los bloques reales, como dice el texto.", False),
+    ("agregar: gráfico que no existe, que no se puede, vista que no hay, sección que no hay", 3): (
+        False, "ERROR: la vista «radar» no existe en el inicio. Vistas posibles: kpis, tablero, agenda, vencimientos, grafico, tabla, "
+               "calendario_mes, tablero_dinero, cifra, atencion, franjas, matriz. «radar» es un tipo de gráfico (Radar): usa vista \"grafico\" "
+               "con opciones {tipo: \"radar\"}.",
+        "Un tipo de gráfico pedido como vista sí existe: el error dice cómo pedirlo (medido en banco2, «promedio»: con solo «no existe» el "
+        "modelo se rendía 3 de 3). El estado no cambia.", True),
     ("quitar un campo libre", 3): (
         True, f"Campo «Plan» quitado de «Miembros» con sus datos (se puede deshacer). {_ASI}",
         "Igual que arriba: el laboratorio lo frena porque «plan» lo usa un bloque del inicio por defecto de la plantilla, que no está en "

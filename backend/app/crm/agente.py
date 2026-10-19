@@ -975,14 +975,16 @@ def revisar_respuesta(respuesta: str, sesion: "Sesion", doc_inicial: dict) -> st
 
 async def responder(doc: dict, texto: str, historial: list[dict] | None = None, ahora: datetime | None = None,
                     con_captura: bool = False, modelo: Any = None, buscador: Any = None, imagen: str | None = None, seccion: str | None = None,
-                    persona: str | None = None, puntos: list[dict] | None = None, adjunto: str | None = None) -> dict:
+                    persona: str | None = None, puntos: list[dict] | None = None, adjunto: str | None = None,
+                    columnas: list[str] | None = None) -> dict:
     """Devuelve `{doc, respuesta, vista?, pendiente?, modo: "ia"}`. Lanza excepción si el modelo falla: quien llama usa las reglas.
     Con CRM_DISENO=1 lo resuelve `agente_diseno` (mismo contrato, más `cambios`, `fallos`, `intentos`, `consultas` y `avisos`);
     `puntos` (con foto) son los pedidos que se pueden deshacer y solo se usan ahí."""
     if diseno_activo():
         from app.crm import agente_diseno  # aquí: agente_diseno importa este módulo
 
-        return await agente_diseno.responder(doc, texto, historial, ahora, con_captura, modelo, buscador, imagen, seccion, persona, puntos=puntos, adjunto=adjunto)
+        return await agente_diseno.responder(doc, texto, historial, ahora, con_captura, modelo, buscador, imagen, seccion, persona, puntos=puntos,
+                                             adjunto=adjunto, columnas=columnas)
     from langchain_core.messages import HumanMessage, ToolMessage
 
     buscador = buscador or web.buscar

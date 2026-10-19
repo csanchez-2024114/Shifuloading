@@ -34,6 +34,7 @@ from typing import Any, Callable
 
 import regex  # \p{L} igual que en JS
 
+from app.crm import adjuntos
 from app.crm import agente
 from app.crm import edicion
 from app.crm import estructura as est
@@ -49,7 +50,8 @@ from app.crm.afirma import afirma_cambio, afirma_con
 from app.crm import chat as agente_chat
 from app.crm.chat import _capitaliza, _norm
 from app.crm.regional import PAISES
-from app.crm.valores import fecha_larga, parse_fecha, parse_numero
+from app.crm import plantillas
+from app.crm.valores import fecha_larga, parse_fecha, parse_numero, sin_acentos
 
 logger = logging.getLogger(__name__)
 
@@ -92,19 +94,26 @@ CATEGORIA: dict[str, str] = {
     **{n: "estructura" for n in ("definir_etapas", "mostrar_seccion", "definir_opciones", "mover_campo")},
 }
 
-# Literal de `laboratorio/servidor/chat.js` L70–L89 (`INSTRUCCIONES`).
+# De `laboratorio/servidor/chat.js` L70–L89 (`INSTRUCCIONES`), con estas diferencias (19-oct).
+# La traza «sin el ejemplo, el calendario se pone 3 de 3» es del agente que empezó el diff; aquí no se re-midió con IA real.
+# - Los ejemplos de «lo que no existe» (un calendario, un mapa, una gráfica de radar) eran de un catálogo viejo: hoy calendario_mes y los
+#   gráficos calendario y radar SÍ existen. Con el ejemplo, «quiero ver los vencimientos en un calendario» respondía «no hay vista de
+#   calendario» y ofrecía calendario_mes en vez de ponerlo (3 de 3); sin él, lo pone (3 de 3). Lo que existe lo dice el estado.
+# - «estadisticas» no es una vista: es un tipo de gráfico. «un bloque "estadisticas"» hacía llamar vista="estadisticas" (3 de 3 en banco2).
+# - Un pedido con algo que existe y algo que no («dona» y «nube de palabras») no agregaba nada: la regla decía «no agregues nada todavía»
+#   si algún tipo no existe (3 de 3 en banco_pestanas). Lo que existe se hace; lo que no, se dice y se pregunta.
 INSTRUCCIONES_LAB = """Eres Shifu, el asistente del CRM. Aquí editas el DISEÑO del CRM de la persona: su marca (colores, fondos, tipografía, logo) y la pantalla de inicio: qué bloques hay,
 qué vista usa cada uno, su tamaño, su orden y los rangos de los vencimientos. Y sus DATOS: agregas, cambias, borras y consultas sus registros. No hay botones para editar: todo pasa por ti, y solo con tus herramientas.
 Reglas:
-- Usa SOLO las vistas, secciones y campos que aparecen en el estado. Si piden algo que no existe (por ejemplo un calendario, un mapa,
-  una gráfica de radar), dilo con honestidad y ofrece lo más parecido que SÍ existe. Nunca digas que hiciste algo que no hiciste.
+- Usa SOLO las vistas, secciones y campos que aparecen en el estado: lo que existe es lo que está ahí (vistas y graficos_posibles de cada
+  sección), nada más y nada menos. Si piden algo que no está, dilo con honestidad y ofrece lo más parecido que SÍ existe. Nunca digas que hiciste algo que no hiciste.
 - Hazlo directamente: no anuncies "voy a". Si falta un dato imprescindible, pregunta solo eso.
 - Para cambiar grupos de vencimientos usa cambiar_rangos con la lista COMPLETA de rangos (los que se quedan y los nuevos).
 - Todo el inicio debe caber en una pantalla: si agregas bloques, considera achicar otros (ancho 3-4 para gráficas chicas).
 - Si una herramienta devuelve ERROR, corrige y vuelve a intentar, o explica la verdad.
-- Un pedido = el MÍNIMO de bloques. Varias cifras de un mismo campo (promedio, mediana, mínimo…) van en UN bloque "estadisticas". No agregues resúmenes que no pidieron.
+- Un pedido = el MÍNIMO de bloques. Varias cifras de un mismo campo (promedio, mediana, mínimo…) van en UN gráfico "estadisticas" (vista "grafico", tipo "estadisticas"). No agregues resúmenes que no pidieron.
 - Si piden LLEVAR algo que todavía no tiene sección (inventario, cobros, proveedores…): créalo YA con crear_seccion (campos sensatos) y, si piden verlo en el inicio, agrega el bloque (por ejemplo una tabla con filtro: cantidad menorOIgual mínimo). No preguntes umbrales: elige uno razonable y dilo.
-- Si piden un TIPO DE GRÁFICO o vista que no existe en el catálogo: no agregues nada todavía; di que no existe y OFRECE la alternativa más parecida, preguntando.
+- Si en un pedido hay un tipo de gráfico o una vista que no existe en el catálogo: eso no lo agregues; di que no existe y ofrece la alternativa más parecida, preguntando. Lo que sí existe en ese mismo pedido, hazlo en este turno.
 - Antes de decir que un gráfico no existe, búscalo en graficos_posibles de TODAS las secciones.
 - Nunca copies textos internos como "Así se ve ahora".
 - Para decir DÓNDE quedó algo usa solo "donde_se_ve" / "Así se ve ahora" de los resultados; si no quedó donde pidieron, muévelo o ajusta anchos.
@@ -328,7 +337,11 @@ def _gancho_grafico_negado(respuesta: str, sesion: "SesionDiseno") -> str | None
     if not _NEGADO_GRAFICO.search(respuesta):
         return None
     posibles = [(x["titulo"], g) for x in pantalla.describir_pantalla(sesion.doc)["secciones"] for g in (x.get("graficos_posibles") or [])]
-    bajo, pedido = respuesta.lower(), (sesion.texto or "").lower()
+    # La negación y el gráfico en la MISMA parte de la oración: «tiene gráfica de dona, pero no hay nube de palabras» o «agregué la dona;
+    # no hay espacio para ponerlas juntas» no niegan la dona (medido con la traza: el aviso salía ahí y empujaba a agregar lo que no
+    # se pidió, quitar y volver a poner).
+    negadas = [p.lower() for p in _PARTES.split(respuesta) if _NEGADO_GRAFICO.search(p)]
+    pedido = (sesion.texto or "").lower()
     for _sec, g in posibles:
         par = re.search(r"\((.*)\)", g)
         if not par:
@@ -336,37 +349,92 @@ def _gancho_grafico_negado(respuesta: str, sesion: "SesionDiseno") -> str | None
         nombre = re.sub(r" \d+ %", "", par.group(1).lower())
         # Solo si niega el gráfico que la persona PIDIÓ: «no hay velas japonesas; lo más parecido es una cascada» nombra la cascada
         # como alternativa y no la niega (medido en banco2: el aviso empujaba a agregar la cascada sin preguntar).
-        if nombre and nombre in bajo and nombre in pedido:
+        if nombre and nombre in pedido and any(nombre in p for p in negadas):
             donde = ", ".join(t for t, xg in posibles if xg == g)
             return (f"[Aviso interno] Dices que no se puede, pero «{g}» SÍ se puede dibujar con: {donde}. Hazlo con agregar_bloque/"
                     f'cambiar_visual (vista "grafico"), o explica bien qué es lo que no se puede.')
     return None
 
 
+def _lienzo_del_turno(sesion: "SesionDiseno") -> list[dict]:
+    return [c for c in sesion.cambios if c["herramienta"] in ("agregar_bloque", "cambiar_visual")]
+
+
+def _el_pedido_nombra(texto: str, cambio: dict) -> bool:
+    """True si la vista o el tipo de gráfico de este cambio aparece en lo que escribió la persona (id o nombre del catálogo)."""
+    args = cambio.get("args") or {}
+    vista = args.get("vista")
+    if not isinstance(vista, str) or not vista:
+        return False
+    if vista == "grafico":
+        tipo = (args.get("opciones") or {}).get("tipo") if isinstance(args.get("opciones"), dict) else None
+        g = plantillas.graficos().get(tipo) if isinstance(tipo, str) else None
+        nombres = [tipo or "", (g or {}).get("nombre") or ""]
+    else:
+        nombres = [vista, pantalla.NOMBRE_VISTA.get(vista) or ""]
+    dicho = sin_acentos(texto or "")
+    return any(n and sin_acentos(str(n)) in dicho for n in nombres)
+
+
+def _sustitutos_impuestos(sesion: "SesionDiseno") -> list[dict]:
+    """Piezas de este turno que la respuesta trata como alternativa y que la persona no nombró."""
+    return [c for c in _lienzo_del_turno(sesion) if not _el_pedido_nombra(sesion.texto or "", c)]
+
+
+def _doc_sin_uids(doc: dict, uids: set[str]) -> dict:
+    if not uids:
+        return doc
+    paginas = {k: [b for b in bs if b.get("uid") not in uids] for k, bs in (doc.get("paginas") or {}).items()}
+    return {**doc, "inicio": [b for b in (doc.get("inicio") or []) if b.get("uid") not in uids], "paginas": paginas}
+
+
+_AVISO_SUSTITUTO_TODO = ("[Aviso interno] Aplicaste un sustituto sin preguntar y ya lo deshice (la pantalla está como al principio). Di que eso no existe y "
+                         "PREGUNTA si quiere la alternativa; no llames herramientas.")
+_AVISO_SUSTITUTO_PARTE = ("[Aviso interno] Quité solo lo que pusiste como sustituto sin preguntar. Lo que la persona sí pidió se queda. "
+                          "Di que lo otro no existe y PREGUNTA si quiere la alternativa; no vuelvas a poner el sustituto.")
+
+
+def _deshacer_sustituto(sesion: "SesionDiseno") -> str | None:
+    """Si la respuesta impone una alternativa, el código la quita. Lo que el pedido nombró (el catálogo, no una lista de casos) se queda:
+    «agregué la dona; lo más parecido a la nube sería barras» no deshace la dona (banco_pestanas, compuesto, 3 de 3 sin la dona)."""
+    lienzo = _lienzo_del_turno(sesion)
+    sustitutos = _sustitutos_impuestos(sesion)
+    if not lienzo or not sustitutos:
+        return None
+    if len(sustitutos) == len(lienzo) or any(c["herramienta"] != "agregar_bloque" for c in sustitutos):
+        sesion.doc = copy.deepcopy(sesion.doc_inicial)
+        sesion.cambios.clear()
+        return _AVISO_SUSTITUTO_TODO
+    uids = {u for c in sustitutos if (u := _uid_de_cambio(c))}
+    if len(uids) != len(sustitutos):
+        sesion.doc = copy.deepcopy(sesion.doc_inicial)
+        sesion.cambios.clear()
+        return _AVISO_SUSTITUTO_TODO
+    sesion.doc = _doc_sin_uids(sesion.doc, uids)
+    sesion.cambios = [c for c in sesion.cambios if c not in sustitutos]
+    return _AVISO_SUSTITUTO_PARTE
+
+
 def _gancho_sustituto(respuesta: str, sesion: "SesionDiseno") -> str | None:
     if not SUSTITUTO.search(respuesta or ""):
         return None
-    if not any(c["herramienta"] in ("agregar_bloque", "cambiar_visual") for c in sesion.cambios):
-        return None
-    sesion.doc = copy.deepcopy(sesion.doc_inicial)
-    sesion.cambios.clear()
-    return ("[Aviso interno] Aplicaste un sustituto sin preguntar y ya lo deshice (la pantalla está como al principio). Di que eso no existe y "
-            "PREGUNTA si quiere la alternativa; no llames herramientas.")
+    return _deshacer_sustituto(sesion)
 
 
 GANCHOS_PANTALLA: list[Callable[[str, "SesionDiseno"], str | None]] = [_gancho_lado, _gancho_grafico_negado, _gancho_sustituto]
 
 
 async def revisar_sustituto_final(respuesta: str, sesion: "SesionDiseno", doc_inicial: dict, mensajes: list, modelo: Any, imagen: bool) -> str:
-    """Si tras las correcciones insiste en imponer un sustituto con bloques ya aplicados, revierte y rehace la respuesta sin herramientas (chat.js)."""
+    """Si tras las correcciones insiste en imponer un sustituto con bloques ya aplicados, revierte y rehace la respuesta sin herramientas (chat.js).
+    Lo que el pedido nombró no se revierte: queda en la pantalla y la respuesta que ya lo dice se conserva."""
     if not SUSTITUTO.search(respuesta or ""):
         return respuesta
-    if not any(c["herramienta"] in ("agregar_bloque", "cambiar_visual") for c in sesion.cambios):
+    if _deshacer_sustituto(sesion) is None:
+        return respuesta
+    if sesion.cambios:
         return respuesta
     from langchain_core.messages import AIMessage, HumanMessage
 
-    sesion.doc = copy.deepcopy(doc_inicial)
-    sesion.cambios.clear()
     aviso = ("[Aviso interno] Deshice el sustituto: la pantalla quedó como al principio. Responde en 1-2 líneas: eso no existe, cuál sería lo "
              "más parecido, y PREGUNTA si lo quiere. No digas que pusiste nada.")
     mensajes.extend([AIMessage(content=respuesta), HumanMessage(content=aviso)])
@@ -479,7 +547,14 @@ class SesionDiseno(agente.Sesion):
         # «Cobros» de Carlos todavía no guarda datos: en modo diseño, quien quiere llevar cobros tiene su propia sección (crear_seccion).
         if "NO ACTIVA" in str(((base.get("secciones_integradas") or {}).get("cobros") or {}).get("para_que", "")):
             base["secciones_integradas"].pop("cobros", None)
-        base.update(pantalla.describir_pantalla(self.doc, self.vista or self.abierta or "inicio", self.puntos))
+        mirando = self.vista or self.abierta or "inicio"
+        pant = pantalla.describir_pantalla(self.doc, mirando, self.puntos)
+        if mirando != "inicio" and "bloques" in pant:
+            # Con una pestaña abierta, «bloques» (los del inicio) parecían los de aquí: «aquí pon arriba un resumen» mirando Miembros
+            # llamaba cambiar_visual sobre b0 del inicio (3 de 4 en la traza); con el nombre que dice dónde están, agregar_bloque en la
+            # pestaña (4 de 4). Mismo contenido y orden de claves; solo el nombre.
+            pant = {("bloques_del_inicio_no_se_ven_ahora" if k == "bloques" else k): v for k, v in pant.items()}
+        base.update(pant)
         return json.dumps(base, ensure_ascii=False, default=str)
 
     def solo_toma(self) -> bool:
@@ -986,7 +1061,8 @@ def pestana_abierta(doc: dict, seccion: str | None) -> str | None:
 
 async def responder(doc: dict, texto: str, historial: list[dict] | None = None, ahora: datetime | None = None, con_captura: bool = False,
                     modelo: Any = None, buscador: Any = None, imagen: str | None = None, seccion: str | None = None, persona: str | None = None,
-                    puntos: list[dict] | None = None, lector_enlaces: Any = None, adjunto: str | None = None) -> dict:
+                    puntos: list[dict] | None = None, lector_enlaces: Any = None, adjunto: str | None = None,
+                    columnas: list[str] | None = None) -> dict:
     """Como `agente.responder`, más `cambios`, `fallos`, `intentos`, `consultas` y `avisos` (forma del laboratorio). Si en el turno se
     deshizo algo, `deshacer` = {deshechos, puntos (los que quedan, con foto), base (el CRM justo tras el último deshacer: el punto del
     turno se mide desde ahí)}. Lanza excepción si el modelo falla: quien llama usa las reglas."""
@@ -1006,7 +1082,14 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     sesion.abierta = pestana_abierta(doc_turno, seccion)
     doc_inicial = sesion.doc
     base = modelo or agente._modelo()
+    # Columnas del CSV/Excel que no son un campo: el código las nombra (no dependen de que el modelo las copie).
+    campos = [c for s in sv.secciones_de(sesion.doc) for c in (s.get("campos") or [])]
+    fuera = adjuntos.columnas_fuera(columnas or [], campos)
+    nota_col = adjuntos.nota_columnas(fuera)
+    if nota_col:
+        adjunto = f"{adjunto or ''}\n{nota_col}"
     sesion.adjunto = adjunto or ""
+    sesion._columnas_fuera = fuera
     mensajes = agente._mensajes(doc, texto, historial, ahora, con_captura, imagen, seccion, persona, adjunto)
     aviso_toma = "\n".join(x for x in (prep["aviso"], prep["digresion"] and toma.AVISO_DIGRESION) if x)
     mensajes[0] = SystemMessage(content=prompt_sistema(persona, aviso_toma, sesion.contexto()))
@@ -1089,6 +1172,9 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
         respuesta = ""
     if not respuesta:
         respuesta = sesion.respuesta_del_codigo(ultimos)
+    faltan_col = [c for c in getattr(sesion, "_columnas_fuera", []) if sin_acentos(c) not in sin_acentos(respuesta)]
+    if faltan_col:
+        respuesta += f"\n\n{adjuntos.frase_columnas(faltan_col)}"
     falta = creado_sin_decir(doc, sesion.cambios, respuesta)
     if falta:
         respuesta += f"\n\nPara guardarlo agregué {' y '.join(falta)}. Si no lo querías, dime «deshaz»."

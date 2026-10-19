@@ -529,7 +529,8 @@ async def deshacer(request: Request, datos: Optional[Deshacer] = None, user: dic
 # ───────── Chat ─────────
 
 async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, historial: list[dict], con_captura: bool,
-                         imagen: str | None = None, seccion: str | None = None, persona: str | None = None, adjunto: str | None = None):
+                         imagen: str | None = None, seccion: str | None = None, persona: str | None = None, adjunto: str | None = None,
+                         columnas: list[str] | None = None):
     """Resuelve un mensaje del chat. Con IA si se puede (y no hay un borrado por confirmar); si no, con las reglas.
     El modelo trabaja sobre una copia: solo se guarda si nadie cambió el CRM mientras tanto (si cambió, se repite).
     Si el turno cambió algo que se puede deshacer, deja un punto con `antes_de` = lo que escribió la persona (como lo hecho a mano):
@@ -545,7 +546,7 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
             # Con imagen se intenta verla; si el modelo no puede con ella (formato raro, demasiado grande) se reintenta solo con el texto.
             intentos = [{"imagen": imagen, "seccion": seccion, "persona": persona}, {"persona": persona, "seccion": seccion}] if imagen else [{"persona": persona, "seccion": seccion}]
             if adjunto:  # el archivo solo lo lee el modelo; las reglas (sin IA) nunca lo toman como órdenes
-                intentos = [{**x, "adjunto": adjunto} for x in intentos]
+                intentos = [{**x, "adjunto": adjunto, "columnas": columnas} for x in intentos]
             if diseno:
                 puntos = await _puntos_con_foto(db, user_id)
                 intentos = [{**x, "puntos": puntos} for x in intentos]
@@ -634,7 +635,8 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     historial = mem.historial_para_modelo(conv) or [m.model_dump() for m in ctx.historial]
     persona = mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None) if conv else None
     try:
-        doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona, extra_modelo)
+        doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona, extra_modelo,
+                                              (adj_leido or {}).get("columnas") or None)
     except op.ErrorCrm as e:
         return _error(e)
 
