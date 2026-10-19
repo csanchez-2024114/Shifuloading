@@ -433,11 +433,14 @@ def rosa_y_carlos():
 @pytest.mark.asyncio
 async def test_deshacer_lo_resuelve_el_codigo_a_tres_vias_y_cierra_el_turno(rosa_y_carlos):
     doc, puntos = rosa_y_carlos
-    # Tras el deshacer el modelo intenta «compensar» re-agregando: el turno ya está cerrado (sin herramientas) y no se ejecuta.
+    # Tras el deshacer queda UNA vuelta solo con herramientas de lo deshecho («eso no, mejor azul»): si intenta «compensar» con otra
+    # parte del CRM (aquí la marca), no se ejecuta y el turno se cierra.
     r, modelo = await correr(doc, "deshaz lo de Rosa", dice("", llamar("deshacer", pedido=1)),
-                             dice("", llamar("agregar_registro", seccion="contactos", valores={"Nombre": "Carlos Ruiz"})), puntos=puntos)
+                             dice("", llamar("cambiar_marca", primario="#DC2626")), dice("ignorado"), puntos=puntos)
     assert _contacto(r["doc"], "Rosa Díaz")["det"] == "111" and _contacto(r["doc"], "Carlos Ruiz") is None  # no revive a Carlos
-    assert modelo.ataduras[1].get("tool_choice") == "none" and len(modelo.recibidos) == 2
+    assert not (r["doc"].get("marca") or {}).get("primario")
+    assert "Deshacer ya quedó hecho" in modelo.recibidos[1][-1].content and len(modelo.recibidos) == 2
+    assert set(modelo.ataduras[1]["nombres"]) <= {n for n, c in agente_diseno.CATEGORIA.items() if c == "datos"}
     assert r["respuesta"] == "Listo, deshice «cámbiale el teléfono a Rosa» (los registros quedaron como antes). Lo demás quedó igual. ¿Algo más?"
     assert [c["herramienta"] for c in r["cambios"]] == ["deshacer"]
     assert r["deshacer"]["deshechos"] == [1] and [p["n"] for p in r["deshacer"]["puntos"]] == [2] and r["deshacer"]["base"] is r["doc"]
@@ -632,3 +635,11 @@ def test_la_pestana_abierta_se_reconoce_por_id_o_por_titulo(doc):
     assert agente_diseno.pestana_abierta(doc, s["id"]) == s["id"]
     assert agente_diseno.pestana_abierta(doc, (s.get("titulo") or s["id"]).upper()) == s["id"]
     assert agente_diseno.pestana_abierta(doc, "inicio") is None and agente_diseno.pestana_abierta(doc, "no existe") is None
+
+
+def test_las_piezas_de_las_pestanas_no_repiten_ids_del_inicio():
+    from app.crm import adaptador_lab as al
+    d = al.sembrar_doc("membresias", None, hoy=al._hoy_default(None))
+    inicio = {b["uid"] for b in d["inicio"]}
+    paginas = [b["uid"] for bs in (d.get("paginas") or {}).values() for b in bs]
+    assert paginas and not inicio & set(paginas) and len(paginas) == len(set(paginas))

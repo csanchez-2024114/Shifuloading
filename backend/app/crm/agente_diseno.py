@@ -958,10 +958,20 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     ultimos: list[str] = []
     correcciones = busquedas = 0
     solo_responder = False
+    tras_deshacer = False  # tras un deshacer solo: UNA vuelta más, solo con herramientas de lo que se deshizo («eso no, mejor azul»)
     for _ in range(agente.MAX_VUELTAS):
-        ia = await _atar(base, sesion.herramientas(), solo_responder).ainvoke(mensajes)
+        herr = sesion.herramientas()
+        if tras_deshacer:
+            herr = [h for h in herr if h["function"]["name"] != "deshacer" and CATEGORIA.get(h["function"]["name"], "bloques") in sesion.deshecho]
+        ia = await _atar(base, herr, solo_responder or (tras_deshacer and not herr)).ainvoke(mensajes)
         contenido = (ia.content if isinstance(ia.content, str) else "").strip()
-        llamadas = [] if solo_responder else list(getattr(ia, "tool_calls", None) or [])
+        llamadas = [] if solo_responder or (tras_deshacer and not herr) else list(getattr(ia, "tool_calls", None) or [])
+        if tras_deshacer:
+            permitidas = {h["function"]["name"] for h in herr}
+            llamadas = [ll for ll in llamadas if ll.get("name") in permitidas]
+            if llamadas:
+                solo_responder = True  # lo que pidió en lugar de lo deshecho ya se hizo: luego solo responde
+            tras_deshacer = False
         if not llamadas:
             respuesta = contenido
             aviso = agente.revisar_respuesta(respuesta, sesion, doc_inicial) if correcciones < agente.MAX_CORRECCIONES else None
@@ -1001,8 +1011,11 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
                                                 *sesion._adjuntos_vuelta]))
         # Tras un deshacer pedido solo (sin otra herramienta en esa vuelta) el turno se cierra: el modelo responde y no puede
         # «compensar» con más cambios (visto en 3 de 6 corridas reales: re-agregar, mover o quitar lo deshecho).
-        if all(ll.get("name") == "deshacer" for ll in llamadas):
-            solo_responder = True
+        if all(ll.get("name") == "deshacer" for ll in llamadas) and not solo_responder:
+            tras_deshacer = True
+            mensajes.append(HumanMessage(content="[Aviso del código] Deshacer ya quedó hecho. Si en este mismo mensaje la persona pidió OTRA cosa "
+                                                 "en su lugar (por ejemplo «eso no, mejor azul»), hazla ahora. Si solo pidió deshacer, no llames "
+                                                 "herramientas: no vuelvas a poner lo deshecho; responde qué deshiciste."))
         senal = sesion.senal_toma()
         if senal:
             mensajes.append(HumanMessage(content=f"[Aviso del código — toma de diseño]\n{senal}"))

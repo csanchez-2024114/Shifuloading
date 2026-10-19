@@ -134,7 +134,7 @@ def test_membresias_vencimientos_es_la_pagina_de_miembros():
     assert [l["id"] for l in doc["listas"]] == ["l_miembros", "l_pagos"]  # Vencimientos no es una lista: no tiene datos propios
     pagina = doc["paginas"]["l_miembros"]
     vence = next(s for s in catalogo.plantilla_por_id("membresias")["secciones"] if s["id"] == "vencimientos")
-    assert [(b["uid"], b["vista"]) for b in pagina] == [("b0", "tabla"), ("b1", "vencimientos")]
+    assert [(b["uid"], b["vista"]) for b in pagina] == [("p_l_miembros", "tabla"), ("p_l_miembros_1", "vencimientos")]
     assert pagina[1]["opciones"] == vence["opciones"]
 
 

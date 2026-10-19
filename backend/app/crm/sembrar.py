@@ -223,7 +223,8 @@ def sembrar(doc_base: dict, plantilla: dict | str, *, nivel: str = NIVEL, hoy: d
         if did not in paginas:
             paginas[did] = [{"vista": dueno.get("vista") or "tabla", "seccion": did, "opciones": _traducir_opciones(dueno.get("opciones"), mapa)}]
         paginas[did].append({"vista": s.get("vista") or "tabla", "seccion": did, "opciones": _traducir_opciones(s.get("opciones"), mapa)})
-    doc["paginas"] = {sid: acomodar(con_tamano([{**b, "uid": f"b{i}"} for i, b in enumerate(bs)])) for sid, bs in paginas.items()}
+    # Ids distintos de los del inicio (b0, b1…): con ids repetidos, «cambia esta lista» mirando la pestaña cambiaba el bloque del inicio.
+    doc["paginas"] = {sid: acomodar(con_tamano([{**b, "uid": f"p_{sid}" if i == 0 else f"p_{sid}_{i}"} for i, b in enumerate(bs)])) for sid, bs in paginas.items()}
 
     # Inicio: las piezas de la plantilla que apuntan a algo que quedó, con uid b0, b1… y el tamaño del laboratorio.
     inicio: list[dict] = []
