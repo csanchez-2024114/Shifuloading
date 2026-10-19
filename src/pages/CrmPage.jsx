@@ -12,7 +12,7 @@ import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
-import { ChatDiseno, DisenoCrm, conInicio, esVistaDiseno, marcoDiseno, tomarSeleccion } from '../crm/plantillas' // sistema de diseño (D61), solo con VITE_CRM_DISENO=1
+import { DISENO, ChatDiseno, DisenoCrm, conInicio, esVistaDiseno, marcoDiseno, tomarSeleccion } from '../crm/plantillas' // sistema de diseño (D61), solo con VITE_CRM_DISENO=1
 import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb, LuTrash2, LuImagePlus, LuPaperclip, LuSparkles, LuSettings, LuPencil, LuDownload } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
@@ -950,7 +950,7 @@ export default function CrmPage() {
       `Preparando un CRM para ${d.rubro.toLowerCase()}`,
       `Dejando listos tus canales: ${d.canales.slice(0, 2).join(' y ')}`,
       obj ? `Poniendo primero: ${obj.toLowerCase()}` : 'Ordenando tus secciones',
-      'Preparando tus secciones y automatizaciones',
+      DISENO ? 'Preparando tu pantalla de inicio' : 'Preparando tus secciones y automatizaciones',
       'Dando los últimos toques',
     ]
   }, [d, brief])

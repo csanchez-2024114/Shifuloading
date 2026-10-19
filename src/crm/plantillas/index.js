@@ -12,8 +12,13 @@ export const DISENO = import.meta.env.VITE_CRM_DISENO === '1'
 /** Inicio, listas, contactos y tareas los dibujan las piezas del laboratorio (lienzo, vistas y ficha). */
 export const DisenoCrm = DISENO ? lazy(() => import('./DisenoCrm.jsx')) : null
 
-/** El menú con «Inicio» primero cuando el CRM tiene piezas de inicio (§4: crm.inicio). */
-export const conInicio = (menu, crm) => (DISENO && tieneInicio(crm) ? [{ id: 'inicio', t: 'Inicio', I: LuLayoutDashboard, grupo: 0 }, ...menu] : menu)
+/** El menú con «Inicio» primero cuando el CRM tiene piezas de inicio (§4: crm.inicio). Sin Automatizaciones: en el sistema de
+ * diseño están en pausa (el chat tampoco las ofrece). */
+export const conInicio = (menu, crm) => {
+  if (!DISENO) return menu
+  const sinPausa = menu.filter((m) => m.id !== 'automatizaciones')
+  return tieneInicio(crm) ? [{ id: 'inicio', t: 'Inicio', I: LuLayoutDashboard, grupo: 0 }, ...sinPausa] : sinPausa
+}
 
 /** ¿Esta vista la dibuja el sistema de diseño? (el resto — Ajustes, Importar, Automatizaciones… — sigue siendo de CrmPage). */
 export const esVistaDiseno = (vista, crm) => DISENO && (vista === 'inicio' || vista === 'contactos' || vista === 'desarrollo'
