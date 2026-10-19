@@ -54,7 +54,7 @@ def _one(ends) -> dict:
 def test_nombres_sin_choque_con_las_herramientas_de_archivos_adjuntos():
     names = [t.name for t in make_coder_tools(_settings())]
     assert names == ["create_project", "list_projects", "list_project_files", "read_project_file",
-                     "write_project_file", "edit_project_file", "delete_project_file", "list_project_versions",
+                     "write_project_file", "edit_project_file", "delete_project_file", "preview_project", "list_project_versions",
                      "diff_project_versions", "restore_project_version", "delete_project"]
     assert not {"read_file", "search_in_file"} & set(names)
     assert set(WRITE_TOOLS) <= set(names)

@@ -17,6 +17,7 @@ TOOL_POLICIES = {
     "write_project_file": ToolPolicy(effect="write"),
     "edit_project_file": ToolPolicy(effect="write"),
     "delete_project_file": ToolPolicy(effect="write"),  # crea una versión nueva: se puede recuperar
+    "preview_project": ToolPolicy(effect="read"),  # enlace privado de 30 minutos, solo lectura
     "list_project_versions": ToolPolicy(effect="read"),
     "diff_project_versions": ToolPolicy(effect="read"),
     "restore_project_version": ToolPolicy(effect="write", approval=_card(restore_card)),

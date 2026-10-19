@@ -9,8 +9,11 @@ from pydantic import BaseModel, Field
 
 from assistant.core.agent import Context, tool_ran
 from assistant.core.coder import runtime as coder_runtime
+from assistant.core.coder.analyze import analyze
+from assistant.core.coder.analyze import summary as code_summary
 from assistant.core.coder.errors import CoderError
 from assistant.core.coder.paths import ASSET_TYPES, TEXT_TYPES
+from assistant.core.coder.routes import preview_url
 from assistant.core.i18n import tr
 from assistant.core.untrusted import as_untrusted
 
@@ -130,6 +133,13 @@ state stays in the history. The user must approve it.
 Args:
     project_id: The project_id.
     version: The version to restore.
+"""
+PREVIEW_DOC = """Creates a private preview link for the current version of a project (read-only, valid for 30
+minutes) and checks its code for problems. The app shows the preview to the user. Call it after writing or changing
+files, and fix any blocking problem it reports.
+
+Args:
+    project_id: The project_id.
 """
 DELETE_PROJECT_DOC = """Deletes a whole project with all its files and versions. It cannot be undone. Only when the
 user explicitly asks to delete that project; the user must approve it.
@@ -270,6 +280,19 @@ def make_coder_tools(settings, projects=None) -> list[BaseTool]:
                     f"be restored from version {version - 1}.")
         return _run(runtime, go, writes=True)
 
+    @tool("preview_project", description=PREVIEW_DOC)
+    def preview_project(project_id: str, runtime: ToolRuntime[Context]) -> str:
+        def go(p, user):
+            issued = p.issue_preview(user, project_id)
+            texts = p.version_texts(project_id, issued["version"])
+            out = (f"Preview of project {project_id}, version {issued['version']}: "
+                   f"{preview_url(settings, issued['token'])}\nThe link only shows this version and expires in 30 "
+                   "minutes; call preview_project again after more changes.")
+            if "index.html" not in texts:
+                out += "\nWarning: the project has no index.html, so the preview shows nothing."
+            return out + "\n" + code_summary(analyze(texts))
+        return _run(runtime, go)
+
     @tool("list_project_versions", description=VERSIONS_DOC)
     def list_project_versions(project_id: str, runtime: ToolRuntime[Context], limit: int = 20) -> str:
         def go(p, user):
@@ -306,7 +329,7 @@ def make_coder_tools(settings, projects=None) -> list[BaseTool]:
         return _run(runtime, go, writes=True)
 
     return [create_project, list_projects, list_project_files, read_project_file, write_project_file,
-            edit_project_file, delete_project_file, list_project_versions, diff_project_versions,
+            edit_project_file, delete_project_file, preview_project, list_project_versions, diff_project_versions,
             restore_project_version, delete_project]
 
 

@@ -506,7 +506,7 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
 
     # ---------------------------------------------------------------- agente codificador (CODER_ENABLED=1)
     from assistant.core.coder.routes import install_coder_routes  # con los CODER_* en 0 no hace nada
-    install_coder_routes(app, settings, profile, appdata)
+    install_coder_routes(app, settings, profile, appdata, user=_user, changing=_changing)
 
     # ---------------------------------------------------------------- feedback (FEEDBACK_ENABLED=1)
     if settings.feedback_enabled:

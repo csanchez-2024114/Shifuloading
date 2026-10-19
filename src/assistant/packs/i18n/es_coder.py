@@ -11,6 +11,8 @@ TEXTS = {
                                    "hará nada."),
     "coder.card_unknown_version": ("La versión {version} de «{name}» no existe: si apruebas, la herramienta no hará "
                                    "nada."),
+    # rutas del dueño
+    "coder.project_not_found": "No existe ese proyecto.",
     # arranque (core/coder/routes.py tiene el mismo texto de respaldo)
     "startup.coder_profile_needs_coder": "El perfil coder necesita CODER_ENABLED=1 (y AUTH_ENABLED=1).",
     "startup.coder_flag_needs_coder": ("CODER_DATA_ENABLED, CODER_SHARING_ENABLED y CODER_PUBLIC_WRITE_ENABLED "

@@ -1,9 +1,13 @@
 """Instalación del codificador en la app principal. create_app la llama siempre; con todos los interruptores CODER_* en
 0 no hace nada (ni rutas, ni estado, ni colecciones). Con alguno encendido valida la combinación (ConfigError en
-español) y deja en app.state.coder la lógica de proyectos sobre la base de negocio. Las rutas del dueño llegan en las
-fases siguientes (docs/CODER_PLAN.md)."""
+español), deja en app.state.coder la lógica de proyectos sobre la base de negocio y registra las rutas del dueño
+(sesión + CSRF; el user_id sale siempre de la sesión y un proyecto ajeno da 404). Plan: docs/CODER_PLAN.md."""
 from urllib.parse import urlparse
 
+from fastapi import HTTPException, Request
+
+from assistant.core.coder.analyze import analyze
+from assistant.core.coder.errors import CoderError
 from assistant.core.coder.projects import Projects
 from assistant.core.config import ConfigError
 
@@ -69,11 +73,32 @@ def _repo(appdata):
     return MemoryCoderRepo()
 
 
-def install_coder_routes(app, settings, profile, appdata) -> None:
+def preview_url(settings, token: str) -> str:
+    return f"{settings.coder_sandbox_origin.rstrip('/')}/p/{token}/"
+
+
+def install_coder_routes(app, settings, profile, appdata, user=None, changing=None) -> None:
+    """`user`/`changing`: los de create_app (sesión; sesión + mismo origen + CSRF)."""
     if not coder_requested(settings):
         return
     check_settings(settings, profile, appdata)
-    app.state.coder = Projects(_repo(appdata), settings)
+    projects = app.state.coder = Projects(_repo(appdata), settings)
     from assistant.core.coder import runtime
 
-    runtime.set_current(app.state.coder)  # lo usan las herramientas del perfil al ejecutarse
+    runtime.set_current(projects)  # lo usan las herramientas del perfil al ejecutarse
+
+    def not_found() -> HTTPException:
+        # uno ajeno y uno inexistente responden igual, para no revelar que existe
+        return HTTPException(404, _text(profile, "coder.project_not_found", "No existe ese proyecto."))
+
+    @app.post("/coder/projects/{project_id}/preview")
+    def coder_preview(project_id: str, request: Request):
+        """Token de vista previa (30 minutos) de la versión actual, con la URL del sandbox y el análisis del código."""
+        owner = changing(request)
+        try:
+            issued = projects.issue_preview(owner["user_id"], project_id)
+        except CoderError:
+            raise not_found() from None
+        return {"url": preview_url(settings, issued["token"]), "version": issued["version"],
+                "expires": issued["expires"].isoformat(),
+                "findings": analyze(projects.version_texts(project_id, issued["version"]))}
