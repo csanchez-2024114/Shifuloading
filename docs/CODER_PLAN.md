@@ -467,7 +467,7 @@ Si quieres un tope de tokens menor y propio del perfil, ver R1.
 | E | API de datos + SDK | `core/coder/data_api.py` |
 | F | Compartir, handle, rutas públicas, rate limit, escritura anónima, bloqueo | `core/coder/{sharing,ratelimit}.py`, `scripts/coder_block.py` |
 | G | UI (sha acordado antes del commit) | `packs/ui/index.html` |
-| H | Prompt del perfil + evals falsos al 100 % | `profiles/coder/prompts/system.md`, `evals/` |
+| H | Prompt del perfil + evals falsos al 100 %. **Pendiente de la Fase C:** `connect-src` solo permite `<B>__data/`, así que una app no puede hacer `fetch` de sus propios archivos (ni `./datos.json`). El prompt debe pedir los datos inline (en el JS o en un `<script type="application/json">`) o, si el usuario pidió base, usar la API de datos (Fase E). Tampoco hay `localStorage` (origen opaco): para guardar algo, la API de datos | `profiles/coder/prompts/system.md`, `evals/` |
 | I | Validación real con Playwright, con costo anunciado y tope duro; bases `assistant_ux_tmp_*` y `app_ux_tmp_*` que se borran al terminar | `docs/VALIDACION_E2E.md` |
 
 Verificación de cada fase: `.venv\Scripts\python -m pytest` en verde. La huella solo cambia en `config` (y en `index_html_sha256` en la G). `tests/test_dependencias.py` sigue estricto: `core/coder` no importa `packs`/`profiles`.
