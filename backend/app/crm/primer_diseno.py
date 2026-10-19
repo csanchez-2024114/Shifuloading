@@ -411,8 +411,6 @@ def _campo(crudo: Any, usados: set[str]) -> dict | None:
         ej = [e for e in dict.fromkeys(ej) if e][:MAX_EJEMPLOS_CAMPO]
         if ej:
             campo["ejemplos"] = ej
-    if tipo == "texto" and not campo.get("ejemplos") and not campo.get("persona") and campo["id"] != "nombre":
-        campo["sin_ejemplos"] = True  # sin valores de ESE negocio: se deja en blanco, no se rellena con nombres de personas
     elif tipo in ("numero", "dinero", "fecha") and isinstance(extra, list) and len(extra) == 2:
         a, b = _numero(extra[0]), _numero(extra[1])
         if a is not None and b is not None and a < b:
@@ -422,6 +420,8 @@ def _campo(crudo: Any, usados: set[str]) -> dict | None:
                     campo["rango"] = [a, b]
             elif a >= 0:
                 campo["rango"] = [int(a), int(b)] if b - a >= 2 else [a, b]
+    if tipo == "texto" and not campo.get("ejemplos") and not campo.get("persona") and campo["id"] != "nombre":
+        campo["sin_ejemplos"] = True  # sin valores de ESE negocio: se deja en blanco, no se rellena con nombres de personas
     return campo
 
 
@@ -443,15 +443,15 @@ def completar_opciones(vista: str, opciones: Any, campos: list[dict]) -> dict:
     if d.get("libre"):
         return opciones
     tipos_de = {c["id"]: c["tipo"] for c in campos}
-    de_campo = {**d.get("requiere", {}), **{k: t for k, t in (d.get("opcional") or {}).items() if t != "libre"}}
+    todas = {**d.get("requiere", {}), **(d.get("opcional") or {})}
     out = {}
     for k, v in opciones.items():
-        if k not in de_campo and k not in ("dias", "tipo"):
-            continue
-        if k in de_campo and k not in ("dias", "excluir", "orden") and isinstance(v, str):
-            tipos = de_campo[k]
-            if v not in tipos_de or (tipos and tipos_de[v] not in tipos):
-                continue
+        if k not in todas and k not in ("dias", "tipo"):
+            continue  # la vista no tiene esa opción
+        t = todas.get(k, "libre")
+        if t != "libre" and k not in ("dias", "excluir", "orden") and isinstance(v, str):
+            if v not in tipos_de or (t and tipos_de[v] not in t):
+                continue  # apunta a un campo que no existe o de otro tipo
         out[k] = v
     for k, tipos in d.get("requiere", {}).items():
         if not validar.verdad(out.get(k)):
@@ -514,8 +514,8 @@ def _seccion(crudo: Any, por_pieza: dict[str, dict], usados: set[str], titulos: 
         campo = _campo(c, ids)
         if campo and len(campos) < MAX_CAMPOS:
             campos.append(campo)
-    if not campos and pieza:  # «usa esta pieza tal cual»: sus campos (sin los ejemplos de otro negocio)
-        campos = [{k: copy.deepcopy(c[k]) for k in ("id", "nombre", "tipo", "opciones", "rango") if k in c} for c in pieza["seccion"]["campos"][:MAX_CAMPOS]]
+    if not campos and pieza:  # «usa esta pieza tal cual»: sus campos con los ejemplos del catálogo (mejor que inventar nombres)
+        campos = copy.deepcopy(pieza["seccion"]["campos"][:MAX_CAMPOS])
     if len(campos) < MIN_CAMPOS:
         return None
     if campos[0]["tipo"] != "texto":  # la primera columna dice qué es cada fila

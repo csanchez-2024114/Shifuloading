@@ -223,3 +223,8 @@ async def test_un_texto_sin_ejemplos_queda_en_blanco_y_no_con_nombres_de_persona
     regs = doc["listas"][0]["registros"]
     assert all("pedido" not in r["valores"] for r in regs)  # el modelo no dio valores de ese negocio: en blanco
     assert all(r["valores"]["cliente"] in ejemplos.NOMBRES for r in regs)  # ["persona"] también vale
+
+
+def test_completar_opciones_deja_las_opciones_libres_de_la_vista():
+    campos = [{"id": "m", "nombre": "M", "tipo": "dinero"}, {"id": "f", "nombre": "F", "tipo": "fecha"}]
+    assert pd.completar_opciones("cifra", {"funcion": "suma", "valor": "m", "periodo": "mes", "nada": 1}, campos) == {"funcion": "suma", "valor": "m", "periodo": "mes"}
