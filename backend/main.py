@@ -29,7 +29,7 @@ from slowapi import _rate_limit_exceeded_handler
 from app.core.limiter import limiter
 
 # Importación de la Configuración Centralizada
-from config import Config
+from config import Config, DEFAULT_TRUSTED_HOSTS, trusted_hosts
 from app.core.mongo import init_mongo, close_mongo, get_sync_client
 from langgraph.checkpoint.mongodb import MongoDBSaver
 from app.agent.shifu_base_v1.registry import init_v1_graphs, get_v1_graph
@@ -547,14 +547,10 @@ app.add_middleware(
     expose_headers=["Content-Type", "Authorization"],
 )
 
-# Protección TrustedHost
-allowed_hosts = [
-    "localhost",
-    "127.0.0.1",
-    "hypershifu.com",
-    "www.hypershifu.com",
-    "backend-hyper-shifu-nyzm.onrender.com",
-]
+# Protección TrustedHost: los hosts de siempre + TRUSTED_HOSTS_EXTRA (CSV) si se define.
+allowed_hosts = trusted_hosts()
+if len(allowed_hosts) > len(DEFAULT_TRUSTED_HOSTS):
+    logger.info(f" TrustedHost extra: {allowed_hosts[len(DEFAULT_TRUSTED_HOSTS):]}")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 

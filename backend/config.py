@@ -43,6 +43,50 @@ def _parse_origins_env(value: str) -> List[str]:
 
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
+DEFAULT_TRUSTED_HOSTS: List[str] = [
+    "localhost",
+    "127.0.0.1",
+    "hypershifu.com",
+    "www.hypershifu.com",
+    "backend-hyper-shifu-nyzm.onrender.com",
+]
+
+
+def parse_trusted_hosts_extra(value: str) -> List[str]:
+    """Hosts extra para TrustedHostMiddleware desde TRUSTED_HOSTS_EXTRA (CSV o JSON array).
+
+    Acepta nombres simples ("crm.midominio.com"), comodines de subdominio de Starlette
+    ("*.midominio.com") y, por comodidad, una URL completa (se queda solo con el host,
+    sin esquema ni puerto). Un "*" solo se ignora: apagaría la protección completa.
+    """
+    hosts: List[str] = []
+    for item in _parse_origins_env(value):
+        host = item.strip().lower()
+        if "://" in host:
+            host = (urlparse(host).hostname or "").lower()
+        else:
+            host = host.split("/", 1)[0]
+            if not host.startswith("[") and host.count(":") == 1:
+                host = host.split(":", 1)[0]
+        if not host:
+            continue
+        if host == "*":
+            logger.warning("TRUSTED_HOSTS_EXTRA: se ignora '*' (desactivaría la protección TrustedHost).")
+            continue
+        if host not in hosts:
+            hosts.append(host)
+    return hosts
+
+
+def trusted_hosts(extra_env: Optional[str] = None) -> List[str]:
+    """Lista final de hosts confiables: los de siempre + TRUSTED_HOSTS_EXTRA, sin repetidos."""
+    raw = os.getenv("TRUSTED_HOSTS_EXTRA", "") if extra_env is None else extra_env
+    final = list(DEFAULT_TRUSTED_HOSTS)
+    for host in parse_trusted_hosts_extra(raw):
+        if host not in final:
+            final.append(host)
+    return final
+
 def validate_oauth_transport() -> None:
     """
     [CRÍTICO] Blindaje de transporte OAuth.

@@ -121,6 +121,19 @@ VITE_CRM_DISENO=1 npx vite --port 5180
 
 Sin Mongo ni Redis también se puede probar con el servidor de desarrollo (todo en memoria, se pierde al apagarlo): `CRM_DISENO=1 python scripts/crm_dev_server.py --puerto 5193` y el frontend con `VITE_API_URL=http://localhost:5193/api/v1 VITE_CRM_DISENO=1 npx vite --port 5199`.
 
+## Abrir el backend desde otro dominio o desde la red (opcional)
+
+El backend solo responde a peticiones dirigidas a `localhost`, `127.0.0.1`, `hypershifu.com`, `www.hypershifu.com` y `backend-hyper-shifu-nyzm.onrender.com`; con otro nombre responde `400 Invalid host header`. Para sumar más (un dominio propio, la IP de tu computadora en la red, un túnel), agrega en `backend/.env`:
+
+```
+TRUSTED_HOSTS_EXTRA=crm.midominio.com,192.168.1.20,*.ngrok-free.app
+```
+
+- Separados por coma; se **suman** a los de siempre, no los reemplazan. Sin la variable todo queda igual.
+- Solo el nombre: si pegas una URL (`https://crm.midominio.com:8443`) se toma el host y se ignoran esquema y puerto.
+- `*.dominio.com` acepta sus subdominios. Un `*` solo se ignora porque apagaría la protección.
+- Si el frontend también corre en ese dominio, súmalo a `CORS_ALLOWED_ORIGINS` (ese sí con `https://` y puerto).
+
 ## Automatizaciones que corren solas (opcional)
 
 Las automatizaciones del CRM (recordatorios de seguimiento y resumen semanal) se calculan siempre que alguien abre el CRM. Para que además corran **solas**, aunque nadie lo tenga abierto, y dejen un aviso en la campana 🔔:
