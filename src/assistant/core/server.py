@@ -502,6 +502,10 @@ def create_app(agent=None, settings: Settings | None = None, classify=None, stor
     if settings.files_enabled:
         _install_file_routes(app, settings, profile, _store, _file_owner)
 
+    # ---------------------------------------------------------------- agente codificador (CODER_ENABLED=1)
+    from assistant.core.coder.routes import install_coder_routes  # con los CODER_* en 0 no hace nada
+    install_coder_routes(app, settings, profile, appdata)
+
     # ---------------------------------------------------------------- feedback (FEEDBACK_ENABLED=1)
     if settings.feedback_enabled:
         from assistant.core import feedback as feedback_mod
