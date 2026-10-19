@@ -57,3 +57,14 @@ async def test_si_tras_corregir_sigue_sin_respaldo_responde_el_codigo(doc):
     r, _ = await correr(doc, PIDE, dice("", llamar("agregar_tarea", **CITA)), dice(mala), dice(mala), dice(mala))
     assert r["respuesta"] != mala and "jueves" not in r["respuesta"]
     assert any(a["aviso"].startswith("sin respaldo tras corregir") for a in r["avisos"])
+
+
+@pytest.mark.asyncio
+async def test_un_digito_dentro_de_un_id_no_respalda_una_cifra(doc, monkeypatch):
+    # Los resultados de herramientas traen ids aleatorios («a3f9…»); sus dígitos no cuentan como cifras dichas (antes el cerco pasaba al azar).
+    from app.crm import agente_diseno
+    original = agente_diseno.SesionDiseno.ejecutar
+    monkeypatch.setattr(agente_diseno.SesionDiseno, "ejecutar", lambda self, n, a: original(self, n, a) + " (id a3f9)")
+    dos = [llamar("agregar_tarea", texto="Llamar a Ana"), llamar("agregar_tarea", texto="Llamar a Luis")]
+    r, _ = await correr(doc, "pon tareas de llamar a Ana y a Luis", dice("", *dos), dice("Agregué 3 tareas."), dice("Agregué 2 tareas."))
+    assert len(r["avisos"]) == 1 and "«3»" in r["avisos"][0]["aviso"]

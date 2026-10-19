@@ -181,6 +181,8 @@ def catalogo(doc: dict) -> toma.Catalogo:
 
 # Partes de una oración para `afirma_sin_respaldo`: «ya estaba la de mañana, pero puse las de los jueves» son dos afirmaciones.
 _PARTES = re.compile(r"[.!?\n;:,]|\bpero\b|\by\b", re.IGNORECASE)
+# Cifras sueltas: el «3» dentro de un id como «a3f9» no es una cifra que alguien dijo (si contara, el cerco pasaría al azar).
+_CIFRA = re.compile(r"\b\d+\b")
 _PALABRA = re.compile(r"[\wáéíóúñü-]+", re.IGNORECASE)
 
 
@@ -561,7 +563,7 @@ class SesionDiseno(agente.Sesion):
         hoy = self.ahora.astimezone(op.zona_de(self.doc)) if self.ahora.tzinfo else self.ahora
         hechos = [t for c in self.cambios for t in _textos([c.get("args"), c.get("resultado")])]
         fechas = {f for t in hechos for f in _fechas_en(t, hoy)}
-        cifras = set(re.findall(r"\d+", " ".join([self.texto or "", self.adjunto, *hechos, *(str(c.get("resultado") or "") for c in self.consultas)])))
+        cifras = set(_CIFRA.findall(" ".join([self.texto or "", self.adjunto, *hechos, *(str(c.get("resultado") or "") for c in self.consultas)])))
         cifras |= {str(n) for n in Counter(c["herramienta"] for c in self.cambios).values()} | {str(len(self.cambios))}
         for parte in _PARTES.split(respuesta or ""):
             if not (afirma_cambio(parte) or afirma_con(parte, _EXITO_D51)):
@@ -570,7 +572,7 @@ class SesionDiseno(agente.Sesion):
             if fechas and dichas and not (dichas & fechas):
                 return (f"[Aviso interno] Dices que hiciste algo para el {fecha_larga(min(dichas))}, pero ningún cambio de este mensaje tiene "
                         "esa fecha. Hazlo ahora con la herramienta o di la verdad: qué quedó hecho y qué falta.")
-            raras = set(re.findall(r"\d+", parte)) - cifras
+            raras = set(_CIFRA.findall(parte)) - cifras
             if raras:
                 return (f"[Aviso interno] Dices que hiciste algo con «{sorted(raras)[0]}», pero esa cifra no la dijo la persona ni salió de lo "
                         "que hiciste en este mensaje. Cuenta solo lo que de verdad cambió.")
