@@ -5,6 +5,7 @@ import Logo from '../components/Logo'
 import ShifuAvatar from '../components/ShifuAvatar'
 import TextoChat from '../components/TextoChat'
 import { SelectorCaptura, capturarRegion, imagenDeArchivo } from '../components/CapturaPantalla'
+import { documentoDeArchivo } from '../components/adjuntos'
 import ImportarALista from '../components/ImportarALista'
 import { descargarExcel } from '../crm/exportarExcel'
 import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm } from '../api'
@@ -12,7 +13,7 @@ import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
 import { COLUMNAS, ETAPAS, tituloSeccion } from '../crm/secciones'
 import { ChatDiseno, DisenoCrm, conInicio, esVistaDiseno, marcoDiseno, tomarSeleccion } from '../crm/plantillas' // sistema de diseño (D61), solo con VITE_CRM_DISENO=1
-import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb, LuTrash2, LuImagePlus, LuSparkles, LuSettings, LuPencil, LuDownload } from 'react-icons/lu'
+import { LuUsers, LuWallet, LuCode, LuActivity, LuIdCard, LuSearch, LuBell, LuLogOut, LuPlus, LuRotateCcw, LuTable, LuUpload, LuZap, LuCamera, LuSend, LuSun, LuMoon, LuX, LuLightbulb, LuTrash2, LuImagePlus, LuPaperclip, LuSparkles, LuSettings, LuPencil, LuDownload } from 'react-icons/lu'
 import '../crm.css'
 import '../crm-extra.css'
 import '../crm-captura.css'
@@ -742,6 +743,7 @@ function sugerenciasDe(contactos) {
 function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, diseno }) {
   const [txt, setTxt] = useState('')
   const [imagen, setImagen] = useState(null) // captura o imagen pegada, lista para mandar con el mensaje
+  const [documento, setDocumento] = useState(null) // PDF, Excel, etc. (no imagen)
   const [eligiendo, setEligiendo] = useState(false)
   const [capturando, setCapturando] = useState(false)
   const [errorImg, setErrorImg] = useState('')
@@ -757,6 +759,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
   const fin = useRef(null)
   const campo = useRef(null)
   const fotoRef = useRef(null)
+  const docRef = useRef(null)
   // Desde una sección vacía se pide “subir una foto de mi cuaderno”: se abre el chat y se abre el selector de fotos.
   useEffect(() => {
     const f = () => { setAbierto(true); setTimeout(() => fotoRef.current?.click(), 250) }
@@ -766,8 +769,18 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
   useEffect(() => { fin.current?.scrollIntoView?.({ block: 'end' }) }, [mensajes, escribiendo, abierto])
   const enviar = (e) => {
     e?.preventDefault()
-    if ((!txt.trim() && !imagen) || escribiendo) return
-    onEnviar(txt, imagen); setTxt(''); setImagen(null); setErrorImg('')
+    if ((!txt.trim() && !imagen && !documento) || escribiendo) return
+    onEnviar(txt, imagen, documento); setTxt(''); setImagen(null); setDocumento(null); setErrorImg('')
+  }
+  const usarArchivo = async (archivo) => {
+    if (!archivo) return
+    if (archivo.type?.startsWith('image/')) {
+      setDocumento(null)
+      try { setImagen(await imagenDeArchivo(archivo)); setErrorImg('') } catch { setErrorImg('No pude usar esa imagen.') }
+      return
+    }
+    setImagen(null)
+    try { setDocumento(await documentoDeArchivo(archivo)); setErrorImg('') } catch (err) { setErrorImg(err?.message || 'No pude usar ese archivo.') }
   }
   const [pista, setPista] = useState(true)
   useEffect(() => { const t = setTimeout(() => setPista(false), 7000); return () => clearTimeout(t) }, [])
@@ -782,15 +795,27 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
   const fotoElegida = async (e) => {
     const archivo = e.target.files?.[0]
     e.target.value = ''
-    if (!archivo) return
-    try { setImagen(await imagenDeArchivo(archivo)); setErrorImg('') } catch { setErrorImg('No pude usar esa foto. Prueba con otra.') }
+    await usarArchivo(archivo)
+    setTimeout(() => campo.current?.focus(), 0)
+  }
+  const docElegido = async (e) => {
+    const archivo = e.target.files?.[0]
+    e.target.value = ''
+    await usarArchivo(archivo)
     setTimeout(() => campo.current?.focus(), 0)
   }
   const pegar = async (e) => {
-    const archivo = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith('image/'))
+    const archivos = [...(e.clipboardData?.files || [])]
+    const archivo = archivos.find((f) => f.type.startsWith('image/')) || archivos[0]
     if (!archivo) return
     e.preventDefault()
-    try { setImagen(await imagenDeArchivo(archivo)); setErrorImg('') } catch { setErrorImg('No pude usar esa imagen.') }
+    await usarArchivo(archivo)
+  }
+  const soltar = async (e) => {
+    e.preventDefault()
+    const archivo = e.dataTransfer?.files?.[0]
+    if (!archivo) return
+    await usarArchivo(archivo)
   }
 
   // El chat va fuera de la página (en el body) para que siempre quede fijo en la esquina y no dependa de ningún contenedor.
@@ -813,24 +838,27 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
             {sugerencias.map(([p, s]) => <button key={s} type="button" disabled={escribiendo} onClick={() => onEnviar(s)}><em>{p}</em>{s}</button>)}
           </div>
           {diseno}
-          {(imagen || errorImg) && (
+          {(imagen || documento || errorImg) && (
             <div className="mc-adjunto" role="status">
               {imagen && <img src={imagen.url} alt="Imagen lista para enviar" />}
-              <span>{imagen ? 'Foto lista. Dime qué hago con ella, por ejemplo: “pasa esto a mi lista”.' : errorImg}</span>
-              <button type="button" onClick={() => { setImagen(null); setErrorImg('') }} aria-label="Quitar la captura"><LuX /></button>
+              <span>{imagen ? 'Foto lista. Dime qué hago con ella, por ejemplo: “pasa esto a mi lista”.'
+                : documento ? `Archivo listo (${documento.nombre}). Dime qué hago con él, por ejemplo: “pasa estas filas a mi lista”.`
+                  : errorImg}</span>
+              <button type="button" onClick={() => { setImagen(null); setDocumento(null); setErrorImg('') }} aria-label="Quitar el adjunto"><LuX /></button>
             </div>
           )}
-          {consejo && !imagen && !errorImg && (
+          {consejo && !imagen && !documento && !errorImg && (
             <div className="mc-consejo" role="note">
               <button type="button" className="mc-consejo-x" onClick={cerrarConsejo} aria-label="Cerrar el consejo"><LuX /></button>
               <p><b>📷 ¿Tienes tus datos en un cuaderno?</b> Toca el botón de foto, súbela y yo los paso aquí.</p>
             </div>
           )}
-          <form onSubmit={enviar}>
+          <form onSubmit={enviar} onDragOver={(e) => e.preventDefault()} onDrop={soltar}>
             <button type="button" className="mc-chat-cam mc-chat-foto" onClick={() => { cerrarConsejo(); fotoRef.current?.click() }} disabled={escribiendo} aria-label="Subir una foto" title="Subir una foto"><LuImagePlus /></button>
+            <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); docRef.current?.click() }} disabled={escribiendo} aria-label="Adjuntar un documento" title="Adjuntar PDF, Excel, Word…"><LuPaperclip /></button>
             <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); setEligiendo(true) }} disabled={escribiendo} aria-label="Capturar una parte de la pantalla" title="Capturar una parte de la pantalla"><LuCamera /></button>
-            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres hacer con esta foto…' : 'Escribe o sube una foto…'} aria-label="Mensaje para Shifu" maxLength={2000} />
-            <button type="submit" disabled={(!txt.trim() && !imagen) || escribiendo} aria-label="Enviar"><LuSend /></button>
+            <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué quieres hacer con esta foto…' : documento ? 'Qué quieres hacer con este archivo…' : 'Escribe, sube una foto o adjunta un archivo…'} aria-label="Mensaje para Shifu" maxLength={2000} />
+            <button type="submit" disabled={(!txt.trim() && !imagen && !documento) || escribiendo} aria-label="Enviar"><LuSend /></button>
           </form>
         </section>
       )}
@@ -839,6 +867,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
       </button>
       {!abierto && pista && <span className="mc-chat-hint">¿Qué cambiamos hoy?</span>}
       <input ref={fotoRef} type="file" accept="image/*" hidden onChange={fotoElegida} />
+      <input ref={docRef} type="file" accept=".pdf,.docx,.xlsx,.csv,.tsv,.txt,.md,.json" hidden onChange={docElegido} />
       {eligiendo && <SelectorCaptura onElegir={elegida} onCancelar={() => setEligiendo(false)} />}
       {capturando && <div className="mc-captura mc-captura-espera" role="status">Tomando la captura…</div>}
     </div>,
@@ -952,15 +981,23 @@ export default function CrmPage() {
   const [escribiendo, setEscribiendo] = useState(false)
   const [modo, setModo] = useState('ia') // "ia" o "reglas" (si la IA no pudo contestar)
   const pendiente = useRef(null)
-  const enviar = async (texto, imagen) => {
+  const enviar = async (texto, imagen, documento) => {
     const t = texto.trim()
-    if (!t && !imagen) return
+    if (!t && !imagen && !documento) return
     const sel = tomarSeleccion() // piezas elegidas en el lienzo (D61); sin la bandera, null
-    setMensajes((l) => [...l, mensaje('yo', (sel?.prefijo || '') + t, imagen?.url)])
+    const etiquetaDoc = documento ? `${t ? ' ' : ''}📎 ${documento.nombre}` : ''
+    setMensajes((l) => [...l, mensaje('yo', (sel?.prefijo || '') + t + etiquetaDoc, imagen?.url)])
     setEscribiendo(true)
     try {
       const historial = mensajes.slice(-16).filter((m) => m.t).map((m) => ({ de: m.de, t: m.t.slice(0, 500) }))
-      const r = await apiChat.enviar(t, { pendiente: pendiente.current, imagen: imagen?.url, seccion: tit(vista), historial, ...sel?.contexto })
+      const r = await apiChat.enviar(t, {
+        pendiente: pendiente.current,
+        imagen: imagen?.url,
+        archivo: documento ? { nombre: documento.nombre, datos: documento.datos } : undefined,
+        seccion: tit(vista),
+        historial,
+        ...sel?.contexto,
+      })
       pendiente.current = r.pendiente || null
       if (r.modo) setModo(r.modo)
       if (r.crm) setCrm(r.crm)

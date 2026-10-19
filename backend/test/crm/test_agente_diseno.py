@@ -624,3 +624,11 @@ async def test_en_modo_diseno_el_modelo_no_ve_automatizaciones_ni_cobros_inactiv
     ctx = _estado(modelo)
     assert "automatizaciones" not in ctx and "automatizaciones" not in ctx.get("secciones_integradas", {})
     assert "cobros" not in ctx.get("secciones_integradas", {})
+
+
+def test_la_pestana_abierta_se_reconoce_por_id_o_por_titulo(doc):
+    from app.crm import pantalla
+    s = pantalla.plantilla_efectiva(doc)["secciones"][0]
+    assert agente_diseno.pestana_abierta(doc, s["id"]) == s["id"]
+    assert agente_diseno.pestana_abierta(doc, (s.get("titulo") or s["id"]).upper()) == s["id"]
+    assert agente_diseno.pestana_abierta(doc, "inicio") is None and agente_diseno.pestana_abierta(doc, "no existe") is None

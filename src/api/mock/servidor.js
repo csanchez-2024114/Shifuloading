@@ -82,6 +82,12 @@ export const chat = {
         ? `📸 Recibí tu captura${donde}. ¿Qué quieres que haga con eso? Por ejemplo: “agrega una tarea para revisar esto”.`
         : `📸 Recibí tu captura${donde}. ${r.respuesta}`
     }
+    if (contexto?.archivo) {
+      const nom = contexto.archivo.nombre || 'archivo'
+      r.respuesta = sinTexto
+        ? `📎 Recibí “${nom}”, pero sin el servidor no puedo leer documentos. Conéctate al backend o dime qué quieres hacer en texto.`
+        : `📎 Recibí “${nom}”. Sin el servidor no leo el contenido del archivo; me guío por lo que escribiste. ${r.respuesta}`
+    }
     guardar(r.crm)
     await pausa(550)
     if (!DISENO) return r
