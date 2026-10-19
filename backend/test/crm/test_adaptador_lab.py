@@ -61,6 +61,107 @@ BANCO_TOMA_E = {
     "bloques": [{"uid": "b0", "vista": "kpis", "seccion": "miembros", "opciones": {"por": "estado"}, "ancho": 12, "alto": 1}],
 }
 
+MARCA_RICA = {
+    **BANCO2_E,
+    "marca": {
+        "primario": "#DC2626",
+        "secundario": "#2563EB",
+        "fuenteTitulos": "Montserrat",
+        "fuenteTexto": "Nunito",
+        "nombre": "Gym Norte",
+    },
+}
+
+TOMA_ACTIVA = {
+    **BANCO_TOMA_E,
+    "toma": {
+        "activa": True,
+        "fase": "juntando",
+        "ficha": {
+            "objetivo": "Controlar pagos y membresías",
+            "secciones": ["miembros", "pagos"],
+            "bloques": [
+                {"vista": "kpis", "seccion": "pagos", "opciones": {"suma": "monto"}, "ancho": 12, "alto": 1},
+                {"vista": "grafico", "seccion": "miembros", "opciones": {"tipo": "dona"}, "ancho": 6, "alto": 2},
+            ],
+            "marca": {"primario": "#16A34A"},
+            "restricciones": ["sin mapa"],
+        },
+        "notas": ["prefiere colores claros"],
+        "preguntadas": ["objetivo"],
+        "rechazo": False,
+    },
+}
+
+PUNTOS_DESHACER = {
+    **BANCO2_E,
+    "marca": {"primario": "#DC2626"},
+    "puntos": [
+        {
+            "n": 1,
+            "antes_de": "pon mis colores: rojo",
+            "hora": "14:30",
+            "cambio": ["marca"],
+            "foto": {"marca": {}},
+        },
+        {
+            "n": 2,
+            "antes_de": "agrega una dona",
+            "hora": "14:31",
+            "cambio": ["bloques"],
+            "foto": {
+                "bloques": BANCO2_E["bloques"],
+                "estructura": {"titulos": {"miembros": "Socios"}},
+                "datos": {"nuevos": {}, "cambios": {}, "borrados": {}},
+            },
+        },
+    ],
+}
+
+ESTRUCTURA_RICA = {
+    "titulos": {"miembros": "Socios activos", "pagos": "Cobranza"},
+    "nombresCampo": {"miembros": {"vence": "Fecha de vencimiento"}},
+    "opcionesEstado": {"miembros": {"estado": ["Activa", "Cancelada", "Congelada"]}},
+    "mapeoEstado": {"miembros": {"estado": {"Pausada": "Activa"}}},
+    "ficha": {
+        "miembros": {
+            "grupos": [
+                {"titulo": "Plan", "campos": ["plan", "estado"]},
+                {"titulo": "Fechas", "campos": ["alta", "vence"]},
+            ],
+            "relacionados": False,
+            "linea_tiempo": True,
+        }
+    },
+    "tarjeta": {"miembros": {"campos": ["nombre", "plan"]}},
+    "ocultas": ["pagos"],
+    "secciones": [
+        {
+            "id": "proveedores",
+            "titulo": "Proveedores",
+            "campos": [
+                {"id": "nombre", "nombre": "Nombre", "tipo": "texto"},
+                {"id": "telefono", "nombre": "Teléfono", "tipo": "texto"},
+                {"id": "producto", "nombre": "Qué vende", "tipo": "texto"},
+            ],
+        }
+    ],
+}
+
+DATOS_DELTA = {
+    "cambios": {"miembros": {"miembros-0": {"estado": "Pausada", "plan": "Anual"}}},
+    "borrados": {"miembros": ["miembros-1"]},
+    "nuevos": {
+        "miembros": [
+            {
+                "id": "miembros-p1",
+                "valores": {"nombre": "María López", "plan": "Mensual", "alta": HOY.isoformat(), "vence": HOY.isoformat(), "estado": "Activa"},
+            }
+        ]
+    },
+    "n": 1,
+}
+
 ESTADOS_ROUNDTRIP = [
     ("banco2", BANCO2_E, None),
     ("banco_datos E()", E_datos(), MUESTRA_DATOS),
@@ -71,6 +172,16 @@ ESTADOS_ROUNDTRIP = [
     ("banco_ficha", BANCO2_E, None),
     ("banco_deshacer", BANCO2_E, None),
     ("banco_toma", BANCO_TOMA_E, None),
+    ("marca rica", MARCA_RICA, None),
+    ("toma activa", TOMA_ACTIVA, None),
+    ("puntos deshacer", PUNTOS_DESHACER, None),
+    ("estructura rica", {**BANCO2_E, "estructura": ESTRUCTURA_RICA}, None),
+    ("datos delta", E_datos(datos=DATOS_DELTA), MUESTRA_DATOS),
+    (
+        "estructura+datos",
+        {**BANCO2_E, "estructura": ESTRUCTURA_RICA, "datos": {**DATOS_DELTA, "cambios": {"miembros": {"miembros-0": {"plan": "Anual"}}}}},
+        MUESTRA_DATOS,
+    ),
 ]
 
 
@@ -91,10 +202,53 @@ def _igual_grafica(vuelta: dict, origen: dict) -> dict:
 
 
 def _roundtrip(plantilla_id: str, estado: dict, muestra: dict | None) -> tuple[dict, dict]:
+    from app.crm import plantillas as catalogo
+
     doc_sem = adp.sembrar_doc(plantilla_id, muestra, hoy=HOY)
     doc = adp.doc_desde_lab(plantilla_id, estado, muestra, hoy=HOY)
-    vuelta = adp.lab_desde_doc(doc, doc_sem, plantilla_id, vista=estado.get("vista"), muestra=muestra, hoy=HOY)
-    return _igual_grafica(adp.normalizar_estado_lab(vuelta), estado), adp.normalizar_estado_lab(estado)
+    pts_doc = adp.puntos_doc_desde_lab(estado.get("puntos") or [], plantilla_id, muestra, hoy=HOY) if estado.get("puntos") else None
+    vuelta = adp.lab_desde_doc(
+        doc,
+        doc_sem,
+        plantilla_id,
+        vista=estado.get("vista"),
+        puntos_doc=pts_doc,
+        muestra=muestra,
+        hoy=HOY,
+    )
+    # Los puntos no vuelven iguales a propósito (llevan su foto en forma documento en `doc`): se prueban aparte, abajo.
+    sin_puntos = {k: v for k, v in estado.items() if k != "puntos"}
+    vuelta.pop("puntos", None)
+    return _igual_grafica(adp.normalizar_estado_lab(vuelta), sin_puntos), adp.normalizar_estado_lab(sin_puntos)
+
+
+def test_foto_del_laboratorio_se_traduce_y_deshacer_la_usa():
+    """La foto del laboratorio (el estado de antes) llega a `puntos.deshacer` en forma documento: deshacer la dona vuelve el inicio."""
+    from app.crm import puntos as pt
+
+    actual = {**PUNTOS_DESHACER, "bloques": [*BANCO2_E["bloques"], {"uid": "b3", "vista": "grafico", "seccion": "miembros",
+                                                                       "opciones": {"tipo": "dona", "por": "estado"}, "ancho": 6, "alto": 2}]}
+    doc = adp.doc_desde_lab("membresias", actual, None, hoy=HOY)
+    pts = adp.puntos_doc_desde_lab(actual["puntos"], "membresias", None, hoy=HOY)
+    assert set(pts[1]["foto"]) == {"bloques"} and set(pts[0]["foto"]) == {"marca"}
+    r = pt.deshacer(doc, pts, 2)
+    antes = adp.doc_desde_lab("membresias", BANCO2_E, None, hoy=HOY)
+    assert r["doc"]["inicio"] == antes["inicio"] and r["doc"]["marca"] == doc["marca"]
+
+
+def test_puntos_del_motor_vuelven_identicos():
+    """Un punto que hizo el motor sale al laboratorio y vuelve en el turno siguiente con la misma foto (la que deshacer espera)."""
+    from app.crm import plantillas as catalogo
+    from app.crm import puntos as pt
+
+    antes = adp.doc_desde_lab("membresias", BANCO2_E, MUESTRA_DATOS, hoy=HOY)
+    despues = {**antes, "inicio": antes["inicio"][:1], "marca": {**(antes.get("marca") or {}), "primario": "#DC2626"}}
+    despues, punto = pt.con_punto(antes, despues, "quita dos piezas y pon rojo", AHORA)
+    plantilla = catalogo.plantilla_por_id("membresias")
+    lab = adp.puntos_lab_desde_doc([punto], plantilla, adp.mapa_secciones(plantilla, despues))
+    assert lab[0]["hora"] == "15:00" and len(lab[0]["foto"]["bloques"]) == 3
+    vuelta = adp.puntos_doc_desde_lab(json.loads(json.dumps(lab)), "membresias", MUESTRA_DATOS, hoy=HOY)
+    assert vuelta == [json.loads(json.dumps(punto))]
 
 
 @pytest.mark.parametrize("nombre,estado,muestra", ESTADOS_ROUNDTRIP)
@@ -147,6 +301,66 @@ def test_ruta_lab_chat_fake_responder(cliente_lab):
     assert any(c["herramienta"] == "agregar_bloque" for c in d["cambios"])
     vistas = [b["vista"] for b in d["estado"]["bloques"]]
     assert "grafica" in vistas or "grafico" in vistas
+
+
+def test_procesar_chat_lab_cadena_dos_turnos():
+    """Turno 2 reenvía el estado devuelto; el motor debe ver marca y el registro nuevo del turno 1."""
+    turnos: list[dict] = []
+
+    def fake_responder(doc, texto, historial, contexto, puntos=None):
+        turnos.append(copy.deepcopy(doc))
+        if len(turnos) == 1:
+            doc = edicion.ejecutar(doc, "cambiar_marca", {"primario": "#5B5CF6"}, contexto)["doc"]
+            lista = next(l for l in doc["listas"] if l["id"] == "l_miembros")
+            lista["registros"] = [
+                *lista["registros"],
+                {"id": "miembros-p2", "valores": {"nombre": "Pedro Cadena", "plan": "Mensual", "estado": "Activa"}, "ejemplo": False, "creado": AHORA},
+            ]
+            return {
+                "respuesta": "Listo.",
+                "doc": doc,
+                "puntos": puntos or [],
+                "cambios": [{"herramienta": "cambiar_marca"}, {"herramienta": "agregar_registro"}],
+                "fallos": [],
+                "intentos": [],
+                "consultas": [],
+                "avisos": [],
+                "vista": "inicio",
+            }
+        lista = next(l for l in doc["listas"] if l["id"] == "l_miembros")
+        nombres = [r["valores"].get("nombre") for r in lista["registros"]]
+        assert (doc.get("marca") or {}).get("primario", "").lower() == "#5b5cf6"
+        assert "Pedro Cadena" in nombres
+        return {
+            "respuesta": "ok",
+            "doc": doc,
+            "puntos": puntos or [],
+            "cambios": [],
+            "fallos": [],
+            "intentos": [],
+            "consultas": [],
+            "avisos": [],
+            "vista": "inicio",
+        }
+
+    r1 = adp.procesar_chat_lab(
+        {"plantilla": "membresias", "estado": BANCO2_E, "texto": "marca y un miembro", "muestra": MUESTRA_DATOS},
+        fake_responder,
+        hoy=HOY,
+    )
+    r2 = adp.procesar_chat_lab(
+        {
+            "plantilla": "membresias",
+            "estado": r1["estado"],
+            "texto": "solo verifico",
+            "muestra": MUESTRA_DATOS,
+            "historial": [{"de": "yo", "t": "marca y un miembro"}, {"de": "shifu", "t": r1["respuesta"]}],
+        },
+        fake_responder,
+        hoy=HOY,
+    )
+    assert r2["respuesta"] == "ok"
+    assert len(turnos) == 2
 
 
 def test_ruta_desactivada_sin_env(monkeypatch):
