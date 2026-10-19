@@ -1071,18 +1071,19 @@ export default function CrmPage() {
     } catch { avisar('No se pudo borrar el historial. Inténtalo de nuevo.') }
   }
 
-  // Recién creado con IA: el chat se abre solo y cuenta cómo armó el CRM, para que la persona lo ajuste hablando.
+  // Recién creado con IA: el chat se abre solo y cuenta cómo armó el CRM, para que la persona lo ajuste hablando. El resumen y los
+  // ejemplos los escribe el backend con lo que de verdad se creó (lista 27 y 29); se dicen UNA vez: el aviso de bienvenida se cierra.
   const saludado = useRef(false)
   useEffect(() => {
     if (!crm?.resumenIA || saludado.current || !recienTerminado) return
     saludado.current = true
+    const ejemplos = crm.saludoEjemplos?.length ? crm.saludoEjemplos : ['agrega a Pedro', 'quita la sección de proveedores', 'agrega un campo de cumpleaños a los contactos']
     setMensajes([mensaje('shifu', `Hola 👋 Soy Shifu. ${crm.resumenIA}
 
 Si algo no te cuadra, dímelo y lo cambio. Por ejemplo:
-- «agrega a Pedro»
-- «quita la sección de proveedores»
-- «agrega un campo de cumpleaños a los contactos»`)])
+${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
     setChatAbierto(true)
+    setBienvenida(false)
   }, [crm, recienTerminado])
 
   if (fallo) return <Fallo onReintentar={() => { pedido.current = null; cargar() }} />

@@ -589,7 +589,9 @@ def test_la_ruta_devuelve_la_traza_y_deja_el_punto_del_turno(cli, monkeypatch):
     r = cli.post(f"{URL}/chat", json={"texto": "agrega a Pedro Castillo"}, headers=H).json()
     assert r["modo"] == "ia" and r["crm"]["contactos"][0]["n"] == "Pedro Castillo"
     assert [c["herramienta"] for c in r["cambios"]] == ["agregar_registro"] and r["fallos"] == r["intentos"] == r["consultas"] == r["avisos"] == []
-    assert [(p["n"], p["antesDe"], p["cambio"]) for p in r["crm"]["puntos"]] == [(1, "agrega a Pedro Castillo", ["datos"])]
+    # El primer diseño (lista 21) armó la clínica con sus Pacientes y dejó oculta la lista de contactos de fábrica: agregar a
+    # alguien ahí la vuelve a mostrar, por eso el turno cambió estructura y datos.
+    assert [(p["n"], p["antesDe"], p["cambio"]) for p in r["crm"]["puntos"]] == [(1, "agrega a Pedro Castillo", ["estructura", "datos"])]
     assert [p["n"] for p in cli.get(f"{URL}/puntos", headers=H).json()["puntos"]] == [1]
 
 

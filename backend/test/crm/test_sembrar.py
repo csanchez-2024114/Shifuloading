@@ -276,39 +276,17 @@ async def test_si_la_ia_falla_o_esta_apagada_queda_lo_sembrado():
 
 
 # ───────── Crear desde el cuestionario ─────────
+# Desde el 19-oct (lista 21–29) ya no se elige una plantilla ganadora: `crear_desde_cuestionario` arma siempre uno nuevo con piezas
+# (ver test_primer_diseno.py). Aquí solo se comprueba que la ruta de siempre llega a ese camino.
 
 @pytest.mark.asyncio
-async def test_con_ganadora_clara_se_siembra_su_plantilla():
+async def test_crear_ya_no_siembra_una_plantilla_entera_ni_llama_al_ajuste_viejo(monkeypatch):
+    async def ajuste(*_a, **_k):
+        raise AssertionError("la llamada de ajuste vieja no va en este camino")
+
+    monkeypatch.setattr(diseno, "ajustar_sembrado", ajuste)
     doc = await sembrar.crear_desde_cuestionario("u1", BRIEF_DENTAL, ahora=AHORA)
-    assert doc["plantilla"]["id"] == "clinica-dental" and doc["plantilla"]["origen"] == "asignar"
-    assert "tu rubro" in doc["plantilla"]["porque"]
-    assert [l["id"] for l in doc["listas"]] == ["l_citas", "l_tratamientos", "l_pacientes"]
+    assert doc["plantilla"]["origen"] == "piezas" and doc["plantilla"]["id"].startswith("medida-")
     assert doc["user_id"] == "u1" and doc["brief"] == BRIEF_DENTAL
-
-
-@pytest.mark.asyncio
-async def test_si_es_ambiguo_es_lo_de_carlos_con_origen_generador():
-    brief = {"nombre": "Clínica Sol", "rubro": "salud", "objetivos": ["seguimientos"]}
-    assert sembrar.elegir(brief)["ambiguo"]
-    doc = await sembrar.crear_desde_cuestionario("u1", brief, ahora=AHORA)
-    assert doc["plantilla"] == {"id": None, "origen": "generador", "porque": []}
-    assert doc["listas"] == [] and doc["contactos"] == [] and doc["esquema"] == 2
-
-
-@pytest.mark.asyncio
-async def test_si_la_siembra_falla_sigue_lo_de_siempre(monkeypatch):
-    def rota(*_a, **_k):
-        raise ValueError("plantilla rota")
-
-    monkeypatch.setattr(sembrar, "sembrar", rota)
-    doc = await sembrar.crear_desde_cuestionario("u1", BRIEF_DENTAL, ahora=AHORA)
-    assert doc["plantilla"]["origen"] == "generador" and doc["listas"] == []
-
-
-@pytest.mark.asyncio
-async def test_crear_con_ia_ajusta_y_llena_los_campos_nuevos():
-    m = Modelo({"secciones": [{"id": "l_pacientes", "nuevos": [{"nombre": "Seguro", "tipo": "texto"}]}]})
-    doc = await sembrar.crear_desde_cuestionario("u1", BRIEF_DENTAL, modelo=m, ahora=AHORA)
-    pac = next(l for l in doc["listas"] if l["id"] == "l_pacientes")
-    fid = pac["campos"][-1]["id"]
-    assert pac["campos"][-1]["nombre"] == "Seguro" and all(r["valores"].get(fid) for r in pac["registros"])
+    assert len({l["origen"] for l in doc["listas"]}) == 1 and len(doc["listas"]) >= 3
+    assert all(len(l["registros"]) == ejemplos.NIVELES["pocos"] for l in doc["listas"])

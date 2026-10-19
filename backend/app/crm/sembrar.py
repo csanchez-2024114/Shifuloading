@@ -300,27 +300,8 @@ def activo() -> bool:
 
 
 async def crear_desde_cuestionario(user_id: str, brief: dict, *, modelo: Any = None, ahora: datetime | None = None) -> dict:
-    """El CRM nuevo: `asignar` elige la plantilla con las respuestas; si hay una ganadora clara, se siembra sobre el CRM base de
-    `generador` y la IA solo le ajusta nombres y campos dentro del cerco (`diseno.ajustar_sembrado`; sin IA queda la plantilla).
-    Si es ambiguo (o la siembra falla), es lo de Carlos de siempre (`generador` + `diseno.disenar`) con plantilla.origen = "generador"."""
-    from app.crm import diseno
-    from app.crm.generador import generar
+    """El CRM nuevo (lista 21–29): SIEMPRE se arma uno nuevo con piezas de todas las plantillas según su % de compatibilidad con
+    TODAS las respuestas; ya no se elige una plantilla ganadora ni se ajusta con la llamada vieja. Ver `primer_diseno`."""
+    from app.crm import primer_diseno
 
-    ahora = ahora or op.ahora_utc()
-    base = generar(user_id, brief, ahora)
-    asig = elegir(brief)
-    rec = asig.get("recomendada")
-    doc = None
-    if rec and not asig.get("ambiguo"):
-        try:
-            doc = sembrar(base, rec["id"], ahora=ahora, pais=(brief.get("ubicacion") or {}).get("pais"), porque=rec.get("porque"))
-        except Exception as e:  # una plantilla rota no deja a la persona sin CRM: sigue lo de siempre
-            logger.warning("No se pudo sembrar la plantilla %s: %s", rec.get("id"), type(e).__name__)
-    if doc is None:
-        doc = est.normalizar(await diseno.disenar(base, brief, modelo=modelo, ahora=ahora))
-        doc["plantilla"] = {"id": None, "origen": "generador", "porque": []}
-        return doc
-    doc, aplicado = await diseno.ajustar_sembrado(doc, brief, modelo=modelo, ahora=ahora)
-    for sid, campos in aplicado["nuevos"].items():
-        doc = ejemplos_para_campos(doc, sid, campos, hoy=_hoy(ahora, doc))
-    return doc
+    return await primer_diseno.crear(user_id, brief, modelo=modelo, ahora=ahora)

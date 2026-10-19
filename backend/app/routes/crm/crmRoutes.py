@@ -60,6 +60,7 @@ MAX_IMAGEN = 4_000_000  # caracteres del data URL (≈3 MB de imagen)
 _IMAGEN_LEIBLE = re.compile(r"^data:image/(png|jpe?g|webp|gif);base64,", re.I)  # los formatos que lee el modelo (no SVG ni otros)
 TEXTO_SOLO_CAPTURA = "Mira esta imagen: dime en una línea qué ves y haz lo más obvio con ella, o propón una acción concreta."
 TEXTO_SOLO_ARCHIVO = "Te mando este archivo: ¿qué hago con él?"
+LARGO_ABIERTA = 1500  # pregunta abierta y respuestas de seguimiento (antes 300: cortaba «…y mi personal», lista 24; igual en BriefPage.jsx)
 MAX_ADJUNTO = 7_000_000  # base64 de un archivo de hasta 5 MB
 
 
@@ -76,7 +77,7 @@ class Ubicacion(_Texto):
 
 class Seguimiento(_Texto):
     pregunta: str = Field(..., max_length=140)
-    respuesta: str = Field(..., max_length=300)
+    respuesta: str = Field(..., max_length=LARGO_ABIERTA)
 
 
 class BriefEntrada(_Texto):
@@ -94,7 +95,7 @@ class BriefEntrada(_Texto):
     herramientas: list[str] = Field(default_factory=list, max_length=20)
     objetivos: list[str] = Field(default_factory=list, max_length=20)
     dolor: Optional[str] = Field(None, max_length=300)
-    que_vendes: Optional[str] = Field(None, max_length=300)
+    que_vendes: Optional[str] = Field(None, max_length=LARGO_ABIERTA)
     seguimiento: list[Seguimiento] = Field(default_factory=list, max_length=6)  # preguntas que la IA hizo según el negocio, con sus respuestas
     armado: Optional[str] = Field(None, max_length=30)
     autonomia: Optional[str] = Field(None, max_length=30)
@@ -125,7 +126,7 @@ class SiguienteEntrada(_Texto):
     model_config = ConfigDict(str_strip_whitespace=True, extra="ignore")
     nombre: str = Field("", max_length=60)
     ubicacion: Optional[Ubicacion] = None
-    que_vendes: Optional[str] = Field(None, max_length=300)
+    que_vendes: Optional[str] = Field(None, max_length=LARGO_ABIERTA)
     qa: list[RespuestaIA] = Field(default_factory=list, max_length=6)
 
 
