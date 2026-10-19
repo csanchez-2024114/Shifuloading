@@ -82,6 +82,14 @@ def install_coder_routes(app, settings, profile, appdata, user=None, changing=No
     if not coder_requested(settings):
         return
     check_settings(settings, profile, appdata)
+    for module in ("PIL", "multipart"):  # reencodeo de imágenes y subida de recursos
+        try:
+            __import__(module)
+        except ImportError as exc:
+            raise ConfigError(_text(profile, "startup.coder_missing_deps",
+                                    "CODER_ENABLED=1 necesita las dependencias de archivos (falta {module}). "
+                                    "Instálalas con: uv pip install --python .venv -e \".[files]\"",
+                                    module=module)) from exc
     projects = app.state.coder = Projects(_repo(appdata), settings)
     from assistant.core.coder import runtime
 
@@ -102,3 +110,39 @@ def install_coder_routes(app, settings, profile, appdata, user=None, changing=No
         return {"url": preview_url(settings, issued["token"]), "version": issued["version"],
                 "expires": issued["expires"].isoformat(),
                 "findings": analyze(projects.version_texts(project_id, issued["version"]))}
+
+    from fastapi import File, UploadFile
+
+    from assistant.core.coder.assets import prepare_asset
+
+    @app.post("/coder/uploads")
+    def coder_upload(request: Request, file: UploadFile = File(...)):
+        """Sube un recurso (imagen, audio o datos) a nombre del usuario de la sesión; el agente lo pasa después a un
+        proyecto. Cualquier user_id del formulario se ignora."""
+        owner = changing(request)
+        data = file.file.read(settings.coder_max_asset_bytes + 1)  # nunca más del tope en memoria
+        try:
+            return projects.stage_upload(owner["user_id"],
+                                         prepare_asset(data, file.filename or "", settings.coder_max_asset_bytes))
+        except CoderError as exc:
+            raise HTTPException(upload_status.get(exc.code, 422), _text(
+                profile, f"coder.upload.{exc.code}", "No se pudo usar ese archivo.", **exc.values)) from None
+
+    @app.get("/coder/uploads")
+    def coder_uploads(request: Request):
+        return {"uploads": projects.list_uploads(user(request)["user_id"])}
+
+    @app.delete("/coder/uploads/{upload_id}")
+    def coder_delete_upload(upload_id: str, request: Request):
+        owner = changing(request)
+        if not projects.delete_upload(owner["user_id"], upload_id):
+            raise HTTPException(404, _text(profile, "coder.upload_not_found", "No existe esa subida."))
+        return {"deleted": upload_id}
+
+
+# código del error al subir -> estado HTTP
+upload_status = {
+    "asset_too_large": 413, "asset_too_many_pixels": 413, "quota_user_bytes": 413, "quota_uploads": 413,
+    "asset_type_not_allowed": 415, "asset_mismatch": 415, "asset_polyglot": 415,
+    "asset_empty": 422, "asset_timeout": 422,
+}

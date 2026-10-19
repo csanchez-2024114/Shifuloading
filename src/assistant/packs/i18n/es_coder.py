@@ -13,6 +13,21 @@ TEXTS = {
                                    "nada."),
     # rutas del dueño
     "coder.project_not_found": "No existe ese proyecto.",
+    "coder.upload_not_found": "No existe esa subida.",
+    # subida de recursos (POST /coder/uploads)
+    "coder.upload.asset_empty": "El archivo está vacío.",
+    "coder.upload.asset_too_large": "El archivo pasa del máximo de {limit} bytes (CODER_MAX_ASSET_BYTES).",
+    "coder.upload.asset_too_many_pixels": "La imagen tiene demasiados píxeles.",
+    "coder.upload.asset_type_not_allowed": ("Ese tipo de archivo no se permite ({ext}). Se aceptan imágenes png, jpg, "
+                                            "gif y webp, audio mp3 y ogg, y datos json, csv y txt (SVG no)."),
+    "coder.upload.asset_mismatch": "El contenido del archivo no corresponde a su extensión, o no se puede leer.",
+    "coder.upload.asset_polyglot": "El archivo trae código o marcas de página escondidos y no se acepta.",
+    "coder.upload.asset_timeout": "El archivo tardó demasiado en procesarse.",
+    "coder.upload.quota_user_bytes": ("Llegaste a tu espacio de proyectos ({used} de {limit} bytes). Borra un "
+                                      "proyecto o una subida."),
+    "coder.upload.quota_uploads": "Tienes {limit} subidas sin usar: pídele al asistente que las use o bórralas.",
+    "startup.coder_missing_deps": ("CODER_ENABLED=1 necesita las dependencias de archivos (falta {module}). "
+                                   "Instálalas con: uv pip install --python .venv -e \".[files]\""),
     # arranque (core/coder/routes.py tiene el mismo texto de respaldo)
     "startup.coder_profile_needs_coder": "El perfil coder necesita CODER_ENABLED=1 (y AUTH_ENABLED=1).",
     "startup.coder_flag_needs_coder": ("CODER_DATA_ENABLED, CODER_SHARING_ENABLED y CODER_PUBLIC_WRITE_ENABLED "
