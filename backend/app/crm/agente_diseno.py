@@ -360,6 +360,7 @@ class SesionDiseno(agente.Sesion):
         self.puntos = sorted(puntos or [], key=lambda x: x["n"])
         self.digresion = digresion
         self.toma_entrada = toma_entrada  # ¿la ficha ya estaba abierta al llegar el mensaje?
+        self.abierta: str | None = None  # la pestaña que la persona está mirando («aquí», «esta lista»); `vista` es a dónde la lleva el chat
         self.confirmado = bool(agente._AFIRMA.match(texto or ""))  # un «sí» suelto confirma (como `agregar_vendedor` de Carlos)
         # Lo que escribió la persona (este mensaje y los anteriores): un registro a cambiar o borrar debe ser uno que ELLA nombró.
         self.dichos = "\n".join([*(str(h.get("t", "")) for h in self.historial if h.get("de") == "yo"), texto or ""])
@@ -444,7 +445,7 @@ class SesionDiseno(agente.Sesion):
         # «Cobros» de Carlos todavía no guarda datos: en modo diseño, quien quiere llevar cobros tiene su propia sección (crear_seccion).
         if "NO ACTIVA" in str(((base.get("secciones_integradas") or {}).get("cobros") or {}).get("para_que", "")):
             base["secciones_integradas"].pop("cobros", None)
-        base.update(pantalla.describir_pantalla(self.doc, self.vista or "inicio", self.puntos))
+        base.update(pantalla.describir_pantalla(self.doc, self.vista or self.abierta or "inicio", self.puntos))
         return json.dumps(base, ensure_ascii=False, default=str)
 
     def solo_toma(self) -> bool:
@@ -606,7 +607,7 @@ class SesionDiseno(agente.Sesion):
 
     def _edicion(self, nombre: str, args: dict) -> str:
         """Herramientas de `edicion.py` (bloques, marca, estructura del laboratorio)."""
-        ctx: dict[str, Any] = {"vista": self.vista or "inicio", "texto": self.texto, "digresion": self.digresion,
+        ctx: dict[str, Any] = {"vista": self.vista or self.abierta or "inicio", "texto": self.texto, "digresion": self.digresion,
                                "confirmado": self.confirmado or self._confirmado_masivo(self.texto or ""),
                                "pide_quitar": bool(PIDE_QUITAR.search(self.texto or "")), "dichos": self.dichos, "ahora": self.ahora,
                                "imagen": self._tiene_imagen()}
@@ -912,6 +913,18 @@ def _construir(doc: dict) -> dict:
 
 # ───────── Un mensaje completo ─────────
 
+def pestana_abierta(doc: dict, seccion: str | None) -> str | None:
+    """La pestaña que la persona está mirando, por id o por su título (la pantalla manda el título); el inicio o una que no existe: None.
+    Sin esto el modelo creía estar siempre en el inicio y «aquí pon…» o «cambia esta lista…» caían ahí (medido en banco_pestanas)."""
+    if not seccion or seccion == "inicio":
+        return None
+    k = agente._norm(seccion)
+    for s in pantalla.plantilla_efectiva(doc)["secciones"]:
+        if seccion == s["id"] or k in (agente._norm(s["id"]), agente._norm(s.get("titulo") or "")):
+            return s["id"]
+    return None
+
+
 async def responder(doc: dict, texto: str, historial: list[dict] | None = None, ahora: datetime | None = None, con_captura: bool = False,
                     modelo: Any = None, buscador: Any = None, imagen: str | None = None, seccion: str | None = None, persona: str | None = None,
                     puntos: list[dict] | None = None, lector_enlaces: Any = None) -> dict:
@@ -931,6 +944,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
 
     sesion = SesionDiseno(doc_turno, ahora, texto, bool(imagen), historial=historial, puntos=puntos, digresion=prep["digresion"],
                           toma_entrada=bool((doc.get("toma") or {}).get("activa")))
+    sesion.abierta = pestana_abierta(doc_turno, seccion)
     doc_inicial = sesion.doc
     base = modelo or agente._modelo()
     mensajes = agente._mensajes(doc, texto, historial, ahora, con_captura, imagen, seccion, persona)
