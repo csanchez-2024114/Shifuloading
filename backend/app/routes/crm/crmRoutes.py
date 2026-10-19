@@ -28,6 +28,7 @@ Endpoints (relativos al prefijo):
   GET    /puntos                  — Los puntos de deshacer (los últimos 30, sin foto)
   POST   /deshacer                — Deshace un punto ({n}; sin n, el último): solo lo que ese cambio tocó
   POST   /chat                    — Mensaje para Shifu (texto y/o captura) -> respuesta + CRM actualizado
+  GET    /logo/{id}               — La imagen del logo del negocio (`marca.logo_id`): { id, imagen } (data URL)
 """
 import logging
 import re
@@ -364,6 +365,10 @@ async def siguiente_pregunta(request: Request, datos: SiguienteEntrada):
 async def borrar_crm(request: Request, user: dict = Depends(get_current_user)):
     await repo.borrar(request.app.state.db, user["id"])
     await _olvidar_puntos(request.app.state.db, user["id"])
+    try:
+        await repo.logos_borrar(request.app.state.db, user["id"])
+    except Exception as e:
+        logger.warning("No se pudieron borrar los logos: %s", type(e).__name__)
     await mem.reiniciar_trabajo(request.app.state.db, user["id"])  # el CRM nuevo no arrastra la conversación del anterior; sí cómo le gusta que le hablen
     return Response(status_code=204)
 
@@ -563,6 +568,13 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
             r = {**(responder(doc, texto, pendiente) if texto else {"doc": doc, "respuesta": ""}), "modo": "reglas"}
         if r["doc"] is doc:
             return doc, r
+        if r.get("logo"):
+            # usar_logo: la imagen se guarda antes que el CRM que la nombra (si no se puede, no queda un logo_id sin imagen).
+            try:
+                await repo.logo_guardar(db, user_id, r["logo"])
+            except Exception as e:
+                logger.warning("No se pudo guardar el logo: %s", type(e).__name__)
+                raise op.ErrorCrm(503, "No pude guardar tu logo. Inténtalo de nuevo en un momento.") from e
         deshecho = r.get("deshacer")
         nuevo, punto = pt.con_punto(deshecho["base"] if deshecho else doc, r["doc"], texto or "(adjuntó una imagen)")
         guardado = await repo.guardar_version(db, user_id, nuevo, doc["version"])
@@ -665,6 +677,15 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
         for clave in ("cambios", "fallos", "intentos", "consultas", "avisos"):
             salida[clave] = resultado.get(clave) or []
     return salida
+
+
+@router.get("/logo/{logo_id}")
+async def leer_logo(logo_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """El logo del negocio por su id (el de `marca.logo_id`). Solo el de la persona: el id de otra no encuentra nada."""
+    logo = await repo.logo_obtener(request.app.state.db, user["id"], logo_id)
+    if not logo:
+        return _error(op.ErrorCrm(404, "Ese logo no existe."))
+    return {"id": logo["id"], "imagen": logo["imagen"]}
 
 
 # ───────── Historial y memoria ─────────

@@ -415,9 +415,15 @@ class SesionDiseno(agente.Sesion):
         self.imagen_enlace: str | None = None
         self._adjuntos_vuelta: list[dict] = []
         self._masivo_plan: dict[str, bool] | None = None
+        self.imagen_datos: str | None = None  # la imagen adjunta (data URL): usar_logo guarda ESA imagen, no un sí/no
+        self.logo: dict | None = None  # {id, imagen} del logo nuevo del turno: la ruta lo guarda aparte (crm_logos)
 
     def _tiene_imagen(self) -> bool:
         return self.con_imagen or bool(self.imagen_enlace)
+
+    def _imagen(self) -> str | None:
+        """La imagen del turno: la adjunta o, si no hay, la que trajo leer_enlace."""
+        return self.imagen_datos or self.imagen_enlace
 
     @staticmethod
     def _confirmado_masivo(texto: str) -> bool:
@@ -669,10 +675,12 @@ class SesionDiseno(agente.Sesion):
         ctx: dict[str, Any] = {"vista": self.vista or self.abierta or "inicio", "texto": self.texto, "digresion": self.digresion,
                                "confirmado": self.confirmado or self._confirmado_masivo(self.texto or ""),
                                "pide_quitar": bool(PIDE_QUITAR.search(self.texto or "")), "dichos": self.dichos, "ahora": self.ahora,
-                               "imagen": self._tiene_imagen()}
+                               "imagen": self._imagen()}
         r = edicion.ejecutar(self.doc, nombre, args, ctx)
         if r["ok"]:
             self.doc = r["doc"]
+            if r.get("logo"):
+                self.logo = r["logo"]
             if r.get("vista"):
                 self.vista = r["vista"]
             self._etiqueta = r.get("etiqueta")
@@ -1004,6 +1012,7 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     sesion = SesionDiseno(doc_turno, ahora, texto, bool(imagen), historial=historial, puntos=puntos, digresion=prep["digresion"],
                           toma_entrada=bool((doc.get("toma") or {}).get("activa")))
     sesion.abierta = pestana_abierta(doc_turno, seccion)
+    sesion.imagen_datos = imagen
     doc_inicial = sesion.doc
     base = modelo or agente._modelo()
     sesion.adjunto = adjunto or ""
@@ -1109,6 +1118,8 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
         salida["vista"] = sesion.vista
     if sesion.pendiente:
         salida["pendiente"] = sesion.pendiente
+    if sesion.logo and (sesion.doc.get("marca") or {}).get("logo_id") == sesion.logo["id"]:
+        salida["logo"] = sesion.logo  # la imagen del logo que quedó puesto: la ruta la guarda con ese id
     if sesion.deshechos:
         salida["deshacer"] = {"deshechos": sorted(sesion.deshechos), "puntos": sesion.puntos, "base": sesion.doc_tras_deshacer}
     return salida

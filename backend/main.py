@@ -308,6 +308,8 @@ async def lifespan(app: FastAPI):
              {"unique": True, "name": "idx_crm_conversaciones_user"}, "crm_conversaciones una conversacion por persona"),
             ("crm_puntos", [("user_id", 1), ("n", 1)],
              {"unique": True, "name": "idx_crm_puntos_user_n"}, "crm_puntos puntos de deshacer por persona"),
+            ("crm_logos", [("user_id", 1), ("id", 1)],
+             {"unique": True, "name": "idx_crm_logos_user_id"}, "crm_logos logo del negocio por persona"),
             ("document_extractions", [("user_id", 1), ("last_used_at", -1)],
              {"name": "idx_document_extractions_user_recency"}, "document_extractions cleanup"),
         ]:
