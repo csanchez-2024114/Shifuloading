@@ -14,6 +14,8 @@ from assistant.core.coder.repo import CoderRepo, Duplicate
 
 kinds = ("landing", "game", "tool", "other")
 preview_minutes = 30
+upload_hours = 24          # una subida que no se asigna a un proyecto se borra sola
+max_pending_uploads = 20   # subidas sin asignar por usuario
 max_edits = 20
 _project_id = re.compile(r"p_[0-9a-f]{12}")
 
@@ -24,6 +26,20 @@ def _now() -> datetime:
 
 def _size(text: str) -> int:
     return len(text.encode("utf-8"))
+
+
+def _slug(name: str) -> str:
+    """Nombre de archivo apto para una ruta: minúsculas, [a-z0-9._-] y la extensión."""
+    stem, dot, ext = name.lower().rpartition(".")
+    stem = re.sub(r"[^a-z0-9_-]+", "-", stem if dot else name.lower()).strip("-_") or "recurso"
+    return f"{stem[:60]}.{ext}" if dot else stem[:60]
+
+
+def upload_summary(doc: dict) -> dict:
+    """Lo que ven el modelo y la UI de una subida pendiente (sin user_id ni bytes)."""
+    return {"upload_id": doc["upload_id"], "name": doc["nombre"], "kind": doc["kind"], "mime": doc["tipo_mime"],
+            "bytes": doc["bytes"], "width": doc.get("ancho"), "height": doc.get("alto"),
+            "expires": doc["expira"].isoformat()}
 
 
 def summary(doc: dict) -> dict:
@@ -52,8 +68,10 @@ class Projects:
         return [summary(p) for p in self.repo.list_projects(user_id)]
 
     def usage(self, user_id: str) -> dict:
+        """Proyectos y bytes del usuario: archivos y recursos de todas sus versiones, más las subidas pendientes."""
         projects = self.repo.list_projects(user_id)
-        return {"projects": len(projects), "bytes": sum(p.get("bytes", 0) for p in projects)}
+        pending = sum(u["bytes"] for u in self._pending_uploads(user_id))
+        return {"projects": len(projects), "bytes": sum(p.get("bytes", 0) for p in projects) + pending}
 
     def manifest(self, project_id: str, version: int) -> dict:
         doc = self.repo.get_version(project_id, version)
@@ -82,6 +100,8 @@ class Projects:
         row = self.repo.get_file(project_id, ruta, manifest[ruta])
         if row is None:  # manifiesto sin su fila: no debería pasar
             raise CoderError("file_not_found", path=ruta)
+        if row.get("blob_id"):
+            raise CoderError("binary_asset", path=ruta, mime=row["tipo_mime"], size=row["bytes"])
         return {"path": ruta, "content": row["contenido"], "mime": row["tipo_mime"], "hash": row["hash"],
                 "bytes": row["bytes"], "version": current}
 
@@ -189,16 +209,102 @@ class Projects:
 
     def delete_project(self, user_id: str, project_id: str) -> None:
         self.get(user_id, project_id)
+        self.repo.delete_project_blobs(project_id)
         self.repo.delete_files(project_id)
         self.repo.delete_versions(project_id)
         self.repo.delete_preview_tokens(project_id)
         self.repo.delete_project(user_id, project_id)
 
     def delete_user(self, user_id: str) -> int:
+        """Todo lo del usuario: proyectos (con archivos, versiones, recursos y tokens) y subidas pendientes."""
         projects = self.repo.list_projects(user_id)
         for p in projects:
             self.delete_project(user_id, p["project_id"])
+        self.repo.delete_user_uploads(user_id)
+        self.repo.delete_user_blobs(user_id)  # red de seguridad: nada en GridFS a su nombre
         return len(projects)
+
+    # ------------------------------------------------------------------ recursos (subidas del usuario)
+
+    def _pending_uploads(self, user_id: str) -> list[dict]:
+        now = _now()
+        return [u for u in self.repo.list_uploads(user_id) if u["expira"] > now]
+
+    def stage_upload(self, user_id: str, prepared: dict) -> dict:
+        """Guarda una subida ya validada (assets.prepare_asset) a nombre del usuario, sin proyecto: el agente la
+        asigna después con add_asset. Caduca a las 24 horas."""
+        if len(self._pending_uploads(user_id)) >= max_pending_uploads:
+            raise CoderError("quota_uploads", limit=max_pending_uploads)
+        used = self.usage(user_id)["bytes"]
+        if used + prepared["bytes"] > self.s.coder_max_user_bytes:
+            raise CoderError("quota_user_bytes", limit=self.s.coder_max_user_bytes, used=used)
+        now = _now()
+        doc = {"upload_id": "up_" + secrets.token_hex(8), "user_id": user_id, "nombre": prepared["name"],
+               "kind": prepared["kind"], "tipo_mime": prepared["mime"], "bytes": prepared["bytes"],
+               "sha256": hashlib.sha256(prepared["data"]).hexdigest(), "datos": prepared["data"],
+               "ancho": prepared.get("width"), "alto": prepared.get("height"), "creado": now,
+               "expira": now + timedelta(hours=upload_hours)}
+        self.repo.insert_upload(doc)
+        return upload_summary(doc)
+
+    def list_uploads(self, user_id: str) -> list[dict]:
+        return [upload_summary(u) for u in self._pending_uploads(user_id)]
+
+    def delete_upload(self, user_id: str, upload_id: str) -> bool:
+        if self._upload(user_id, upload_id) is None:
+            return False
+        self.repo.delete_upload(user_id, upload_id)
+        return True
+
+    def _upload(self, user_id: str, upload_id: str) -> dict | None:
+        if not isinstance(upload_id, str) or not re.fullmatch(r"up_[0-9a-f]{16}", upload_id):
+            return None
+        doc = self.repo.get_upload(user_id, upload_id)
+        return doc if doc is not None and doc["expira"] > _now() else None
+
+    def add_asset(self, user_id: str, project_id: str, upload_id: str, path: str = "") -> dict:
+        """Pasa una subida pendiente del usuario al proyecto (versión nueva). Las imágenes y el audio van a GridFS;
+        json, csv y txt quedan como archivos de texto. Ruta por defecto: assets/<nombre>."""
+        from assistant.core.coder.assets import asset_kinds, text_kinds
+
+        project = self.get(user_id, project_id)
+        up = self._upload(user_id, upload_id)
+        if up is None:
+            raise CoderError("upload_not_found")
+        ruta = safe_path(path or "assets/" + _slug(up["nombre"]))
+        if asset_kinds.get(extension(ruta), (None,))[0] != up["kind"]:
+            raise CoderError("type_not_allowed", path=ruta, reason="extension_mismatch")
+        data = bytes(up["datos"])
+        if up["kind"] in text_kinds:
+            version = self._save(user_id, project, ruta, data.decode("utf-8"), "asset", credit=up["bytes"])
+        else:
+            version = self._save_blob(user_id, project, ruta, data, up)
+        self.repo.delete_upload(user_id, upload_id)
+        return {"path": ruta, "version": version, "mime": up["tipo_mime"], "bytes": up["bytes"],
+                "width": up.get("ancho"), "height": up.get("alto")}
+
+    def _save_blob(self, user_id: str, project: dict, ruta: str, data: bytes, up: dict) -> int:
+        pid = project["project_id"]
+        manifest = self.manifest(pid, project["version_actual"])
+        digest = hashlib.sha256(data).hexdigest()
+        if ruta in manifest:
+            row = self.repo.get_file(pid, ruta, manifest[ruta])
+            if row and row["hash"] == digest:
+                raise CoderError("unchanged")
+        elif len(manifest) >= self.s.coder_max_files:
+            raise CoderError("quota_files", limit=self.s.coder_max_files)
+        used = self.usage(user_id)["bytes"] - up["bytes"]  # la subida ya contaba: solo cambia de sitio
+        if used + len(data) > self.s.coder_max_user_bytes:
+            raise CoderError("quota_user_bytes", limit=self.s.coder_max_user_bytes, used=used)
+        blob_id = self.repo.put_blob({"user_id": user_id, "project_id": pid, "ruta": ruta,
+                                      "tipo_mime": up["tipo_mime"], "sha256": digest, "bytes": len(data)}, data)
+        row = {"project_id": pid, "user_id": user_id, "ruta": ruta, "contenido": None, "blob_id": blob_id,
+               "tipo_mime": up["tipo_mime"], "hash": digest, "bytes": len(data)}
+        try:
+            return self._commit(user_id, project, dict(manifest), [row], "asset", ruta)
+        except CoderError:
+            self.repo.delete_blobs([blob_id])
+            raise
 
     # ------------------------------------------------------------------ vista previa
 
@@ -236,8 +342,11 @@ class Projects:
         if ruta not in manifest:
             return None
         row = self.repo.get_file(project_id, ruta, manifest[ruta])
-        return None if row is None else {"path": ruta, "content": row["contenido"], "mime": row["tipo_mime"],
-                                         "hash": row["hash"]}
+        if row is None:
+            return None
+        content = self.repo.get_blob(row["blob_id"]) if row.get("blob_id") else row["contenido"]
+        return None if content is None else {"path": ruta, "content": content, "mime": row["tipo_mime"],
+                                             "hash": row["hash"]}
 
     def version_texts(self, project_id: str, version: int) -> dict[str, str]:
         """{ruta: contenido} de los archivos de texto de una versión (para el analizador)."""
@@ -256,7 +365,8 @@ class Projects:
             raise CoderError("type_not_allowed", path=ruta, reason="asset_needs_upload")
         return ruta
 
-    def _save(self, user_id: str, project: dict, ruta: str, content: str, origen: str) -> int:
+    def _save(self, user_id: str, project: dict, ruta: str, content: str, origen: str, credit: int = 0) -> int:
+        """`credit`: bytes que ya contaban en el uso (una subida pendiente que pasa al proyecto)."""
         if not isinstance(content, str) or "\x00" in content:
             raise CoderError("invalid_content")
         size = _size(content)
@@ -271,7 +381,7 @@ class Projects:
                 raise CoderError("unchanged")
         elif len(manifest) >= self.s.coder_max_files:
             raise CoderError("quota_files", limit=self.s.coder_max_files)
-        used = self.usage(user_id)["bytes"]
+        used = self.usage(user_id)["bytes"] - credit
         if used + size > self.s.coder_max_user_bytes:
             raise CoderError("quota_user_bytes", limit=self.s.coder_max_user_bytes, used=used)
         row = {"project_id": pid, "user_id": user_id, "ruta": ruta, "contenido": content,
@@ -328,6 +438,7 @@ class Projects:
         used = {(ruta, v) for doc in versions if doc["version"] not in drop for ruta, v in doc["archivos"].items()}
         orphans = [r for r in self.repo.file_rows(project_id) if (r["ruta"], r["version"]) not in used]
         if orphans:
+            self.repo.delete_blobs([r["blob_id"] for r in orphans if r.get("blob_id")])
             self.repo.delete_file_rows(project_id, [(r["ruta"], r["version"]) for r in orphans])
             total = sum(r["bytes"] for r in self.repo.file_rows(project_id))
             self.repo.update_project(user_id, project_id, {"bytes": total})

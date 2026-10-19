@@ -1,6 +1,7 @@
 """Almacén de proyectos en memoria, para tests. Copia los documentos al entrar y al salir (como una base de datos) y
 respeta las mismas claves únicas que los índices de Mongo."""
 import copy
+import secrets
 import threading
 
 from assistant.core.coder.repo import Duplicate
@@ -13,6 +14,8 @@ class MemoryCoderRepo:
         self.files: dict[tuple[str, str, int], dict] = {}
         self.versions: dict[tuple[str, int], dict] = {}
         self.previews: dict[str, dict] = {}
+        self.blobs: dict[str, dict] = {}
+        self.uploads: dict[tuple[str, str], dict] = {}
 
     # proyectos
     def insert_project(self, doc):
@@ -106,3 +109,52 @@ class MemoryCoderRepo:
         with self._lock:
             for key in [k for k, d in self.previews.items() if d["project_id"] == project_id]:
                 del self.previews[key]
+
+    # recursos binarios y subidas pendientes
+    def put_blob(self, meta, data):
+        with self._lock:
+            blob_id = secrets.token_hex(12)
+            self.blobs[blob_id] = {"meta": copy.deepcopy(meta), "data": bytes(data)}
+            return blob_id
+
+    def get_blob(self, blob_id):
+        found = self.blobs.get(blob_id)
+        return None if found is None else found["data"]
+
+    def delete_blobs(self, blob_ids):
+        with self._lock:
+            for blob_id in blob_ids:
+                self.blobs.pop(blob_id, None)
+
+    def delete_project_blobs(self, project_id):
+        with self._lock:
+            for key in [k for k, b in self.blobs.items() if b["meta"].get("project_id") == project_id]:
+                del self.blobs[key]
+
+    def delete_user_blobs(self, user_id):
+        with self._lock:
+            for key in [k for k, b in self.blobs.items() if b["meta"].get("user_id") == user_id]:
+                del self.blobs[key]
+
+    def insert_upload(self, doc):
+        with self._lock:
+            key = (doc["user_id"], doc["upload_id"])
+            if key in self.uploads:
+                raise Duplicate(key)
+            self.uploads[key] = copy.deepcopy(doc)
+
+    def get_upload(self, user_id, upload_id):
+        return copy.deepcopy(self.uploads.get((user_id, upload_id)))
+
+    def list_uploads(self, user_id):
+        return sorted((copy.deepcopy(d) for (u, _), d in self.uploads.items() if u == user_id),
+                      key=lambda d: d["creado"])
+
+    def delete_upload(self, user_id, upload_id):
+        with self._lock:
+            self.uploads.pop((user_id, upload_id), None)
+
+    def delete_user_uploads(self, user_id):
+        with self._lock:
+            for key in [k for k in self.uploads if k[0] == user_id]:
+                del self.uploads[key]

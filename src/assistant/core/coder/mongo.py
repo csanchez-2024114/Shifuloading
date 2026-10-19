@@ -3,6 +3,9 @@ la primera escritura de cada colección: con CODER_ENABLED=0, o mientras nadie e
 base (leer una colección que no existe no la crea)."""
 from datetime import datetime, timezone
 
+import gridfs
+from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo.errors import DuplicateKeyError
 
 from assistant.core.coder.repo import Duplicate
@@ -14,7 +17,10 @@ _indexes = {
     "coder_files": [([("project_id", 1), ("ruta", 1), ("version", 1)], True), ([("project_id", 1), ("hash", 1)], False)],
     "coder_versions": [([("project_id", 1), ("version", 1)], True)],
     "coder_preview_tokens": [([("token_hash", 1)], True), ([("project_id", 1)], False)],
+    "coder_uploads": [([("user_id", 1), ("upload_id", 1)], True)],
+    "coder_assets.files": [([("metadata.project_id", 1)], False), ([("metadata.user_id", 1)], False)],
 }
+_ttl = ("coder_preview_tokens", "coder_uploads")  # Mongo los borra al caducar (además de comprobarlo al leer)
 
 
 def _utc(value):
@@ -32,6 +38,9 @@ class MongoCoderRepo:
         self.files = db["coder_files"]
         self.versions = db["coder_versions"]
         self.previews = db["coder_preview_tokens"]
+        self.uploads = db["coder_uploads"]
+        self.assets = gridfs.GridFSBucket(db, bucket_name="coder_assets")
+        self.asset_files = db["coder_assets.files"]
         self._ready: set[str] = set()
 
     def _ensure(self, col) -> None:
@@ -39,7 +48,7 @@ class MongoCoderRepo:
             return
         for keys, unique in _indexes[col.name]:
             col.create_index(keys, unique=unique)
-        if col.name == "coder_preview_tokens":  # Mongo los borra al caducar (además de comprobarlo al leer)
+        if col.name in _ttl:
             col.create_index("expira", expireAfterSeconds=0)
         self._ready.add(col.name)
 
@@ -114,3 +123,49 @@ class MongoCoderRepo:
 
     def delete_preview_tokens(self, project_id):
         self.previews.delete_many({"project_id": project_id})
+
+    # recursos binarios (GridFS) y subidas pendientes
+    def put_blob(self, meta, data):
+        self._ensure(self.asset_files)
+        return str(self.assets.upload_from_stream(meta.get("ruta", "asset"), bytes(data), metadata=dict(meta)))
+
+    def get_blob(self, blob_id):
+        try:
+            return self.assets.open_download_stream(ObjectId(blob_id)).read()
+        except (gridfs.errors.NoFile, InvalidId, TypeError):
+            return None
+
+    def delete_blobs(self, blob_ids):
+        for blob_id in blob_ids:
+            try:
+                self.assets.delete(ObjectId(blob_id))
+            except (gridfs.errors.NoFile, InvalidId, TypeError):
+                pass
+
+    def _delete_blobs_where(self, query):
+        for doc in self.asset_files.find(query, {"_id": 1}):
+            try:
+                self.assets.delete(doc["_id"])
+            except gridfs.errors.NoFile:
+                pass
+
+    def delete_project_blobs(self, project_id):
+        self._delete_blobs_where({"metadata.project_id": project_id})
+
+    def delete_user_blobs(self, user_id):
+        self._delete_blobs_where({"metadata.user_id": user_id})
+
+    def insert_upload(self, doc):
+        self._insert(self.uploads, doc)
+
+    def get_upload(self, user_id, upload_id):
+        return _doc(self.uploads.find_one({"user_id": user_id, "upload_id": upload_id}))
+
+    def list_uploads(self, user_id):
+        return [_doc(d) for d in self.uploads.find({"user_id": user_id}).sort("creado", 1)]
+
+    def delete_upload(self, user_id, upload_id):
+        self.uploads.delete_one({"user_id": user_id, "upload_id": upload_id})
+
+    def delete_user_uploads(self, user_id):
+        self.uploads.delete_many({"user_id": user_id})

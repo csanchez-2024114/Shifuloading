@@ -58,11 +58,17 @@ def test_borrar_la_cuenta_borra_sus_proyectos(appdata):
         projects.write_file(ana, pid, "index.html", "<h1>x</h1>")
         projects.edit_file(ana, pid, "index.html", [{"old": "x", "new": "y"}], expected_version=1)
         token = projects.issue_preview(ana, pid)["token"]  # un token de vista previa vigente también se borra
+        png = b"\x89PNG\r\n\x1a\n" + nombre.encode() * 50
+        up = projects.stage_upload(ana, {"kind": "png", "mime": "image/png", "name": "logo.png", "data": png,
+                                         "bytes": len(png)})
+        projects.add_asset(ana, pid, up["upload_id"])  # un recurso en GridFS
         suyos.append(pid)
+    projects.stage_upload(ana, {"kind": "txt", "mime": "text/plain", "name": "pendiente.txt", "data": b"x",
+                                "bytes": 1})  # y una subida sin asignar
     de_beto = projects.create(beto, "suyo")["project_id"]
     projects.write_file(beto, de_beto, "index.html", "b")
     repo = projects.repo
-    assert all(_todo(repo, pid) == 5 for pid in suyos)  # 2 filas + 3 versiones
+    assert all(_todo(repo, pid) == 7 for pid in suyos)  # 3 filas + 4 versiones
 
     r = a.post("/auth/delete-account", json={"password": PW})
     assert r.status_code == 200, r.text
@@ -71,7 +77,13 @@ def test_borrar_la_cuenta_borra_sus_proyectos(appdata):
     assert all(_todo(repo, pid) == 0 for pid in suyos)
     assert [p["project_id"] for p in projects.list_projects(beto)] == [de_beto]
     assert _todo(repo, de_beto) == 3
-    if hasattr(repo, "db"):  # Mongo: ni un documento de Ana en ninguna coder_*
+    assert projects.list_uploads(ana) == []
+    if hasattr(repo, "db"):  # Mongo: ni un documento de Ana en ninguna coder_*, tampoco en GridFS
         for col in repo.db.list_collection_names():
-            if col.startswith("coder_"):
-                assert repo.db[col].count_documents({"user_id": ana}) == 0, col
+            if col.startswith("coder_") and col != "coder_assets.chunks":
+                campo = "metadata.user_id" if col == "coder_assets.files" else "user_id"
+                assert repo.db[col].count_documents({campo: ana}) == 0, col
+        assert repo.db["coder_assets.files"].count_documents({}) == 0  # Beto no tenía recursos
+        assert repo.db["coder_assets.chunks"].count_documents({}) == 0
+    else:
+        assert repo.blobs == {} and repo.uploads == {}
