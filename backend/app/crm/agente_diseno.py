@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections import Counter
 import logging
 import re
 from datetime import date, datetime
@@ -48,7 +49,7 @@ from app.crm.afirma import afirma_cambio, afirma_con
 from app.crm import chat as agente_chat
 from app.crm.chat import _capitaliza, _norm
 from app.crm.regional import PAISES
-from app.crm.valores import fecha_larga, parse_numero
+from app.crm.valores import fecha_larga, parse_fecha, parse_numero
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,34 @@ def catalogo(doc: dict) -> toma.Catalogo:
 
 
 # ───────── Ayudas ─────────
+
+# Partes de una oración para `afirma_sin_respaldo`: «ya estaba la de mañana, pero puse las de los jueves» son dos afirmaciones.
+_PARTES = re.compile(r"[.!?\n;:,]|\bpero\b|\by\b", re.IGNORECASE)
+_PALABRA = re.compile(r"[\wáéíóúñü-]+", re.IGNORECASE)
+
+
+def _textos(x: Any) -> list[str]:
+    """Todos los textos dentro de argumentos y resultados de herramientas."""
+    if isinstance(x, dict):
+        return [t for v in x.values() for t in _textos(v)]
+    if isinstance(x, (list, tuple)):
+        return [t for v in x for t in _textos(v)]
+    return [str(x)] if x is not None and x != "" else []
+
+
+def _fechas_en(texto: str, hoy: datetime) -> set[str]:
+    """Las fechas que nombra un texto («mañana», «el jueves», «23 de octubre», «2026-10-22»): `valores.parse_fecha` entiende la frase
+    sola, así que se prueba con grupos de 1 a 3 palabras seguidas."""
+    palabras = _PALABRA.findall(texto or "")
+    fechas: set[str] = set()
+    for i in range(len(palabras)):
+        for n in (1, 2, 3):
+            if i + n <= len(palabras):
+                f = parse_fecha(" ".join(palabras[i:i + n]), hoy)
+                if f:
+                    fechas.add(f)
+    return fechas
+
 
 def _visible(doc: dict) -> dict:
     """El CRM con contactos y tareas a la vista aunque estén ocultas: sus registros se pueden leer, y escribir en ellas las vuelve a
@@ -517,6 +546,31 @@ class SesionDiseno(agente.Sesion):
             return None
         return ("[Aviso interno] Mencionas cifras que no salieron de consultar_datos en este mensaje. Para contar o sumar, llama "
                 "consultar_datos con los filtros correctos; si la herramienta devolvió ERROR o no alcanza, dilo sin inventar números.")
+
+    def afirma_sin_respaldo(self, respuesta: str) -> str | None:
+        """Lo que la respuesta dice haber HECHO tiene que estar en lo que corrió en el turno (el «data_claims_backed» del diseño de Alan,
+        solo con código). Por cada parte de oración que afirma un cambio: si nombra fechas y ninguna es la de un cambio con fecha, o trae
+        una cifra que no dijo la persona ni salió de una herramienta, el modelo corrige. Medido en la prueba del 19-oct: «puse las de los
+        jueves» con una sola tarea para mañana; afirma_sin_cambios no lo veía porque sí hubo un cambio."""
+        if not self.cambios:
+            return None  # sin cambios lo cubre afirma_sin_cambios
+        hoy = self.ahora.astimezone(op.ZONA) if self.ahora.tzinfo else self.ahora
+        hechos = [t for c in self.cambios for t in _textos([c.get("args"), c.get("resultado")])]
+        fechas = {f for t in hechos for f in _fechas_en(t, hoy)}
+        cifras = set(re.findall(r"\d+", " ".join([self.texto or "", self.adjunto, *hechos, *(str(c.get("resultado") or "") for c in self.consultas)])))
+        cifras |= {str(n) for n in Counter(c["herramienta"] for c in self.cambios).values()} | {str(len(self.cambios))}
+        for parte in _PARTES.split(respuesta or ""):
+            if not (afirma_cambio(parte) or afirma_con(parte, _EXITO_D51)):
+                continue
+            dichas = _fechas_en(parte, hoy)
+            if fechas and dichas and not (dichas & fechas):
+                return (f"[Aviso interno] Dices que hiciste algo para el {fecha_larga(min(dichas))}, pero ningún cambio de este mensaje tiene "
+                        "esa fecha. Hazlo ahora con la herramienta o di la verdad: qué quedó hecho y qué falta.")
+            raras = set(re.findall(r"\d+", parte)) - cifras
+            if raras:
+                return (f"[Aviso interno] Dices que hiciste algo con «{sorted(raras)[0]}», pero esa cifra no la dijo la persona ni salió de lo "
+                        "que hiciste en este mensaje. Cuenta solo lo que de verdad cambió.")
+        return None
 
     # --- ejecución ---
     def ejecutar(self, nombre: str, args: dict) -> str:
@@ -1029,6 +1083,10 @@ async def responder(doc: dict, texto: str, historial: list[dict] | None = None, 
     if correcciones >= agente.MAX_CORRECCIONES and (vl := sesion.verdad_lado_final(respuesta)):
         respuesta += f"\n\nOjo: en realidad quedó en {vl}."
     respuesta = agente.limpiar_respuesta(respuesta)
+    if respuesta and correcciones >= agente.MAX_CORRECCIONES and sesion.afirma_sin_respaldo(respuesta):
+        # Agotadas las correcciones, lo que no tiene respaldo no se entrega (Alan, «Te mandé la prueba»): habla el código con lo que pasó.
+        sesion.avisos.append({"aviso": "sin respaldo tras corregir: respondió el código", "descartada": respuesta[:300]})
+        respuesta = ""
     if not respuesta:
         respuesta = sesion.respuesta_del_codigo(ultimos)
     falta = creado_sin_decir(doc, sesion.cambios, respuesta)

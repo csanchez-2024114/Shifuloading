@@ -948,7 +948,7 @@ def revisar_respuesta(respuesta: str, sesion: "Sesion", doc_inicial: dict) -> st
         if _PROMESA.search(respuesta) or sesion.promete(respuesta):
             return ("[Aviso interno] No anuncies lo que vas a hacer: hazlo AHORA llamando a las herramientas. Si de verdad falta un dato imprescindible, "
                     "pregunta solo eso en una línea, sin decir “voy a”. Si tu respuesta no hablaba de acciones en el CRM (era una charla o una explicación), ignora este aviso y repítela igual.")
-        aviso = sesion.afirma_sin_cambios(respuesta) or sesion.logro_sin_herramienta(respuesta)
+        aviso = sesion.afirma_sin_cambios(respuesta) or sesion.logro_sin_herramienta(respuesta) or sesion.afirma_sin_respaldo(respuesta)
         if aviso:
             return aviso
         if sesion.fallos and _EXITO.search(respuesta):
