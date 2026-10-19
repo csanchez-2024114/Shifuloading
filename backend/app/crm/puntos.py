@@ -111,6 +111,28 @@ def con_punto(antes: dict, despues: dict, texto: str, ahora: datetime | None = N
     return {**despues, "puntos_n": n}, punto
 
 
+def turno_chat_puntos(
+    doc_antes: dict,
+    puntos_antes: list[dict],
+    resultado: dict,
+    texto_pedido: str,
+    *,
+    ahora: datetime | None = None,
+) -> tuple[dict, list[dict]]:
+    """Misma lógica de puntos que `_turno_de_chat` en la ruta del CRM, sin Mongo."""
+    deshecho = resultado.get("deshacer")
+    base = deshecho["base"] if deshecho else doc_antes
+    doc_nuevo, punto = con_punto(base, resultado["doc"], texto_pedido, ahora)
+    if deshecho:
+        # Igual que `_reponer_puntos` en la ruta del CRM: la lista canónica la devuelve `deshacer`, no un diff sobre `puntos_antes`.
+        puntos = copy.deepcopy(deshecho["puntos"])
+    else:
+        puntos = list(puntos_antes or [])
+    if punto:
+        puntos.append(punto)
+    return doc_nuevo, puntos
+
+
 # ───────── Deshacer datos a 3 vías ─────────
 
 def _claves(registros: list[dict]) -> tuple[dict[tuple, Any], dict[tuple, Any]]:

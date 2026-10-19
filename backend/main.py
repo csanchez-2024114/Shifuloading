@@ -722,6 +722,10 @@ app.include_router(me_secrets_router,       prefix="/api/v1/me/secrets",    tags
 app.include_router(me_analytics_router,     prefix="/api/v1/me/analytics",  tags=["V1 Me Analytics"])
 app.include_router(me_notifications_router, prefix="/api/v1/me/notifications", tags=["V1 Me Notifications"])
 app.include_router(crm_router,              prefix="/api/v1/crm",           tags=["V1 CRM"])
+if os.getenv("CRM_LAB_ADAPTER", "0").strip() == "1":
+    from app.routes.crm import labRoutes as _lab_routes  # noqa: E402
+
+    app.include_router(_lab_routes.router, prefix="/api/v1/crm", tags=["V1 CRM Lab"])
 app.include_router(workflows_router,        prefix="/api/v1/workflows",     tags=["V1 Workflows"])
 app.include_router(custom_connector_router, prefix="/api/v1/connectors",    tags=["V1 Connectors"])
 # El webhook del standalone va ANTES que webhook_inbound (misma ruta /webhooks/{token}, gana el primero):
