@@ -103,6 +103,24 @@ Cada persona usa **sus propias claves**. No pidas ni compartas claves por chat, 
 
 Con IA activa Shifu hace preguntas de seguimiento según el negocio, arma el CRM a la medida, lee capturas y agenda citas. La primera petición tras arrancar puede tardar unos segundos mientras carga.
 
+## 7. CRM generativo: todo desde el chat (sistema de diseño)
+
+Con dos banderas el CRM nace con su propia pantalla de inicio (bloques, gráficas, tableros) y todo se cambia hablando con Shifu: crear o quitar pestañas y campos, agregar, mover, agrandar o achicar piezas, cambiar colores, preguntar por los datos y deshacer. Los registros también se agregan, editan y borran a mano desde la ficha. En el chat se pueden adjuntar fotos, documentos (PDF, Word, Excel, CSV, TXT, JSON; máximo 5 MB) y pegar enlaces. Necesita la IA activa (paso 6). Las automatizaciones quedan en pausa en este modo.
+
+Backend (en `backend/`):
+
+```bash
+CRM_DISENO=1 uvicorn main:app --reload --port 8001
+```
+
+Frontend (en la raíz), con `VITE_API_URL` apuntando a ese puerto:
+
+```bash
+VITE_CRM_DISENO=1 npx vite --port 5180
+```
+
+Sin Mongo ni Redis también se puede probar con el servidor de desarrollo (todo en memoria, se pierde al apagarlo): `CRM_DISENO=1 python scripts/crm_dev_server.py --puerto 5193` y el frontend con `VITE_API_URL=http://localhost:5193/api/v1 VITE_CRM_DISENO=1 npx vite --port 5199`.
+
 ## Automatizaciones que corren solas (opcional)
 
 Las automatizaciones del CRM (recordatorios de seguimiento y resumen semanal) se calculan siempre que alguien abre el CRM. Para que además corran **solas**, aunque nadie lo tenga abierto, y dejen un aviso en la campana 🔔:
