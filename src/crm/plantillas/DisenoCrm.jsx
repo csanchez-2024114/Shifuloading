@@ -77,6 +77,15 @@ export default function DisenoCrm({ crm, vista, titulos, api, aplicar, onImporta
     window.addEventListener('lab-piezas', llegan)
     return () => window.removeEventListener('lab-piezas', llegan)
   }, [setChat])
+  useEffect(() => {
+    const abrir = (e) => {
+      const { seccion, id } = e.detail || {}
+      if (!seccion || !id || !porId[seccion]) return
+      abrirFicha(seccion, id)
+    }
+    window.addEventListener('shifu:abrir-registro', abrir)
+    return () => window.removeEventListener('shifu:abrir-registro', abrir)
+  }, [porId, abrirFicha])
 
   // Recorrido de primera entrada (D24) de un CRM de esquema 2 que nace con datos de ejemplo: una sola vez por persona.
   // Su último paso ofrece borrarlos (la ruta de quitar ejemplos, que deja punto: se puede deshacer en «Cambios»).

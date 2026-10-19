@@ -45,6 +45,7 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `PATCH /crm/listas/:id/registros/:rid` | `{ valores: { <idCampo>: valor } }` | CRM |
 | `DELETE /crm/listas/:id/registros/:rid` | — | CRM |
 | `POST /crm/chat` | `{ texto, contexto?: { pendiente?, imagen?, seccion? } }` | `{ respuesta, crm, vista?, pendiente? }` |
+| `GET /crm/logo/{id}` | — | `{ id, imagen }` (data URL del logo del negocio, el de `crm.marca.logo_id`; 404 si no es de la persona) |
 
 ### Chat
 

@@ -6,8 +6,13 @@ import { camposDe } from './validar.js'
 
 const tituloVista = { kpis: 'el resumen', tablero: 'el tablero', agenda: 'la agenda', vencimientos: 'lo que vence', tabla: 'la lista', grafico: 'la gráfica', grafica: 'la gráfica' }
 
-/** Devuelve [[etiqueta, texto], …] (máx. `cuantas`), rotadas con `turno` para que no sean siempre las mismas. */
-export function sugerenciasPara({ plantilla, bloques = [], marca = {}, toma, vista = 'inicio', datos, turno = 0, cuantas = 7 }) {
+/** Devuelve [[etiqueta, texto], …] (máx. `cuantas`), rotadas con `turno` para que no sean siempre las mismas.
+ * `visibles` (opcional, lo pasa el CRM real): las piezas que la persona tiene A LA VISTA (las del inicio en el inicio, las del
+ * lienzo de la pestaña abierta, o ninguna). Con él, solo se ofrecen acciones sobre lo que está en pantalla: nada de «haz la
+ * gráfica más chica» sin gráfica, ni ideas del inicio desde otra pestaña, ni preguntar por gráficas sin ningún dato. */
+export function sugerenciasPara({ plantilla, bloques = [], visibles, marca = {}, toma, vista = 'inicio', datos, turno = 0, cuantas = 7 }) {
+  const estricto = Array.isArray(visibles)
+  const enPantalla = estricto ? visibles : bloques
   const porId = Object.fromEntries(plantilla.secciones.map((s) => [s.id, s]))
   const conDatos = plantilla.secciones.filter((s) => s.campos || s.fuente)
   const n = (s) => (datos?.registros?.[s.fuente || s.id] || []).length
@@ -35,8 +40,8 @@ export function sugerenciasPara({ plantilla, bloques = [], marca = {}, toma, vis
     if (campos.length < 8) add(4, actual.titulo, `Agrega un campo de notas a ${t}`)
   }
 
-  // 3) Lo que hay en su inicio.
-  for (const b of bloques) {
+  // 3) Lo que hay en su inicio (o, con `visibles`, lo que tiene a la vista).
+  for (const b of enPantalla) {
     const s = porId[b.seccion]; if (!s) continue
     const t = s.titulo.toLowerCase()
     if (b.vista === 'grafico' || b.vista === 'grafica') {
@@ -46,11 +51,12 @@ export function sugerenciasPara({ plantilla, bloques = [], marca = {}, toma, vis
     }
     if (b.vista === 'vencimientos') add(4, 'Vencimientos', `En ${tituloVista.vencimientos} de ${t}, pon un grupo "de 1 a 15 días"`)
   }
-  if (bloques.length >= 6) add(4, 'Diseño', 'Acomoda el inicio para que todo quepa mejor')
-  if (bloques.length <= 2) add(6, 'Diseño', 'Diséñame un inicio nuevo con lo más importante de mi negocio')
+  const enInicio = !estricto || vista === 'inicio'
+  if (enInicio && bloques.length >= 6) add(4, 'Diseño', 'Acomoda el inicio para que todo quepa mejor')
+  if (enInicio && bloques.length <= 2) add(6, 'Diseño', 'Diséñame un inicio nuevo con lo más importante de mi negocio')
 
   // 4) Sus datos: secciones con muchos registros que no se ven en el inicio, o vacías.
-  for (const s of conDatos) {
+  for (const s of enInicio ? conDatos : []) {
     if (n(s) >= 20 && !bloques.some((b) => b.seccion === s.id)) add(6, 'Datos', `Tengo muchos ${s.titulo.toLowerCase()}: ponlos en el inicio`)
     if (datos && n(s) === 0) add(2, 'Datos', `Pon una lista de ${s.titulo.toLowerCase()} en el inicio`)
   }
@@ -58,7 +64,7 @@ export function sugerenciasPara({ plantilla, bloques = [], marca = {}, toma, vis
   // 5) Marca y lo que todavía no usa.
   if (!marca.primario) add(5, 'Marca', 'Pon los colores de mi marca (pega tu web o tu logo)')
   else if (!marca.logo) add(5, 'Marca', 'Agrega mi logo (adjúntalo con el clip)')
-  add(1, 'Ayuda', '¿Qué gráficas puedo poner con mis datos?')
+  if (!estricto || conDatos.some((s) => n(s) > 0)) add(1, 'Ayuda', '¿Qué gráficas puedo poner con mis datos?')
 
   // Orden por prioridad, sin repetidos, rotando las de igual prioridad según el turno.
   const unicas = [...new Map(ideas.map((i) => [i.txt, i])).values()]

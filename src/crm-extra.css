@@ -76,6 +76,7 @@
 .mc-imp-der .btn-pildora:disabled { opacity: .4; cursor: not-allowed; }
 .mc-imp-ok { padding: 12px 14px; border-radius: 12px; background: rgba(34, 211, 166, .14); border: 1px solid rgba(34, 211, 166, .4); font-size: 14px; }
 .mc-imp-ok button { margin-left: 8px; padding: 0; border: 0; background: transparent; color: var(--verde); font: 700 14px var(--fuente); text-decoration: underline; }
+.mc-imp-modal { width: min(960px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; padding: 20px 24px 28px; }
 
 /* Chat flotante con Shifu: gris es Shifu, azul es la persona dueña del CRM */
 .mc-chat { position: fixed; right: 22px; bottom: 22px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }

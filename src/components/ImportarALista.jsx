@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LuUpload, LuX } from 'react-icons/lu'
+import { avisoDeshacer } from '../crm/avisoDeshacer'
 
 /* Asistente para pasar a una sección lo que la persona ya tiene en Excel (.xlsx), en un CSV o copiado de una hoja.
  * Todo el análisis se hace aquí, en el navegador: se lee la tabla, se empareja cada columna con un campo de la sección,
@@ -169,7 +170,7 @@ export default function ImportarALista({ lista, onImportar, onQuitar, onCerrar }
             {deshaciendo === null && <button type="button" className="mc-link" onClick={() => setDeshaciendo('pregunta')}>Me equivoqué: quitar esta importación</button>}
             {deshaciendo && (
               <div className="mc-aj-confirma mc-imp-deshacer" role="alertdialog" aria-label="Confirmar que se quita la importación">
-                <p>⚠ Se borrarán los {resultado.agregadas.toLocaleString('es')} registros que acabas de importar. Una vez que lo hagas, no se podrá deshacer.</p>
+                <p>⚠ Se borrarán los {resultado.agregadas.toLocaleString('es')} registros que acabas de importar. {avisoDeshacer()}</p>
                 <button type="button" className="mc-peligro" disabled={deshaciendo === 'haciendo'} onClick={async () => { setDeshaciendo('haciendo'); const ok = await onQuitar(loteId); if (ok) onCerrar(); else setDeshaciendo('pregunta') }}>{deshaciendo === 'haciendo' ? 'Quitando…' : 'Sí, quitar la importación'}</button>
                 <button type="button" className="mc-link" disabled={deshaciendo === 'haciendo'} onClick={() => setDeshaciendo(null)}>Cancelar</button>
               </div>

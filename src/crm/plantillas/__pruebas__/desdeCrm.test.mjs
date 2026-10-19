@@ -78,7 +78,7 @@ caso('paginas: el lienzo propio de una pestaña queda en la sección (como plant
   assert.equal(r.porId.l_miembros.pagina, r.paginas.l_miembros)
   assert.equal(r.porId.contactos.pagina, undefined)
 })
-caso('marca: se pasa tal cual, sin logo_id (no hay ruta para el logo)', () => { assert.deepEqual(r.marca, { primario: '#3fb8ff' }) })
+caso('marca: se pasa tal cual, sin logo_id; el id del logo va aparte (la imagen se lee por su ruta)', () => { assert.deepEqual(r.marca, { primario: '#3fb8ff' }); assert.equal(r.logoId, 'abc') })
 caso('datos: eventos, equipo y automatizaciones para las vistas fijas', () => {
   assert.equal(r.datos.eventos.length, 1); assert.deepEqual(r.datos.equipo, ['Tú'])
 })

@@ -660,3 +660,35 @@ def test_las_piezas_de_las_pestanas_no_repiten_ids_del_inicio():
     inicio = {b["uid"] for b in d["inicio"]}
     paginas = [b["uid"] for bs in (d.get("paginas") or {}).values() for b in bs]
     assert paginas and not inicio & set(paginas) and len(paginas) == len(set(paginas))
+
+
+# ───────── Logo (lista 38): usar_logo recibe la IMAGEN adjunta, no un sí/no, y la ruta la guarda y la sirve ─────────
+
+PNG_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+
+@pytest.mark.asyncio
+async def test_usar_logo_pone_la_imagen_adjunta(doc):
+    modelo = ModeloFalso(dice("", llamar("usar_logo")), dice("Listo, puse tu logo en el encabezado."))
+    r = await agente.responder(doc, "pon este logo", None, AHORA, False, modelo=modelo, imagen=PNG_LOGO)
+    assert r["fallos"] == [] and [c["herramienta"] for c in r["cambios"]] == ["usar_logo"]
+    assert r["doc"]["marca"]["logo_id"] == r["logo"]["id"] and r["logo"]["imagen"] == PNG_LOGO
+
+
+@pytest.mark.asyncio
+async def test_usar_logo_con_jpg_dice_el_formato_y_no_cambia_nada(doc):
+    jpg = "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+    modelo = ModeloFalso(dice("", llamar("usar_logo")), dice("Tu logo llegó como JPG: mándamelo en PNG con fondo transparente."))
+    r = await agente.responder(doc, "pon este logo", None, AHORA, False, modelo=modelo, imagen=jpg)
+    assert "logo" not in r and "logo_id" not in (r["doc"].get("marca") or {})
+    assert "llegó como JPEG" in _resultados(modelo)[0]
+
+
+def test_la_ruta_guarda_el_logo_y_lo_sirve_solo_a_su_dueno(cli, monkeypatch):
+    _con_modelo(monkeypatch, dice("", llamar("usar_logo")), dice("Listo, puse tu logo en el encabezado."))
+    r = cli.post(f"{URL}/chat", json={"texto": "pon este logo", "contexto": {"imagen": PNG_LOGO}}, headers=H).json()
+    logo_id = r["crm"]["marca"]["logo_id"]
+    assert "logo" not in r  # la imagen no viaja con el chat: se lee aparte
+    assert cli.get(f"{URL}/logo/{logo_id}", headers=H).json() == {"id": logo_id, "imagen": PNG_LOGO}
+    assert cli.get(f"{URL}/logo/{logo_id}", headers={"X-Usuario": "otra"}).status_code == 404
+    assert cli.get(f"{URL}/logo/no_existe", headers=H).status_code == 404

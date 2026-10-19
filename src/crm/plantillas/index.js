@@ -9,7 +9,7 @@ import { tomarPiezas } from './seleccion.js'
 
 export const DISENO = import.meta.env.VITE_CRM_DISENO === '1'
 
-if (DISENO) import('./chat-diseno.css')
+if (DISENO) { import('./chat-diseno.css'); import('./chat-ventana.css') }
 
 /** Sugerencias del laboratorio (chunk pesado); null sin bandera. */
 export const cargarSugerencias = DISENO ? () => import('./sugerenciasCrm.js') : null
@@ -33,10 +33,10 @@ export const esVistaDiseno = (vista, crm) => DISENO && (vista === 'inicio' || vi
   || (vista.startsWith('l_') && !!crm?.listas?.some((l) => l.id === vista)))
 
 /** Atributos del marco .mc: el estilo decidido del laboratorio (Vivo + Compacto) y los tokens de la marca del negocio. */
-export function marcoDiseno(crm, tema, chatAbierto = false) {
+export function marcoDiseno(crm, tema, chatEmpuja = false) {
   if (!DISENO) return { className: 'mc' }
   const { logo_id: _logo, ...marca } = crm?.marca || {}
-  const clase = ['mc', 'pl', chatAbierto ? 'con-chat' : ''].filter(Boolean).join(' ')
+  const clase = ['mc', 'pl', chatEmpuja ? 'con-chat-lado con-chat' : ''].filter(Boolean).join(' ')
   return { className: clase, 'data-estilo': 'vivo', 'data-densidad': 'compacto', style: { '--acento': '#22d3a6', '--vel': 2.2, ...tokensDeMarca(marca, tema).vars } }
 }
 
@@ -44,6 +44,10 @@ export function marcoDiseno(crm, tema, chatAbierto = false) {
  * piezas elegidas en el lienzo. Props: crm, aplicar (la de CrmPage). */
 const ChatDisenoAparte = DISENO ? lazy(() => import('./ChatDiseno.jsx')) : null
 export const ChatDiseno = DISENO ? (props) => createElement(Suspense, { fallback: null }, createElement(ChatDisenoAparte, props)) : null
+
+/** El logo del negocio en el encabezado (se carga aparte); null sin bandera. Props: id (marca.logo_id), tema, respaldo. */
+const LogoNegocioAparte = DISENO ? lazy(() => import('./LogoNegocio.jsx')) : null
+export const LogoNegocio = DISENO ? (props) => createElement(Suspense, { fallback: props.respaldo ?? null }, createElement(LogoNegocioAparte, props)) : null
 
 /** Las piezas elegidas para el mensaje que sale: { prefijo, contexto: { seleccion } } o null (sin bandera, siempre null). */
 export const tomarSeleccion = DISENO ? tomarPiezas : () => null

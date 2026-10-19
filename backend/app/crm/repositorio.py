@@ -116,3 +116,24 @@ async def puntos_reponer(db, user_id: str, desde_n: int, quedan: list[dict]) -> 
     await puntos_borrar_desde(db, user_id, desde_n)
     for x in sorted((x for x in quedan if x["n"] > desde_n), key=lambda x: x["n"]):
         await _puntos(db).insert_one({**x, "user_id": user_id})
+
+
+# ───────── Logo del negocio (colección `crm_logos`) ─────────
+# El CRM solo guarda `marca.logo_id`; la imagen vive aquí, una por id (el id sale del contenido: la misma imagen, el mismo id).
+
+def _logos(db):
+    return db[Collections.CRM_LOGOS]
+
+
+async def logo_guardar(db, user_id: str, logo: dict) -> None:
+    await _logos(db).replace_one({"user_id": user_id, "id": logo["id"]},
+                                 {"user_id": user_id, "id": logo["id"], "imagen": logo["imagen"]}, upsert=True)
+
+
+async def logo_obtener(db, user_id: str, logo_id: str) -> dict | None:
+    """{id, imagen} del logo de la persona, o None."""
+    return await _logos(db).find_one({"user_id": user_id, "id": logo_id}, {"_id": 0, "user_id": 0})
+
+
+async def logos_borrar(db, user_id: str) -> None:
+    await _logos(db).delete_many({"user_id": user_id})

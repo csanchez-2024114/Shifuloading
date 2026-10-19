@@ -1,10 +1,12 @@
-/* Lo del sistema de diseño (D61) dentro del chat de Shifu de CrmPage, sobre el campo de texto:
- * - las piezas elegidas en el lienzo (van con el siguiente mensaje; las toma CrmPage con `tomarSeleccion`);
- * - «Quitar ejemplos» mientras el CRM tenga registros de ejemplo (D56: son datos, por eso se confirma);
- * - «Cambios»: los últimos puntos de deshacer (§3/§4: crm.puntos) con «Deshacer» en cada uno y «Deshacer lo último».
+/* Lo del sistema de diseño (D61) dentro del chat de Shifu de CrmPage:
+ * - sobre el campo de texto: las piezas elegidas en el lienzo (van con el siguiente mensaje; las toma CrmPage con
+ *   `tomarSeleccion`) y «Quitar ejemplos» mientras el CRM tenga registros de ejemplo (D56: son datos, por eso se confirma);
+ * - en la cabecera, discretos (lista 33): «Cambios» (los últimos puntos de deshacer, §3/§4: crm.puntos, con «Deshacer» en
+ *   cada uno) y «Deshacer lo último». Van por portal: `cabecera` es el hueco de los íconos y `pop` el de la lista que se abre.
  * Todo cambio va por `aplicar` de CrmPage (setCrm + aviso si falla): aquí no se guarda nada por cuenta propia. */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { LuChevronDown, LuChevronUp, LuHistory, LuUndo2, LuX } from 'react-icons/lu'
+import { createPortal } from 'react-dom'
+import { LuHistory, LuUndo2, LuX } from 'react-icons/lu'
 import { crm as api } from '../../api'
 import { soltarPiezas, usePiezas } from './seleccion'
 import { contarEjemplos } from './desdeCrm'
@@ -27,7 +29,9 @@ function cuando(hora, ahora = Date.now()) {
 const texto = (p) => (p.antesDe?.startsWith(A_MANO) ? p.antesDe.slice(A_MANO.length) : p.antesDe) || 'Un cambio'
 const origen = (p) => (p.antesDe?.startsWith(A_MANO) ? 'A mano' : 'Pedido a Shifu')
 
-export default function ChatDiseno({ crm, aplicar }) {
+export default function ChatDiseno({ crm, aplicar, cabecera = null, pop = null }) {
+  const huecoCab = cabecera && typeof cabecera === 'object' && 'current' in cabecera ? cabecera.current : cabecera
+  const huecoPop = pop && typeof pop === 'object' && 'current' in pop ? pop.current : pop
   const piezas = usePiezas()
   // Los puntos vienen con el CRM (§4). Si una respuesta no los trae (el chat, por ejemplo), se piden solos.
   const [sueltos, setSueltos] = useState(null)
@@ -46,6 +50,12 @@ export default function ChatDiseno({ crm, aplicar }) {
   const [confirmar, setConfirmar] = useState(false)
   useEffect(() => { if (!puntos.length) setAbierta(false) }, [puntos.length])
   useEffect(() => { if (!ejemplos) setConfirmar(false) }, [ejemplos])
+  useEffect(() => {
+    if (!abierta) return undefined
+    const esc = (e) => { if (e.key === 'Escape') setAbierta(false) }
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [abierta])
 
   const deshacer = async (n) => {
     if (ocupado) return
@@ -79,52 +89,56 @@ export default function ChatDiseno({ crm, aplicar }) {
   }, [])
 
   const ultimo = puntos[0]
-  return (
-    <div className="mcd" ref={caja}>
-      {abierta && puntos.length > 0 && (
-        <div className="mcd-lista" role="region" aria-label="Cambios que se pueden deshacer">
-          <header><b>Cambios</b><small>Deshacer uno devuelve solo lo que ese cambio tocó.</small>
-            <button type="button" onClick={() => setAbierta(false)} aria-label="Cerrar los cambios"><LuX /></button></header>
-          <ol>
-            {puntos.map((p) => (
-              <li key={p.n}>
-                <div><span className="mcd-que">{texto(p)}</span>
-                  <small>{origen(p)} · {cuando(p.hora)}{p.cambio?.length ? ` · ${p.cambio.map((c) => NOMBRE[c] || c).join(', ')}` : ''}</small></div>
-                <button type="button" disabled={ocupado} onClick={() => deshacer(p.n)} aria-label={`Deshacer: ${texto(p)}`}>Deshacer</button>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-      {hecho && (
-        <div className="mcd-hecho" role="status"><LuUndo2 aria-hidden="true" /><span>{hecho}</span>
-          <button type="button" onClick={() => setHecho('')} aria-label="Cerrar el aviso"><LuX /></button></div>
-      )}
-      {ejemplos > 0 && (
-        <div className={`mcd-ejemplos${confirmar ? ' confirmando' : ''}`} role={confirmar ? 'alertdialog' : 'note'} aria-label="Datos de ejemplo">
-          {confirmar
-            ? <><span>¿Borro los {ejemplos} registros de ejemplo? Lo tuyo se queda, y se puede deshacer.</span>
-                <button type="button" onClick={() => setConfirmar(false)} disabled={ocupado}>No</button>
-                <button type="button" className="si" onClick={quitarEjemplos} disabled={ocupado}>Sí, quitar</button></>
-            : <><span>Tu CRM tiene <b>{ejemplos} {ejemplos === 1 ? 'registro' : 'registros'} de ejemplo</b>.</span>
-                <button type="button" onClick={() => setConfirmar(true)} disabled={ocupado}>Quitar ejemplos</button></>}
-        </div>
-      )}
-      {piezas.length > 0 && (
-        <div className="mc-adjunto mcd-piezas" role="status">
-          <span className="lab-piezas">Elegiste: {piezas.map((x) => <i key={`${x.tipo}${x.id}`}>{x.nombre || x.tipo}</i>)}</span>
-          <span>Dile a Shifu qué hacer con lo que elegiste.</span>
-          <button type="button" onClick={soltarPiezas} aria-label="Quitar lo elegido"><LuX /></button>
-        </div>
-      )}
-      {puntos.length > 0 && (
-        <div className="mcd-barra">
-          <button type="button" className="mcd-ver" onClick={() => setAbierta(!abierta)} aria-expanded={abierta}>
-            <LuHistory aria-hidden="true" /> Cambios <em>{puntos.length}</em>{abierta ? <LuChevronDown aria-hidden="true" /> : <LuChevronUp aria-hidden="true" />}</button>
-          <button type="button" className="mcd-ultimo" disabled={ocupado} onClick={() => deshacer()} title={`Deshacer: ${texto(ultimo)}`}>
-            <LuUndo2 aria-hidden="true" /> Deshacer lo último</button>
-        </div>
-      )}
+  const iconos = puntos.length > 0 && (
+    <span className="mcd-cab">
+      <button type="button" className={`mcd-cab-cambios${abierta ? ' on' : ''}`} onClick={() => setAbierta(!abierta)} aria-expanded={abierta}
+        aria-label={`Cambios que se pueden deshacer (${puntos.length})`} title="Cambios"><LuHistory aria-hidden="true" /><em>{puntos.length}</em></button>
+      <button type="button" className="mcd-cab-deshacer" disabled={ocupado} onClick={() => deshacer()}
+        aria-label={`Deshacer lo último: ${texto(ultimo)}`} title={`Deshacer lo último: ${texto(ultimo)}`}><LuUndo2 aria-hidden="true" /></button>
+    </span>
+  )
+  const lista = abierta && puntos.length > 0 && (
+    <div className="mcd-lista" role="region" aria-label="Cambios que se pueden deshacer">
+      <header><b>Cambios</b><small>Deshacer uno devuelve solo lo que ese cambio tocó.</small>
+        <button type="button" onClick={() => setAbierta(false)} aria-label="Cerrar los cambios"><LuX /></button></header>
+      <ol>
+        {puntos.map((p) => (
+          <li key={p.n}>
+            <div><span className="mcd-que">{texto(p)}</span>
+              <small>{origen(p)} · {cuando(p.hora)}{p.cambio?.length ? ` · ${p.cambio.map((c) => NOMBRE[c] || c).join(', ')}` : ''}</small></div>
+            <button type="button" disabled={ocupado} onClick={() => deshacer(p.n)} aria-label={`Deshacer: ${texto(p)}`}>Deshacer</button>
+          </li>
+        ))}
+      </ol>
     </div>
+  )
+  return (
+    <>
+      {huecoCab && iconos ? createPortal(iconos, huecoCab) : null}
+      {huecoPop && lista ? createPortal(lista, huecoPop) : null}
+      <div className="mcd" ref={caja}>
+        {hecho && (
+          <div className="mcd-hecho" role="status"><LuUndo2 aria-hidden="true" /><span>{hecho}</span>
+            <button type="button" onClick={() => setHecho('')} aria-label="Cerrar el aviso"><LuX /></button></div>
+        )}
+        {ejemplos > 0 && (
+          <div className={`mcd-ejemplos${confirmar ? ' confirmando' : ''}`} role={confirmar ? 'alertdialog' : 'note'} aria-label="Datos de ejemplo">
+            {confirmar
+              ? <><span>¿Borro los {ejemplos} registros de ejemplo? Lo tuyo se queda, y se puede deshacer.</span>
+                  <button type="button" onClick={() => setConfirmar(false)} disabled={ocupado}>No</button>
+                  <button type="button" className="si" onClick={quitarEjemplos} disabled={ocupado}>Sí, quitar</button></>
+              : <><span>{ejemplos} {ejemplos === 1 ? 'registro' : 'registros'} de ejemplo.</span>
+                  <button type="button" onClick={() => setConfirmar(true)} disabled={ocupado}>Quitar ejemplos</button></>}
+          </div>
+        )}
+        {piezas.length > 0 && (
+          <div className="mc-adjunto mcd-piezas" role="status">
+            <span className="lab-piezas">Elegiste: {piezas.map((x) => <i key={`${x.tipo}${x.id}`}>{x.nombre || x.tipo}</i>)}</span>
+            <span>Dile a Shifu qué hacer con lo que elegiste.</span>
+            <button type="button" onClick={soltarPiezas} aria-label="Quitar lo elegido"><LuX /></button>
+          </div>
+        )}
+      </div>
+    </>
   )
 }

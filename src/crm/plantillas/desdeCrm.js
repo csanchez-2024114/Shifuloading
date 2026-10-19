@@ -114,9 +114,9 @@ export function desdeCrm(crm, { titulos = {}, acomodar = (bs) => bs } = {}) {
     registros: registrosDe(crm || {}, secciones),
     eventos: crm?.eventos || [], equipo: crm?.vendedores || ['Tú'], automatizaciones: crm?.automatizaciones || [],
   }
-  // El logo llega como `logo_id` (§1) y todavía no hay ruta para leerlo: no se inventa una imagen.
-  const { logo_id: _logo, ...marca } = crm?.marca || {}
-  return { plantilla, datos, bloques, paginas, marca, porId, avisos }
+  // El logo llega como `logo_id` (§1): la imagen se lee aparte (GET /crm/logo/{id}, LogoNegocio). La marca de las piezas no lo lleva.
+  const { logo_id: logoId, ...marca } = crm?.marca || {}
+  return { plantilla, datos, bloques, paginas, marca, logoId: logoId || null, porId, avisos }
 }
 
 /** ¿Hay algo del sistema de diseño en este CRM? (para mostrar «Inicio» en el menú). */

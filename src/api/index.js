@@ -91,6 +91,8 @@ export const crm = {
   deshacer: (n) => (HAY_SERVIDOR ? pedir('POST', '/crm/deshacer', n == null ? {} : { n }) : simulado.crm.deshacer(n)),
   /** Quita los registros de ejemplo (`ejemplo: true`) de todo el CRM; lo de la persona se queda. Se puede deshacer. */
   quitarEjemplos: () => (HAY_SERVIDOR ? pedir('POST', '/crm/registros/ejemplos/quitar', {}) : simulado.crm.quitarEjemplos()),
+  /** El logo del negocio (`crm.marca.logo_id`): { id, imagen } con la imagen como data URL. El simulado no guarda logos. */
+  logo: (id) => (HAY_SERVIDOR ? pedir('GET', `/crm/logo/${encodeURIComponent(id)}`) : Promise.reject(new ErrorApi(404, 'Ese logo no existe.'))),
 }
 
 /** Los avisos de la persona (campana): los que dejan las automatizaciones y el resto de la plataforma. */
