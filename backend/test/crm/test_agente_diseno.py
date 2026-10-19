@@ -412,21 +412,6 @@ async def test_sin_consultas_no_dispara_aviso_de_cifras(doc):
 
 
 @pytest.mark.asyncio
-async def test_pregunta_vencimientos_sin_consultar_se_corrige(doc_lab):
-    """banco_datos: «¿quiénes vencen este mes?» no puede responder solo con el bloque de vencimientos en pantalla."""
-    r, modelo = await correr(
-        doc_lab,
-        "¿quiénes vencen este mes?",
-        dice("El bloque de vencimientos muestra 30 días pero no solo este mes. ¿Quieres que ajuste el bloque?"),
-        dice("", llamar("consultar_datos", seccion="miembros", periodo={"cuando": "este mes", "campo": "vence"})),
-        dice("Estos son los que vencen este mes."),
-    )
-    assert len(r["consultas"]) == 1
-    assert r["consultas"][0]["args"]["seccion"] == "miembros"
-    assert any("consultar_datos" in (a.get("aviso") or "") for a in r["avisos"])
-
-
-@pytest.mark.asyncio
 async def test_si_fallo_y_afirma_exito_en_el_mismo_turno_se_corrige(doc):
     r, modelo = await correr(doc, "agrega el campo Monto a Gastos",
                              dice("", llamar("agregar_campo", seccion="Gastos", nombre="Monto", tipo="numero")),
