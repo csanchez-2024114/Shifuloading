@@ -122,4 +122,6 @@ def test_chip_del_investigador_cuenta_solo_busquedas_ejecutadas():
     search, avisos = SearchConUso(), []
     investigar(fake_llm(cuatro, "Resumen"), _inv_settings(investigator_max_searches=2), search, "task", avisos.append)
     assert len(search.calls) == 2  # pedidas 4, ejecutadas 2
-    assert [a["args"]["query"] for a in avisos if a["tipo"] == "progreso"] == search.calls
+    # las búsquedas corren en paralelo: el orden de llegada varía, lo que importa es que sean las mismas
+    progreso = [a["args"]["query"] for a in avisos if a["tipo"] == "progreso"]
+    assert len(progreso) == len(search.calls) and set(progreso) == set(search.calls)
