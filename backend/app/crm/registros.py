@@ -445,6 +445,69 @@ def consultar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None
             "Responde SOLO con estos números y datos (sin decir ids).")
 
 
+# Misma regla que `agente._ES_PREGUNTA` (sin importar agente: evita ciclos).
+_ES_PREGUNTA = re.compile(r"[?¿]|^\s*(para qu[eé]|qu[eé]|c[oó]mo|cu[aá]l|cu[aá]nto|cu[aá]ntos|por qu[eé]|d[oó]nde|qui[eé]n|muestra|dime)\b", re.I)
+_NAVIGAR = re.compile(r"^\s*(mu[eé]strame|muestra|abre|ver)\b", re.I)
+_CAMPO_EN_PREGUNTA = re.compile(r"\bqu[eé]\s+(tel[eé]fono|correo|plan|estado|monto|fecha)\b", re.I)
+
+
+def _periodo_en_texto(texto: str, hoy: date) -> bool:
+    """Si en el mensaje hay un periodo que `parse_periodo` entiende («este mes», «los próximos 7 días»…)."""
+    palabras = sin_acentos(texto or "").split()
+    for i in range(len(palabras)):
+        for j in range(i + 1, min(i + 8, len(palabras)) + 1):
+            if parse_periodo(" ".join(palabras[i:j]), hoy):
+                return True
+    return False
+
+
+def _seccion_nombrada(texto: str, secciones: list[dict]) -> bool:
+    t = sin_acentos(texto or "")
+    for s in secciones:
+        tit = sin_acentos(s.get("titulo") or "")
+        if len(tit) >= 4 and tit in t:
+            return True
+        sid = sin_acentos(s.get("id") or "")
+        if sid and re.search(rf"\b{re.escape(sid)}\b", t):
+            return True
+    return False
+
+
+def _verbo_de_campo_fecha(texto: str, secciones: list[dict]) -> bool:
+    """La pregunta usa el mismo verbo o nombre que un campo fecha de alguna sección («vencen» ↔ campo Vence)."""
+    t = sin_acentos(texto or "")
+    for s in secciones:
+        for c in s.get("campos") or []:
+            if _tipo(c) != "fecha":
+                continue
+            nom = sin_acentos(c.get("nombre") or "")
+            raiz = nom[:4] if len(nom) >= 4 else nom
+            if raiz and raiz in t:
+                return True
+    return False
+
+
+def pregunta_pide_consulta(texto: str, secciones: list[dict], hoy: date | datetime) -> bool:
+    """True si la persona pregunta por registros que solo `consultar_datos` puede contestar (no la configuración de bloques en pantalla)."""
+    if not texto or not _ES_PREGUNTA.search(texto):
+        return False
+    if _NAVIGAR.search(texto.strip()):
+        return False
+    # «¿cómo agrego un miembro?» no es consulta de datos.
+    if re.match(r"^\s*¿?\s*c[oó]mo\b", texto.strip(), re.I) and not re.search(r"\bcu[aá]nto", texto, re.I):
+        return False
+    hoy = _hoy(hoy)
+    if _periodo_en_texto(texto, hoy):
+        return True
+    if re.search(r"\bcu[aá]nto", texto, re.I) and _seccion_nombrada(texto, secciones):
+        return True
+    if re.search(r"\bqui[eé]n", texto, re.I) and (_periodo_en_texto(texto, hoy) or _verbo_de_campo_fecha(texto, secciones)):
+        return True
+    if _CAMPO_EN_PREGUNTA.search(texto):
+        return True
+    return False
+
+
 # Esquemas para el modelo: los de `registros.js`, LITERALES (nombres, descripciones y parámetros), en el formato de OpenAI.
 def _herramienta(nombre: str, descripcion: str, propiedades: dict, requeridos: list[str]) -> dict:
     return {"type": "function", "function": {"name": nombre, "description": descripcion,

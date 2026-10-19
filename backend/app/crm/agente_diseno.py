@@ -147,8 +147,7 @@ INSTRUCCIONES_CARLOS_EXTRA = """Herramientas del CRM (además del laboratorio)
 # Solo lo que el prompt del laboratorio no cubre y es específico de este backend (contexto JSON del CRM).
 INSTRUCCIONES_DISENO = """Más de este CRM (Python)
 - No ves los registros, solo cuántos hay (total_registros): para cambiar, borrar o preguntar por alguien o algo, llama la herramienta con el nombre tal como lo dijo; el código lo busca en esa sección y te dice si no está. Nunca digas que no existe sin haberlo buscado.
-- En agregar_registro, agregar_registros, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado.
-- Si la persona pasa VARIOS registros (una lista de empleados, productos, ventas…), usa agregar_registros: una llamada por sección con todos los de esa sección."""
+- En agregar_registro, agregar_registros, editar_registro, borrar_registro y consultar_datos, «seccion» es contactos, desarrollo (el tablero de tareas) o el id de una sección propia que aparece en el Estado."""
 
 _CABECERA_ESTADO_PANTALLA = "Estado de la pantalla (JSON):\n"
 
@@ -576,6 +575,21 @@ class SesionDiseno(agente.Sesion):
             return None
         return ("[Aviso interno] Mencionas cifras que no salieron de consultar_datos en este mensaje. Para contar o sumar, llama "
                 "consultar_datos con los filtros correctos; si la herramienta devolvió ERROR o no alcanza, dilo sin inventar números.")
+
+    def aviso_consulta_datos(self, respuesta: str) -> str | None:
+        """Pregunta por registros sin llamar consultar_datos: el modelo a veces responde con la config del bloque de vencimientos (grupos_actuales),
+        no con los datos (medido en banco_datos: «¿quiénes vencen este mes?» en 1 llamada)."""
+        if self.consultas or self.cambios or self.solo_toma():
+            return None
+        secciones = sv.secciones_de(_visible(self.doc))
+        if not registros.pregunta_pide_consulta(self.texto or "", secciones, self.ahora):
+            return None
+        # Solo pregunta de vuelta (falta un dato): no forzar consulta todavía.
+        if sin_preguntas(respuesta or "").strip() == "" and "?" in (respuesta or ""):
+            return None
+        return ("[Aviso interno] Preguntaron por sus datos y no llamaste consultar_datos. Los bloques de la pantalla solo muestran "
+                "configuración (rangos, vistas), no los registros: usa consultar_datos con sección, filtros y periodo como lo dijo la persona, "
+                "y responde con lo que devuelva el código.")
 
     def afirma_sin_respaldo(self, respuesta: str) -> str | None:
         """Lo que la respuesta dice haber HECHO tiene que estar en lo que corrió en el turno (el «data_claims_backed» del diseño de Alan,

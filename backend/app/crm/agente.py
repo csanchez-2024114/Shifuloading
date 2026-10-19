@@ -941,6 +941,9 @@ def revisar_respuesta(respuesta: str, sesion: "Sesion", doc_inicial: dict) -> st
         aviso = sesion.aviso_numero_inventado(respuesta)
         if aviso:
             return aviso
+        aviso = sesion.aviso_consulta_datos(respuesta)
+        if aviso:
+            return aviso
         # Antes de la salida de las preguntas: «¿puedes llevar mis ventas?» → «crearé la sección Ventas» sin crearla (prueba del 19-oct).
         aviso = None if sesion.solo_toma() else sesion.aviso_promesa(respuesta)
         if aviso:
