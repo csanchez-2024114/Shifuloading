@@ -64,8 +64,8 @@ HERR_DESHACER = {"type": "function", "function": {
     "description": "Anula UN pedido anterior de la persona (ver pedidos_anteriores: qué dijo y qué cambió). El código revierte solo lo que ese "
                    "pedido cambió y conserva lo demás. Úsalo para \"eso no\", \"como estaba antes\", \"deshaz lo del color\", \"deshaz también X\". "
                    "Nunca lo uses sin que la persona lo pida.",
-    "parameters": {"type": "object", "properties": {"pedido": {"type": "integer", "minimum": 1, "description": "número de pedidos_anteriores"}},
-                   "required": ["pedido"]}}}
+    "parameters": {"type": "object", "properties": {"pedido": {"type": "integer", "minimum": 1, "description": "número de pedidos_anteriores; sin él, el último (\"deshaz lo último\")"}},
+                   "required": []}}}
 
 # Las de Carlos que hacen lo mismo que las de datos del laboratorio: no se muestran, pero si el modelo las llama van al mismo handler.
 ALIAS_DE_DATOS = frozenset({"agregar_contactos", "cambiar_contacto", "eliminar_contacto", "agregar_registros", "cambiar_registro", "eliminar_registro"})
@@ -438,6 +438,12 @@ class SesionDiseno(agente.Sesion):
         if ((base.get("secciones_integradas") or {}).get("contactos") or {}).get("oculta"):
             for k in ("total_contactos", "contactos_por_etapa", "etapas", "campos_extra_de_contactos"):
                 base.pop(k, None)
+        # Las automatizaciones están en pausa en modo diseño: el modelo no las ve (las contaba como parte del CRM).
+        base.pop("automatizaciones", None)
+        (base.get("secciones_integradas") or {}).pop("automatizaciones", None)
+        # «Cobros» de Carlos todavía no guarda datos: en modo diseño, quien quiere llevar cobros tiene su propia sección (crear_seccion).
+        if "NO ACTIVA" in str(((base.get("secciones_integradas") or {}).get("cobros") or {}).get("para_que", "")):
+            base["secciones_integradas"].pop("cobros", None)
         base.update(pantalla.describir_pantalla(self.doc, self.vista or "inicio", self.puntos))
         return json.dumps(base, ensure_ascii=False, default=str)
 
@@ -824,6 +830,8 @@ class SesionDiseno(agente.Sesion):
             n = int(pedido) if pedido is not None and float(pedido).is_integer() else None
         except (TypeError, ValueError):
             n = None
+        if pedido is None and self.puntos:  # «deshaz lo último»: el número lo pone el código, no el modelo (contaba de más)
+            n = max(x["n"] for x in self.puntos)
         p = next((x for x in self.puntos if x["n"] == n), None)
         if p is None:
             if self.puntos:

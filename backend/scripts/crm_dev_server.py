@@ -74,16 +74,61 @@ class _Resultado:
         self.matched_count = matched
 
 
+class _Cursor:
+    """Lo que usa el código de `find`: sort, skip y to_list."""
+    def __init__(self, docs):
+        self.docs = docs
+
+    def sort(self, clave, sentido=1):
+        self.docs.sort(key=lambda d: (d.get(clave) is None, d.get(clave)), reverse=sentido < 0)
+        return self
+
+    def skip(self, n):
+        self.docs = self.docs[n:]
+        return self
+
+    def limit(self, n):
+        self.docs = self.docs[:n] if n else self.docs
+        return self
+
+    async def to_list(self, length=None):
+        return self.docs if length is None else self.docs[:length]
+
+
 class _Coleccion:
     def __init__(self):
         self.docs: list[dict] = []
 
     @staticmethod
     def _coincide(d, filtro):
-        return all(d.get(k) == v for k, v in filtro.items())
+        def cumple(x, v):
+            if isinstance(v, dict) and v and all(str(k).startswith("$") for k in v):
+                ops = {"$gte": lambda a, b: a is not None and a >= b, "$lte": lambda a, b: a is not None and a <= b,
+                       "$gt": lambda a, b: a is not None and a > b, "$lt": lambda a, b: a is not None and a < b,
+                       "$ne": lambda a, b: a != b, "$in": lambda a, b: a in b}
+                return all(ops[k](x, b) for k, b in v.items())
+            return x == v
+        return all(cumple(d.get(k), v) for k, v in filtro.items())
+
+    @staticmethod
+    def _proyectar(d, proyeccion):
+        if not proyeccion:
+            return d
+        if any(v for k, v in proyeccion.items() if k != "_id"):
+            return {k: x for k, x in d.items() if proyeccion.get(k)}
+        return {k: x for k, x in d.items() if proyeccion.get(k, 1)}
+
+    def find(self, filtro=None, proyeccion=None):
+        return _Cursor([self._proyectar(copy.deepcopy(d), proyeccion) for d in self.docs if self._coincide(d, filtro or {})])
+
+    async def insert_one(self, doc):
+        self.docs.append(_como_mongo(copy.deepcopy(doc)))
+
+    async def delete_many(self, filtro):
+        self.docs = [d for d in self.docs if not self._coincide(d, filtro)]
 
     async def find_one(self, filtro, proyeccion=None):
-        return next((copy.deepcopy(d) for d in self.docs if self._coincide(d, filtro)), None)
+        return next((self._proyectar(copy.deepcopy(d), proyeccion) for d in self.docs if self._coincide(d, filtro)), None)
 
     async def replace_one(self, filtro, doc, upsert=False):
         for i, d in enumerate(self.docs):

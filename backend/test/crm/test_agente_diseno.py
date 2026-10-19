@@ -608,3 +608,19 @@ def test_sin_la_bandera_la_respuesta_es_la_de_siempre_y_el_chat_igual_deja_su_pu
     r = cli.post(f"{URL}/chat", json={"texto": "Agrega a Laura Gómez"}, headers=H).json()  # sin IA: las reglas de Carlos
     assert r["modo"] == "reglas" and set(r) == {"respuesta", "crm", "modo", "vista"} and "puntos" not in r["crm"]
     assert [(p["n"], p["antesDe"]) for p in cli.get(f"{URL}/puntos", headers=H).json()["puntos"]] == [(1, "Agrega a Laura Gómez")]
+
+
+@pytest.mark.asyncio
+async def test_deshacer_sin_numero_es_el_ultimo_pedido(rosa_y_carlos):
+    # «deshaz lo último»: el modelo contaba pedidos de más (pedía uno que no existía); sin número, el código toma el último.
+    doc, puntos = rosa_y_carlos
+    r, modelo = await correr(doc, "deshaz lo último", dice("", llamar("deshacer")), dice("Listo."), puntos=puntos)
+    assert r["deshacer"]["deshechos"] == [2] and _contacto(r["doc"], "Carlos Ruiz") is not None
+
+
+@pytest.mark.asyncio
+async def test_en_modo_diseno_el_modelo_no_ve_automatizaciones_ni_cobros_inactivos(doc):
+    _, modelo = await correr(doc, "¿qué tengo?", dice("Tienes contactos."))
+    ctx = _estado(modelo)
+    assert "automatizaciones" not in ctx and "automatizaciones" not in ctx.get("secciones_integradas", {})
+    assert "cobros" not in ctx.get("secciones_integradas", {})
