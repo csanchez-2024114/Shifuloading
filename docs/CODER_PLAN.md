@@ -152,6 +152,12 @@ Si se excede una cuota, la salida es `Not run: quota …` (en inglés para el mo
   - La subida queda en `coder_uploads` (24 h) y el agente la asigna con `add_project_asset(upload_id, …)`.
 - **Si el adjunto vino por `FILES_ENABLED`**, solo existe el texto. `add_project_asset(file_id=…)` responde `Not run: the original of this attachment was not kept…` y el prompt obliga al agente a decirlo y a pedir la subida por el panel.
 - **Costo.** Los bytes reales, más unos 255 KB de chunk por archivo como máximo, más los metadatos. Con los defaults, el peor caso es 50 MB por usuario, y 20 usuarios activos son unos 1 GB. Entra en la cuota `CODER_MAX_USER_BYTES`.
+- **Implementado en la Fase D** (`core/coder/assets.py`, `asset_worker.py`, `projects.py`), con estos detalles:
+  - **Subida pendiente:** guarda sus bytes ya preparados dentro de su documento de `coder_uploads`, así el TTL de 24 h la borra entera, sin huérfanos en GridFS. Al pasarla a un proyecto, imágenes y audio van a GridFS `coder_assets`; json, csv y txt quedan como archivos de texto legibles.
+  - **Cuota:** las subidas pendientes cuentan en `CODER_MAX_USER_BYTES`, y moverlas al proyecto no cuenta dos veces. Máximo 20 pendientes por usuario.
+  - **Imágenes:** se reencodean en el mismo formato con un tope de 2048 px de lado y 40 M de píxeles. El GIF animado conserva sus cuadros, hasta 300.
+  - **Audio:** al mp3 se le quitan las etiquetas ID3. El ogg se valida (magia y sin marcas de políglota) pero no se reencodea, porque no hay con qué hacerlo sin dependencias nuevas: sus comentarios Vorbis, si los trae, se conservan.
+  - **Dependencias:** sin Pillow o python-multipart (extra `[files]`), el codificador no arranca.
 
 ---
 

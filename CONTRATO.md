@@ -253,6 +253,9 @@ Con `AUTH_ENABLED=1`: sin sesión, 401. Las peticiones que cambian estado (POST/
 | Método | Ruta | Body / respuesta |
 |---|---|---|
 | POST | `/coder/projects/{project_id}/preview` | Sesión, mismo origen y CSRF → `{"url", "version", "expires", "findings": [{"code", "severity", "path", "line", "detail"}]}`. La `url` apunta al sandbox con un token de 30 minutos. **404** `{"detail": "No existe ese proyecto."}` tanto si el proyecto es ajeno como si no existe |
+| POST | `/coder/uploads` | Sesión, mismo origen y CSRF; multipart `file` (cualquier `user_id` del formulario se ignora) → `{"upload_id", "name", "kind", "mime", "bytes", "width", "height", "expires"}`. **415** si el tipo no se permite, el contenido no corresponde a la extensión, es SVG o es un políglota; **413** si pasa `CODER_MAX_ASSET_BYTES`, tiene demasiados píxeles o se llegó a la cuota; **422** si está vacío o tardó demasiado. Siempre `{"detail": str}` en español. Caduca a las 24 h si no se usa |
+| GET | `/coder/uploads` | Sesión → `{"uploads": [{…los mismos campos…}]}`, solo las subidas pendientes del usuario |
+| DELETE | `/coder/uploads/{upload_id}` | Sesión, mismo origen y CSRF → `{"deleted": upload_id}`. **404** igual si es ajena o no existe |
 
 Sandbox (proceso aparte, `CODER_SANDBOX_ORIGIN`, por defecto `http://127.0.0.2:8100`):
 - Sirve solo `GET`/`HEAD /p/<token>/<ruta>`: la versión del token, de solo lectura, con la CSP de `docs/CODER_PLAN.md` §4.
@@ -261,9 +264,11 @@ Sandbox (proceso aparte, `CODER_SANDBOX_ORIGIN`, por defecto `http://127.0.0.2:8
 - Los tokens inválidos repetidos desde una IP llevan a 429.
 
 Herramientas del perfil `coder`:
-- `create_project`, `list_projects`, `list_project_files`, `read_project_file`, `write_project_file`, `edit_project_file`, `delete_project_file`, `preview_project`, `list_project_versions`, `diff_project_versions`, `restore_project_version` y `delete_project`.
+- `create_project`, `list_projects`, `list_project_files`, `read_project_file`, `write_project_file`, `edit_project_file`, `delete_project_file`, `add_project_asset`, `preview_project`, `list_project_versions`, `diff_project_versions`, `restore_project_version` y `delete_project`.
 - `restore_project_version` y `delete_project` piden tarjeta (evento `interrupt` con `description` en español).
 - Sus fallos empiezan por `Not run:`, así que su `tool_end` llega con `status: "skipped"`.
+- `add_project_asset` con el `file_id` de un adjunto de análisis responde `Not run:` y explica que solo se guardó su texto.
+- El sandbox sirve los recursos como bytes, con el MIME guardado y `nosniff`.
 
 ### Métricas (`TURN_METRICS=1`; con 0 la ruta no existe y no se escribe nada)
 
