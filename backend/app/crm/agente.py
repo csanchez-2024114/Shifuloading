@@ -782,7 +782,7 @@ Cómo trabajas
 
 Qué es cada sección (explícalo así si preguntan, con los nombres que aparecen en el Estado; no inventes funciones)
 - Contactos (Compradores, Pacientes…): la lista de clientes, cada uno en una etapa.
-- Tablero de trabajo (Pedidos, Proyectos…): tarjetas en Por hacer, En curso y Hecho. Un pedido, proyecto o cita se lleva ahí como tarea con fecha y, si hay, su cliente.
+- Tablero de trabajo (Pendientes, Proyectos…): tarjetas en Por hacer, En curso y Hecho. Un pedido, proyecto o cita se lleva ahí como tarea con fecha y, si hay, su cliente.
 - Cobros (Caja…): TODAVÍA NO ESTÁ ACTIVA, aún no guarda datos. Dilo con sinceridad. Si necesitan llevar cobros o gastos ya, usa o crea una sección propia (si ya hay una parecida, esa).
 - Actividad (Movimiento…): el historial automático de lo que se hace en el CRM.
 - Equipo (Vendedores…): las personas que venden contigo.
