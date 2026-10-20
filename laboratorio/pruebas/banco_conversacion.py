@@ -7,6 +7,7 @@ import json, os, re, secrets, sys, time, unicodedata, urllib.error, urllib.reque
 
 API = os.environ.get("BASE", "http://localhost:5203") + "/api/v1"
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+RELLENO = int(os.environ.get("RELLENO", "1"))  # veces que se repite el bloque de trabajo (3 ≈ 46 mensajes)
 
 M1 = ("Para que lo sepas: abro de lunes a sábado de 6 de la mañana a 10 de la noche, mi socio se llama Ricardo Méndez, "
       "la membresía mensual cuesta 350 quetzales y prefiero que me hables de usted.")
@@ -131,7 +132,7 @@ def una_corrida(i):
     pedir("POST", "/crm", {"brief": brief}, tok)
 
     tiempos = []
-    for texto in GUION:
+    for texto in GUION[:2] + GUION[2:] * RELLENO:
         resp, t, _ = chat_o_vacio(tok, texto)
         tiempos.append(t)
 
@@ -186,4 +187,5 @@ for i in range(N):
 if res:
     puntos = [r["puntos"] for r in res]
     t_all = [r["t_med"] for r in res]
-    print(f"\nRecuerda: {sum(puntos) / len(puntos):.1f}/5 de media ({puntos}) · tiempo medio {sum(t_all) / len(t_all):.1f}s")
+    print(f"\nRelleno x{RELLENO} ({2 + 14 * RELLENO} mensajes antes de preguntar)")
+    print(f"Recuerda: {sum(puntos) / len(puntos):.1f}/5 de media ({puntos}) · tiempo medio {sum(t_all) / len(t_all):.1f}s")
