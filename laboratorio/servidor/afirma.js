@@ -3,7 +3,7 @@
  *  - las preguntas: «¿quieres que cree la sección?», «¿lo agrego?»;
  *  - el subjuntivo sin tilde: «que agregue», «que cree» (la afirmación lleva tilde: agregué, creé);
  *  - las negaciones: «no hice ningún cambio», «todavía no lo agregué». */
-const VERBO = /(?<!\p{L})(agregué|quité|cambié|moví|achiqué|agrandé|puse|creé|hice|listo|lista|ajusté|reemplacé|renombré|borré)(?!\p{L})/giu
+const VERBO = /(?<!\p{L})(agregué|quité|cambié|moví|achiqué|agrandé|puse|creé|hice|listo|lista|ajusté|reemplacé|renombré|borré|deshice|marqué)(?!\p{L})/giu
 const NIEGA = /(?<!\p{L})(no|nunca|ni|sin|todavía no|aún no)(\s+\p{L}+){0,2}\s*$/iu
 
 export function afirmaCambio(texto) {

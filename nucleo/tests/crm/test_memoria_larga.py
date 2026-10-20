@@ -261,7 +261,8 @@ def test_la_ruta_guarda_el_mensaje_completo_y_lo_pendiente_llega_al_turno_siguie
     llamadas = [llamar("agregar_registro", seccion="contactos", valores={"Nombre": f"Cliente {i}"}) for i in range(agente.MAX_ACCIONES + 2)]
     modelo = _con_modelo(monkeypatch, dice("", *llamadas), dice("Agregué 12 clientes."), dice("", llamar("agregar_registro", seccion="contactos",
                          registros=[{"Nombre": "Cliente 12"}, {"Nombre": "Cliente 13"}])), dice("Listo, agregué los que faltaban."))
-    largo = "agrega a estos clientes: " + ", ".join(f"Cliente {i}" for i in range(14)) + ". " + "Nota: " + "x" * 900
+    # Contactos está oculta en esta clínica: la persona la nombra
+    largo = "agrega a estos contactos: " + ", ".join(f"Cliente {i}" for i in range(14)) + ". " + "Nota: " + "x" * 900
     r = cli.post(f"{URL}/chat", json={"texto": largo}, headers=H).json()
     assert "Quedó pendiente" in r["respuesta"] or "faltaron" in r["respuesta"].lower() or "2 registro" in r["respuesta"]
     conv = db["crm_conversaciones"].docs[0]
