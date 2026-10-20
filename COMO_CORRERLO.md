@@ -11,8 +11,8 @@ Guía para colaboradores. En unos 15 minutos tienes el frontend, el backend y la
 > uv pip install --python nucleo/.venv/bin/python -r requirements-agente0.txt
 > ```
 >
-> - Backend: `cd backend && CRM_DISENO=1 CRM_NUCLEO=agente0 ../nucleo/.venv/bin/python -m uvicorn main:app --port 8001`
->   (sin `CRM_NUCLEO`, el chat usa el bucle propio de antes; los dos pasan las mismas pruebas).
+> - Backend: `cd backend && CRM_DISENO=1 ../nucleo/.venv/bin/python -m uvicorn main:app --port 8001`
+>   (el chat usa el núcleo de Alan por defecto; `CRM_NUCLEO=propio` vuelve al bucle de antes, solo como respaldo).
 > - Pruebas del CRM: `cd nucleo && .venv/bin/python -m pytest tests/crm` (con `CRM_MOTOR=agente0`, sobre el núcleo de Alan).
 > - Pruebas del núcleo: `cd nucleo && TEST_MONGODB_URI=mongodb://127.0.0.1:27018 .venv/bin/python -m pytest --ignore=tests/crm`.
 > - Plan, debate, lista de paridad y mediciones: `nucleo/docs/crm/`.

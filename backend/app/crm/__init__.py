@@ -11,10 +11,11 @@ for _m in pkgutil.iter_modules(_pack.__path__):
 sys.modules[__name__].__dict__.update({k: v for k, v in vars(_pack).items() if not k.startswith("__")})
 __path__ = _pack.__path__
 
-# CRM_NUCLEO=agente0: el chat del CRM corre su bucle sobre el núcleo de Alan (perfil crm). Sin la variable, el bucle propio.
+# El chat del CRM corre su bucle sobre el núcleo de Alan (perfil crm) por defecto. CRM_NUCLEO=propio vuelve al bucle de
+# antes (respaldo mientras se retira; las dos versiones pasan las mismas pruebas y los mismos bancos).
 import os as _os  # noqa: E402
 
-if _os.getenv("CRM_NUCLEO") == "agente0":
+if _os.getenv("CRM_NUCLEO", "agente0").strip().lower() != "propio":
     from assistant.packs.crm import agente_diseno as _ad
     from assistant.profiles.crm import bucle as _bucle
 

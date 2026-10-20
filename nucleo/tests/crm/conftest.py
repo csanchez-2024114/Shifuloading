@@ -7,6 +7,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "backend"))
 import os  # noqa: E402
 
 # Claves FALSAS solo para importar el backend del producto en las pruebas (sin .env).
+# El motor del chat en las pruebas lo decide CRM_MOTOR (vacío = bucle propio), no el valor por defecto del producto.
+os.environ["CRM_NUCLEO"] = "agente0" if os.environ.get("CRM_MOTOR") == "agente0" else "propio"
 os.environ.setdefault("MONGO_URI", "mongodb://127.0.0.1:27018")  # Mongo local de pruebas (no la del puerto 27017)
 os.environ.setdefault("MONGO_DB_NAME", "crm_test")
 os.environ.setdefault("ENVIRONMENT", "test")
