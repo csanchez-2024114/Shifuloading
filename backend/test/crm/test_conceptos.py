@@ -120,3 +120,10 @@ def test_el_detalle_de_una_vista_dice_si_hay_piezas_asi_en_lo_que_mira():
     assert "no hay ninguna pieza agenda; sí hay en: «Citas»" in conceptos.en_tu_crm(c, doc, tit, "l_miembros")
     assert "p_l_citas_0" in conceptos.en_tu_crm(c, doc, tit, "l_citas")
     assert conceptos.en_tu_crm({"id": "vista_tabla", "se_arma_con": {"vista": "tabla"}}, doc, tit, None) is None
+
+
+def test_las_vistas_nombradas_salen_del_catalogo():
+    assert conceptos.vistas_nombradas("quita el calendario de aquí") == {"calendario_mes"}
+    assert conceptos.vistas_nombradas("cambia el resumen por una dona") == {"kpis"}
+    assert conceptos.vistas_nombradas("qué tengo pendiente") == set()
+    assert conceptos.es_de_vista({"vista": "grafico", "opciones": {"tipo": "calendario"}}, {"calendario_mes"})

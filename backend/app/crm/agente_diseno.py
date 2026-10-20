@@ -859,6 +859,23 @@ class SesionDiseno(agente.Sesion):
         ultimo = self._ultimo_de_shifu()
         return bool(ultimo) and any(registros._dicha(w, ultimo) for n in nombres for w in registros._palabras_de(n))
 
+    def _no_es_la_pieza_nombrada(self, uid: str) -> str | None:
+        """La persona nombró un tipo de pieza (catálogo) que no está en lo que mira, y el modelo quiere quitar otra (19-oct: «quita el
+        calendario» mirando Miembros quitaba «por vencer»). El código lo sabe: no se quita y el modelo lo dice."""
+        vistas = conceptos.vistas_nombradas(self.texto or "")
+        if not vistas:
+            return None
+        abierta = self._lienzo_abierto()
+        aqui = (self.doc.get("paginas") or {}).get(abierta) if abierta else self.doc.get("inicio")
+        aqui = aqui or []
+        b = next((x for x in aqui if x.get("uid") == uid), None)
+        if b is None or conceptos.es_de_vista(b, vistas) or any(conceptos.es_de_vista(x, vistas) for x in aqui):
+            return None
+        nombres = ", ".join(sorted(pantalla.NOMBRE_VISTA.get(v, v) for v in vistas))
+        return (f"ERROR: aquí no hay ninguna pieza de lo que nombró la persona ({nombres}); «{uid}» es otra cosa "
+                f"({pantalla.NOMBRE_VISTA.get(b.get('vista'), b.get('vista'))}). No la quité. Lo que se ve ahora: {self._se_ve_ahora()}. "
+                "Díselo y pregúntale a qué se refiere.")
+
     def _se_ve_ahora(self) -> str:
         """Las piezas del lienzo que la persona está mirando, dichas en simple (para que el modelo no invente un objetivo)."""
         efectiva = pantalla.plantilla_efectiva(self.doc)
@@ -1237,6 +1254,9 @@ class SesionDiseno(agente.Sesion):
             bloque = str(args.get("bloque") or "")
             if bloque in self.en_error and not confirmado:
                 return ERROR_QUITAR_BLOQUE_EN_ERROR
+            error = self._no_es_la_pieza_nombrada(bloque)
+            if error:
+                return error
             ya_b = sum(1 for c in self.cambios if c["herramienta"] == "quitar_bloque")
             if not confirmado and (plan.get("bloques") or MASIVO.search(self.texto or "") or ya_b >= 2):
                 return ERROR_MASIVO_BLOQUES

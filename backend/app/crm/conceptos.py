@@ -59,6 +59,9 @@ def _linea_compacta(c: dict) -> str:
 def _detalle(c: dict, en_tu_crm: str | None = None) -> str:
     """Qué es y para qué; si el CRM de la persona YA lo tiene (lo calcula el código), ese hecho en vez de la receta para armarlo."""
     partes = [f"**{c['nombre']}** — {c['que_es']} Para: {c['para_que']}."]
+    frases = c.get("frases") or []
+    if frases:
+        partes.append("Frases típicas: " + "; ".join(frases[:5]) + ".")
     if en_tu_crm:
         partes.append(en_tu_crm)
     else:
@@ -89,11 +92,19 @@ def _piezas_con_vista(doc: dict, vista: str) -> list[tuple[str | None, dict]]:
     """(pestaña o None = inicio, pieza) de cada pieza con esa vista; el calendario también es una gráfica tipo calendario."""
     lugares = [(None, b) for b in (doc.get("inicio") or [])]
     lugares += [(pid, b) for pid, bs in (doc.get("paginas") or {}).items() for b in (bs or [])]
-    def es(b: dict) -> bool:
-        if b.get("vista") == vista:
-            return True
-        return vista == "calendario_mes" and b.get("vista") == "grafico" and (b.get("opciones") or {}).get("tipo") == "calendario"
-    return [(pid, b) for pid, b in lugares if es(b)]
+    return [(pid, b) for pid, b in lugares if es_de_vista(b, {vista})]
+
+
+def vistas_nombradas(texto: str) -> set[str]:
+    """Las vistas que la persona nombró, según el catálogo (conceptos vista_*); la misma detección que el detalle del prompt."""
+    por_id = {c["id"]: c for c in _catalogo()}
+    return {v for i in _detectar(texto) if i.startswith("vista_") and i in por_id
+            for v in [(por_id[i].get("se_arma_con") or {}).get("vista")] if v}
+
+
+def es_de_vista(b: dict, vistas: set[str]) -> bool:
+    return b.get("vista") in vistas or ("calendario_mes" in vistas and b.get("vista") == "grafico"
+                                        and (b.get("opciones") or {}).get("tipo") == "calendario")
 
 
 def en_tu_crm(c: dict, doc: dict, titulo: Any, abierta: str | None) -> str | None:
@@ -138,6 +149,8 @@ def _detectar(texto: str, seleccion: str | None = None) -> set[str]:
             if len(palabras) >= 2 and all(p in t for p in palabras[:2]):
                 hallados.add(cid)
                 break
+        if any(re.search(rf"\b{re.escape(_norm(x))}\b", t) for x in c.get("se_le_dice") or []):
+            hallados.add(cid)  # cómo le dice la gente (dato del catálogo, no una regla)
         if sel and cid in sel:
             hallados.add(cid)
     # Intenciones frecuentes sin depender de una sola frase del catálogo

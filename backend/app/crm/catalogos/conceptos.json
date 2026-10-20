@@ -255,6 +255,7 @@
   },
   {
    "id": "vista_tabla",
+   "se_le_dice": ["tabla", "lista"],
    "grupo": "estructura",
    "nombre": "Vista tabla",
    "que_es": "Lista en filas y columnas con todos los registros de la sección.",
@@ -279,6 +280,7 @@
   },
   {
    "id": "vista_kpis",
+   "se_le_dice": ["resumen", "cifras"],
    "grupo": "estructura",
    "nombre": "Vista KPIs",
    "que_es": "Fila de números grandes: conteos, sumas de hoy o lo que vence pronto.",
@@ -316,6 +318,7 @@
   },
   {
    "id": "vista_tablero",
+   "se_le_dice": ["tablero"],
    "grupo": "estructura",
    "nombre": "Vista tablero",
    "que_es": "Columnas por estado; cada tarjeta es un registro que arrastras de etapa.",
@@ -350,6 +353,7 @@
   },
   {
    "id": "vista_agenda",
+   "se_le_dice": ["agenda"],
    "grupo": "estructura",
    "nombre": "Vista agenda",
    "que_es": "Calendario por día con hora, título y detalle de cada evento.",
@@ -388,6 +392,7 @@
   },
   {
    "id": "vista_vencimientos",
+   "se_le_dice": ["por vencer", "vencimientos"],
    "grupo": "estructura",
    "nombre": "Vista vencimientos",
    "que_es": "Lista de lo que vence pronto por fecha, con título y detalle.",
@@ -462,6 +467,7 @@
   },
   {
    "id": "vista_grafico",
+   "se_le_dice": ["gráfica", "gráfico", "grafica", "grafico"],
    "grupo": "estructura",
    "nombre": "Vista gráfico (catálogo)",
    "que_es": "Bloque de gráfica con tipo del catálogo: dona, embudo, línea, etc.",
@@ -499,6 +505,7 @@
   },
   {
    "id": "vista_calendario_mes",
+   "se_le_dice": ["calendario"],
    "grupo": "estructura",
    "nombre": "Vista calendario mes",
    "que_es": "Cuadrícula del mes con puntos o color por registros con fecha.",
@@ -531,6 +538,7 @@
   },
   {
    "id": "vista_tablero_dinero",
+   "se_le_dice": ["tablero con montos"],
    "grupo": "estructura",
    "nombre": "Vista tablero dinero",
    "que_es": "Tablero por estado que muestra sumas de dinero y detalle.",
@@ -600,6 +608,7 @@
   },
   {
    "id": "vista_atencion",
+   "se_le_dice": ["panel de atención"],
    "grupo": "estructura",
    "nombre": "Vista atención",
    "que_es": "Lista de registros con fecha que requieren acción hoy o pronto.",
