@@ -2,6 +2,21 @@
 
 Guía para colaboradores. En unos 15 minutos tienes el frontend, el backend y las bases de datos funcionando.
 
+> **Desde el 20-oct-2026 el agente del CRM corre sobre el núcleo de Alan** (`nucleo/`, el repo Alan4745/langgraph con su
+> historia). El código del CRM vive en `nucleo/src/assistant/packs/crm` (y `backend/app/crm` lo re-exporta); el bucle del
+> turno, en `nucleo/src/assistant/profiles/crm`. El entorno de Python es uno solo, `nucleo/.venv` (Python 3.13):
+>
+> ```bash
+> cd nucleo && uv venv --python 3.13 .venv && uv sync --extra dev --python .venv/bin/python && cd ..
+> uv pip install --python nucleo/.venv/bin/python -r requirements-agente0.txt
+> ```
+>
+> - Backend: `cd backend && CRM_DISENO=1 CRM_NUCLEO=agente0 ../nucleo/.venv/bin/python -m uvicorn main:app --port 8001`
+>   (sin `CRM_NUCLEO`, el chat usa el bucle propio de antes; los dos pasan las mismas pruebas).
+> - Pruebas del CRM: `cd nucleo && .venv/bin/python -m pytest tests/crm` (con `CRM_MOTOR=agente0`, sobre el núcleo de Alan).
+> - Pruebas del núcleo: `cd nucleo && TEST_MONGODB_URI=mongodb://127.0.0.1:27018 .venv/bin/python -m pytest --ignore=tests/crm`.
+> - Plan, debate, lista de paridad y mediciones: `nucleo/docs/crm/`.
+
 ## Qué necesitas instalado
 
 | Programa | Versión | Para qué |
@@ -165,10 +180,10 @@ Las automatizaciones del CRM (recordatorios de seguimiento y resumen semanal) se
 
 ## Correr las pruebas
 
-Con el entorno `.venv` activado, dentro de `backend`:
+Las pruebas del CRM ahora están en `nucleo/tests/crm` (ver el recuadro del principio). Para las demás, con el entorno activado, dentro de `backend`:
 
 ```bash
-pytest test/crm
+pytest test
 ```
 
 Ninguna prueba llama a OpenAI ni cuesta dinero.

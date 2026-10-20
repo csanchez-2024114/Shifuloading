@@ -1,0 +1,30 @@
+== banco_citas
+  viejo: 8/9 correctos · tiempo medio 2.6s · máx 5.2s | 7/9 correctos · tiempo medio 2.4s · máx 5.6s | 8/9 correctos · tiempo medio 3.0s · máx 12.2s | 
+  alan: 9/9 correctos · tiempo medio 2.4s · máx 6.0s | 8/9 correctos · tiempo medio 2.4s · máx 5.0s | 9/9 correctos · tiempo medio 2.1s · máx 4.0s | 
+== banco_conceptos
+  viejo: 9/14 correctos · tiempo medio 1.9s · mediana 1.7s  | 9/14 correctos · tiempo medio 1.8s · mediana 1.6s  | 11/14 correctos · tiempo medio 2.4s · mediana 1.7s | 
+  alan: 11/14 correctos · tiempo medio 2.3s · mediana 1.8s | 10/14 correctos · tiempo medio 1.8s · mediana 1.8s | 12/14 correctos · tiempo medio 2.8s · mediana 1.9s | 
+== banco_creacion
+  viejo: 6/6 sirven · tiempo p50 6.5s · máx 10.0s · llamada | 6/6 sirven · tiempo p50 6.3s · máx 8.6s · llamadas | 6/6 sirven · tiempo p50 7.3s · máx 10.0s · llamada | 
+  alan: 6/6 sirven · tiempo p50 6.3s · máx 8.5s · llamadas | 6/6 sirven · tiempo p50 8.5s · máx 8.6s · llamadas | 6/6 sirven · tiempo p50 7.5s · máx 11.4s · llamada | 
+== banco_datos
+  viejo: 63/63 correctos · tiempo medio 1.9s · máx 5.2s | 63/63 correctos · tiempo medio 2.0s · máx 5.6s | 63/63 correctos · tiempo medio 1.9s · máx 3.4s | 
+  alan: 63/63 correctos · tiempo medio 1.9s · máx 3.4s | 63/63 correctos · tiempo medio 2.0s · máx 6.3s | 63/63 correctos · tiempo medio 2.1s · máx 5.1s | 
+== banco_deshacer
+  viejo: 17/18 pasos correctos | 18/18 pasos correctos | 18/18 pasos correctos | 
+  alan: 18/18 pasos correctos | 18/18 pasos correctos | 18/18 pasos correctos | 
+== banco_ficha
+  viejo: 7/7 correctos · tiempo medio 2.4s · máx 5.4s | 7/7 correctos · tiempo medio 2.1s · máx 2.9s | 7/7 correctos · tiempo medio 2.0s · máx 2.5s | 
+  alan: 7/7 correctos · tiempo medio 2.4s · máx 3.7s | 7/7 correctos · tiempo medio 2.1s · máx 3.3s | 7/7 correctos · tiempo medio 2.3s · máx 2.7s | 
+== banco_memoria
+  viejo: Registros al final: 18.0/18 de media ([18]) · dice | Registros al final: 6.0/18 de media ([6]) · dice l | Registros al final: 18.0/18 de media ([18]) · dice | 
+  alan: Registros al final: 18.0/18 de media ([18]) · dice | Registros al final: 18.0/18 de media ([18]) · dice | Registros al final: 13.0/18 de media ([13]) · dice | 
+== banco_pestanas
+  viejo: 23/27 correctos · tiempo medio 2.3s · máx 4.8s | 23/27 correctos · tiempo medio 2.2s · máx 4.6s | 23/27 correctos · tiempo medio 2.5s · máx 7.2s | 
+  alan: 24/27 correctos · tiempo medio 2.5s · máx 6.1s | 24/27 correctos · tiempo medio 2.3s · máx 5.1s | 22/27 correctos · tiempo medio 2.3s · máx 4.8s | 
+== banco_toma
+  viejo: 11/11 pasos correctos · tiempo medio 2.2s | 11/11 pasos correctos · tiempo medio 2.2s | 11/11 pasos correctos · tiempo medio 1.8s | 
+  alan: 11/11 pasos correctos · tiempo medio 2.1s | 11/11 pasos correctos · tiempo medio 1.9s | 11/11 pasos correctos · tiempo medio 2.0s | 
+== banco2
+  viejo: 14/16 correctos · tiempo medio 2.8s · máx 9.6s | 15/16 correctos · tiempo medio 2.0s · máx 4.5s | 14/16 correctos · tiempo medio 2.7s · máx 10.4s | 
+  alan: 14/16 correctos · tiempo medio 1.9s · máx 4.2s | 14/16 correctos · tiempo medio 2.1s · máx 5.5s | 16/16 correctos · tiempo medio 2.7s · máx 7.8s | 

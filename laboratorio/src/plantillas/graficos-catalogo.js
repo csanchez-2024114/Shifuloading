@@ -1,6 +1,6 @@
 /* Catálogo PURO de gráficos (D61): qué tipos existen, qué campos pide cada uno y qué opciones elige solo. Sin React, sin DOM,
  * sin imports y sin funciones dentro del catálogo: todo es dato, para que se pueda exportar tal cual a JSON
- * (servidor/exportar-catalogos.mjs → backend/app/crm/catalogos/graficos.json) y reproducir en Python con las mismas reglas.
+ * (servidor/exportar-catalogos.mjs → nucleo/src/assistant/packs/crm/catalogos/graficos.json) y reproducir en Python con las mismas reglas.
  * graficos.jsx le suma a cada tipo su dibujo (Componente) y su cálculo (calcular); el comportamiento es idéntico al de antes.
  *
  * CATALOGO[id] = { nombre, familia, requiere, opciones, html? }  (el ORDEN de las claves es el orden de compatibles())

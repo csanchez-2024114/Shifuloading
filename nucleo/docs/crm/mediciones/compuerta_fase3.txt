@@ -1,0 +1,10 @@
+banco_citas: 8/9 correctos · tiempo medio 2.5s · máx 3.8s | 9/9 correctos · tiempo medio 2.4s · máx 4.2s | 8/9 correctos · tiempo medio 2.6s · máx 5.0s | 
+banco_conceptos: 9/14 correctos · tiempo medio 1.7s · mediana  | 12/14 correctos · tiempo medio 2.3s · mediana | 10/14 correctos · tiempo medio 1.8s · mediana | 
+banco_creacion: 6/6 sirven · tiempo p50 7.0s · máx 10.8s · ll | 6/6 sirven · tiempo p50 6.2s · máx 7.3s · lla | 6/6 sirven · tiempo p50 7.5s · máx 10.0s · ll | 
+banco_datos: 63/63 correctos · tiempo medio 1.9s · máx 3.0 | 63/63 correctos · tiempo medio 2.2s · máx 12. | 63/63 correctos · tiempo medio 2.1s · máx 12. | 
+banco_deshacer: urllib.error.HTTPError: HTTP Error 500: Inter | 17/18 pasos correctos | 18/18 pasos correctos | 
+banco_ficha: 7/7 correctos · tiempo medio 2.2s · máx 3.0s | 7/7 correctos · tiempo medio 2.3s · máx 3.5s | 7/7 correctos · tiempo medio 2.0s · máx 2.8s | 
+banco_memoria: Registros al final: 18.0/18 de media ([18]) · | Registros al final: 18.0/18 de media ([18]) · | Registros al final: 18.0/18 de media ([18]) · | 
+banco_pestanas: 24/27 correctos · tiempo medio 2.2s · máx 4.1 | 24/27 correctos · tiempo medio 2.3s · máx 5.9 | 24/27 correctos · tiempo medio 2.2s · máx 3.8 | 
+banco_toma: 11/11 pasos correctos · tiempo medio 2.5s | 11/11 pasos correctos · tiempo medio 1.9s | 11/11 pasos correctos · tiempo medio 1.9s | 
+banco2: 14/16 correctos · tiempo medio 2.6s · máx 7.7 | 14/16 correctos · tiempo medio 2.6s · máx 8.3 | 14/16 correctos · tiempo medio 2.4s · máx 5.2 | 

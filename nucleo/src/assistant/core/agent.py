@@ -775,6 +775,7 @@ def build_agent(model, tools, settings: Settings, checkpointer=None, store=None,
 
             sources += FILE_TOOL_NAMES
         middleware.append(AnswerVerifier(checker or make_checker_model(settings), settings.turn_token_cap, sources))
+    middleware += profile.extra_middleware(settings)  # los del caso de uso (p. ej. los cercos del CRM)
     agent = create_agent(
         model,
         tools,

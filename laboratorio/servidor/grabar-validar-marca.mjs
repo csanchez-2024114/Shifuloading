@@ -1,6 +1,6 @@
 /* Fixtures dorados (contrato §6) de validar.js y marca.js para el CRM en Python (frente C2).
  * Uso (desde la raíz del repo): node laboratorio/servidor/grabar-validar-marca.mjs [carpeta]
- *   carpeta por defecto: backend/test/crm/fixtures/lab
+ *   carpeta por defecto: nucleo/tests/crm/fixtures/lab
  * Escribe revisarVista.json, normalizarOpciones.json, validarPlantilla.json, tokensDeMarca.json y revisarLogo.json:
  *   [{ caso, entrada: {...args}, salida }]. Determinista (azar con semilla fija). Sin IA ni red. */
 import { createServer } from 'vite'
@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const LAB = fileURLToPath(new URL('..', import.meta.url))
-const destino = resolve(process.argv[2] || join(LAB, '..', 'backend/test/crm/fixtures/lab'))
+const destino = resolve(process.argv[2] || join(LAB, '..', 'nucleo/tests/crm/fixtures/lab'))
 const vite = await createServer({ configFile: join(LAB, 'vite.config.js'), server: { middlewareMode: true, hmr: false }, logLevel: 'error' })
 try {
   const { VISTAS, revisarVista, normalizarOpciones, validarPlantilla, camposDe } = await vite.ssrLoadModule('/src/plantillas/validar.js')

@@ -76,6 +76,9 @@ class AgentProfile:
     texts: TextCatalog = field(default_factory=TextCatalog)  # textos al usuario: base de un pack + sobreescrituras
     intents: IntentRules = field(default_factory=IntentRules)  # reglas de intención (idioma del caso de uso)
     lexicon: MemoryLexicon = field(default_factory=MemoryLexicon)  # búsqueda de recuerdos por palabras
+    # (settings) -> middlewares propios del caso de uso; van al final de la pila de build_agent (sus before_* corren
+    # después de los del núcleo y sus after_* antes). Vacío = la pila del núcleo sin cambios.
+    extra_middleware: Callable[..., list] = lambda settings: []
 
 
 _CACHE: dict[str, AgentProfile] = {}

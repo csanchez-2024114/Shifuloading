@@ -12,14 +12,13 @@ class AppBaseModel(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
-    @field_serializer(ObjectId, mode='plain', check_fields=False)
-    def _serialize_objectid(self, v, _info):
-        if v is None:
-            return None
-        return str(v)
-
-    @field_serializer(datetime, mode='plain', check_fields=False)
-    def _serialize_datetime(self, v, _info):
-        if v is None:
-            return None
-        return v.isoformat()
+    # Antes: @field_serializer(ObjectId)/(datetime). Pydantic 2.11 lo aceptaba sin efecto (espera nombres de campo); 2.14 lo
+    # rechaza. Mismo propósito, solo al pasar a JSON: en modo Python los valores quedan igual que antes.
+    @field_serializer('*', mode='wrap', check_fields=False)
+    def _serializar_tipos(self, v, handler, info):
+        if info.mode == 'json':
+            if isinstance(v, ObjectId):
+                return str(v)
+            if isinstance(v, datetime):
+                return v.isoformat()
+        return handler(v)

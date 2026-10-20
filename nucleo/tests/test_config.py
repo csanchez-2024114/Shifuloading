@@ -88,4 +88,5 @@ def test_todos_los_chatopenai_llevan_timeout_y_reintentos(monkeypatch):
     sitios = [(p.name, m.start()) for p in src.rglob("*.py") for m in re.finditer(r"ChatOpenAI\(", p.read_text("utf-8"))]
     sin_kwargs = [(p.name, line) for p in src.rglob("*.py") for line in re.findall(r"ChatOpenAI\([^\n]*(?:\n[^\n]*){0,8}",
                   p.read_text("utf-8")) if "llm_kwargs(settings)" not in line]
-    assert len(sitios) == 6 and [n for n, _ in sin_kwargs] == ["config.py"], sin_kwargs
+    # 6 del núcleo + 3 del CRM (packs/crm: agente, diseno, primer_diseno), todos con llm_kwargs
+    assert len(sitios) == 9 and [n for n, _ in sin_kwargs] == ["config.py"], sin_kwargs

@@ -2,7 +2,7 @@
  * (banco2.py, banco_pestanas.py, banco_ficha.py) y graba entradas y salidas para que test_herramientas_paridad.py corra lo mismo con
  * edicion.py sobre el documento equivalente y compare el TEXTO del resultado y cómo quedan bloques, pestañas, marca y secciones.
  * Uso (desde la raíz del repo): node laboratorio/servidor/grabar-herramientas.mjs [carpeta]
- *   carpeta por defecto: backend/test/crm/fixtures/lab
+ *   carpeta por defecto: nucleo/tests/crm/fixtures/lab
  * Escribe herramientas_casos.json y herramientas_esquemas.json (HERRAMIENTAS, leer_enlace y herramientasPara de chat.js).
  * Sin IA ni red. Los uid nuevos salen de Date.now()+azar: la prueba los normaliza. */
 import { createServer } from 'vite'
@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const LAB = fileURLToPath(new URL('..', import.meta.url))
-const destino = resolve(process.argv[2] || join(LAB, '..', 'backend/test/crm/fixtures/lab'))
+const destino = resolve(process.argv[2] || join(LAB, '..', 'nucleo/tests/crm/fixtures/lab'))
 const vite = await createServer({ configFile: join(LAB, 'vite.config.js'), server: { middlewareMode: true, hmr: false }, logLevel: 'error' })
 try {
   const ed = await vite.ssrLoadModule('/src/plantillas/edicion.js')

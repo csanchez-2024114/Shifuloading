@@ -1,4 +1,4 @@
-/* Graba los fixtures dorados de la regla de asignación (asignar.js) para el port a Python (backend/app/crm/asignar.py).
+/* Graba los fixtures dorados de la regla de asignación (asignar.js) para el port a Python (nucleo/src/assistant/packs/crm/asignar.py).
  * Combina rubros, ciclos, objetivos y «qué vendes» de las plantillas reales (más valores que no existen y respuestas vacías).
  * Uso (desde la raíz del repo): node laboratorio/servidor/grabar-asignar.mjs */
 import { createServer } from 'vite'
@@ -35,6 +35,6 @@ for (const rubro of rubros) for (const ciclo of ciclos) {
 }
 for (const q of vendes) casos.push({ caso: `solo vendes: ${q}`, entrada: { queVendes: q }, salida: asignar({ queVendes: q }) })
 casos.push({ caso: 'sin respuestas', entrada: {}, salida: asignar({}) })
-writeFileSync('backend/test/crm/fixtures/lab/asignar_casos.json', JSON.stringify(casos))
+writeFileSync('nucleo/tests/crm/fixtures/lab/asignar_casos.json', JSON.stringify(casos))
 console.log(`${PLANTILLAS.length} plantillas (${conAsig.length} con asignación) · ${casos.length} casos · ambiguos ${casos.filter((c) => c.salida.ambiguo).length}`)
 await v.close()

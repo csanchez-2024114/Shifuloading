@@ -1,4 +1,4 @@
-/* Chat de Shifu del laboratorio: el mismo patrón que backend/app/crm/agente.py (modelo + herramientas + verificador),
+/* Chat de Shifu del laboratorio: el mismo patrón que nucleo/src/assistant/packs/crm/agente.py (modelo + herramientas + verificador),
  * pero SOLO sobre la pantalla del laboratorio y SOLO en desarrollo (plugin del servidor de Vite, nunca en el build).
  * - El modelo elige; el código (src/plantillas/edicion.js) valida y ejecuta. Lo que no pasa el cerco vuelve como ERROR.
  * - Verificador: si dice que hizo algo y ninguna herramienta lo hizo, se le avisa para que lo haga o corrija.

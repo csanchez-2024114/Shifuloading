@@ -1,4 +1,4 @@
-/* Graba los fixtures dorados de los datos de ejemplo (datosEjemplo.js) para comparar el port a Python (backend/app/crm/ejemplos.py).
+/* Graba los fixtures dorados de los datos de ejemplo (datosEjemplo.js) para comparar el port a Python (nucleo/src/assistant/packs/crm/ejemplos.py).
  * El «hoy» se fija en 2026-10-16 (hora de Guatemala) reemplazando Date: así las fechas relativas salen siempre iguales.
  * Uso (desde la raíz del repo): TZ=America/Guatemala node laboratorio/servidor/grabar-ejemplos.mjs */
 import { createServer } from 'vite'
@@ -45,7 +45,7 @@ if (cEstado) est.mapeoEstado = { miembros: { [cEstado.id]: { [cEstado.opciones[0
 const extender = ['pocos', 'muchos'].map((nivel) => ({ caso: `membresias+extras:${nivel}`, entrada: { plantilla: 'membresias', nivel, est }, salida: extenderDatos(datosEjemplo(base, nivel), base, est, nivel) }))
 const sin = [{ caso: 'membresias:pocos sin ejemplos', entrada: { plantilla: 'membresias', nivel: 'pocos' }, salida: sinEjemplos(datosEjemplo(base, 'pocos')) }]
 
-writeFileSync('backend/test/crm/fixtures/lab/ejemplos_datos.json', JSON.stringify({ hoy: '2026-10-16', casos }))
-writeFileSync('backend/test/crm/fixtures/lab/ejemplos_extender.json', JSON.stringify({ hoy: '2026-10-16', casos: [...extender, ...sin] }))
+writeFileSync('nucleo/tests/crm/fixtures/lab/ejemplos_datos.json', JSON.stringify({ hoy: '2026-10-16', casos }))
+writeFileSync('nucleo/tests/crm/fixtures/lab/ejemplos_extender.json', JSON.stringify({ hoy: '2026-10-16', casos: [...extender, ...sin] }))
 console.log(`${plantillas.length} plantillas · ${casos.length} casos de datos · ${extender.length + sin.length} de extender/sin ejemplos`)
 await v.close()

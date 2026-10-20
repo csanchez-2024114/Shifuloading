@@ -92,4 +92,4 @@ def test_perfil_inexistente_lista_los_disponibles(monkeypatch):
     with pytest.raises(ConfigError) as exc:
         load_profile()
     assert str(exc.value) == ("No existe el perfil 'no_existe' (AGENT_PROFILE). Perfiles disponibles: coder, "
-                              "default, generic.")
+                              "crm, default, generic.")

@@ -1,5 +1,5 @@
 /* Graba los fixtures dorados de la toma de diseño (edicion.js: prepararTurnoToma, las herramientas de la ficha, senalTomaTrasVuelta,
- * resumenDeToma, tarjetaToma y construirDesdeFicha) para el port a Python (backend/app/crm/toma.py). Sin IA: cada guion llama las
+ * resumenDeToma, tarjetaToma y construirDesdeFicha) para el port a Python (nucleo/src/assistant/packs/crm/toma.py). Sin IA: cada guion llama las
  * herramientas con los argumentos que mandaría el modelo (los de laboratorio/pruebas/banco_toma.py y casos de borde).
  * Date se fija (los uid de construirDesdeFicha salen de Date.now) y un plugin de prueba guarda los bloques ANTES de acomodar.
  * Uso (desde la raíz del repo): node laboratorio/servidor/grabar-toma.mjs */
@@ -110,7 +110,7 @@ const catalogo = Object.fromEntries([...new Set(GUIONES.map((g) => g[1]))].map((
 const extra = { vistas: VISTAS, fuentes: Object.keys(FUENTES), // las tipografías de marca.js (no están en el catálogo compartido)
   inicio_inicial: E.bloques, herramientas: ed.HERRAMIENTAS.filter((h) => ['abrir_toma', 'anotar_bloque', 'quitar_de_ficha', 'anotar_ficha', 'anotar_nota', 'cerrar_toma'].includes(h.function.name)),
   bloqueadas: [...ed.HERRAMIENTAS_BLOQUEADAS_EN_TOMA], uid_base: Date.now().toString(36) }
-writeFileSync('backend/test/crm/fixtures/lab/toma_guiones.json', JSON.stringify(guiones, null, 1))
-writeFileSync('backend/test/crm/fixtures/lab/toma_catalogo.json', JSON.stringify({ ...extra, plantillas: catalogo }, null, 1))
+writeFileSync('nucleo/tests/crm/fixtures/lab/toma_guiones.json', JSON.stringify(guiones, null, 1))
+writeFileSync('nucleo/tests/crm/fixtures/lab/toma_catalogo.json', JSON.stringify({ ...extra, plantillas: catalogo }, null, 1))
 console.log(`${guiones.length} guiones · ${guiones.reduce((n, g) => n + g.pasos.length, 0)} pasos`)
 await v.close()

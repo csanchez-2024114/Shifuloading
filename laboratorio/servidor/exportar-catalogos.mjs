@@ -1,7 +1,7 @@
 /* Exporta los catálogos del laboratorio a JSON para el CRM de Carlos (D61, contrato §5). Los JS siguen siendo la fuente
  * mientras viva el laboratorio; los JSON se commitean y test_catalogos.py falla si quedan viejos.
  * Uso (desde la raíz del repo): node laboratorio/servidor/exportar-catalogos.mjs [carpeta]
- *   carpeta por defecto: backend/app/crm/catalogos
+ *   carpeta por defecto: nucleo/src/assistant/packs/crm/catalogos
  * Escribe:
  *  - plantillas.json  { semillas: [6], biblioteca: [21, por id] }   (semillas.js / biblioteca/*.js, sin funciones)
  *  - pestanas.json    [35, por id]                                    (biblioteca-pestanas/*.js)
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 
 const LAB = fileURLToPath(new URL('..', import.meta.url))
 const RAIZ = resolve(LAB, '..')
-const destino = resolve(process.argv[2] || join(RAIZ, 'backend/app/crm/catalogos'))
+const destino = resolve(process.argv[2] || join(RAIZ, 'nucleo/src/assistant/packs/crm/catalogos'))
 
 /** Copia apta para JSON. Una función en el catálogo es un error (el JSON la perdería sin avisar). */
 function limpio(x, donde = '') {

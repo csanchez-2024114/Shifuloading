@@ -1,7 +1,7 @@
 /* Fixtures dorados (D61, contrato §6): casos de las funciones puras del laboratorio con su resultado EXACTO, para que el
  * port a Python se compare contra lo mismo. Sin IA ni red.
  * Uso (desde la raíz del repo): node laboratorio/servidor/grabar-fixtures.mjs [carpeta]
- *   carpeta por defecto: backend/test/crm/fixtures/lab
+ *   carpeta por defecto: nucleo/tests/crm/fixtures/lab
  * Formato de cada <funcion>.json: [ { caso, entrada: { …argumentos por nombre }, salida } ], un caso por línea.
  * Argumentos (los nombres de los parámetros en JS):
  *  - parseFecha {texto, hoy} · parsePeriodo {texto, hoy}: `hoy` = 'AAAA-MM-DD' (fecha LOCAL; casi siempre 2026-10-16)
@@ -18,7 +18,7 @@ const { fileURLToPath } = await import('node:url')
 
 const LAB = fileURLToPath(new URL('..', import.meta.url))
 const RAIZ = resolve(LAB, '..')
-const destino = resolve(process.argv[2] || join(RAIZ, 'backend/test/crm/fixtures/lab'))
+const destino = resolve(process.argv[2] || join(RAIZ, 'nucleo/tests/crm/fixtures/lab'))
 const HOY = '2026-10-16' // viernes
 const fecha = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d) }
 let semilla = 7

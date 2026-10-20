@@ -2,6 +2,7 @@
 MongoDB local solo en la base `assistant_test`."""
 import importlib
 import json
+import os
 import re
 import uuid
 
@@ -10,7 +11,7 @@ from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk
 
-MONGO_URI = "mongodb://127.0.0.1:27017"
+MONGO_URI = os.environ.get("TEST_MONGODB_URI", "mongodb://127.0.0.1:27017")  # otra Mongo local sin tocar la del puerto por defecto
 TEST_DB = "assistant_test"  # NUNCA "assistant"
 
 
