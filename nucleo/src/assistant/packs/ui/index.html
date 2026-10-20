@@ -1,0 +1,1626 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Agente 0</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Ccircle cx='11' cy='16' r='2.5' fill='white'/%3E%3Ccircle cx='21' cy='16' r='2.5' fill='white'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f0f1f3;
+  --text: #1c1d21;
+  --muted: #5f6470;
+  --border: #dcdee4;
+  --accent: #4f46e5;
+  --accent-text: #ffffff;
+  --user-bg: #4f46e5;
+  --user-text: #ffffff;
+  --bot-bg: #ffffff;
+  --code-bg: #f1f2f5;
+  --ok: #17794b;
+  --ok-bg: #e4f5ec;
+  --err: #a12a2a;
+  --err-bg: #fdeaea;
+  --err-border: #f3c4c4;
+  --warn-bg: #fff6df;
+  --warn-border: #efd48a;
+  --chip-bg: #eef0ff;
+  --chip-text: #3730a3;
+  --link: #3b3fd8;
+  --shadow: 0 1px 2px rgba(0,0,0,.06);
+  --ctx-ok: #4f46e5;
+  --ctx-warn: #c77700;
+  --ctx-crit: #c62828;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14151a;
+    --surface: #1d1f26;
+    --surface-2: #272a33;
+    --text: #ececf1;
+    --muted: #a0a5b3;
+    --border: #353945;
+    --accent: #7c83ff;
+    --accent-text: #0f1020;
+    --user-bg: #4a4fd6;
+    --user-text: #ffffff;
+    --bot-bg: #1d1f26;
+    --code-bg: #12131a;
+    --ok: #6fd9a2;
+    --ok-bg: #16301f;
+    --err: #ff9b9b;
+    --err-bg: #3a1c1f;
+    --err-border: #6b3036;
+    --warn-bg: #3a3118;
+    --warn-border: #6b5a22;
+    --chip-bg: #262a4d;
+    --chip-text: #c3c8ff;
+    --link: #9aa0ff;
+    --shadow: none;
+    --ctx-ok: #7c83ff;
+    --ctx-warn: #f2a93b;
+    --ctx-crit: #ff6b6b;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+.app {
+  display: flex; flex-direction: column;
+  height: 100vh; height: 100dvh;
+  max-width: 860px; margin: 0 auto;
+  background: var(--bg);
+}
+/* header */
+header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+header h1 { font-size: 1.05rem; margin: 0 4px 0 0; font-weight: 650; white-space: nowrap; }
+.thread-wrap { flex: 1; min-width: 0; }
+select#thread {
+  width: 100%; min-width: 0; padding: 7px 8px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+  font-size: .92rem; text-overflow: ellipsis;
+}
+.tid { font-size: .7rem; color: var(--muted); margin-top: 2px; padding-left: 2px; font-variant-numeric: tabular-nums; }
+/* cuentas (AUTH_ENABLED=1) */
+#authview {
+  display: none; width: min(380px, calc(100% - 32px)); margin: 48px auto; padding: 20px 18px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+}
+#authview h2 { margin: 0 0 12px; font-size: 1.15rem; }
+body.needs-login #authview { display: block; }
+body.needs-login .app > :not(#authview) { display: none !important; }
+#authform { display: flex; flex-direction: column; gap: 6px; }
+#authform label { font-size: .88rem; color: var(--muted); }
+#authform input { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+#authform .btn { margin-top: 8px; }
+#autherr { color: var(--err); min-height: 1.3em; margin: 4px 0 0; font-size: .9rem; }
+#authview:not(.register) .reg-only { display: none; }
+.linkbtn { background: none; border: none; color: var(--link); cursor: pointer; padding: 4px 0; text-align: left; font-size: .9rem; }
+body:not(.auth-on) .auth-only { display: none !important; }
+body.auth-on .local-only { display: none !important; }
+.who { font-size: .85rem; color: var(--muted); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.acct { flex-basis: 100%; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 8px; }
+/* medidor de contexto de la conversación */
+.ctx {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 5px 12px; border-bottom: 1px solid var(--border); background: var(--surface);
+  font-size: .78rem; color: var(--muted);
+}
+.ctx-bar { flex: 0 1 180px; min-width: 50px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.ctx-bar i { display: block; height: 100%; width: 0; background: var(--ctx-ok); transition: width .3s; }
+.ctx.warn .ctx-bar i { background: var(--ctx-warn); }
+.ctx.crit .ctx-bar i { background: var(--ctx-crit); }
+.ctx.warn #ctxtext { color: var(--ctx-warn); }
+.ctx.crit #ctxtext { color: var(--ctx-crit); font-weight: 600; }
+#ctxtext { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; cursor: help; }
+.btn.small { min-height: 28px; padding: 3px 9px; font-size: .78rem; }
+#newbtn.queued { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.btn {
+  border: 1px solid var(--border); background: var(--surface-2);
+  border-radius: 8px; padding: 7px 11px; cursor: pointer; font-size: .92rem;
+  white-space: nowrap; line-height: 1.2; min-height: 36px;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+.btn.danger { color: var(--err); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#settings {
+  display: none; padding: 10px 12px; background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+#settings.open { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+#settings label { font-size: .9rem; color: var(--muted); }
+#settings input {
+  padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); min-width: 0; flex: 1 1 160px; max-width: 280px;
+}
+#settings small { color: var(--muted); flex-basis: 100%; }
+#memories {
+  display: none; padding: 10px 12px; background: var(--surface-2);
+  border-bottom: 1px solid var(--border); max-height: 45vh; overflow-y: auto;
+}
+#memories.open { display: block; }
+#memories h2 { font-size: .95rem; margin: 0 0 8px; }
+#memories ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+#memories li { display: flex; gap: 10px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+#memories li .mtext { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#memories li .mmeta { display: block; color: var(--muted); font-size: .8rem; margin-top: 3px; }
+#memories li .mmeta q { font-style: italic; }
+#memories li .btn { padding: 4px 9px; flex-shrink: 0; }
+#memories .sys { text-align: left; }
+.conf { font-weight: 600; }
+.conf.verified { color: var(--ok); }
+.conf.unverified { color: var(--err); }
+.vnote { margin: 8px 0 0; font-size: .82rem; color: var(--muted); }
+/* tiempos de respuesta (interruptor en Ajustes) */
+.row.assistant { flex-direction: column; align-items: flex-start; }
+.timing { margin: 3px 0 0 6px; font-size: .75rem; color: var(--muted); cursor: pointer; user-select: none; font-variant-numeric: tabular-nums; }
+.timing .tdetail { display: none; margin-left: 6px; }
+.math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", Georgia, serif; white-space: nowrap; }
+.math.block { display: block; text-align: center; margin: 6px 0; white-space: normal; }
+#settings select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: inherit; }
+.timing.open .tdetail { display: inline; }
+body.no-times .timing { display: none; }
+#settings .switch { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; color: var(--muted); }
+#settings .switch input { flex: none; min-width: 0; padding: 0; }
+.vnote.corrected { color: var(--err); }
+.vnote details { margin-top: 4px; }
+.vnote summary { cursor: pointer; text-decoration: underline; }
+.vnote .orig { margin-top: 6px; padding: 8px 10px; border-left: 3px solid var(--border); color: var(--text); opacity: .8; }
+/* messages */
+#messages {
+  flex: 1; overflow-y: auto; padding: 16px 12px 8px;
+  display: flex; flex-direction: column; gap: 14px;
+  scroll-behavior: auto; overscroll-behavior: contain;
+}
+.row { display: flex; }
+.row.user { justify-content: flex-end; }
+.bubble {
+  max-width: min(88%, 680px); padding: 10px 14px; border-radius: 16px;
+  overflow-wrap: anywhere; box-shadow: var(--shadow);
+}
+.row.user .bubble { background: var(--user-bg); color: var(--user-text); border-bottom-right-radius: 5px; white-space: pre-wrap; }
+.row.assistant .bubble { background: var(--bot-bg); border: 1px solid var(--border); border-bottom-left-radius: 5px; min-width: 56px; }
+.row.assistant .bubble.err { background: var(--err-bg); border-color: var(--err-border); }
+.toolline { align-self: flex-start; color: var(--muted); font-size: .82rem; padding-left: 6px; }
+.toolline::before { content: "\2699\FE0E  "; }
+.sys { align-self: center; color: var(--muted); font-size: .85rem; text-align: center; }
+/* markdown */
+.seg > :first-child { margin-top: 0; }
+.seg > :last-child { margin-bottom: 0; }
+.seg p { margin: .55em 0; }
+.seg h1, .seg h2, .seg h3, .seg h4, .seg h5, .seg h6 { margin: .9em 0 .4em; line-height: 1.25; }
+.seg h1 { font-size: 1.3rem; } .seg h2 { font-size: 1.18rem; } .seg h3 { font-size: 1.08rem; }
+.seg h4, .seg h5, .seg h6 { font-size: 1rem; }
+.seg ul, .seg ol { margin: .5em 0; padding-left: 1.5em; }
+.seg li { margin: .2em 0; }
+.seg code { background: var(--code-bg); padding: .12em .38em; border-radius: 5px; font: .88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.seg pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; overflow-x: auto; margin: .7em 0; }
+.seg pre code { background: none; padding: 0; font-size: .85rem; white-space: pre; }
+.seg a { color: var(--link); }
+.seg blockquote { margin: .6em 0; padding: .1em .9em; border-left: 3px solid var(--border); color: var(--muted); }
+.seg .tbl { overflow-x: auto; margin: .6em 0; }
+.seg table { border-collapse: collapse; font-size: .92em; }
+.seg th, .seg td { border: 1px solid var(--border); padding: .35em .6em; text-align: left; vertical-align: top; }
+.seg th { background: var(--border); white-space: nowrap; }
+.seg th, .seg td { overflow-wrap: normal; word-break: normal; }
+.seg hr { border: 0; border-top: 1px solid var(--border); margin: .9em 0; }
+.caret { display: inline-block; width: .55em; height: 1em; vertical-align: text-bottom; background: var(--muted); margin-left: 2px; border-radius: 2px; animation: blink 1s steps(2, start) infinite; }
+@keyframes blink { to { visibility: hidden; } }
+.dots { display: inline-flex; gap: 4px; padding: 4px 0; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: bounce 1.2s infinite ease-in-out; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes bounce { 0%, 80%, 100% { opacity: .3; transform: none; } 40% { opacity: 1; transform: translateY(-3px); } }
+/* chips */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin: 6px 6px 6px 0; padding: 4px 10px; border-radius: 999px; font-size: .85rem;
+  background: var(--chip-bg); color: var(--chip-text);
+}
+.chip .state { font-weight: 700; }
+.chip .eng { opacity: .8; font-size: .8rem; }
+.chip.running .spin { width: 11px; height: 11px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
+.chip.done { background: var(--ok-bg); color: var(--ok); }
+.chip.error { background: var(--err-bg); color: var(--err); border: 1px solid var(--err-border); }
+.chip.skipped { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--border); }
+.toolline.skipped { font-style: italic; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.errmsg { color: var(--err); margin: .4em 0 0; }
+/* approval */
+.approval { margin: 8px 0 2px; padding: 12px; border: 1px solid var(--warn-border); background: var(--warn-bg); border-radius: 12px; }
+.approval h3 { margin: 0 0 6px; font-size: .98rem; }
+.approval .act { margin: 8px 0; }
+.approval .act b { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.approval .act p { margin: 2px 0 6px; color: var(--muted); font-size: .92rem; }
+.approval pre { margin: 0; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; overflow-x: auto; font: .82rem ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.approval .btns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.approval .result { margin-top: 8px; font-weight: 600; font-size: .92rem; }
+/* empty state */
+.empty { margin: auto; text-align: center; color: var(--muted); max-width: 420px; padding: 20px; }
+.empty h2 { color: var(--text); margin: 0 0 6px; font-size: 1.3rem; }
+.suggest { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+.suggest button { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 7px 13px; cursor: pointer; font-size: .9rem; }
+.suggest button:hover { border-color: var(--accent); }
+/* composer */
+form#composer {
+  display: flex; gap: 8px; align-items: flex-end;
+  padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 1px solid var(--border);
+}
+textarea#input {
+  flex: 1; resize: none; max-height: 200px; min-height: 44px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 14px; background: var(--surface);
+  line-height: 1.4; font-size: 16px; overflow-y: auto;
+}
+textarea#input:disabled { opacity: .6; }
+#send { min-height: 44px; border-radius: 14px; padding: 0 16px; }
+/* FILES_ENABLED: adjuntar (solo aparece si GET /files/config responde) */
+#attach { min-height: 44px; border-radius: 14px; padding: 0 12px; }
+#filesbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 12px 0; }
+#filesbar:empty { display: none; }
+.chip.file button { border: 0; background: none; color: inherit; cursor: pointer; font-size: .9rem; padding: 0 2px; }
+.chip.file.err { background: var(--warn-bg, #fde8e8); }
+.row.user .files { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+/* FEEDBACK_ENABLED: 👍/👎 bajo la respuesta (solo si GET /feedback/config responde) */
+.feedback { display: flex; gap: 4px; margin: 2px 0 0 4px; }
+.feedback button { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; cursor: pointer;
+  padding: 2px 10px; font-size: .9rem; opacity: .75; }
+.feedback button[aria-pressed="true"] { opacity: 1; background: var(--chip-bg); border-color: currentColor; }
+.hint { text-align: center; font-size: .75rem; color: var(--muted); padding: 0 12px 6px; }
+@media (max-width: 560px) {
+  header h1 { display: none; }
+  .bubble { max-width: 94%; }
+  .hint { display: none; }
+  #newbtn .long { display: none; }
+}
+@media (min-width: 561px) { #newbtn .short { display: none; } }
+@media (prefers-reduced-motion: reduce) { .caret, .dots i, .chip.running .spin { animation: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <section id="authview" aria-label="Cuenta">
+    <h2 id="authtitle">Inicia sesión</h2>
+    <form id="authform">
+      <label class="reg-only" for="authname">Nombre</label>
+      <input class="reg-only" id="authname" type="text" autocomplete="name" maxlength="60">
+      <label for="authemail">Correo</label>
+      <input id="authemail" type="email" autocomplete="username" required maxlength="254">
+      <label for="authpass">Contraseña</label>
+      <input id="authpass" type="password" autocomplete="current-password" required>
+      <small class="reg-only">Al menos 10 caracteres.</small>
+      <button id="authsubmit" class="btn primary" type="submit">Entrar</button>
+      <p id="autherr" role="alert"></p>
+      <button id="authtoggle" class="linkbtn" type="button">¿No tienes cuenta? Regístrate</button>
+    </form>
+  </section>
+  <header>
+    <h1>Agente 0</h1>
+    <div class="thread-wrap">
+      <label for="thread" class="sr-only">Conversación</label>
+      <select id="thread"></select>
+      <div class="tid">hilo <span id="threadid"></span></div>
+    </div>
+    <button id="newbtn" class="btn" type="button" aria-label="Nueva conversación"><span class="long">Nueva conversación</span><span class="short" aria-hidden="true">+ Nueva</span></button>
+    <button id="renthreadbtn" class="btn auth-only" type="button" aria-label="Renombrar conversación" title="Renombrar esta conversación">✎</button>
+    <button id="delthreadbtn" class="btn auth-only" type="button" aria-label="Borrar conversación" title="Borrar esta conversación">🗑</button>
+    <button id="membtn" class="btn" type="button" aria-expanded="false" aria-controls="memories" aria-label="Recuerdos" title="Recuerdos guardados">🧠</button>
+    <button id="setbtn" class="btn" type="button" aria-expanded="false" aria-controls="settings" aria-label="Ajustes" title="Ajustes">&#9881;&#xFE0E;</button>
+    <span id="whoami" class="who auth-only"></span>
+    <button id="logoutbtn" class="btn auth-only" type="button">Salir</button>
+  </header>
+  <div id="ctxmeter" class="ctx ok" data-level="ok">
+    <span class="ctx-bar" aria-hidden="true"><i id="ctxfill"></i></span>
+    <span id="ctxtext" role="status" aria-live="off">Contexto: …</span>
+    <button id="compactbtn" class="btn small" type="button" hidden title="Resume la parte más antigua de esta conversación">Compactar ahora</button>
+  </div>
+  <section id="settings" aria-label="Ajustes">
+    <label class="local-only" for="userid">ID de usuario</label>
+    <input class="local-only" id="userid" type="text" autocomplete="off" spellcheck="false" maxlength="64">
+    <small class="local-only">Se usa para separar los recuerdos de cada persona. Se guarda en este navegador.</small>
+    <label class="switch"><input id="showtimes" type="checkbox" checked> Mostrar tiempos de respuesta</label>
+    <label for="effortsel">Esfuerzo</label>
+    <select id="effortsel">
+      <option value="auto">Automático</option>
+      <option value="bajo">Bajo</option>
+      <option value="medio">Medio</option>
+      <option value="alto">Alto</option>
+    </select>
+    <small>Automático: lo decide el asistente según el mensaje. Bajo/medio/alto lo fijan para cada mensaje.</small>
+    <div class="acct auth-only">
+      <label for="delpass">Borrar mi cuenta y todos mis datos</label>
+      <input id="delpass" type="password" autocomplete="current-password" placeholder="Tu contraseña">
+      <button id="delacctbtn" class="btn danger" type="button">Borrar cuenta</button>
+      <small id="delacctmsg" role="alert"></small>
+    </div>
+  </section>
+  <section id="memories" aria-label="Recuerdos guardados">
+    <h2>Recuerdos de <span id="memuser"></span></h2>
+    <div id="memlist"></div>
+  </section>
+  <main id="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Mensajes"></main>
+  <div id="filesbar" aria-live="polite" aria-label="Archivos adjuntos"></div>
+  <form id="composer" autocomplete="off">
+    <input type="file" id="fileinput" multiple hidden>
+    <button id="attach" class="btn" type="button" hidden aria-label="Adjuntar archivo" title="Adjuntar archivo">📎</button>
+    <label for="input" class="sr-only">Mensaje</label>
+    <textarea id="input" rows="1" placeholder="Escribe un mensaje…" enterkeyhint="send"></textarea>
+    <button id="send" class="btn primary" type="submit">Enviar</button>
+  </form>
+  <div class="hint">Enter envía · Shift+Enter nueva línea</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- storage helpers (siempre en try/catch) ---------- */
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+
+  /* ---------- markdown seguro ---------- */
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function trimUrl(u) {
+    var tail = "";
+    var m;
+    while ((m = /[.,;:!?)\]]$/.exec(u))) { tail = m[0] + tail; u = u.slice(0, -1); }
+    return [u, tail];
+  }
+  /* MATH-START */
+  // Respaldo por si el modelo escribe LaTeX (\( \), \[ \], $$ $$): lo convierte a texto legible con símbolos
+  // Unicode, <sup> y <sub>, sin librerías externas. Recibe texto ya escapado (esc) y devuelve HTML.
+  var TEX_SYMBOLS = {
+    cdot: "·", times: "×", div: "÷", pm: "±", mp: "∓", le: "≤", leq: "≤", ge: "≥", geq: "≥", neq: "≠", ne: "≠",
+    approx: "≈", equiv: "≡", sim: "∼", infty: "∞", sum: "Σ", prod: "Π", int: "∫", to: "→", rightarrow: "→",
+    leftarrow: "←", Rightarrow: "⇒", Leftrightarrow: "⇔", implies: "⇒", iff: "⇔", ldots: "…", dots: "…",
+    cdots: "⋯", in: "∈", notin: "∉", subset: "⊂", subseteq: "⊆", cup: "∪", cap: "∩", forall: "∀", exists: "∃",
+    partial: "∂", nabla: "∇", lfloor: "⌊", rfloor: "⌋", lceil: "⌈", rceil: "⌉", mid: "|", lvert: "|", rvert: "|",
+    vert: "|", circ: "∘", degree: "°", neg: "¬", land: "∧", lor: "∨", emptyset: "∅", angle: "∠", prime: "′",
+    alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε", zeta: "ζ", eta: "η",
+    theta: "θ", iota: "ι", kappa: "κ", lambda: "λ", mu: "μ", nu: "ν", xi: "ξ", pi: "π", rho: "ρ", sigma: "σ",
+    tau: "τ", upsilon: "υ", phi: "φ", varphi: "φ", chi: "χ", psi: "ψ", omega: "ω", Gamma: "Γ", Delta: "Δ",
+    Theta: "Θ", Lambda: "Λ", Xi: "Ξ", Pi: "Π", Sigma: "Σ", Phi: "Φ", Psi: "Ψ", Omega: "Ω",
+    quad: " ", qquad: "  ", mod: " mod ", bmod: " mod ", log: "log", ln: "ln", sin: "sin", cos: "cos",
+    tan: "tan", exp: "exp", max: "max", min: "min", lim: "lim", gcd: "mcd"
+  };
+  function texToHtml(t) {
+    var prev;
+    t = t.replace(/\\(left|right|big|Big|bigg|Bigg)(?![a-zA-Z])/g, "");
+    t = t.replace(/\\[,;:! ]/g, " ").replace(/\\(%|\{|\}|\$|#|&amp;|_)/g, function (m, c) { return c === "_" ? "\u0002" : c; });
+    t = t.replace(/\\(?:text|mathrm|mathbf|mathit|mathsf|mathtt|operatorname|boldsymbol)\{([^{}]*)\}/g, "$1");
+    do {
+      prev = t;
+      t = t.replace(/\\[dt]?frac\{([^{}]*)\}\{([^{}]*)\}/g, function (m, a, b) {
+        var simple = function (x) { return /^[\w.·′]+$/.test(x); };
+        return (simple(a) ? a : "(" + a + ")") + "/" + (simple(b) ? b : "(" + b + ")");
+      });
+      t = t.replace(/\\binom\{([^{}]*)\}\{([^{}]*)\}/g, "C($1, $2)");
+      t = t.replace(/\\sqrt\[([^\]]*)\]\{([^{}]*)\}/g, "<sup>$1</sup>√($2)");
+      t = t.replace(/\\sqrt\{([^{}]*)\}/g, function (m, a) { return /^\w+$/.test(a) ? "√" + a : "√(" + a + ")"; });
+      t = t.replace(/\\pmod\{([^{}]*)\}/g, " (mod $1)");
+      t = t.replace(/\^\{([^{}]*)\}/g, "<sup>$1</sup>").replace(/_\{([^{}]*)\}/g, "<sub>$1</sub>");
+    } while (t !== prev);
+    t = t.replace(/\\([a-zA-Z]+)/g, function (m, name) { return TEX_SYMBOLS.hasOwnProperty(name) ? TEX_SYMBOLS[name] : name; });
+    t = t.replace(/\^(\\?[\w′]|[+\-])/g, "<sup>$1</sup>").replace(/_([\w])/g, "<sub>$1</sub>");
+    t = t.replace(/[{}]/g, "").replace(/\u0002/g, "_").replace(/\s{2,}/g, " ");
+    return t.trim();
+  }
+  function replaceMath(s, keep) {
+    s = s.replace(/\$\$([^$]+?)\$\$|\\\[(.+?)\\\]/g, function (m, a, b) {
+      return keep('<span class="math block">' + texToHtml(a !== undefined ? a : b) + "</span>");
+    });
+    return s.replace(/\\\((.+?)\\\)/g, function (m, a) { return keep('<span class="math">' + texToHtml(a) + "</span>"); });
+  }
+  /* MATH-END */
+  function inline(s, noLinks) {
+    var stash = [];
+    function keep(html) { stash.push(html); return "\u0001" + (stash.length - 1) + "\u0001"; }
+    s = s.replace(/[\u0000\u0001]/g, "");
+    s = s.replace(/`([^`\n]+)`/g, function (m, c) { return keep("<code>" + c + "</code>"); });
+    s = replaceMath(s, keep);
+    if (!noLinks) {
+      s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, function (m, t, u) {
+        return keep('<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + inline(t, true) + "</a>");
+      });
+      s = s.replace(/https?:\/\/(?:(?!&lt;|&gt;|&quot;|&#39;)[^\s])+/g, function (m) {
+        var p = trimUrl(m);
+        return keep('<a href="' + p[0] + '" target="_blank" rel="noopener noreferrer">' + p[0] + "</a>") + p[1];
+      });
+    }
+    s = s.replace(/\*\*([^\n]+?)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^\w*])\*([^\s*][^*\n]*?)\*(?![\w*])/g, "$1<em>$2</em>");
+    s = s.replace(/\u0001(\d+)\u0001/g, function (m, i) { return stash[+i]; });
+    return s;
+  }
+  function joinDisplayMath(src) {
+    return src.split(/(```[\s\S]*?(?:```|$))/).map(function (part, k) {
+      if (k % 2) return part;
+      return part.replace(/\\\[([\s\S]+?)\\\]|\$\$([\s\S]+?)\$\$/g, function (m) { return m.replace(/\s*\n\s*/g, " "); });
+    }).join("");
+  }
+  function renderMarkdown(src) {
+    var lines = esc(joinDisplayMath(src.replace(/\r\n?/g, "\n"))).split("\n");
+    var out = [];
+    var i = 0;
+    var reFence = /^\s*```\s*([\w+-]*)\s*$/;
+    var reHead = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
+    var reUl = /^\s*[-*+]\s+(.*)$/;
+    var reOl = /^\s*(\d+)[.)]\s+(.*)$/;
+    var reHr = /^\s*([-*_])(\s*\1){2,}\s*$/;
+    var reQuote = /^\s*&gt;\s?(.*)$/;
+    function isBlockStart(l) {
+      return reFence.test(l) || reHead.test(l) || reUl.test(l) || reOl.test(l) || reHr.test(l) || reQuote.test(l);
+    }
+    while (i < lines.length) {
+      var l = lines[i], m;
+      if (/^\s*$/.test(l)) { i++; continue; }
+      if ((m = reFence.exec(l))) {
+        var code = [];
+        i++;
+        while (i < lines.length && !reFence.test(lines[i])) { code.push(lines[i]); i++; }
+        i++; // cierre (o fin del texto si aún llega en streaming)
+        out.push("<pre><code>" + code.join("\n") + "</code></pre>");
+        continue;
+      }
+      if ((m = reHead.exec(l))) {
+        var lv = Math.min(6, m[1].length + 1);
+        out.push("<h" + lv + ">" + inline(m[2]) + "</h" + lv + ">");
+        i++; continue;
+      }
+      // tabla: | a | b |  seguida de |---|---|
+      if (/^\s*\|.*\|\s*$/.test(l) && i + 1 < lines.length && /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(lines[i + 1])) {
+        var cells = function (row) { return row.trim().replace(/^\||\|$/g, "").split("|").map(function (c) { return inline(c.trim()); }); };
+        var html = "<div class=\"tbl\"><table><thead><tr><th>" + cells(l).join("</th><th>") + "</th></tr></thead><tbody>";
+        i += 2;
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { html += "<tr><td>" + cells(lines[i]).join("</td><td>") + "</td></tr>"; i++; }
+        out.push(html + "</tbody></table></div>");
+        continue;
+      }
+      if (reHr.test(l) && !reUl.test(l)) { out.push("<hr>"); i++; continue; }
+      if (reQuote.test(l)) {
+        var q = [];
+        while (i < lines.length && (m = reQuote.exec(lines[i]))) { q.push(inline(m[1])); i++; }
+        out.push("<blockquote><p>" + q.join("<br>") + "</p></blockquote>");
+        continue;
+      }
+      var isUl = reUl.test(l), isOl = reOl.test(l);
+      if (isUl || isOl) {
+        var re = isUl ? reUl : reOl, items = [], start = 1;
+        if (isOl) start = +reOl.exec(l)[1];
+        while (i < lines.length) {
+          var cur = lines[i];
+          if ((m = re.exec(cur)) && !(isUl && reHr.test(cur))) {
+            items.push(inline(isUl ? m[1] : m[2])); i++;
+          } else if (/^\s*$/.test(cur)) {
+            var j = i + 1;
+            while (j < lines.length && /^\s*$/.test(lines[j])) j++;
+            if (j < lines.length && re.test(lines[j])) { i = j; } else break;
+          } else if (/^\s{2,}\S/.test(cur) && !isBlockStart(cur.trim() ? cur : "") && items.length) {
+            items[items.length - 1] += "<br>" + inline(cur.trim()); i++;
+          } else if (/^\s{2,}\S/.test(cur) && items.length) {
+            // sublista simple: se aplana como viñeta continuada
+            var sm = reUl.exec(cur) || reOl.exec(cur);
+            items[items.length - 1] += "<br>• " + inline(sm[sm.length - 1]); i++;
+          } else break;
+        }
+        var tag = isUl ? "ul" : "ol";
+        out.push("<" + tag + (isOl && start !== 1 ? ' start="' + start + '"' : "") + "><li>" + items.join("</li><li>") + "</li></" + tag + ">");
+        continue;
+      }
+      var para = [];
+      while (i < lines.length && !/^\s*$/.test(lines[i]) && (para.length === 0 || !isBlockStart(lines[i]))) {
+        para.push(inline(lines[i])); i++;
+      }
+      out.push("<p>" + para.join("<br>") + "</p>");
+    }
+    return out.join("");
+  }
+  function withCaret(html) {
+    var caret = '<span class="caret" aria-hidden="true"></span>';
+    var r = /(<\/(?:p|li|h[1-6])>)((?:<\/(?:ul|ol)>)*)$/;
+    if (r.test(html)) return html.replace(r, caret + "$1$2");
+    return html + caret;
+  }
+
+  /* ---------- estado ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var messagesEl = $("messages"), inputEl = $("input"), sendBtn = $("send"),
+      threadSel = $("thread"), newBtn = $("newbtn"), setBtn = $("setbtn"),
+      settingsEl = $("settings"), userEl = $("userid"),
+      memBtn = $("membtn"), memEl = $("memories"), memListEl = $("memlist"), timesEl = $("showtimes"),
+      effortEl = $("effortsel"),
+      ctxEl = $("ctxmeter"), ctxFill = $("ctxfill"), ctxText = $("ctxtext"), compactBtn = $("compactbtn");
+
+  var state = { threadId: null, threads: [], userId: "usuario", streaming: false, pending: 0, loadSeq: 0, newQueued: false,
+                ctx: null, compacting: false, auth: { enabled: false, user: null, csrf: "" } };
+
+  // fetch con la cabecera CSRF en las peticiones que cambian estado; un 401 con cuentas activas vuelve al login
+  async function apiFetch(url, opts) {
+    opts = opts || {};
+    var method = (opts.method || "GET").toUpperCase();
+    var headers = Object.assign({}, opts.headers || {});
+    if (state.auth.csrf && method !== "GET") headers["X-CSRF-Token"] = state.auth.csrf;
+    var r = await fetch(url, Object.assign({}, opts, { headers: headers, credentials: "same-origin" }));
+    if (r.status === 401 && state.auth.enabled && url.indexOf("/auth/") !== 0) showAuth("Tu sesión terminó. Vuelve a iniciar sesión.");
+    return r;
+  }
+  var NEW_LABEL = "Nueva conversación", NEW_QUEUED_LABEL = "Nueva al terminar…";
+  // lo lee el modelo (resultado de la herramienta rechazada): en inglés, como todo lo que lee el modelo
+  var REJECT_MSG = "The user declined this action. Do not run it again; answer without it.";
+
+  function newId() {
+    var id;
+    try { id = crypto.randomUUID().replace(/-/g, ""); }
+    catch (e) { id = (Date.now().toString(36) + Math.random().toString(36).slice(2)); }
+    return id.slice(0, 10);
+  }
+  function loadThreads() {
+    var arr = [];
+    try {
+      var raw = JSON.parse(lsGet("threads") || "[]");
+      if (Array.isArray(raw)) raw.forEach(function (t) {
+        if (typeof t === "string") arr.push({ id: t, title: "" });
+        else if (t && typeof t.id === "string") arr.push({ id: t.id, title: String(t.title || "") });
+      });
+    } catch (e) { /* ignore */ }
+    return arr;
+  }
+  function saveThreads() { if (!state.auth.enabled) lsSet("threads", JSON.stringify(state.threads.slice(0, 100))); }
+  function touchThread(id, title) {
+    var idx = -1;
+    state.threads.forEach(function (t, k) { if (t.id === id) idx = k; });
+    var t = idx >= 0 ? state.threads.splice(idx, 1)[0] : { id: id, title: "" };
+    if (title && !t.title) t.title = title.replace(/\s+/g, " ").slice(0, 40);
+    state.threads.unshift(t);
+    saveThreads();
+    renderThreadSelect();
+  }
+  function setTitleIfMissing(id, title) {
+    state.threads.forEach(function (t) { if (t.id === id && !t.title && title) t.title = title.replace(/\s+/g, " ").slice(0, 40); });
+    saveThreads(); renderThreadSelect();
+  }
+  function renderThreadSelect() {
+    threadSel.innerHTML = "";
+    state.threads.forEach(function (t) {
+      var o = document.createElement("option");
+      o.value = t.id;
+      o.textContent = (t.title ? t.title + " · " : "Nueva · ") + t.id;
+      threadSel.appendChild(o);
+    });
+    threadSel.value = state.threadId;
+  }
+  function setUrlThread(id) {
+    try {
+      var u = new URL(location.href);
+      u.searchParams.set("thread", id);
+      history.replaceState(null, "", u.toString());
+    } catch (e) { /* ignore */ }
+  }
+  function userId() { return (state.userId || "").trim() || "usuario"; }
+
+  /* ---------- UI helpers ---------- */
+  function nearBottom() { return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80; }
+  function scrollDown(force) { if (force || nearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight; }
+  function updateControls() {
+    var locked = state.streaming || state.pending > 0;
+    inputEl.disabled = locked;
+    sendBtn.disabled = locked;
+    threadSel.disabled = locked;
+    compactBtn.disabled = locked || state.compacting;
+    // "Nueva conversación" nunca se deshabilita: con un turno en curso, el clic queda en cola (visible) y se
+    // ejecuta al terminar; un botón deshabilitado se tragaba el clic sin avisar
+    newBtn.classList.toggle("queued", state.newQueued);
+    newBtn.querySelector(".long").textContent = state.newQueued ? NEW_QUEUED_LABEL : NEW_LABEL;
+    newBtn.querySelector(".short").textContent = state.newQueued ? "Nueva…" : "+ Nueva";
+    newBtn.title = state.newQueued ? "Se abrirá una conversación nueva en cuanto termine esta respuesta (clic para cancelar)" : "";
+    newBtn.setAttribute("aria-label", state.newQueued ? NEW_QUEUED_LABEL : NEW_LABEL);
+    if (!locked) inputEl.placeholder = "Escribe un mensaje…";
+    else inputEl.placeholder = state.pending > 0 ? "Esperando tu aprobación…" : "Generando respuesta…";
+  }
+  function autosize() {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + "px";
+  }
+  function clearMessages() { messagesEl.innerHTML = ""; }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function removeEmpty() { var e = messagesEl.querySelector(".empty"); if (e) e.remove(); }
+  function showEmpty() {
+    clearMessages();
+    var box = el("div", "empty");
+    box.appendChild(el("h2", null, "¿En qué te ayudo?"));
+    box.appendChild(el("p", null, "Puedo buscar en la web, hacer cálculos, consultar la hora y recordar cosas por ti."));
+    var sg = el("div", "suggest");
+    ["¿Qué hora es en Tokio?", "Calcula 15% de 2480", "Busca las últimas noticias de IA", "Recuerda que me gusta el café sin azúcar"].forEach(function (t) {
+      var b = el("button", null, t); b.type = "button";
+      b.addEventListener("click", function () { if (!inputEl.disabled) send(t); });
+      sg.appendChild(b);
+    });
+    box.appendChild(sg);
+    messagesEl.appendChild(box);
+  }
+
+  function addUserBubble(text, files) {
+    removeEmpty();
+    var row = el("div", "row user"), b = el("div", "bubble", text);
+    if (files && files.length) {
+      var box = el("div", "files");
+      files.forEach(function (f) { box.appendChild(el("span", "chip file", "📎 " + f.name)); });
+      b.appendChild(box);
+    }
+    row.appendChild(b); messagesEl.appendChild(row); scrollDown(true);
+  }
+
+  /* ---------- archivos (FILES_ENABLED) ---------- */
+  var files = { enabled: false, pending: [] };
+  var filesBar = $("filesbar"), fileInput = $("fileinput"), attachBtn = $("attach");
+  function renderPending() {
+    filesBar.textContent = "";
+    files.pending.forEach(function (f, i) {
+      var chip = el("span", "chip file" + (f.error ? " err" : ""), (f.error ? "⚠️ " : f.file_id ? "📎 " : "⏳ ") + f.name + (f.error ? ": " + f.error : ""));
+      var x = el("button", null, "✕");
+      x.type = "button"; x.setAttribute("aria-label", "Quitar " + f.name);
+      x.onclick = function () {
+        files.pending.splice(i, 1); renderPending();
+        if (f.file_id) apiFetch("/threads/" + encodeURIComponent(f.thread) + "/files/" + f.file_id + "?user_id=" + encodeURIComponent(userId()), { method: "DELETE" });
+      };
+      chip.appendChild(x); filesBar.appendChild(chip);
+    });
+  }
+  async function uploadFile(file) {
+    var entry = { name: file.name, thread: state.threadId };
+    files.pending.push(entry); renderPending();
+    var fd = new FormData(); fd.append("file", file); fd.append("user_id", userId());
+    try {
+      var r = await apiFetch("/threads/" + encodeURIComponent(entry.thread) + "/files", { method: "POST", body: fd });
+      var data = await r.json().catch(function () { return {}; });
+      if (r.ok) { entry.file_id = data.file_id; entry.name = data.name; }
+      else entry.error = typeof data.detail === "string" ? data.detail : "no se pudo subir (" + r.status + ")";
+    } catch (e) { entry.error = "no se pudo subir"; }
+    renderPending();
+  }
+  attachBtn.onclick = function () { fileInput.click(); };
+  fileInput.onchange = function () {
+    Array.prototype.forEach.call(fileInput.files, uploadFile);
+    fileInput.value = "";
+  };
+  function clearPending() { files.pending = []; renderPending(); }
+  var fbEnabled = false;
+  async function checkFeedback() {
+    try { var r = await fetch("/feedback/config", { credentials: "same-origin" }); fbEnabled = r.ok; } catch (e) { /* sin feedback */ }
+  }
+  async function checkFiles() {
+    try { var r = await fetch("/files/config", { credentials: "same-origin" }); if (!r.ok) return;
+      var cfg = await r.json(); files.enabled = true; attachBtn.hidden = false;
+      if (cfg.extensions) fileInput.accept = cfg.extensions.join(",");
+    } catch (e) { /* sin archivos */ }
+  }
+  // el turno fue sin herramientas porque la conversación ya pesa más que TURN_TOKEN_CAP
+  var NO_TOOLS_NOTE = "⚠️ Sin herramientas: esta conversación ya supera el tope por mensaje; abre una nueva para buscar";
+  function addAssistantStatic(text, original, verify, noTools) {
+    var row = el("div", "row assistant"), b = el("div", "bubble"), seg = el("div", "seg");
+    seg.innerHTML = renderMarkdown(text);
+    b.appendChild(seg);
+    if (noTools) b.appendChild(el("div", "vnote corrected", NO_TOOLS_NOTE));
+    if (original) b.appendChild(correctionNote(original, verify));
+    else if (verify && verify.status === "unverified")  // ANSWER_VERIFY no corrió: el mensaje llegó a su tope
+      b.appendChild(el("div", "vnote corrected", "⚠️ " + (verify.notes || []).join(" · ")));
+    row.appendChild(b); messagesEl.appendChild(row);
+  }
+  // nota de ANSWER_VERIFY con la respuesta original desplegable
+  function correctionNote(original, v) {
+    v = v || {};
+    var note = el("div", "vnote corrected");
+    var head = v.status === "kept_original" ? "⚠️ Se conservó la respuesta original" : "✎ Corregida: la verificación encontró afirmaciones o citas sin respaldo en las fuentes.";
+    if (v.notes && v.notes.length) head += " (" + v.notes.join(" · ") + ")";
+    note.appendChild(el("span", null, head));
+    var det = el("details"), orig = el("div", "orig seg");
+    orig.innerHTML = renderMarkdown(String(original || ""));
+    det.appendChild(el("summary", null, "ver original")); det.appendChild(orig); note.appendChild(det);
+    return note;
+  }
+  function addToolLine(name, status, reason) {
+    // líneas consecutivas de la misma herramienta (y el mismo estado) se agrupan: "🧮 Cálculo ×47"
+    var skipped = status === "skipped";
+    var label = skipped ? notRunLabel(name, reason) : (TOOL_DONE[name] || ("usó " + name));
+    var key = name + (skipped ? ":skipped:" + (reason || "") : "");
+    var last = messagesEl.lastElementChild;
+    if (last && last.classList.contains("toolline") && last.dataset.tool === key) {
+      last.dataset.n = String(+last.dataset.n + 1);
+      last.textContent = label + " ×" + last.dataset.n;
+      return;
+    }
+    var line = el("div", "toolline" + (skipped ? " skipped" : ""), label);
+    line.dataset.tool = key; line.dataset.n = "1";
+    messagesEl.appendChild(line);
+  }
+
+  /* ---------- burbuja del asistente en streaming ---------- */
+  /* TOOL-NAMES-START */
+  // Las herramientas se llaman en inglés; la interfaz muestra etiquetas en español. Los hilos guardados antes del
+  // cambio traen los nombres antiguos: se traducen al nombre actual antes de buscar la etiqueta.
+  var OLD_TOOL_NAMES = {
+    buscar_web: "web_search", calculadora: "calculator", fecha_hora: "current_datetime",
+    guardar_recuerdo: "save_memory", buscar_recuerdos: "search_memories", actualizar_recuerdo: "update_memory",
+    investigador_profundo: "deep_research", enviar_email_simulado: "send_simulated_email"
+  };
+  function canonicalTool(name) { return OLD_TOOL_NAMES[name] || name; }
+  var TOOL_LABELS = {
+    web_search: "🔎 Buscando en la web…",
+    deep_research: "🧠 Investigando a fondo…",
+    calculator: "🧮 Calculando…",
+    current_datetime: "🕒 Consultando la hora…",
+    save_memory: "💾 Guardando recuerdo…",
+    search_memories: "📚 Buscando recuerdos…",
+    update_memory: "✏️ Actualizando recuerdo…",
+    send_simulated_email: "✉️ Enviando email simulado…",
+    check_python_syntax: "🐍 Revisando la sintaxis…",
+    retrieve_tools: "🧰 Buscando herramientas…",
+    read_file: "📄 Leyendo el archivo…",
+    search_in_file: "📄 Buscando en el archivo…"
+  };
+  var TOOL_DONE = {
+    web_search: "🔎 Búsqueda web",
+    deep_research: "🧠 Investigación",
+    calculator: "🧮 Cálculo",
+    current_datetime: "🕒 Hora consultada",
+    save_memory: "💾 Recuerdo guardado",
+    search_memories: "📚 Recuerdos consultados",
+    update_memory: "✏️ Recuerdo actualizado",
+    send_simulated_email: "✉️ Email simulado",
+    check_python_syntax: "🐍 Sintaxis revisada",
+    retrieve_tools: "🧰 Herramientas",
+    read_file: "📄 Archivo leído",
+    search_in_file: "📄 Búsqueda en el archivo"
+  };
+  // la herramienta no se ejecutó (límite de una búsqueda por paso, tope del mensaje, rechazada): nunca "✓"
+  var NOT_RUN = {
+    web_search: "🔎 Búsqueda no realizada",
+    deep_research: "🧠 Investigación no realizada",
+    send_simulated_email: "✉️ Email no enviado"
+  };
+  // no se ejecutó por una razón que no es un fallo: save_memory con un recuerdo equivalente ya guardado
+  var NOT_RUN_REASON = { duplicate: "💾 Ya estaba guardado" };
+  function notRunLabel(name, reason) {
+    return NOT_RUN_REASON[reason] || NOT_RUN[name] || ((TOOL_DONE[name] || name) + " (no realizada)");
+  }
+  /* TOOL-NAMES-END */
+  var ENGINES = { duckduckgo: "vía DuckDuckGo", openai_web_search: "vía OpenAI web search" };
+
+  /* BREAKDOWN-START */
+  // Desglose de un turno a partir de sus eventos [{t: ms desde el envío, type, name}] y la duración total endT.
+  // "thinking" es lo que queda: el modelo razonando y escribiendo (incluye el tiempo de red).
+  function computeBreakdown(events, endT) {
+    var r = { total: endT, classify: 0, tools: 0, verify: 0, summary: 0, thinking: 0 };
+    var running = 0, toolFrom = 0, lastText = null, prev = 0, verifyFrom = null;
+    events.forEach(function (e) {
+      if (e.type === "effort") r.classify = e.t;  // el servidor clasifica el esfuerzo antes de abrir el stream
+      else if (e.type === "tool_start") { if (running++ === 0) toolFrom = e.t; }
+      else if (e.type === "tool_end") { if (running > 0 && --running === 0) r.tools += e.t - toolFrom; }
+      else if (e.type === "token") lastText = e.t;
+      else if (e.type === "phase" && e.name === "verifying") verifyFrom = e.t;
+      else if (e.type === "verify") r.verify += e.t - (verifyFrom !== null ? verifyFrom : (lastText !== null ? lastText : prev));
+      else if (e.type === "summarized") r.summary += e.t - prev;  // el aviso llega al terminar de resumir
+      prev = e.t;
+    });
+    if (running > 0) r.tools += endT - toolFrom;  // herramientas que no terminaron (error o corte)
+    r.thinking = Math.max(0, r.total - r.classify - r.tools - r.verify - r.summary);
+    return r;
+  }
+  /* BREAKDOWN-END */
+  function secs(ms) { return (ms / 1000).toFixed(1) + " s"; }
+
+  function AssistantBubble() {
+    var self = this;
+    this.row = el("div", "row assistant");
+    this.bubble = el("div", "bubble");
+    this.row.appendChild(this.bubble);
+    // tiempos: contador en vivo con la fase actual y, al terminar, el total con su desglose
+    this.t0 = performance.now(); this.tev = []; this.running = []; this.verifying = false; this.lastTok = -1e9;
+    this.timing = el("div", "timing"); this.timing.setAttribute("role", "button"); this.timing.tabIndex = 0;
+    this.timing.addEventListener("click", function () { self.timing.classList.toggle("open"); });
+    this.timing.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); self.timing.classList.toggle("open"); } });
+    this.row.appendChild(this.timing);
+    this.tick = setInterval(function () { self.liveTime(); }, 200);
+    this.dots = el("span", "dots"); this.dots.setAttribute("aria-label", "Pensando");
+    this.dots.innerHTML = "<i></i><i></i><i></i>";
+    this.bubble.appendChild(this.dots);
+    this.seg = null; this.segText = ""; this.raf = 0; this.chips = {}; this.live = true;
+    removeEmpty();
+    messagesEl.appendChild(this.row);
+    this.render = function () {
+      self.raf = 0;
+      if (!self.seg) return;
+      var stick = nearBottom();
+      var html = renderMarkdown(self.segText);
+      self.seg.innerHTML = self.live ? withCaret(html) : html;
+      if (stick) scrollDown(true);
+    };
+    this.schedule = function () { if (!self.raf) self.raf = requestAnimationFrame(self.render); };
+  }
+  AssistantBubble.prototype.hideDots = function () { if (this.dots) { this.dots.remove(); this.dots = null; } };
+  AssistantBubble.prototype.closeSeg = function () {
+    if (this.seg) {
+      var old = this.seg; old.innerHTML = renderMarkdown(this.segText);
+      if (this.raf) { cancelAnimationFrame(this.raf); this.raf = 0; }
+    }
+    this.seg = null; this.segText = "";
+  };
+  AssistantBubble.prototype.token = function (t) {
+    this.hideDots();
+    if (!this.seg) { this.seg = el("div", "seg"); this.bubble.appendChild(this.seg); this.segText = ""; }
+    this.segText += t;
+    this.schedule();
+  };
+  var EFFORT_LABELS = { bajo: "⚡ Esfuerzo bajo", medio: "⚙️ Esfuerzo medio", alto: "🧠 Esfuerzo alto" };
+  var EFFORT_SOURCES = { manual: "elegido en Ajustes", auto: "automático", regla: "mensaje corto" };
+  AssistantBubble.prototype.effort = function (ev) {
+    var chip = el("div", "chip done");
+    this.effortText = "esfuerzo " + ev.level + (EFFORT_SOURCES[ev.source] ? " (" + EFFORT_SOURCES[ev.source] + ")" : "");
+    chip.appendChild(el("span", "lbl", (EFFORT_LABELS[ev.level] || ("Esfuerzo " + ev.level)) + (ev.source === "manual" ? " · elegido" : "")));
+    chip.title = "Hasta " + ev.max_calls + " llamadas al modelo · razonamiento " + (ev.reasoning || "por defecto") +
+      (EFFORT_SOURCES[ev.source] ? " · " + EFFORT_SOURCES[ev.source] : "");
+    this.bubble.insertBefore(chip, this.bubble.firstChild);
+  };
+  // Un chip por herramienta, con contador (p. ej. "🧮 Cálculo ×47"), en vez de un chip por llamada.
+  AssistantBubble.prototype.group = function (name) {
+    var g = this.chips[name];
+    if (!g) {
+      this.closeSeg();
+      g = this.chips[name] = { name: name, total: 0, done: 0, errors: 0, engine: null, searches: 0, last: "", chip: el("div", "chip") };
+      this.bubble.appendChild(g.chip);
+    }
+    return g;
+  };
+  AssistantBubble.prototype.paint = function (g) {
+    var running = g.done < g.total, chip = g.chip, skipped = g.skipped || 0, dupes = g.dupes || 0;
+    var allSkipped = !running && skipped === g.total;  // ninguna se ejecutó: nunca "✓"
+    chip.className = "chip " + (running ? "running" : allSkipped ? "skipped" : (g.errors === g.total ? "error" : "done"));
+    chip.textContent = "";
+    if (running && g.awaiting) chip.appendChild(el("span", "state", "✋"));  // la tarjeta espera: aún no corre
+    else if (running) chip.appendChild(el("span", "spin"));
+    else {
+      var mark = allSkipped ? "–" : (g.errors === g.total ? "✗" : "✓");
+      var st = el("span", "state", mark);
+      st.setAttribute("aria-label", allSkipped ? "no realizada" : (g.errors === g.total ? "con error" : "hecho"));
+      chip.appendChild(st);
+    }
+    var label = running && g.awaiting ? ((TOOL_DONE[g.name] || "").split(" ")[0] + " Esperando tu confirmación").trim()
+              : running ? (TOOL_LABELS[g.name] || ("⚙️ Usando " + g.name + "…"))
+                        : allSkipped ? notRunLabel(g.name, dupes === skipped ? "duplicate" : null)
+                        : (TOOL_DONE[g.name] || ("⚙️ " + g.name));
+    var ran = g.total - skipped;
+    if (!allSkipped && ran > 1) label += " ×" + ran;
+    if (allSkipped && g.total > 1) label += " ×" + g.total;
+    chip.appendChild(el("span", "lbl", label));
+    if (g.searches) {
+      var extra = g.searches + (g.searches === 1 ? " búsqueda" : " búsquedas");
+      if (running && g.last) extra += " · «" + g.last.slice(0, 60) + "»";
+      chip.appendChild(el("span", "eng", extra));
+    }
+    if (g.found && g.found.length) chip.appendChild(el("span", "eng", g.found.join(", ")));
+    if (g.engine) chip.appendChild(el("span", "eng", ENGINES[g.engine] || ("vía " + g.engine)));
+    if (g.errors && g.errors < g.total) chip.appendChild(el("span", "eng", "· " + g.errors + " fallaron"));
+    var others = skipped - dupes;  // no realizadas por otra razón (tope, rechazo...)
+    if (dupes && (!allSkipped || dupes < skipped)) chip.appendChild(el("span", "eng", "· " + dupes + (dupes === 1 ? " ya estaba guardado" : " ya estaban guardados")));
+    if (others && !allSkipped) chip.appendChild(el("span", "eng", "· " + others + (others === 1 ? " no realizada" : " no realizadas")));
+    scrollDown(false);
+  };
+  AssistantBubble.prototype.toolStart = function (ev) {
+    this.hideDots();
+    var g = this.group(ev.name);
+    g.total++;
+    try { g.chip.title = JSON.stringify(ev.args || {}); } catch (e) { /* ignore */ }
+    this.paint(g);
+  };
+  /* TOOL-LABELS-START */
+  // Las herramientas responden al modelo en inglés; la interfaz no muestra ese texto tal cual: lo pasa a español.
+  var TOOL_MESSAGES = [
+    [/^Memory saved\.$/, "Recuerdo guardado"],
+    [/^Memory updated\.$/, "Recuerdo actualizado"],
+    [/^No relevant memories for this query\.$/, "No hay recuerdos relevantes para esto"],
+    [/^No memories saved for this user\.$/, "Sin recuerdos guardados"],
+    [/^Not saved: /, "No se guardó: no lo dijiste en la conversación"],
+    [/^Not updated: there is no memory/, "No se actualizó: ese recuerdo no existe"],
+    [/^Not updated: /, "No se actualizó: no lo dijiste en la conversación"],
+    [/^Not run: the web search budget/, "No se ejecutó: se agotó el presupuesto de búsquedas de este mensaje"],
+    [/^Not run: one search per step/, "No se ejecutó: una sola búsqueda por paso"],
+    [/^Not run: the user declined the in-depth research/, "Sin investigación a fondo (lo rechazaste)"],
+    [/^Not run: this conversation already has research/, "Reutilizó la investigación anterior de esta conversación"],
+    [/^Not run: this message is close to its token cap/, "No se ejecutó: el mensaje está cerca de su tope de tokens"],
+    [/^OK: no syntax errors\./, "Sintaxis correcta"],
+    [/^SyntaxError at line (\d+), column (\d+): ([^\n]*)[\s\S]*$/, "Error de sintaxis en la línea $1, columna $2: $3"],
+    [/^SyntaxError: /, "Error de sintaxis: "],
+    [/^Not checked: /, "No se pudo revisar la sintaxis"],
+    [/^Not run: /, "No se ejecutó: se alcanzó el límite de usos de esta herramienta en este mensaje"],
+    [/^No results\.$/, "Sin resultados"],
+    [/^Tool error \(([^)]*)\): ([\s\S]*?)\. Try another approach\.$/, "Error en la herramienta ($1): $2"],
+    [/^Error: division by zero\.$/, "Error: división entre cero"],
+    [/^Error: invalid expression: /, "Error: expresión inválida: "],
+    [/^Error: unknown or unavailable time zone: /, "Error: zona horaria desconocida: "]
+  ];
+  function toolOutputLabel(out) {
+    for (var i = 0; i < TOOL_MESSAGES.length; i++) {
+      // con $1 o terminada en ": " se conserva el detalle; si no, solo la etiqueta (el resto es instrucción al modelo)
+      var label = TOOL_MESSAGES[i][1];
+      if (TOOL_MESSAGES[i][0].test(out)) return /\$\d|: $/.test(label) ? out.replace(TOOL_MESSAGES[i][0], label) : label;
+    }
+    return out.replace(/^\[engine: [^\]]*\]\n?/, "")
+              .replace(/\(keyword match, less reliable\)/g, "(coincidencia por palabras, menos confiable)")
+              .replace(/^(\[(Research stopped|The researcher's final summary)[^\]]*\]\n?)+/, "[Investigación parcial] ");
+  }
+  /* TOOL-LABELS-END */
+  AssistantBubble.prototype.toolEnd = function (ev) {
+    this.hideDots();
+    var g = this.group(ev.name);
+    if (g.total <= g.done) g.total++;  // tool_end sin tool_start previo
+    g.done++;
+    if (ev.status === "error") g.errors++;
+    if (ev.status === "skipped") g.skipped = (g.skipped || 0) + 1;
+    if (ev.status === "skipped" && ev.reason === "duplicate") g.dupes = (g.dupes || 0) + 1;
+    if (ev.engine) g.engine = ev.engine;
+    // bigtool: "Available tools: ['acos', 'log2']" -> herramientas encontradas
+    var av = /^Available tools:\s*\[(.*)\]/.exec(ev.output || "");
+    if (av) {
+      g.found = g.found || [];
+      av[1].split(",").forEach(function (s) { s = s.trim().replace(/^['"]|['"]$/g, ""); if (s && g.found.indexOf(s) < 0) g.found.push(s); });
+    }
+    this.paint(g);
+    if (ev.output) g.chip.title = toolOutputLabel(String(ev.output)).slice(0, 500);
+  };
+  // avance del investigador profundo: búsquedas internas mientras trabaja
+  AssistantBubble.prototype.progress = function (ev) {
+    var g = this.chips.deep_research;
+    if (!g) return;
+    if (ev.name === "web_search") { g.searches++; g.last = (ev.args && (ev.args.query || ev.args.consulta)) || ""; }
+    this.paint(g);
+  };
+  // la conversación anterior se resumió (MEMORY_SUMMARIZE)
+  AssistantBubble.prototype.summarized = function (ev) {
+    var chip = el("div", "chip done");
+    chip.appendChild(el("span", "lbl", compactionLabel(ev) || "🗜️ Conversación anterior resumida"));
+    chip.title = "Los mensajes viejos se reemplazaron por un resumen; los datos clave se guardan aparte como recuerdos.";
+    this.bubble.insertBefore(chip, this.bubble.firstChild);
+  };
+  // ANSWER_VERIFY: "ok" deja una nota; "corrected" reemplaza la respuesta y deja ver la original (nunca en silencio);
+  // "unverified" (el mensaje llegó a su tope y no se verificó) deja la nota "⚠️ No verificada…"
+  AssistantBubble.prototype.verify = function (ev) {
+    this.hideDots(); this.closeSeg();
+    if (typeof ev.text !== "string") {  // el texto no cambió
+      var notes = ev.notes || [];
+      this.bubble.appendChild(el("div", "vnote" + (notes.length ? " corrected" : ""),
+        ev.status === "ok" && !notes.length ? "✔ Verificada contra las fuentes consultadas" : "⚠️ " + notes.join(" · ")));
+      return;
+    }
+    var segs = this.bubble.querySelectorAll(".seg"), last = segs[segs.length - 1];
+    if (!last) { last = el("div", "seg"); this.bubble.appendChild(last); }
+    last.innerHTML = renderMarkdown(ev.text);
+    this.bubble.appendChild(correctionNote(ev.original, ev));
+    scrollDown(false);
+  };
+  AssistantBubble.prototype.error = function (msg) {
+    this.hideDots(); this.closeSeg();
+    this.bubble.classList.add("err");
+    var p = el("p", "errmsg", "⚠️ " + msg);
+    p.setAttribute("role", "alert");
+    this.bubble.appendChild(p);
+    scrollDown(true);
+  };
+  AssistantBubble.prototype.mark = function (ev) {
+    var t = performance.now() - this.t0;
+    this.tev.push({ t: t, type: ev.type, name: ev.type === "phase" ? ev.phase : ev.name });
+    if (ev.type === "tool_start") this.running.push(ev.name);
+    else if (ev.type === "tool_end") { var i = this.running.indexOf(ev.name); if (i >= 0) this.running.splice(i, 1); }
+    else if (ev.type === "token") this.lastTok = t;
+    else if (ev.type === "phase") this.verifying = ev.phase === "verifying";
+    else if (ev.type === "verify") this.verifying = false;
+  };
+  AssistantBubble.prototype.liveTime = function () {
+    var t = performance.now() - this.t0, phase;
+    var last = this.running[this.running.length - 1], lg = last && this.chips[last];
+    if (lg && lg.awaiting) phase = "esperando tu confirmación";  // la tarjeta espera: la herramienta aún no corre
+    else if (this.running.length) phase = (TOOL_LABELS[last] || "usando herramientas…");
+    else if (this.verifying) phase = "verificando…";
+    else if (t - this.lastTok < 1500) phase = "escribiendo…";
+    else phase = "pensando…";
+    this.timing.textContent = "⏱ " + secs(t) + " · " + phase;
+  };
+  AssistantBubble.prototype.stopTiming = function () {
+    if (!this.tick) return;
+    clearInterval(this.tick); this.tick = 0;
+    var b = computeBreakdown(this.tev, performance.now() - this.t0), parts = [];
+    if (b.classify) parts.push("clasificar esfuerzo " + secs(b.classify));
+    parts.push("pensando " + secs(b.thinking));
+    if (b.tools) parts.push("herramientas " + secs(b.tools));
+    if (b.verify) parts.push("verificación " + secs(b.verify));
+    if (b.summary) parts.push("resumen " + secs(b.summary));
+    this.timing.textContent = "";
+    var head = "⏱ " + secs(b.total) + (this.effortText ? " · " + this.effortText : "");
+    this.timing.appendChild(document.createTextNode(head));
+    this.timing.appendChild(el("span", "tdetail", " · " + parts.join(" · ")));
+    this.timing.title = (this.effortText ? this.effortText + "\n" : "") + parts.join("\n");
+    this.timing.setAttribute("aria-label", "Tiempo de respuesta " + head.slice(2) + ": " + parts.join(", "));
+  };
+  AssistantBubble.prototype.finish = function () {
+    if (this.researchResult) { this.researchResult.textContent = "✓ Aprobada"; this.researchResult = null; }
+    this.stopTiming();
+    this.live = false; this.hideDots();
+    if (this.seg) { this.closeSeg(); }
+    if (this.noTools && !this.noToolsShown) {
+      this.noToolsShown = true;
+      this.bubble.appendChild(el("div", "vnote corrected", NO_TOOLS_NOTE));
+    }
+    // marca como abortados los chips que sigan "en curso"
+    var spinning = this.bubble.querySelectorAll(".chip.running");
+    Array.prototype.forEach.call(spinning, function (c) { c.classList.remove("running"); var s = c.querySelector(".spin"); if (s) s.remove(); });
+    if (!this.bubble.children.length) this.row.remove();
+  };
+  // 👍/👎 del último turno de esta respuesta (run_id del evento "run"); se puede cambiar de opinión
+  AssistantBubble.prototype.feedback = function (runId) {
+    if (this.fbBox) this.fbBox.remove();
+    var box = el("div", "feedback"), btns = [];
+    box.setAttribute("role", "group"); box.setAttribute("aria-label", "¿Te sirvió esta respuesta?");
+    [[1, "👍", "Me sirvió"], [-1, "👎", "No me sirvió"]].forEach(function (o) {
+      var b = el("button", null, o[1]);
+      b.type = "button"; b.title = o[2]; b.setAttribute("aria-label", o[2]); b.setAttribute("aria-pressed", "false");
+      b.onclick = async function () {
+        try {
+          var r = await apiFetch("/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ run_id: runId, score: o[0], user_id: userId() }) });
+          if (!r.ok) { b.title = "No se pudo guardar (" + r.status + ")"; return; }
+          btns.forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        } catch (e) { b.title = "No se pudo guardar"; }
+      };
+      btns.push(b); box.appendChild(b);
+    });
+    this.fbBox = box; this.row.appendChild(box);
+  };
+  AssistantBubble.prototype.approval = function (ev, onDecide) {
+    this.hideDots(); this.closeSeg();
+    var card = el("div", "approval");
+    card.setAttribute("role", "group");
+    card.setAttribute("aria-label", "Aprobación requerida");
+    card.appendChild(el("h3", null, "✋ Se requiere tu aprobación"));
+    var acts = ev.action_requests || [];
+    acts.forEach(function (a) {
+      var box = el("div", "act");
+      var name = canonicalTool(String(a.name || ""));
+      box.appendChild(el("b", null, TOOL_DONE[name] || a.name || "acción"));
+      if (a.description) box.appendChild(el("p", null, a.description));
+      if (name === "deep_research") {  // confirmación de investigación: se muestra el encargo, no JSON
+        if (a.args && a.args.task) box.appendChild(el("p", "task", "Encargo: " + a.args.task));
+      } else {
+        var pre = el("pre");
+        try { pre.textContent = JSON.stringify(a.args || {}, null, 2); } catch (e) { pre.textContent = String(a.args); }
+        box.appendChild(pre);
+      }
+      card.appendChild(box);
+    });
+    var btns = el("div", "btns");
+    var research = acts.length === 1 && canonicalTool(String(acts[0].name || "")) === "deep_research";
+    var ok = el("button", "btn primary", research ? "Sí, investiga" : "Aprobar"); ok.type = "button";
+    var no = el("button", "btn danger", research ? "No, responde sin investigar" : "Rechazar"); no.type = "button";
+    btns.appendChild(ok); btns.appendChild(no); card.appendChild(btns);
+    var self = this, decided = false;
+    // mientras la tarjeta espera, el chip no dice "Investigando a fondo…": nada corre todavía
+    var waiting = acts.map(function (a) { return self.chips[canonicalTool(String(a.name || ""))]; })
+                      .filter(function (g) { return g; });
+    waiting.forEach(function (g) { g.awaiting = true; self.paint(g); });
+    if (this.timing && this.tick) this.liveTime();
+    function decide(approve) {
+      if (decided) return; decided = true;
+      waiting.forEach(function (g) { g.awaiting = false; self.paint(g); });
+      ok.disabled = true; no.disabled = true;
+      btns.remove();
+      var r = el("div", "result", research ? (approve ? "✓ Investigando…" : "✗ Sin investigación a fondo")
+                                            : (approve ? "✓ Aprobado" : "✗ Rechazado"));
+      card.appendChild(r);
+      if (research && approve) self.researchResult = r;  // al terminar el turno pasa a "✓ Aprobada"
+      var n = acts.length || 1, decisions = [];
+      for (var k = 0; k < n; k++) decisions.push(approve ? { type: "approve" } : { type: "reject", message: REJECT_MSG });
+      onDecide(decisions);
+    }
+    ok.addEventListener("click", function () { decide(true); });
+    no.addEventListener("click", function () { decide(false); });
+    this.bubble.appendChild(card);
+    scrollDown(true);
+    ok.focus({ preventScroll: true });
+  };
+
+  /* ---------- SSE sobre fetch ---------- */
+  async function streamSSE(url, body, bubble, handlers) {
+    var resp;
+    try {
+      resp = await apiFetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      bubble.error("No pude conectar con el servidor. " + (e && e.message ? e.message : ""));
+      return;
+    }
+    if (!resp.ok) {
+      var detail = "", raw = "";
+      try { raw = await resp.text(); } catch (e) { /* ignore */ }
+      try { var parsed = JSON.parse(raw); if (typeof parsed.detail === "string") detail = parsed.detail; } catch (e) { /* no es JSON */ }
+      // 4xx con "detail" (413 por largo, 409 por turno en curso, 400/404…): el aviso en español, sin el JSON crudo
+      if (detail && resp.status < 500) bubble.error(detail);
+      else bubble.error("Error del servidor (" + resp.status + ")" + ((detail || raw) ? ": " + (detail || raw).slice(0, 300) : ""));
+      return;
+    }
+    if (!resp.body || !resp.body.getReader) {
+      bubble.error("Este navegador no permite leer respuestas en streaming.");
+      return;
+    }
+    var reader = resp.body.getReader(), dec = new TextDecoder("utf-8"), buf = "";
+    function handleBlock(block) {
+      var data = [];
+      block.split("\n").forEach(function (ln) {
+        if (ln.indexOf("data:") === 0) data.push(ln.slice(ln.charAt(5) === " " ? 6 : 5));
+      });
+      if (!data.length) return;
+      var ev;
+      try { ev = JSON.parse(data.join("\n")); } catch (e) { return; }
+      if (ev && ev.type) handlers(ev);
+    }
+    try {
+      for (;;) {
+        var r = await reader.read();
+        if (r.done) break;
+        buf += dec.decode(r.value, { stream: true });
+        buf = buf.replace(/\r\n/g, "\n");
+        var idx;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          handleBlock(buf.slice(0, idx));
+          buf = buf.slice(idx + 2);
+        }
+      }
+      buf += dec.decode();
+      buf = buf.replace(/\r\n/g, "\n");
+      if (buf.trim()) handleBlock(buf);
+    } catch (e) {
+      bubble.error("Se interrumpió la conexión. " + (e && e.message ? e.message : ""));
+    }
+  }
+
+  async function runTurn(path, body, bubble) {
+    state.streaming = true; bubble.live = true; updateControls();
+    var gotDone = false, interrupted = false;
+    await streamSSE(path, body, bubble, function (ev) {
+      if (ev.name) ev.name = canonicalTool(ev.name);
+      bubble.mark(ev);
+      switch (ev.type) {
+        case "token": if (typeof ev.text === "string") bubble.token(ev.text); break;
+        case "effort": bubble.effort(ev); break;
+        case "tool_start": bubble.toolStart(ev); break;
+        case "tool_end": bubble.toolEnd(ev); break;
+        case "progress": bubble.progress(ev); break;
+        case "summarized": bubble.summarized(ev); break;
+        case "context": if (body.thread_id === state.threadId) liveContext(ev); break;
+        case "no_tools": bubble.noTools = true; break;  // el aviso va al final de la respuesta
+        case "verify": bubble.verify(ev); break;
+        case "interrupt":
+          interrupted = true;
+          state.pending++; updateControls();
+          bubble.approval(ev, function (decisions) {
+            state.pending--;
+            runTurn("/resume", { thread_id: body.thread_id, user_id: body.user_id, decisions: decisions }, bubble);
+          });
+          break;
+        case "error": bubble.error(ev.message || "Error desconocido"); break;
+        case "done": gotDone = true; break;
+        case "run": bubble.runId = ev.run_id; break;  // TRACE_METADATA: id del turno para el feedback
+      }
+    });
+    state.streaming = false;
+    if (body.thread_id === state.threadId) loadContext(body.thread_id);  // totales y gasto del turno
+    if (memEl.classList.contains("open")) loadMemories();  // por si guardó un recuerdo en este turno
+    if (!state.pending) bubble.finish(); else bubble.live = false;
+    if (!state.pending && fbEnabled && bubble.runId && gotDone) bubble.feedback(bubble.runId);
+    if (state.newQueued) { bubble.finish(); openNewThread(); return; }  // clic en "Nueva conversación" durante el turno
+    updateControls();
+    if (!inputEl.disabled) inputEl.focus({ preventScroll: true });
+    scrollDown(false);
+  }
+
+  /* ---------- enviar ---------- */
+  function send(text) {
+    text = (text || "").trim();
+    if (!text || state.streaming || state.pending) return;
+    // un /history que aún no respondió ya no puede pintar encima de este turno (la pantalla vacía lo borraba)
+    state.loadSeq++;
+    var stale = messagesEl.querySelector(".sys.loading");
+    if (stale) stale.remove();
+    var ready = files.pending.filter(function (f) { return f.file_id && f.thread === state.threadId; });
+    addUserBubble(text, ready);
+    touchThread(state.threadId, text);
+    inputEl.value = ""; autosize();
+    var bubble = new AssistantBubble();
+    scrollDown(true);
+    var effort = effortEl.value === "auto" ? null : effortEl.value;  // el selector manda sobre el clasificador
+    var body = { message: text, thread_id: state.threadId, user_id: userId(), effort: effort };
+    if (ready.length) body.file_ids = ready.map(function (f) { return f.file_id; });
+    clearPending();
+    runTurn("/chat", body, bubble);
+  }
+
+  /* ---------- historial ---------- */
+  async function loadHistory(id) {
+    var seq = ++state.loadSeq;
+    clearMessages();
+    var loading = el("div", "sys loading", "Cargando conversación…");
+    messagesEl.appendChild(loading);
+    var data = null;
+    try {
+      var r = await apiFetch("/history/" + encodeURIComponent(id));
+      if (r.ok) data = await r.json();
+      else if (r.status === 404 && state.auth.enabled) data = { messages: [], missing: true };
+    } catch (e) { /* ignore */ }
+    if (seq !== state.loadSeq) return;
+    clearMessages();
+    var msgs = data && Array.isArray(data.messages) ? data.messages : null;
+    if (!msgs) { showEmpty(); if (data === null) { messagesEl.appendChild(el("div", "sys", "No pude cargar el historial.")); } return; }
+    if (!msgs.length) { showEmpty(); return; }
+    var firstUser = "";
+    msgs.forEach(function (m) {
+      if (m.role === "user") { if (!firstUser) firstUser = String(m.content || ""); addUserBubble(String(m.content || ""), m.files); }
+      else if (m.role === "assistant") addAssistantStatic(String(m.content || ""), m.original, m.verify, m.no_tools);
+      else if (m.role === "tool") addToolLine(canonicalTool(String(m.name || "herramienta")), m.status, m.reason);
+      else if (m.role === "summary") messagesEl.appendChild(el("div", "sys compacted", (compactionLabel(m.compaction) || "🗜️ La conversación anterior se resumió") + "; aquí se ven los mensajes conservados."));
+    });
+    setTitleIfMissing(id, firstUser);
+    scrollDown(true);
+  }
+
+  /* ---------- recuerdos ---------- */
+  var CONF = { verified: "✔ verificado", quoted: "❝ con cita", unverified: "sin verificar" };
+  var memSeq = 0;
+  async function loadMemories() {
+    var seq = ++memSeq, uid = userId();
+    var memUrl = state.auth.enabled ? "/me/memories" : "/memories/" + encodeURIComponent(uid);
+    $("memuser").textContent = state.auth.enabled && state.auth.user ? state.auth.user.display_name : uid;
+    memListEl.textContent = "";
+    memListEl.appendChild(el("p", "sys", "Cargando…"));
+    var data = null;
+    try {
+      var r = await apiFetch(memUrl);
+      if (r.ok) data = await r.json();
+    } catch (e) { /* ignore */ }
+    if (seq !== memSeq) return;
+    memListEl.textContent = "";
+    if (!data) { memListEl.appendChild(el("p", "sys", "No pude cargar los recuerdos.")); return; }
+    if (!data.memories.length) { memListEl.appendChild(el("p", "sys", "Sin recuerdos guardados para este usuario.")); return; }
+    var ul = el("ul");
+    data.memories.forEach(function (m) {
+      var li = el("li"), txt = el("div", "mtext", m.text), meta = el("span", "mmeta");
+      var when = "";
+      try { when = m.created_at ? new Date(m.created_at).toLocaleString() : ""; } catch (e) { /* ignore */ }
+      if (when) meta.appendChild(document.createTextNode(when + " · "));
+      meta.appendChild(el("span", "conf " + m.confidence, CONF[m.confidence] || m.confidence));
+      meta.appendChild(document.createTextNode(" · "));
+      if (m.evidence) { meta.appendChild(document.createTextNode("evidencia: ")); meta.appendChild(el("q", null, m.evidence)); }
+      else meta.appendChild(document.createTextNode("sin evidencia"));
+      txt.appendChild(meta);
+      if (m.previous_text) {  // actualizado por el agente: valor anterior para auditar/deshacer
+        var prev = el("span", "mmeta");
+        var up = "";
+        try { up = m.updated_at ? new Date(m.updated_at).toLocaleString() : ""; } catch (e) { /* ignore */ }
+        prev.appendChild(document.createTextNode("✏️ actualizado" + (up ? " " + up : "") + " · antes: "));
+        prev.appendChild(el("q", null, m.previous_text));
+        txt.appendChild(prev);
+      }
+      var del = el("button", "btn danger", "🗑"); del.type = "button";
+      del.setAttribute("aria-label", "Borrar recuerdo: " + m.text); del.title = "Borrar";
+      del.addEventListener("click", async function () {
+        if (!confirm("¿Borrar este recuerdo?\n\n" + m.text)) return;
+        del.disabled = true;
+        try { await apiFetch((state.auth.enabled ? "/me/memories/" : "/memories/" + encodeURIComponent(uid) + "/") + encodeURIComponent(m.key), { method: "DELETE" }); } catch (e) { /* ignore */ }
+        loadMemories();
+      });
+      li.appendChild(txt); li.appendChild(del); ul.appendChild(li);
+    });
+    memListEl.appendChild(ul);
+  }
+
+  /* ---------- medidor de contexto ---------- */
+  var ctxSeq = 0;
+  function trimNum(x, d) { return x.toFixed(d).replace(/\.?0+$/, ""); }
+  function fmtTok(n) {
+    n = Math.max(0, +n || 0);
+    if (n >= 1e6) return trimNum(n / 1e6, 2) + "M";
+    if (n >= 1000) return trimNum(n / 1000, 1) + "k";
+    return String(Math.round(n));
+  }
+  function numEs(n) { return Number(n || 0).toLocaleString("es"); }
+  function compactionLabel(c) {
+    if (!c || c.before == null || c.after == null) return "";
+    return "🗜️ Conversación compactada: " + fmtTok(c.before) + " → " + fmtTok(c.after) + " tokens";
+  }
+  function paintContext(c) {
+    state.ctx = c;
+    if (!c || !c.window) {
+      ctxEl.className = "ctx ok"; ctxEl.dataset.level = "ok"; ctxFill.style.width = "0";
+      ctxText.textContent = "Contexto: —"; ctxEl.title = ""; compactBtn.hidden = true;
+      return;
+    }
+    var pct = 100 * c.tokens / c.window;
+    var level = pct >= c.trigger_pct ? "crit" : pct >= c.warn_pct ? "warn" : "ok";
+    ctxEl.className = "ctx " + level; ctxEl.dataset.level = level; ctxEl.dataset.tokens = String(c.tokens);
+    ctxFill.style.width = Math.min(100, pct).toFixed(1) + "%";
+    var pctTxt = pct > 0 && pct < 1 ? "<1%" : Math.round(pct) + "%";
+    ctxText.textContent = "Contexto: " + (c.estimated ? "~" : "") + fmtTok(c.tokens) + " / " + fmtTok(c.window) +
+                          " (" + pctTxt + ")" + (c.estimated ? " · estimado" : "");
+    var tip = ["Contexto en uso: " + numEs(c.tokens) + " de " + numEs(c.window) + " tokens" + (c.estimated ? " (estimado)" : " (uso real de la última respuesta)")];
+    if (c.total_consumed != null) tip.push("Total consumido en esta conversación: " + numEs(c.total_consumed) + " tokens (entrada " + numEs(c.total_input) + " · salida " + numEs(c.total_output) + ")");
+    if (c.last_turn != null) tip.push("Último turno: " + numEs(c.last_turn) + " tokens");
+    tip.push("Ámbar desde el " + c.warn_pct + "% · rojo desde el " + c.trigger_pct + "%" + (c.auto_compact ? " (se compacta sola)" : ""));
+    tip.push("Compactaciones: " + (c.compactions || 0) + (c.last_compaction ? " · última: " + fmtTok(c.last_compaction.before) + " → " + fmtTok(c.last_compaction.after) : ""));
+    ctxEl.title = tip.join("\n");
+    compactBtn.hidden = !c.can_compact;
+  }
+  function liveContext(ev) {
+    if (!state.ctx || typeof ev.tokens !== "number") return;
+    var c = {}; for (var k in state.ctx) c[k] = state.ctx[k];
+    c.tokens = ev.tokens; c.estimated = !!ev.estimated;
+    paintContext(c);
+  }
+  async function loadContext(id) {
+    var seq = ++ctxSeq, data = null;
+    try {
+      var r = await apiFetch("/threads/" + encodeURIComponent(id) + "/context");
+      if (r.ok) data = await r.json();
+    } catch (e) { /* ignore */ }
+    if (seq !== ctxSeq || id !== state.threadId) return;
+    paintContext(data);
+  }
+  async function compactNow() {
+    if (state.streaming || state.pending || state.compacting) return;
+    if (!confirm("¿Compactar esta conversación ahora?\n\nLa parte más antigua se reemplaza por un resumen; los mensajes recientes se conservan.")) return;
+    var id = state.threadId, data = null, status = 0;
+    state.compacting = true; compactBtn.textContent = "Compactando…"; updateControls();
+    try {
+      var r = await apiFetch("/threads/" + encodeURIComponent(id) + "/compact", { method: "POST" });
+      status = r.status; data = await r.json();
+    } catch (e) { /* ignore */ }
+    state.compacting = false; compactBtn.textContent = "Compactar ahora"; updateControls();
+    if (id !== state.threadId) return;
+    if (data && data.compacted) await loadHistory(id);
+    else messagesEl.appendChild(el("div", "sys", status === 200 ? "Todavía no hay nada que compactar." :
+                                   "No pude compactar la conversación" + (data && data.detail ? ": " + data.detail : ".")));
+    loadContext(id);
+  }
+
+  // con cuentas, la conversación nueva la crea el servidor a nombre del usuario de la sesión
+  async function createServerThread() {
+    var r = null;
+    try { r = await apiFetch("/threads", { method: "POST" }); } catch (e) { /* ignore */ }
+    if (!r || !r.ok) return null;
+    var d = await r.json();
+    state.threads.unshift({ id: d.thread_id, title: "" });
+    return d.thread_id;
+  }
+  function openNewThread() {
+    // una aprobación pendiente se abandona (el hilo anterior queda en pausa); el turno en curso ya terminó
+    state.newQueued = false; state.pending = 0;
+    if (state.auth.enabled) {
+      createServerThread().then(function (id) { if (id) switchThread(id, true); updateControls(); });
+      return;
+    }
+    switchThread(newId(), true);
+    updateControls();
+  }
+  function requestNewThread() {
+    if (state.streaming) { state.newQueued = !state.newQueued; updateControls(); return; }  // 2º clic: cancela
+    openNewThread();
+  }
+  function showThreadId() { $("threadid").textContent = state.threadId || ""; }
+
+  function switchThread(id, isNew) {
+    clearPending();  // un adjunto pertenece al hilo donde se subió
+    state.threadId = id;
+    showThreadId();
+    lsSet("currentThread", id);
+    setUrlThread(id);
+    if (isNew) touchThread(id, ""); else renderThreadSelect();
+    if (isNew) { state.loadSeq++; showEmpty(); } else loadHistory(id);
+    loadContext(id);  // cada conversación tiene su propio contexto: una nueva empieza en el base
+    inputEl.focus({ preventScroll: true });
+  }
+
+  /* ---------- eventos ---------- */
+  document.getElementById("composer").addEventListener("submit", function (e) { e.preventDefault(); send(inputEl.value); });
+  inputEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(inputEl.value); }
+  });
+  inputEl.addEventListener("input", autosize);
+  newBtn.addEventListener("click", requestNewThread);
+  compactBtn.addEventListener("click", compactNow);
+  threadSel.addEventListener("change", function () { if (threadSel.value) switchThread(threadSel.value, false); });
+  setBtn.addEventListener("click", function () {
+    var open = settingsEl.classList.toggle("open");
+    setBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) userEl.focus();
+  });
+  memBtn.addEventListener("click", function () {
+    var open = memEl.classList.toggle("open");
+    memBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) loadMemories();
+  });
+  userEl.addEventListener("change", function () { if (memEl.classList.contains("open")) loadMemories(); });
+  userEl.addEventListener("input", function () { state.userId = userEl.value; lsSet("userId", userEl.value.trim() || "usuario"); });
+  userEl.addEventListener("blur", function () { if (!userEl.value.trim()) userEl.value = "usuario"; state.userId = userEl.value; });
+
+  /* ---------- init ---------- */
+  timesEl.checked = lsGet("showTimes") !== "0";  // encendido por defecto
+  document.body.classList.toggle("no-times", !timesEl.checked);
+  timesEl.addEventListener("change", function () {
+    document.body.classList.toggle("no-times", !timesEl.checked);
+    lsSet("showTimes", timesEl.checked ? "1" : "0");
+  });
+  var savedEffort = lsGet("effort");
+  if (["auto", "bajo", "medio", "alto"].indexOf(savedEffort) >= 0) effortEl.value = savedEffort;
+  effortEl.addEventListener("change", function () { lsSet("effort", effortEl.value); });
+  /* ---------- cuentas (AUTH_ENABLED=1) ---------- */
+  var authView = $("authview"), authForm = $("authform");
+  function setAuthMode(register) {
+    authView.classList.toggle("register", register);
+    $("authtitle").textContent = register ? "Crea tu cuenta" : "Inicia sesión";
+    $("authsubmit").textContent = register ? "Crear cuenta" : "Entrar";
+    $("authtoggle").textContent = register ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate";
+    $("authpass").setAttribute("autocomplete", register ? "new-password" : "current-password");
+    $("autherr").textContent = "";
+  }
+  function showAuth(msg) {
+    state.auth.user = null; state.auth.csrf = "";
+    document.body.classList.add("needs-login");
+    $("autherr").textContent = msg || "";
+    $("authpass").value = "";
+    $("authemail").focus();
+  }
+  async function loadServerThreads() {
+    var data = null;
+    try { var r = await apiFetch("/threads"); if (r.ok) data = await r.json(); } catch (e) { /* ignore */ }
+    state.threads = data && Array.isArray(data.threads)
+      ? data.threads.map(function (t) { return { id: t.thread_id, title: t.title || "" }; }) : [];
+  }
+  async function startAuthed(user, csrf) {
+    state.auth.user = user; state.auth.csrf = csrf || "";
+    document.body.classList.remove("needs-login");
+    $("whoami").textContent = user.display_name; $("whoami").title = user.email || "";
+    await loadServerThreads();
+    var wanted = null;
+    try { wanted = new URL(location.href).searchParams.get("thread"); } catch (e) { /* ignore */ }
+    var known = state.threads.some(function (t) { return t.id === wanted; });
+    if (known) switchThread(wanted, false);
+    else if (state.threads.length) switchThread(state.threads[0].id, false);
+    else openNewThread();
+    updateControls();
+    autosize();
+  }
+  authForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var register = authView.classList.contains("register");
+    var body = { email: $("authemail").value, password: $("authpass").value };
+    if (register) body.display_name = $("authname").value;
+    $("authsubmit").disabled = true; $("autherr").textContent = "";
+    var data = null, status = 0;
+    try {
+      var r = await fetch(register ? "/auth/register" : "/auth/login", {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify(body)
+      });
+      status = r.status; data = await r.json();
+    } catch (err) { /* ignore */ }
+    $("authsubmit").disabled = false;
+    if (status === 200 && data && data.user) { $("authpass").value = ""; startAuthed(data.user, data.csrf); return; }
+    var detail = data && data.detail;
+    $("autherr").textContent = typeof detail === "string" ? detail : "No se pudo completar. Revisa los datos.";
+  });
+  $("authtoggle").addEventListener("click", function () { setAuthMode(!authView.classList.contains("register")); });
+  $("logoutbtn").addEventListener("click", async function () {
+    try { await apiFetch("/auth/logout", { method: "POST" }); } catch (e) { /* ignore */ }
+    location.href = location.pathname;  // sin ?thread: nada de la sesión anterior queda a la vista
+  });
+  $("renthreadbtn").addEventListener("click", async function () {
+    if (state.streaming || state.pending || !state.threadId) return;
+    var id = state.threadId, cur = state.threads.filter(function (t) { return t.id === id; })[0];
+    var title = prompt("Nuevo nombre de la conversación (máximo 80 caracteres):", cur ? cur.title : "");
+    if (title === null) return;
+    title = title.replace(/\s+/g, " ").trim();
+    if (!title || title.length > 80) { messagesEl.appendChild(el("div", "sys", "El nombre debe tener entre 1 y 80 caracteres.")); return; }
+    var r = null;
+    try {
+      r = await apiFetch("/threads/" + encodeURIComponent(id), {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: title })
+      });
+    } catch (e) { /* ignore */ }
+    if (!r || !r.ok) { messagesEl.appendChild(el("div", "sys", "No pude renombrar la conversación.")); return; }
+    var data = await r.json();
+    state.threads.forEach(function (t) { if (t.id === id) t.title = data.title; });
+    renderThreadSelect();
+  });
+  $("delthreadbtn").addEventListener("click", async function () {
+    if (state.streaming || state.pending || !state.threadId) return;
+    if (!confirm("¿Borrar esta conversación?\n\nSe borran sus mensajes, su resumen y su contexto. No se puede deshacer.")) return;
+    var id = state.threadId, r = null;
+    try { r = await apiFetch("/threads/" + encodeURIComponent(id), { method: "DELETE" }); } catch (e) { /* ignore */ }
+    if (!r || !r.ok) { messagesEl.appendChild(el("div", "sys", "No pude borrar la conversación.")); return; }
+    state.threads = state.threads.filter(function (t) { return t.id !== id; });
+    if (state.threads.length) switchThread(state.threads[0].id, false); else openNewThread();
+  });
+  $("delacctbtn").addEventListener("click", async function () {
+    var pass = $("delpass").value, msg = $("delacctmsg");
+    if (!pass) { msg.textContent = "Escribe tu contraseña para confirmar."; return; }
+    if (!confirm("¿Borrar tu cuenta?\n\nSe borran tu usuario, tus sesiones, todas tus conversaciones y tus recuerdos. No se puede deshacer.")) return;
+    var r = null, data = null;
+    try {
+      r = await apiFetch("/auth/delete-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pass }) });
+      data = await r.json();
+    } catch (e) { /* ignore */ }
+    $("delpass").value = "";
+    if (r && r.ok) { location.href = location.pathname; return; }
+    msg.textContent = data && typeof data.detail === "string" ? data.detail : "No se pudo borrar la cuenta.";
+  });
+
+  function initLocal() {
+  state.userId = lsGet("userId") || "usuario";
+  userEl.value = state.userId;
+  state.threads = loadThreads();
+  var urlThread = null;
+  try { urlThread = new URL(location.href).searchParams.get("thread"); } catch (e) { /* ignore */ }
+  if (urlThread && !/^[\w.-]{1,64}$/.test(urlThread)) urlThread = null;
+  var startId = urlThread || lsGet("currentThread") || (state.threads[0] && state.threads[0].id) || null;
+  var fresh = false;
+  if (!startId) { startId = newId(); fresh = true; }
+  state.threadId = startId;
+  showThreadId();
+  lsSet("currentThread", startId);
+  setUrlThread(startId);
+  var known = state.threads.some(function (t) { return t.id === startId; });
+  if (!known) { state.threads.unshift({ id: startId, title: "" }); saveThreads(); }
+  renderThreadSelect();
+  updateControls();
+  if (fresh) showEmpty(); else loadHistory(startId);
+  loadContext(startId);
+  autosize();
+  }
+
+  // con AUTH_ENABLED=0 (/auth/me lo dice) la app funciona como siempre, sin login
+  (async function boot() {
+    var me = null;
+    try { var r = await fetch("/auth/me", { credentials: "same-origin" }); if (r.ok) me = await r.json(); } catch (e) { /* ignore */ }
+    checkFiles(); checkFeedback();
+    if (!me || !me.auth_enabled) { initLocal(); return; }
+    state.auth.enabled = true;
+    document.body.classList.add("auth-on");
+    setAuthMode(false);
+    if (me.user) startAuthed(me.user, me.csrf); else showAuth();
+  })();
+})();
+</script>
+</body>
+</html>
