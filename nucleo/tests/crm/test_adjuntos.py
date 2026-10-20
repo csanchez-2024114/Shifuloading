@@ -268,3 +268,26 @@ def test_historial_no_guarda_contenido_del_archivo(cli, monkeypatch):
     h = cli.get(f"{URL}/chat/historial", headers=H).json()
     ultimo = [m for m in h["mensajes"] if m["de"] == "yo"][-1]["t"]
     assert "📎 x.txt" in ultimo and secreto not in ultimo
+
+
+def test_un_excel_con_macros_o_disfrazado_no_se_abre():
+    """La validación del núcleo de Alan va antes de abrir PDF, Word y Excel."""
+    import base64
+    import io
+    import zipfile
+
+    from assistant.packs.crm.adjuntos import leer_adjunto
+
+    def zip_con(*nombres):
+        b = io.BytesIO()
+        with zipfile.ZipFile(b, "w") as z:
+            for n in nombres:
+                z.writestr(n, "<x/>")
+        return base64.b64encode(b.getvalue()).decode()
+
+    con_macros = zip_con("[Content_Types].xml", "xl/workbook.xml", "xl/vbaProject.bin")
+    assert "macros" in leer_adjunto("ventas.xlsx", con_macros)["error"]
+    disfrazado = base64.b64encode(b"MZ\x90\x00 esto no es un pdf").decode()
+    assert "no es lo que dice su extensión" in leer_adjunto("contrato.pdf", disfrazado)["error"]
+    word_como_excel = zip_con("[Content_Types].xml", "word/document.xml")
+    assert "no es lo que dice su extensión" in leer_adjunto("datos.xlsx", word_como_excel)["error"]

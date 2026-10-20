@@ -230,6 +230,29 @@ def _leer_xlsx(contenido: bytes) -> tuple[str, list[str]]:
     return "\n".join(partes), columnas
 
 
+# Avisos a la persona por cada rechazo de la validación del núcleo (assistant.core.files.validate).
+_RECHAZO = {
+    "content_mismatch": "Ese archivo no es lo que dice su extensión (o está dañado). Ábrelo y vuelve a guardarlo.",
+    "macro": "Ese archivo trae macros; por seguridad no lo abro. Guárdalo sin macros (.xlsx o .docx normal) y vuelve a mandarlo.",
+    "zip_bomb": "Ese archivo es sospechoso (se infla demasiado al abrirlo); no lo abro.",
+}
+
+
+def _rechazo_binario(tipo: str, contenido: bytes) -> str | None:
+    """PDF, Word y Excel pasan primero por la validación del núcleo de Alan (bytes mágicos, macros, zip bombs), sin abrir el
+    archivo. Los de texto no: la del núcleo exige UTF-8 y un CSV de Excel suele venir en latin-1."""
+    from assistant.core.files.validate import FileRejected, office_kind, sniff
+
+    try:
+        if tipo == "pdf" and sniff(contenido) != "pdf":
+            raise FileRejected("content_mismatch")
+        if tipo in ("docx", "xlsx") and (sniff(contenido) != "zip" or office_kind(contenido) != tipo):
+            raise FileRejected("content_mismatch")
+    except FileRejected as e:
+        return _RECHAZO.get(e.code, _RECHAZO["content_mismatch"])
+    return None
+
+
 def leer_adjunto(nombre: str, datos: str) -> dict[str, Any]:
     """Decodifica y extrae texto del adjunto. `datos` = data URL base64 o base64 puro."""
     ext = _extension(nombre)
@@ -245,6 +268,9 @@ def leer_adjunto(nombre: str, datos: str) -> dict[str, Any]:
         return {"ok": False, "error": "No pude leer ese archivo (los datos venían corruptos)."}
     if len(contenido) > MAX_BYTES:
         return {"ok": False, "error": "Ese archivo pesa demasiado (máximo 5 MB)."}
+    rechazo = _rechazo_binario(tipo, contenido)
+    if rechazo:
+        return {"ok": False, "error": rechazo}
 
     try:
         if tipo == "pdf":
