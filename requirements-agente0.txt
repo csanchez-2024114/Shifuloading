@@ -189,3 +189,5 @@ langchain-community
 langchain-tavily
 pymupdf==2.0
 pytest-asyncio
+# Las que el CRM y el backend necesitan y el núcleo de Alan no instala (el filtro de arriba sacó motor)
+motor==3.7.1
