@@ -84,22 +84,14 @@ def _detalle(c: dict, en_tu_crm: str | None = None) -> str:
     return " ".join(partes)
 
 
-# Vistas que son de cada sección por defecto (toda sección tiene su tabla): decir dónde hay una no aporta.
-_VISTAS_DE_TODAS = frozenset({"tabla"})
-
-
-def _piezas_con_vista(doc: dict, vista: str) -> list[tuple[str | None, dict]]:
-    """(pestaña o None = inicio, pieza) de cada pieza con esa vista; el calendario también es una gráfica tipo calendario."""
-    lugares = [(None, b) for b in (doc.get("inicio") or [])]
-    lugares += [(pid, b) for pid, bs in (doc.get("paginas") or {}).items() for b in (bs or [])]
-    return [(pid, b) for pid, b in lugares if es_de_vista(b, {vista})]
 
 
 def vistas_nombradas(texto: str) -> set[str]:
-    """Las vistas que la persona nombró, según el catálogo (conceptos vista_*); la misma detección que el detalle del prompt."""
-    por_id = {c["id"]: c for c in _catalogo()}
-    return {v for i in _detectar(texto) if i.startswith("vista_") and i in por_id
-            for v in [(por_id[i].get("se_arma_con") or {}).get("vista")] if v}
+    """Las vistas que la persona nombró, por cómo le dice la gente a cada una (`se_le_dice` del catálogo). Solo la usa el cerco de quitar;
+    no cambia el detalle del prompt (agregarlo ahí movía otros casos: banco_pestanas y banco_deshacer)."""
+    t = _norm(texto or "")
+    return {(c.get("se_arma_con") or {}).get("vista") for c in _catalogo()
+            if any(re.search(rf"\b{re.escape(_norm(x))}\b", t) for x in c.get("se_le_dice") or [])} - {None}
 
 
 def es_de_vista(b: dict, vistas: set[str]) -> bool:
@@ -116,18 +108,9 @@ def en_tu_crm(c: dict, doc: dict, titulo: Any, abierta: str | None) -> str | Non
             return (f"En este CRM ya existe: es «{tit}», oculta en el menú. No armes otra sección para lo mismo: pregunta si la muestras "
                     "o si quiere otra aparte.")
         return f"En este CRM ya existe: es «{tit}»."
-    vista = (c.get("se_arma_con") or {}).get("vista")
-    if not c["id"].startswith("vista_") or not vista or vista in _VISTAS_DE_TODAS:
-        return None
-    hay = _piezas_con_vista(doc, vista)
-    aqui = [b for pid, b in hay if pid == abierta]
-    donde = sorted({"el inicio" if pid is None else f"«{titulo(pid)}»" for pid, _ in hay})
-    vista_txt = pantalla.NOMBRE_VISTA.get(vista, vista)
-    if aqui:
-        return f"En lo que mira ahora hay {len(aqui)} pieza(s) {vista_txt}: " + ", ".join(str(b.get("uid")) for b in aqui) + "."
-    if donde:
-        return f"En lo que mira ahora no hay ninguna pieza {vista_txt}; sí hay en: {', '.join(donde)}."
-    return f"En este CRM no hay ninguna pieza {vista_txt} todavía."
+    # Las vistas no llevan hecho aquí: «no hay calendario» se leía como «no se puede» al pedir uno (banco_pestanas 23→19).
+    # Quitar una pieza que no está en lo que mira lo frena el cerco (`_no_es_la_pieza_nombrada`).
+    return None
 
 
 def _detectar(texto: str, seleccion: str | None = None) -> set[str]:
@@ -149,8 +132,6 @@ def _detectar(texto: str, seleccion: str | None = None) -> set[str]:
             if len(palabras) >= 2 and all(p in t for p in palabras[:2]):
                 hallados.add(cid)
                 break
-        if any(re.search(rf"\b{re.escape(_norm(x))}\b", t) for x in c.get("se_le_dice") or []):
-            hallados.add(cid)  # cómo le dice la gente (dato del catálogo, no una regla)
         if sel and cid in sel:
             hallados.add(cid)
     # Intenciones frecuentes sin depender de una sola frase del catálogo

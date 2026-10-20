@@ -112,16 +112,6 @@ def test_el_detalle_dice_que_el_equipo_ya_existe_y_esta_oculto_en_vez_de_la_rece
     assert "es «Equipo», oculta en el menú" in detalle and "Se arma con" not in detalle.split("**Empleado**")[1].split("\n")[0]
 
 
-def test_el_detalle_de_una_vista_dice_si_hay_piezas_asi_en_lo_que_mira():
-    c = {"id": "vista_agenda", "se_arma_con": {"vista": "agenda"}}
-    doc = {"inicio": [{"uid": "b1", "vista": "kpis"}], "paginas": {"l_citas": [{"uid": "p_l_citas_0", "vista": "agenda"}],
-                                                                     "l_miembros": [{"uid": "p_l_miembros_1", "vista": "vencimientos"}]}}
-    tit = {"l_citas": "Citas", "l_miembros": "Miembros"}.get
-    assert "no hay ninguna pieza agenda; sí hay en: «Citas»" in conceptos.en_tu_crm(c, doc, tit, "l_miembros")
-    assert "p_l_citas_0" in conceptos.en_tu_crm(c, doc, tit, "l_citas")
-    assert conceptos.en_tu_crm({"id": "vista_tabla", "se_arma_con": {"vista": "tabla"}}, doc, tit, None) is None
-
-
 def test_las_vistas_nombradas_salen_del_catalogo():
     assert conceptos.vistas_nombradas("quita el calendario de aquí") == {"calendario_mes"}
     assert conceptos.vistas_nombradas("cambia el resumen por una dona") == {"kpis"}
