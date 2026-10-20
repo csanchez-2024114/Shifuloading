@@ -1024,6 +1024,7 @@
   },
   {
    "id": "contacto_cliente",
+   "seccion_integrada": "contactos",
    "grupo": "crm",
    "nombre": "Contacto / cliente",
    "que_es": "Persona que compra o te escribe: nombre, teléfono y datos de contacto.",
@@ -1176,6 +1177,7 @@
   },
   {
    "id": "responsable_vendedor",
+   "seccion_integrada": "rrhh",
    "grupo": "crm",
    "nombre": "Responsable / vendedor",
    "que_es": "Quién lleva el cliente u oportunidad; hoy es campo texto.",
@@ -1247,6 +1249,7 @@
   },
   {
    "id": "tarea",
+   "seccion_integrada": "desarrollo",
    "grupo": "crm",
    "nombre": "Tarea",
    "que_es": "Pendiente con responsable, prioridad y fecha límite; va en tablero.",
@@ -1679,6 +1682,7 @@
   },
   {
    "id": "prospecto_lead",
+   "seccion_integrada": "contactos",
    "grupo": "crm",
    "nombre": "Prospecto (lead)",
    "que_es": "Persona interesada aún no cliente, con etapa en el embudo.",
@@ -2327,6 +2331,7 @@
   },
   {
    "id": "empleado",
+   "seccion_integrada": "rrhh",
    "grupo": "erp",
    "nombre": "Empleado",
    "que_es": "Persona de tu nómina o equipo con datos básicos y estado.",

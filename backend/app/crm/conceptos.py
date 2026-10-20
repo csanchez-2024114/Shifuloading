@@ -56,28 +56,67 @@ def _linea_compacta(c: dict) -> str:
     return f"{c['id']}: {c['que_es']}{extra}"
 
 
-def _detalle(c: dict) -> str:
+def _detalle(c: dict, en_tu_crm: str | None = None) -> str:
+    """Qué es y para qué; si el CRM de la persona YA lo tiene (lo calcula el código), ese hecho en vez de la receta para armarlo."""
     partes = [f"**{c['nombre']}** — {c['que_es']} Para: {c['para_que']}."]
-    frases = c.get("frases") or []
-    if frases:
-        partes.append("Frases típicas: " + "; ".join(frases[:5]) + ".")
-    arma = c.get("se_arma_con") or {}
-    piezas = []
-    if arma.get("vista"):
-        piezas.append(f"vista {arma['vista']}")
-    campos = arma.get("campos") or []
-    if campos:
-        piezas.append("campos " + ", ".join(f"{x.get('nombre', '?')} ({x.get('tipo', '?')})" for x in campos[:4]))
-    if arma.get("pestana_base"):
-        piezas.append(f"pestaña base {arma['pestana_base']}")
-    if piezas:
-        partes.append("Se arma con: " + "; ".join(piezas) + ".")
+    if en_tu_crm:
+        partes.append(en_tu_crm)
+    else:
+        arma = c.get("se_arma_con") or {}
+        piezas = []
+        if arma.get("vista"):
+            piezas.append(f"vista {arma['vista']}")
+        campos = arma.get("campos") or []
+        if campos:
+            piezas.append("campos " + ", ".join(f"{x.get('nombre', '?')} ({x.get('tipo', '?')})" for x in campos[:4]))
+        if arma.get("pestana_base"):
+            piezas.append(f"pestaña base {arma['pestana_base']}")
+        if piezas:
+            partes.append("Se arma con: " + "; ".join(piezas) + ".")
     if c.get("falta"):
         partes.append(f"Todavía no está en el producto ({c['falta']}): dilo con honestidad y ofrece lo más parecido que SÍ puedas.")
     conf = c.get("no_confundir_con") or []
     if conf:
         partes.append("No confundir con: " + ", ".join(conf) + ".")
     return " ".join(partes)
+
+
+# Vistas que son de cada sección por defecto (toda sección tiene su tabla): decir dónde hay una no aporta.
+_VISTAS_DE_TODAS = frozenset({"tabla"})
+
+
+def _piezas_con_vista(doc: dict, vista: str) -> list[tuple[str | None, dict]]:
+    """(pestaña o None = inicio, pieza) de cada pieza con esa vista; el calendario también es una gráfica tipo calendario."""
+    lugares = [(None, b) for b in (doc.get("inicio") or [])]
+    lugares += [(pid, b) for pid, bs in (doc.get("paginas") or {}).items() for b in (bs or [])]
+    def es(b: dict) -> bool:
+        if b.get("vista") == vista:
+            return True
+        return vista == "calendario_mes" and b.get("vista") == "grafico" and (b.get("opciones") or {}).get("tipo") == "calendario"
+    return [(pid, b) for pid, b in lugares if es(b)]
+
+
+def en_tu_crm(c: dict, doc: dict, titulo: Any, abierta: str | None) -> str | None:
+    """El hecho del CRM de la persona sobre este concepto (lo calcula el código; el modelo decide qué hacer con él)."""
+    sid = c.get("seccion_integrada")
+    if sid:
+        tit = titulo(sid)
+        if sid in (doc.get("ocultas") or []):
+            return (f"En este CRM ya existe: es «{tit}», oculta en el menú. No armes otra sección para lo mismo: pregunta si la muestras "
+                    "o si quiere otra aparte.")
+        return f"En este CRM ya existe: es «{tit}»."
+    vista = (c.get("se_arma_con") or {}).get("vista")
+    if not c["id"].startswith("vista_") or not vista or vista in _VISTAS_DE_TODAS:
+        return None
+    hay = _piezas_con_vista(doc, vista)
+    aqui = [b for pid, b in hay if pid == abierta]
+    donde = sorted({"el inicio" if pid is None else f"«{titulo(pid)}»" for pid, _ in hay})
+    vista_txt = pantalla.NOMBRE_VISTA.get(vista, vista)
+    if aqui:
+        return f"En lo que mira ahora hay {len(aqui)} pieza(s) {vista_txt}: " + ", ".join(str(b.get("uid")) for b in aqui) + "."
+    if donde:
+        return f"En lo que mira ahora no hay ninguna pieza {vista_txt}; sí hay en: {', '.join(donde)}."
+    return f"En este CRM no hay ninguna pieza {vista_txt} todavía."
 
 
 def _detectar(texto: str, seleccion: str | None = None) -> set[str]:
@@ -113,12 +152,15 @@ def _detectar(texto: str, seleccion: str | None = None) -> set[str]:
     return hallados
 
 
-def bloque_para_prompt(texto: str, seleccion: str | None = None) -> str:
-    """Una línea por concepto + detalle de los detectados (0 llamadas extra)."""
+def bloque_para_prompt(texto: str, seleccion: str | None = None, doc: dict | None = None, titulo: Any = None,
+                       abierta: str | None = None) -> str:
+    """Una línea por concepto + detalle de los detectados (0 llamadas extra). Con `doc`, el detalle dice lo que ese CRM ya tiene."""
     por_id = {c["id"]: c for c in _catalogo()}
     lineas = [_linea_compacta(c) for c in _catalogo()]
     detectados = _detectar(texto, seleccion)
-    extras = [_detalle(por_id[i]) for i in sorted(detectados) if i in por_id]
+    titulo = titulo or (lambda sid: sid)
+    extras = [_detalle(por_id[i], en_tu_crm(por_id[i], doc, titulo, abierta) if doc is not None else None)
+              for i in sorted(detectados) if i in por_id]
     out = "Conceptos del CRM (una línea cada uno; usa el detalle ampliado solo para lo que la persona mencionó):\n" + "\n".join(lineas)
     if extras:
         out += "\n\nDetalle (solo lo detectado en este mensaje):\n" + "\n".join(extras)

@@ -1695,7 +1695,7 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
     avisos_codigo = conceptos.avisos_turno(doc_turno, texto_turno, historial, sesion.abierta or vista_ctx)
     mensajes = agente._mensajes(doc, texto_turno, historial, ahora, con_captura, imagen, seccion, persona_final, adjunto)
     aviso_toma = "\n".join(x for x in (prep["aviso"], prep["digresion"] and toma.AVISO_DIGRESION, *avisos_codigo) if x)
-    conceptos_txt = conceptos.bloque_para_prompt(texto_turno, None)
+    conceptos_txt = conceptos.bloque_para_prompt(texto_turno, None, sesion.doc, sesion._titulo, sesion._lienzo_abierto())
     mensajes[0] = SystemMessage(content=prompt_sistema(persona_final, aviso_toma, sesion.contexto(), conceptos_txt))
 
     respuesta = ""

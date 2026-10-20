@@ -103,3 +103,20 @@ def test_bloque_prompt_incluye_linea_por_concepto():
     bloque = conceptos.bloque_para_prompt("hola", None)
     assert bloque.count("\n") >= 80
     assert "cita:" in bloque.lower() or "Cita" in bloque
+
+
+def test_el_detalle_dice_que_el_equipo_ya_existe_y_esta_oculto_en_vez_de_la_receta():
+    doc = {"ocultas": ["rrhh"], "inicio": [], "paginas": {}}
+    bloque = conceptos.bloque_para_prompt("agrega 40 empleados", None, doc, lambda sid: {"rrhh": "Equipo"}.get(sid, sid))
+    detalle = bloque.split("Detalle (solo lo detectado en este mensaje):")[1]
+    assert "es «Equipo», oculta en el menú" in detalle and "Se arma con" not in detalle.split("**Empleado**")[1].split("\n")[0]
+
+
+def test_el_detalle_de_una_vista_dice_si_hay_piezas_asi_en_lo_que_mira():
+    c = {"id": "vista_agenda", "se_arma_con": {"vista": "agenda"}}
+    doc = {"inicio": [{"uid": "b1", "vista": "kpis"}], "paginas": {"l_citas": [{"uid": "p_l_citas_0", "vista": "agenda"}],
+                                                                     "l_miembros": [{"uid": "p_l_miembros_1", "vista": "vencimientos"}]}}
+    tit = {"l_citas": "Citas", "l_miembros": "Miembros"}.get
+    assert "no hay ninguna pieza agenda; sí hay en: «Citas»" in conceptos.en_tu_crm(c, doc, tit, "l_miembros")
+    assert "p_l_citas_0" in conceptos.en_tu_crm(c, doc, tit, "l_citas")
+    assert conceptos.en_tu_crm({"id": "vista_tabla", "se_arma_con": {"vista": "tabla"}}, doc, tit, None) is None
