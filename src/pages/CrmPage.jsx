@@ -762,10 +762,12 @@ const CLAVE_SUG_OCULTAS = 'shifu_sug_ocultas'
 const ANCHO_CHAT = 360
 const ALTO_CHAT = 560
 
-function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, crm, aplicar, capturaLab, pos, setPos, onPosicion }) {
+function ChatShifu({ tema, abierto: abiertoPedido, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, crm, aplicar, capturaLab, pos, setPos, onPosicion }) {
   const [txt, setTxt] = useState('')
   const [ancho, setAncho] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200))
   const ventana = DISENO && ancho >= ANCHO_VENTANA
+  // En pantalla ancha el chat es parte de la pantalla: siempre abierto, sin cerrar ni la bolita de Shifu (prueba manual 21-oct).
+  const abierto = ventana || abiertoPedido
   const [sugOcultas, setSugOcultas] = useState(() => { try { return localStorage.getItem(CLAVE_SUG_OCULTAS) === '1' } catch { return false } })
   const [cabEl, setCabEl] = useState(null)
   const [popEl, setPopEl] = useState(null)
@@ -934,7 +936,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
           <header onPointerDown={enCabecera}><ShifuAvatar size={ventana ? 28 : 34} /><div><b>Shifu</b><small>{modo === 'reglas' ? 'Modo básico' : 'Tu asistente'}</small></div>
             <span className="mc-chat-cab-acc" ref={setCabEl} />
             {onOlvidar && <button type="button" onClick={onOlvidar} aria-label="Olvidar mi historial" title="Borrar el historial y lo que Shifu recuerda de mí"><LuTrash2 /></button>}
-            <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
+            {!ventana && <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button>}</header>
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
               <div key={m.id} className={`cb ${m.de}`}>{m.de === 'shifu' && <ShifuAvatar size={26} />}

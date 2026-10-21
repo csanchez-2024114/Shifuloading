@@ -1,10 +1,10 @@
 /* Chat en modo ventana (lista 31, estilos_tablero_grok §4): en pantallas anchas no tapa la sección; pegado al lado o arrastrable. */
 @media (min-width: 980px) {
   body .mc-chat.en-ventana { right: auto; bottom: auto; left: auto; top: auto; align-items: stretch; }
-  body .mc-chat.en-ventana[data-modo="lado"] { position: fixed; top: 56px; right: 0; bottom: 0; width: 360px; z-index: 60; }
+  body .mc-chat.en-ventana[data-modo="lado"] { position: fixed; top: 0; right: 0; bottom: 0; width: 360px; z-index: 60; }
   body .mc-chat.en-ventana[data-modo="lado"]:not(:has(.mc-chat-panel:not([hidden]))) { width: 48px; }
   body .mc-chat.en-ventana[data-modo="libre"] { position: fixed; z-index: 65; }
-  body .mc-chat.en-ventana .mc-chat-panel { width: 360px; max-width: min(400px, calc(100vw - 32px)); height: calc(100dvh - 56px); max-height: none; border-radius: 16px 0 0 16px; box-shadow: -8px 0 32px rgba(0, 0, 0, .28); animation: none; }
+  body .mc-chat.en-ventana .mc-chat-panel { width: 360px; max-width: min(400px, calc(100vw - 32px)); height: 100dvh; max-height: none; border-radius: 0; border-width: 0 0 0 1px; box-shadow: none; animation: none; }
   body .mc-chat.en-ventana[data-modo="libre"] .mc-chat-panel { border-radius: 16px; box-shadow: 0 18px 48px rgba(0, 0, 0, .35); height: min(560px, calc(100dvh - 72px)); }
   body .mc-chat.en-ventana .mc-chat-btn { display: none; }
   body .mc-chat.en-ventana .mc-chat-hint { display: none; }
