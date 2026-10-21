@@ -648,6 +648,9 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     # Al modelo: lo que sabe de la persona, el resumen de lo que ya no cabe en los 16 mensajes, y esos 16 completos.
     historial = mem.historial_para_modelo(conv) or [m.model_dump() for m in ctx.historial]
     persona = "\n\n".join(x for x in (mem.bloque_persona(conv, user.get("name"), actual=datos.texto or None), mem.bloque_resumen(conv)) if x) or None if conv else None
+    # Lo que la persona dijo en TODA la conversación guardada: un registro nombrado hace muchos mensajes cuenta como nombrado.
+    from app.crm.agente_diseno import DICHOS_CONVERSACION
+    DICHOS_CONVERSACION.set("\n".join(m["t"] for m in (conv or {}).get("mensajes") or [] if m.get("de") == "yo") or None)
     try:
         doc, resultado = await _turno_de_chat(db, user["id"], datos.texto, pendiente, historial, bool(imagen), imagen, ctx.seccion, persona, extra_modelo,
                                               (adj_leido or {}).get("columnas") or None, por_hacer=(conv or {}).get("por_hacer"))

@@ -603,12 +603,13 @@ def _con_modelo(monkeypatch, *guion):
 
 def test_la_ruta_devuelve_la_traza_y_deja_el_punto_del_turno(cli, monkeypatch):
     _con_modelo(monkeypatch, dice("", llamar("agregar_registro", seccion="contactos", valores={"Nombre": "Pedro Castillo"})), dice("Listo, agregué a Pedro Castillo."))
-    r = cli.post(f"{URL}/chat", json={"texto": "agrega a Pedro Castillo"}, headers=H).json()
+    # Contactos está oculta en esta clínica (sus personas van en Pacientes): la persona la nombra, así que se usa y se vuelve a mostrar.
+    r = cli.post(f"{URL}/chat", json={"texto": "agrega a Pedro Castillo a contactos"}, headers=H).json()
     assert r["modo"] == "ia" and r["crm"]["contactos"][0]["n"] == "Pedro Castillo"
     assert [c["herramienta"] for c in r["cambios"]] == ["agregar_registro"] and r["fallos"] == r["intentos"] == r["consultas"] == r["avisos"] == []
     # El primer diseño (lista 21) armó la clínica con sus Pacientes y dejó oculta la lista de contactos de fábrica: agregar a
     # alguien ahí la vuelve a mostrar, por eso el turno cambió estructura y datos.
-    assert [(p["n"], p["antesDe"], p["cambio"]) for p in r["crm"]["puntos"]] == [(1, "agrega a Pedro Castillo", ["estructura", "datos"])]
+    assert [(p["n"], p["antesDe"], p["cambio"]) for p in r["crm"]["puntos"]] == [(1, "agrega a Pedro Castillo a contactos", ["estructura", "datos"])]
     assert [p["n"] for p in cli.get(f"{URL}/puntos", headers=H).json()["puntos"]] == [1]
 
 
@@ -616,11 +617,12 @@ def test_deshacer_por_el_chat_quita_el_punto_y_vuelve_el_crm(cli, monkeypatch):
     _con_modelo(monkeypatch, dice("", llamar("agregar_registro", seccion="contactos", valores={"Nombre": "Pedro Castillo"})), dice("Listo, agregué a Pedro."),
                 dice("", llamar("agregar_registro", seccion="contactos", valores={"Nombre": "Laura Gómez"})), dice("Listo, agregué a Laura."),
                 dice("", llamar("deshacer", pedido=1)), dice("Deshice lo de Pedro."))
-    cli.post(f"{URL}/chat", json={"texto": "agrega a Pedro Castillo"}, headers=H)
+    # Contactos está oculta en esta clínica (sus personas van en Pacientes): la persona la nombra, así que se usa y se vuelve a mostrar.
+    cli.post(f"{URL}/chat", json={"texto": "agrega a Pedro Castillo a contactos"}, headers=H)
     cli.post(f"{URL}/chat", json={"texto": "agrega a Laura Gómez"}, headers=H)
     r = cli.post(f"{URL}/chat", json={"texto": "deshaz lo de Pedro"}, headers=H).json()
     assert [c["n"] for c in r["crm"]["contactos"]] == ["Laura Gómez"]  # solo lo de ese pedido: Laura se queda
-    assert r["respuesta"].startswith("Listo, deshice «agrega a Pedro Castillo»")
+    assert r["respuesta"].startswith("Listo, deshice «agrega a Pedro Castillo a contactos»")
     assert [p["n"] for p in r["crm"]["puntos"]] == [2]  # el deshacer no deja punto propio
     assert [p["n"] for p in cli.get(f"{URL}/puntos", headers=H).json()["puntos"]] == [2]
 
@@ -694,3 +696,56 @@ def test_la_ruta_guarda_el_logo_y_lo_sirve_solo_a_su_dueno(cli, monkeypatch):
     assert cli.get(f"{URL}/logo/{logo_id}", headers=H).json() == {"id": logo_id, "imagen": PNG_LOGO}
     assert cli.get(f"{URL}/logo/{logo_id}", headers={"X-Usuario": "otra"}).status_code == 404
     assert cli.get(f"{URL}/logo/no_existe", headers=H).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_no_guarda_registros_en_una_seccion_oculta_y_dice_las_visibles(doc):
+    """20-oct: en un gimnasio Contactos está oculta y «agrega a los clientes» los guardaba ahí, donde no se ven."""
+    oculto = {**doc, "ocultas": [*(doc.get("ocultas") or []), "contactos"]}
+    r, modelo = await correr(oculto, "agrega a Ximena Barrios", dice("", llamar("agregar_contactos", filas=[{"n": "Ximena Barrios"}])),
+                             dice("No la guardé todavía."), dice("No la guardé todavía."), dice("No la guardé todavía."))
+    error = _resultados(modelo)[0]
+    assert error.startswith("ERROR: no lo guardé:") and "está oculta" in error and r["cambios"] == []
+    r, modelo = await correr(oculto, "agrégala en contactos: Ximena Barrios", dice("", llamar("agregar_contactos", filas=[{"n": "Ximena Barrios"}])),
+                             dice("Listo."), dice("Listo."), dice("Listo."))
+    assert not _resultados(modelo)[0].startswith("ERROR: no lo guardé")
+
+
+@pytest.mark.asyncio
+async def test_decir_clientes_no_cuenta_como_nombrar_contactos_oculta(doc):
+    oculto = {**doc, "ocultas": [*(doc.get("ocultas") or []), "contactos"]}
+    _, modelo = await correr(oculto, "agrega a los clientes Ximena Barrios", dice("", llamar("agregar_contactos", filas=[{"n": "Ximena Barrios"}])),
+                             dice("No la guardé."), dice("No la guardé."), dice("No la guardé."))
+    assert _resultados(modelo)[0].startswith("ERROR: no lo guardé:")
+
+
+@pytest.mark.asyncio
+async def test_decir_deshice_sin_deshacer_se_corrige(doc):
+    """20-oct (banco_datos): «deshaz eso» → «Deshice el cambio…» sin llamar deshacer. «deshice» y «marqué» cuentan como afirmar."""
+    r, modelo = await correr(doc, "deshaz eso", dice("Deshice el cambio: Ana ya no está Pausada."), dice("", llamar("deshacer")),
+                             dice("No había nada que deshacer."), dice("No había nada que deshacer."))
+    assert r["avisos"] and r["avisos"][0]["descartada"].startswith("Deshice el cambio")
+    assert not r["respuesta"].startswith("Deshice el cambio")
+
+
+def test_lo_dicho_en_toda_la_conversacion_cuenta_como_nombrado(doc):
+    """20-oct: «la primera clienta que te pasé», nombrada fuera de la ventana de 16 mensajes, debe contar como nombrada."""
+    token = agente_diseno.DICHOS_CONVERSACION.set("agrega a los clientes Ximena Barrios, Pedro Díaz y Marta Ruiz")
+    try:
+        s = agente_diseno.SesionDiseno(doc, AHORA, "a la primera clienta que te pasé márcala como Pausada")
+    finally:
+        agente_diseno.DICHOS_CONVERSACION.reset(token)
+    assert "Ximena Barrios" in s.dichos and "márcala" in s.dichos
+    assert "Ximena" not in agente_diseno.SesionDiseno(doc, AHORA, "hola").dichos
+
+
+def test_el_estado_dice_en_que_orden_nombro_la_persona_a_sus_registros(doc):
+    """20-oct: «la primera clienta que te pasé» la resuelve el modelo con el orden que calcula el código (sin adivinar ni empujarlo
+    a actuar con una regla). Solo lo que ella escribió, en el orden en que lo nombró por primera vez; los de ejemplo no cuentan."""
+    d = op.contactos_crear(doc, [{"n": n} for n in ["Ximena Barrios", "Pedro Díaz", "Marta Ruiz"]], "WhatsApp", ahora=AHORA)
+    hist = [{"de": "yo", "t": "agrega a los clientes Ximena Barrios, Pedro Díaz y Marta Ruiz"}, {"de": "shifu", "t": "Listo."},
+            {"de": "yo", "t": "¿qué tal Marta Ruiz?"}]
+    s = agente_diseno.SesionDiseno(d, AHORA, "a la primera clienta que te pasé márcala como Pausada", historial=hist)
+    import json
+    orden = json.loads(s.contexto())["nombrados_por_la_persona_en_orden"]
+    assert [x.split(" (")[0] for x in orden] == ["Ximena Barrios", "Pedro Díaz", "Marta Ruiz"]

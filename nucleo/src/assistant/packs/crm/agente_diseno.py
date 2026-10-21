@@ -26,6 +26,7 @@ gráfico negado y sustituto impuesto (`revisar_sustituto_final`).
 from __future__ import annotations
 
 import copy
+from contextvars import ContextVar
 import json
 from collections import Counter
 import logging
@@ -61,6 +62,9 @@ from assistant.packs.crm.secciones import OTROS_NOMBRES
 from assistant.packs.crm.valores import campo_titulo, fecha_larga, parse_fecha, parse_hora, parse_numero, sin_acentos
 
 logger = logging.getLogger(__name__)
+
+# Todo lo que escribió la persona en la conversación guardada (no solo la ventana que ve el modelo). Lo pone la ruta del chat.
+DICHOS_CONVERSACION: ContextVar[str | None] = ContextVar("dichos_conversacion", default=None)
 
 CONTACTOS, TAREAS = sv.CONTACTOS, sv.TAREAS
 MAX_CONSULTAS = 6  # consultar_datos por mensaje (no cuentan como acciones: no cambian nada)
@@ -631,7 +635,10 @@ class SesionDiseno(agente.Sesion):
         self.adjunto = ""  # el texto del archivo adjunto (solo para las cifras permitidas; los cercos miran `texto`)
         self.confirmado = bool(agente._AFIRMA.match(texto or ""))  # un «sí» suelto confirma (como `agregar_vendedor` de Carlos)
         # Lo que escribió la persona (este mensaje y los anteriores): un registro a cambiar o borrar debe ser uno que ELLA nombró.
-        self.dichos = "\n".join([*(str(h.get("t", "")) for h in self.historial if h.get("de") == "yo"), texto or ""])
+        # Más allá de la ventana del modelo: lo que pone la ruta en DICHOS_CONVERSACION (toda la conversación guardada). 20-oct: «la
+        # primera clienta que te pasé», nombrada 20 mensajes antes, no contaba como nombrada y no se podía cambiar.
+        previos = DICHOS_CONVERSACION.get() or ""
+        self.dichos = "\n".join([previos, *(str(h.get("t", "")) for h in self.historial if h.get("de") == "yo"), texto or ""]).strip()
         self.hoy: date = op.hora_local(ahora, doc).date()
         self.pais = pais_de(doc)
         self.cambios: list[dict] = []
@@ -705,10 +712,36 @@ class SesionDiseno(agente.Sesion):
         return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *datos,
                 edicion.HERR_ENLACE]
 
+    def nombrados_en_orden(self, tope: int = 15) -> list[str]:
+        """Los registros que la persona nombró en la conversación, en el orden en que los nombró por primera vez (lo calcula el código:
+        «la primera clienta que te pasé» se resuelve con este orden, no adivinando). Solo los que ella escribió, sin los de ejemplo."""
+        dichos = sin_acentos(self.dichos or "").lower()
+        if not dichos:
+            return []
+        vistos: dict[str, tuple[int, str]] = {}
+        for sec in sv.secciones_de(self.doc):
+            ct = registros.campo_titulo(sec, sec.get("campos") or [])
+            if not ct:
+                continue
+            for r in sv.registros_de(self.doc, sec["id"]):
+                if r.get("ejemplo"):
+                    continue
+                tit = registros.titulo_de(r, ct)
+                clave = sin_acentos(tit).lower().strip()
+                if len(clave) < 4 or clave in vistos:
+                    continue
+                pos = dichos.find(clave)
+                if pos >= 0:
+                    vistos[clave] = (pos, f"{tit} ({sec['titulo']})")
+        return [v for _, v in sorted(vistos.values())][:tope]
+
     def contexto(self) -> str:
         """El Estado del CRM de Carlos (hoy, contactos, tareas, equipo, automatizaciones…) más la pantalla como chat.js
         (`pantalla.describir_pantalla`: bloques, secciones con sus campos, gráficos posibles, pedidos que se pueden deshacer y toma)."""
         base = json.loads(agente.contexto_crm(self.doc, self.ahora))
+        nombrados = self.nombrados_en_orden()
+        if nombrados:
+            base["nombrados_por_la_persona_en_orden"] = nombrados  # «la primera / la última que te pasé» se cuenta con este orden
         # Como chat.js, el modelo no ve los registros: lo que se calcula con ellos lo calcula el código (consultar_datos). Se quedan
         # los totales. Las secciones con sus campos ya van en la pantalla.
         # La fecha en partes y como la entiende `valores.parse_fecha`: «domingo 18 de octubre de 2026, 19:36» copiado tal cual a un
@@ -1026,6 +1059,33 @@ class SesionDiseno(agente.Sesion):
                     f"{actual} o creo otra sección «{titulo}»?». Si ya te dijo que quiere otra, vuelve a crearla; si quiere esa, usa mostrar_seccion.")
         return None
 
+    def _registro_en_oculta(self, nombre: str, args: dict) -> str | None:
+        """Guardar registros en una sección OCULTA los deja donde la persona no los ve (20-oct: en un gimnasio «agrega a los clientes»
+        iba a Contactos, oculta, en vez de a Membresías). El código sabe qué está oculto y qué secciones visibles guardan registros;
+        el modelo elige entre ellas o pregunta. Si la persona nombró esa sección, se respeta."""
+        if nombre == "agregar_contactos":
+            sid = CONTACTOS
+        elif nombre in ("agregar_registro", "agregar_registros"):
+            sid = self._seccion(str(args.get("seccion") or "")) if args.get("seccion") else None
+        else:
+            return None
+        if not sid or sid not in (self.doc.get("ocultas") or []):
+            return None
+        sec = pantalla.seccion_de(pantalla.plantilla_efectiva(self.doc)["secciones"], sid) or {"id": sid}
+        if sid != CONTACTOS and not pantalla.con_registros(sec):
+            return None  # una oculta sin registros (el equipo) tiene su propio aviso
+        actual = self._titulo(sid)
+        # La nombró: con su nombre en este CRM o con el de sistema («contactos»). «Clientes» no cuenta: es como se habla de
+        # cualquier persona del negocio (20-oct: «agrega a los clientes» en un gimnasio iba a Contactos oculta).
+        # Contactos solo con su nombre de sistema: su título suele ser «Clientes» o «Pacientes», que es como se habla de cualquier
+        # persona (y Shifu lo dice al responder), así que nombrarlo así no es elegir esa sección.
+        if self._nombro("Contactos") if sid == CONTACTOS else self._nombro(actual):
+            return None
+        visibles = [f"«{x['titulo']}»" for x in pantalla.secciones_visibles(self.doc) if pantalla.con_registros(x) and x["id"] != sid]
+        donde = f" Secciones visibles con registros: {', '.join(visibles)}." if visibles else ""
+        return (f"ERROR: no lo guardé: «{actual}» está oculta en el menú y la persona no lo vería.{donde} Guárdalo en la que corresponda "
+                f"a lo que pidió; si ninguna sirve, pregúntale si muestras «{actual}».")
+
     # --- citas: registros en una agenda, con las fechas que calcula el código ---
     def _agendas(self) -> list[dict]:
         return [x for x in sv.secciones_de(_visible(self.doc)) if x.get("vista") == "agenda" and (x.get("opciones") or {}).get("fecha")]
@@ -1235,7 +1295,7 @@ class SesionDiseno(agente.Sesion):
         sin_piezas = toma.error_anotar_sin_piezas(nombre, self.toma_entrada, self.doc, self.texto)
         if sin_piezas:
             return sin_piezas
-        for cerco in (self._cita_como_tarea, self._oculta_equivalente, self._bloque_fuera_de_pantalla):
+        for cerco in (self._cita_como_tarea, self._oculta_equivalente, self._registro_en_oculta, self._bloque_fuera_de_pantalla):
             error = cerco(nombre, args)
             if error:
                 return error

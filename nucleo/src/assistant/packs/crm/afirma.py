@@ -12,7 +12,7 @@ from typing import Any
 
 import regex  # \p{L} igual que en JS (el `re` de la biblioteca estándar no lo tiene)
 
-_VERBO = regex.compile(r"(?<!\p{L})(agregué|quité|cambié|moví|achiqué|agrandé|puse|creé|hice|listo|lista|ajusté|reemplacé|renombré|borré)(?!\p{L})",
+_VERBO = regex.compile(r"(?<!\p{L})(agregué|quité|cambié|moví|achiqué|agrandé|puse|creé|hice|listo|lista|ajusté|reemplacé|renombré|borré|deshice|marqué)(?!\p{L})",
                        regex.IGNORECASE)
 _NIEGA = regex.compile(r"(?<!\p{L})(no|nunca|ni|sin|todavía no|aún no)(\s+\p{L}+){0,2}\s*\Z", regex.IGNORECASE)
 _PREGUNTA = regex.compile(r"¿[^?]*\?")
