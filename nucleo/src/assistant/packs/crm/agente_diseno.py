@@ -1783,6 +1783,29 @@ def _atar(modelo: Any, herramientas: list[dict], solo_responder: bool) -> Any:
     return modelo.bind_tools(herramientas)
 
 
+MAX_HECHOS_TURNO = 6
+LARGO_ARGS_HECHO = 400
+LARGO_RESULTADO_HECHO = 200
+
+
+def hechos_del_turno(sesion: SesionDiseno) -> list[dict]:
+    """Lo que de verdad corrió en el turno (cambios, consultas y archivos), corto, para guardarlo junto a la respuesta de Shifu. Al volver
+    a armar el historial se ponen como llamadas reales a herramientas: el modelo ve lo que HIZO y no solo lo que DIJO. Sin esto imitaba
+    sus respuestas viejas («Ya preparé el Excel…») sin llamar a la herramienta (banco_descarga, 4 de 10 al final de la conversación)."""
+    def corto(args: Any) -> dict:
+        args = args if isinstance(args, dict) else {}
+        t = json.dumps(args, ensure_ascii=False, default=str)
+        return args if len(t) <= LARGO_ARGS_HECHO else {"resumen": t[:LARGO_ARGS_HECHO]}
+
+    hechos = [{"herramienta": c["herramienta"], "args": corto(c.get("args")), "resultado": str(c.get("resultado") or "")[:LARGO_RESULTADO_HECHO]}
+              for c in sesion.cambios]
+    for c in sesion.consultas:
+        a = c.get("args") if isinstance(c.get("args"), dict) else {}
+        nombre, args = ("descargar", a["descargar"]) if "descargar" in a else ("consultar_datos", a)
+        hechos.append({"herramienta": nombre, "args": corto(args), "resultado": str(c.get("resultado") or "")[:LARGO_RESULTADO_HECHO]})
+    return hechos[:MAX_HECHOS_TURNO]
+
+
 def _traza(sesion: SesionDiseno) -> dict:
     return {"cambios": sesion.cambios, "fallos": sesion.fallos, "intentos": sesion.intentos, "consultas": sesion.consultas, "avisos": sesion.avisos,
             "enlaces": sesion.enlaces}
@@ -1931,6 +1954,7 @@ async def cerrar_turno(respuesta: str, ultimos: list[str], correcciones: int, se
         salida["pendiente"] = sesion.pendiente
     if sesion.descargas:
         salida["descargas"] = sesion.descargas
+    salida["hechos"] = hechos_del_turno(sesion)
     if sesion.logo and (sesion.doc.get("marca") or {}).get("logo_id") == sesion.logo["id"]:
         salida["logo"] = sesion.logo  # la imagen del logo que quedó puesto: la ruta la guarda con ese id
     if sesion.deshechos:

@@ -866,6 +866,11 @@ _NEGATIVA_VIEJA = re.compile(
     re.IGNORECASE)
 
 
+def historial_con_hechos() -> bool:
+    """CRM_HISTORIAL_HECHOS=0 apaga las llamadas reales en el historial (para comparar). Encendido por defecto."""
+    return os.getenv("CRM_HISTORIAL_HECHOS", "1").strip() != "0"
+
+
 def _sin_negativas_viejas(historial: list[dict]) -> list[dict]:
     """Quita del historial las respuestas de Shifu con una negativa obsoleta, junto con la pregunta que las provocó."""
     salida: list[dict] = []
@@ -880,7 +885,7 @@ def _sin_negativas_viejas(historial: list[dict]) -> list[dict]:
 
 def _mensajes(doc: dict, texto: str, historial: list[dict], ahora: datetime, con_captura: bool, imagen: str | None = None, seccion: str | None = None,
               persona: str | None = None, adjunto: str | None = None):
-    from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+    from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
     sobre = f"\n\n{persona}" if persona else ""
     msgs: list[Any] = [SystemMessage(content=f"{INSTRUCCIONES}{sobre}\n\nEstado del CRM (JSON):\n{contexto_crm(doc, ahora)}")]
@@ -888,6 +893,11 @@ def _mensajes(doc: dict, texto: str, historial: list[dict], ahora: datetime, con
     # no encontrara los datos de un mensaje largo (prueba del 19-oct). No van más de 16. Lo que se sale va en el resumen rodante.
     for h in _sin_negativas_viejas(memoria.ventana(historial or [])):
         t = str(h.get("t", ""))
+        if t and h.get("de") != "yo" and h.get("h") and historial_con_hechos():
+            # Lo que corrió de verdad en ese turno, como llamadas a herramientas: el modelo ve lo que hizo, no solo lo que dijo.
+            llamadas = [{"name": x["herramienta"], "args": x.get("args") or {}, "id": f"h{len(msgs)}_{i}"} for i, x in enumerate(h["h"])]
+            msgs.append(AIMessage(content="", tool_calls=llamadas))
+            msgs.extend(ToolMessage(content=x.get("resultado") or "ok", tool_call_id=ll["id"]) for x, ll in zip(h["h"], llamadas))
         if t:
             msgs.append(HumanMessage(content=t) if h.get("de") == "yo" else AIMessage(content=t))
     # El archivo adjunto va solo en el mensaje al modelo: los cercos y las reglas miran únicamente lo que escribió la persona

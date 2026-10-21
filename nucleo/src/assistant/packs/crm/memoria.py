@@ -285,7 +285,7 @@ def sin_resumir(conv: dict | None) -> list[dict]:
 
 def historial_para_modelo(conv: dict | None, tope: int = MAX_HISTORIAL_AL_MODELO) -> list[dict]:
     """Lo que el modelo ve de la charla: los últimos `tope` mensajes, completos. Lo más viejo, si lo hay, va en el resumen del prompt."""
-    return [{"de": m["de"], "t": m["t"]} for m in ventana((conv or {}).get("mensajes"), tope)]
+    return [{"de": m["de"], "t": m["t"], **({"h": m["h"]} if m.get("h") else {})} for m in ventana((conv or {}).get("mensajes"), tope)]
 
 
 def bloque_resumen(conv: dict | None) -> str | None:
@@ -308,8 +308,9 @@ def _numerar(conv: dict) -> dict:
 
 
 async def registrar_turno(db, user_id: str, texto_persona: str, respuesta: str, ahora: datetime | None = None,
-                          recuerdos: list[str] | None = None, por_hacer: list[dict] | None = None) -> tuple[dict, bool]:
+                          recuerdos: list[str] | None = None, por_hacer: list[dict] | None = None, hechos: list[dict] | None = None) -> tuple[dict, bool]:
     """Guarda lo que se dijeron, completo. `por_hacer` (si viene, aunque sea []) reemplaza lo pendiente: lo calcula el código del turno.
+    `hechos` (lo que corrió de verdad: `agente_diseno.hechos_del_turno`) va junto a la respuesta de Shifu, en `h`.
     Devuelve (conversación, ¿toca actualizar lo que Shifu recuerda?)."""
     ahora = ahora or ahora_utc()
     conv = await obtener(db, user_id)
@@ -317,7 +318,7 @@ async def registrar_turno(db, user_id: str, texto_persona: str, respuesta: str, 
     for de, t in (("yo", texto_persona), ("shifu", respuesta)):
         if t.strip():
             conv["contador"] = int(conv.get("contador") or 0) + 1
-            nuevos.append({"de": de, "t": t.strip()[:MAX_TEXTO], "ts": ahora, "n": conv["contador"]})
+            nuevos.append({"de": de, "t": t.strip()[:MAX_TEXTO], "ts": ahora, "n": conv["contador"], **({"h": hechos} if de == "shifu" and hechos else {})})
     conv["mensajes"] = [*conv.get("mensajes", []), *nuevos][-MAX_MENSAJES:]
     if por_hacer is not None:
         conv["por_hacer"] = por_hacer

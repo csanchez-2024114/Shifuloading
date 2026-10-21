@@ -675,7 +675,8 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
         texto_memoria = (f"{datos.texto} 📎 {ctx.archivo.nombre}".strip() if datos.texto else f"📎 {ctx.archivo.nombre}")
     try:
         _, toca = await mem.registrar_turno(db, user["id"], texto_memoria or "(adjuntó un archivo)", respuesta, recuerdos=mem.sin_clientes(resultado.get("recuerdos"), [c["n"] for c in doc["contactos"]]),
-                                            por_hacer=resultado.get("por_hacer") if "por_hacer" in resultado else None)  # sin IA, lo pendiente sigue igual
+                                            por_hacer=resultado.get("por_hacer") if "por_hacer" in resultado else None,  # sin IA, lo pendiente sigue igual
+                                            hechos=resultado.get("hechos"))
         if toca and agente.activo():
             segundo_plano.add_task(mem.actualizar_memoria, db, user["id"])  # se pone al día lo que Shifu recuerda sin hacer esperar a la persona
     except Exception as e:
