@@ -61,6 +61,7 @@ from assistant.packs.crm.regional import PAISES
 from assistant.packs.crm import calculos
 from assistant.packs.crm import descarga as dl
 from assistant.packs.crm import plantillas
+from assistant.packs.crm import recetas
 from assistant.packs.crm.secciones import OTROS_NOMBRES
 from assistant.packs.crm.valores import campo_titulo, fecha_larga, parse_fecha, parse_hora, parse_numero, sin_acentos
 
@@ -120,15 +121,29 @@ HERR_ENLAZAR = {"type": "function", "function": {
         "campo": {"type": "string", "description": "el campo de texto (id o nombre: Miembro); si no existe, se crea"},
         "con": {"type": "string", "description": "la sección a la que apunta (Miembros)"}},
         "required": ["seccion", "campo", "con"]}}}
+HERR_RECETA = {"type": "function", "function": {
+    "name": "aplicar_receta",
+    "description": "Arma o CONECTA de una vez algo ya probado; el código reutiliza las secciones que ya tiene (si ya existen Inventario y Ventas, "
+                   "las conecta: hoy están sueltas y vender no baja nada). inventario: productos con "
+                   "Stock que se calcula solo (inicial + compras − ventas; cada venta lo baja sin hacer nada más y copia el precio del producto). "
+                   "cuentas_por_cobrar: clientes con Saldo que se calcula solo (créditos − abonos). Úsalo cuando quiera llevar inventario o stock, "
+                   "o quién le debe y cuánto. Después, «vendí 3 tornillos» es agregar_registro en Ventas.",
+    "parameters": {"type": "object", "properties": {
+        "receta": {"type": "string", "enum": list(recetas.RECETAS)},
+        "productos": {"type": "string", "description": "inventario: la sección donde YA tiene sus productos, si la tiene (Repuestos, Catálogo)"},
+        "clientes": {"type": "string", "description": "cuentas_por_cobrar: la sección donde YA tiene a sus clientes, si la tiene (Miembros, Alumnos)"}},
+        "required": ["receta"]}}}
 HERR_CALCULAR = {"type": "function", "function": {
     "name": "calcular_campo",
     "description": "Crea (o cambia) un campo que el CÓDIGO calcula solo; nadie lo escribe. Dentro del registro: op multiplicar / sumar / restar / "
-                   "dividir con «campos» (Total = cantidad × precio), o dias_desde / dias_hasta con «campo» de fecha. De otra sección: op resumen "
+                   "dividir con «campos» (Total = cantidad × precio), saldo con «mas» y «menos» (Stock = inicial + comprado − vendido), o dias_desde / dias_hasta con «campo» de fecha. De otra sección: op resumen "
                    "con «funcion» (suma, cuenta, promedio, maximo, minimo), «de_seccion» y «de_campo» (Pagado = suma de Pagos.Monto de cada "
                    "miembro); para eso la otra sección debe tener un campo enlazado con esta (enlazar_campo). El código dice los valores que salieron.",
     "parameters": {"type": "object", "properties": {
         "seccion": {"type": "string"}, "nombre": {"type": "string", "description": "nombre del campo calculado (Total, Pagado, Saldo)"},
-        "op": {"type": "string", "enum": [*calculos.OPS_REGISTRO, *calculos.OPS_FECHA, "resumen"]},
+        "op": {"type": "string", "enum": [*calculos.OPS_REGISTRO, *calculos.OPS_SALDO, *calculos.OPS_FECHA, "resumen"]},
+        "mas": {"type": "array", "items": {"type": "string"}, "description": "para saldo: lo que suma (inicial, comprado)"},
+        "menos": {"type": "array", "items": {"type": "string"}, "description": "para saldo: lo que resta (vendido)"},
         "campos": {"type": "array", "items": {"type": "string"}, "description": "para multiplicar/sumar/restar/dividir: ids o nombres, en orden"},
         "campo": {"type": "string", "description": "para dias_desde/dias_hasta: el campo de fecha"},
         "funcion": {"type": "string", "enum": list(calculos.FUNCIONES), "description": "para resumen"},
@@ -226,7 +241,7 @@ CATEGORIA: dict[str, str] = {
                                  "quitar_campo", "renombrar_campo", "cambiar_opciones_estado")},
     # De Carlos
     **{n: "datos" for n in (*ALIAS_DE_DATOS, "agregar_tarea", "cambiar_tarea", "mover_tarea", "eliminar_tarea", "agendar")},
-    **{n: "estructura" for n in ("definir_etapas", "mostrar_seccion", "definir_opciones", "mover_campo", "enlazar_campo", "calcular_campo")},
+    **{n: "estructura" for n in ("definir_etapas", "mostrar_seccion", "definir_opciones", "mover_campo", "enlazar_campo", "calcular_campo", "aplicar_receta")},
 }
 
 # De `laboratorio/servidor/chat.js` L70–L89 (`INSTRUCCIONES`), con estas diferencias (19-oct).
@@ -784,7 +799,7 @@ class SesionDiseno(agente.Sesion):
         datos = [HERR_AGREGAR_REGISTRO if h["function"]["name"] == "agregar_registro" else HERR_CONSULTAR if h["function"]["name"] == "consultar_datos" else h
                  for h in registros.HERRAMIENTAS_DATOS]
         return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *datos,
-                HERR_DESCARGAR, *([HERR_ENLAZAR, HERR_CALCULAR] if conectar_activo() else []), edicion.HERR_ENLACE]
+                HERR_DESCARGAR, *([HERR_ENLAZAR, HERR_CALCULAR, HERR_RECETA] if conectar_activo() else []), edicion.HERR_ENLACE]
 
     def nombrados_en_orden(self, tope: int = 15) -> list[str]:
         """Los registros que la persona nombró en la conversación, en el orden en que los nombró por primera vez (lo calcula el código:
@@ -1528,6 +1543,13 @@ class SesionDiseno(agente.Sesion):
         absurdo = self._monto_absurdo_en(s["campos"], args.get("valores"))
         if absurdo:
             return False, absurdo, None
+        if not s.get("virtual") and nombre in ("agregar_registro", "editar_registro", "agregar_registros", "cambiar_registro"):
+            # Identidad por código (calculos.preparar_valores): «3 tornillo» se guarda como «Tornillos» o pregunta; el precio se hereda al crear.
+            vals, error = calculos.preparar_valores(self.doc, s["id"], s["campos"], args.get("valores"), nombre in ("agregar_registro", "agregar_registros"),
+                                                    registros.campo_por_clave)
+            if error:
+                return False, error, None
+            args = {**args, "valores": vals}
         regs = sv.registros_de(_visible(self.doc), s["id"])
         # Registros idénticos (mismos valores) no se pueden distinguir: se toma el primero y el siguiente mensaje se ocupa del otro
         # (regla medida de Carlos, `Sesion._registros`: antes se preguntaba «¿cuál?» sin salida).
@@ -1792,8 +1814,19 @@ class SesionDiseno(agente.Sesion):
             extra += f" Ambiguos (hay dos o más con ese nombre en {destino['titulo']}): {', '.join(inf['ambiguos'][:8])}."
         return f"Listo: {s['titulo']}.{c['nombre']} quedó enlazado con {destino['titulo']}: {inf['enlazados']} de {inf['total']} registros enlazados.{extra}"
 
+    def _h_aplicar_receta(self, receta: Any = None, productos: Any = None, clientes: Any = None, **_: Any) -> str:
+        try:
+            doc, texto = recetas.aplicar(self.doc, str(receta or ""), {"productos": productos, "clientes": clientes}, self.ahora, self.hoy)
+        except ValueError as e:
+            return str(e) if str(e).startswith("ERROR") else f"ERROR: {e}"
+        except op.ErrorCrm as e:
+            return f"ERROR: {e.mensaje}"
+        self.doc = doc
+        return texto
+
     def _h_calcular_campo(self, seccion: Any = None, nombre: Any = None, op: Any = None, campos: Any = None, campo: Any = None,
-                          funcion: Any = None, de_seccion: Any = None, de_campo: Any = None, formato: Any = None, **_: Any) -> str:
+                          funcion: Any = None, de_seccion: Any = None, de_campo: Any = None, formato: Any = None, mas: Any = None,
+                          menos: Any = None, **_: Any) -> str:
         s, error = self._lista_propia(seccion)
         if error:
             return error
@@ -1807,6 +1840,9 @@ class SesionDiseno(agente.Sesion):
         calculo: dict[str, Any] = {"op": op}
         if op in calculos.OPS_REGISTRO:
             calculo["campos"] = [a_id(s["campos"], k) for k in (campos or [])] if isinstance(campos, list) else campos
+        elif op in calculos.OPS_SALDO:
+            calculo["mas"] = [a_id(s["campos"], k) for k in mas] if isinstance(mas, list) else mas
+            calculo["menos"] = [a_id(s["campos"], k) for k in (menos or [])] if isinstance(menos, list) or menos is None else menos
         elif op in calculos.OPS_FECHA:
             calculo["campo"] = a_id(s["campos"], campo)
         elif op == "resumen":
@@ -1818,7 +1854,8 @@ class SesionDiseno(agente.Sesion):
         if error:
             return error
         if formato not in calculos.FORMATOS:
-            formato = "dinero" if any(x.get("tipo") == "dinero" for x in s["campos"] if x["id"] in calculo.get("campos", [])) else "numero"
+            usa = [*(calculo.get("campos") or []), *(calculo.get("mas") or [])]
+            formato = "dinero" if any(x.get("tipo") == "dinero" for x in s["campos"] if x["id"] in usa) else "numero"
         doc = self.doc
         if existente is None:
             doc = est.campo_agregar(doc, s["id"], nombre, formato, self.ahora)

@@ -8,10 +8,16 @@ Si cambia el nombre del destino, el código lo cambia en los registros que lo no
 
 Calculado = un campo `numero` o `dinero` con `calculo`, una definición de listas cerradas (nada de texto de fórmula ni `eval`):
   {"op": "multiplicar" | "sumar" | "restar" | "dividir", "campos": [id, id, …]}      dentro del registro (cantidad × precio)
+  {"op": "saldo", "mas": [id, …], "menos": [id, …]}                                  entradas − salidas (stock, saldo)
   {"op": "dias_desde" | "dias_hasta", "campo": id_fecha}                            días desde/hasta una fecha
   {"op": "resumen", "funcion": "suma" | "cuenta" | "promedio" | "maximo" | "minimo",
    "seccion": id_otra, "relacion": id_campo_relacion_en_otra, "campo": id_numero}  de los registros que lo nombran (lo pagado por Ana)
 El valor se calcula al LEER (`con_calculos`): nunca se guarda, así que nunca queda viejo. Escribir en un calculado no se permite.
+
+Al ESCRIBIR por el chat (`preparar_valores`): el valor de un campo enlazado se identifica en la sección destino (igual, singular o
+plural, o que contenga sus palabras) y se guarda con el nombre exacto; si no existe o hay varios, es un ERROR que pregunta. Un campo
+con `hereda` ({"relacion": id, "campo": id_en_destino}) que llega vacío al CREAR copia ese valor del enlazado (el precio de la venta
+queda congelado aunque después cambie el del producto).
 """
 from __future__ import annotations
 
@@ -25,6 +31,7 @@ from assistant.packs.crm.valores import campo_titulo, parse_numero, sin_acentos
 
 OPS_REGISTRO = ("multiplicar", "sumar", "restar", "dividir")
 OPS_FECHA = ("dias_desde", "dias_hasta")
+OPS_SALDO = ("saldo",)
 FUNCIONES = ("suma", "cuenta", "promedio", "maximo", "minimo")
 FORMATOS = ("numero", "dinero")
 PASADAS = 3  # un calculado puede usar otro calculado (de su registro o de otra sección): se repite hasta que se acomoda
@@ -157,6 +164,15 @@ def revisar_calculo(doc: dict, lista_id: str, calculo: Any, campo_id: str | None
             ok = ", ".join(f"{c['id']} ({c['nombre']})" for c in numericos) or "ninguno (agrégalos primero)"
             return f"ERROR: {', '.join(map(str, malos))} no son campos de número o dinero de {lista['nombre']}. Se puede usar: {ok}."
         return None
+    if op in OPS_SALDO:
+        mas, menos = calculo.get("mas") or [], calculo.get("menos") or []
+        if not isinstance(mas, list) or not isinstance(menos, list) or not mas:
+            return "ERROR: «saldo» necesita «mas» (1 o más campos) y «menos» (0 o más) de número o dinero."
+        malos = [i for i in [*mas, *menos] if i not in campos or campos[i].get("tipo") not in FORMATOS or i == campo_id]
+        if malos:
+            ok = ", ".join(f"{c['id']} ({c['nombre']})" for c in numericos) or "ninguno"
+            return f"ERROR: {', '.join(map(str, malos))} no son campos de número o dinero de {lista['nombre']}. Se puede usar: {ok}."
+        return None
     if op in OPS_FECHA:
         c = campos.get(calculo.get("campo"))
         if not c or c.get("tipo") != "fecha":
@@ -183,7 +199,7 @@ def revisar_calculo(doc: dict, lista_id: str, calculo: Any, campo_id: str | None
                 nums = ", ".join(f"{x['id']} ({x['nombre']})" for x in otra["campos"] if x.get("tipo") in FORMATOS) or "ninguno"
                 return f"ERROR: para «{calculo['funcion']}» pon «campo»: uno de número o dinero de {otra['nombre']}: {nums}."
         return None
-    return f"ERROR: «op» debe ser una de: {', '.join((*OPS_REGISTRO, *OPS_FECHA, 'resumen'))}."
+    return f"ERROR: «op» debe ser una de: {', '.join((*OPS_REGISTRO, *OPS_SALDO, *OPS_FECHA, 'resumen'))}."
 
 
 def _valor(calculo: dict, valores: dict, doc: dict, lista: dict, registro: dict, hoy: date, ct_lista: dict | None,
@@ -209,6 +225,12 @@ def _valor(calculo: dict, valores: dict, doc: dict, lista: dict, registro: dict,
                 return None
             out /= x
         return out
+    if op in OPS_SALDO:
+        mas = [_num(valores.get(i)) for i in calculo["mas"]]
+        menos = [_num(valores.get(i)) for i in calculo.get("menos") or []]
+        if all(x is None for x in mas + menos):
+            return None
+        return sum(x or 0.0 for x in mas) - sum(x or 0.0 for x in menos)
     if op in OPS_FECHA:
         f = _fecha(valores.get(calculo["campo"]))
         if not f:
@@ -269,3 +291,71 @@ def ejemplos(doc: dict, lista_id: str, campo_id: str, hoy: date) -> list[str]:
         nombre = (r.get("valores") or {}).get(ct["id"]) if ct else r["id"]
         out.append(f"{nombre}: {r['valores'].get(campo_id, '(vacío)')}")
     return out
+
+
+# ───────── Al escribir: identidad del enlazado y valor heredado ─────────
+
+def _formas(k: str) -> set[str]:
+    """La clave normalizada y su singular/plural sencillo («tornillo» ↔ «tornillos», «flor» ↔ «flores»)."""
+    out = {k}
+    if k.endswith("es") and len(k) > 4:
+        out.add(k[:-2])
+    if k.endswith("s") and len(k) > 3:
+        out.add(k[:-1])
+    out.update({k + "s", k + "es"})
+    return out
+
+
+def identificar(doc: dict, destino_id: str, valor: Any) -> dict:
+    """¿A qué registro del destino se refiere `valor`? {"titulo", "id"} si es uno; {"ninguno": [títulos]} o {"varios": [títulos]}."""
+    sec = next((s for s in sv.secciones_de({**doc, "ocultas": []}) if s["id"] == destino_id), None)
+    if sec is None:
+        return {"ninguno": []}
+    ct = campo_titulo(sec, sec["campos"])
+    regs = sv.registros_de({**doc, "ocultas": []}, destino_id)
+    nombre = lambda r: (r.get("valores") or {}).get(ct["id"]) if ct else None  # noqa: E731
+    k = _norm(valor)
+    for prueba in (lambda r: _norm(nombre(r)) == k, lambda r: bool(_formas(_norm(nombre(r))) & _formas(k)),
+                   lambda r: bool(k) and all(p in _norm(nombre(r)) for p in k.split())):
+        hay = [r for r in regs if nombre(r) and prueba(r)]
+        if len(hay) == 1:
+            return {"titulo": nombre(hay[0]), "id": hay[0]["id"], "registro": hay[0]}
+        if len(hay) > 1:
+            return {"varios": [str(nombre(r)) for r in hay[:8]]}
+    return {"ninguno": [str(nombre(r)) for r in regs if nombre(r)][:12], "seccion": sec["titulo"]}
+
+
+def preparar_valores(doc: dict, lista_id: str, campos: list[dict], valores: Any, crear: bool,
+                     campo_por_clave) -> tuple[Any, str | None]:
+    """Los valores que el modelo quiere guardar, con los enlaces identificados por el código y lo heredado (solo al crear).
+    Devuelve (valores, ERROR o None). `campo_por_clave` resuelve «Producto» o «producto» al campo."""
+    if not isinstance(valores, dict):
+        return valores, None
+    lista = _lista(doc, lista_id)
+    if lista is None:
+        return valores, None
+    out = dict(valores)
+    enlazados: dict[str, dict] = {}
+    for k, v in valores.items():
+        c = campo_por_clave(lista["campos"], k)
+        if not c or not c.get("relacion") or not _norm(v):
+            continue
+        r = identificar(doc, c["relacion"], v)
+        if "varios" in r:
+            return valores, f"ERROR: «{v}» puede ser {', '.join(r['varios'])}. Pregúntale cuál (no lo guardes todavía)."
+        if "ninguno" in r:
+            hay = ", ".join(r["ninguno"]) or "ninguno todavía"
+            return valores, (f"ERROR: «{v}» no está en {r.get('seccion', 'la sección enlazada')} (hay: {hay}). No lo guardes: pregúntale si es "
+                             f"uno de esos o si lo agregas primero a {r.get('seccion', 'esa sección')}.")
+        out[k] = r["titulo"]  # el nombre exacto: así el enlace y lo calculado siempre cuadran
+        enlazados[c["id"]] = r["registro"]
+    if crear:
+        puestos = {(campo_por_clave(lista["campos"], k) or {}).get("id") for k, v in out.items() if v not in (None, "")}
+        for c in lista["campos"]:
+            h = c.get("hereda")
+            if not isinstance(h, dict) or c["id"] in puestos or h.get("relacion") not in enlazados:
+                continue
+            v = (enlazados[h["relacion"]].get("valores") or {}).get(h.get("campo"))
+            if v not in (None, ""):
+                out[c["id"]] = v
+    return out, None

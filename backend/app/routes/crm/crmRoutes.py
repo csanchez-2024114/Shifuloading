@@ -44,6 +44,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.core.limiter import limiter
 from app.crm import adjuntos
 from app.crm import agente
+from app.crm import recetas
 from app.crm import calculos
 from app.crm import descarga as dl
 from app.crm import diseno
@@ -336,6 +337,8 @@ async def crear_crm(request: Request, datos: CrearCrm, user: dict = Depends(get_
     else:
         doc = await diseno.disenar(generar(user["id"], brief), brief)  # la IA arma la estructura a la medida; sin IA queda la plantilla base
     doc = est.normalizar(doc)  # nace en el esquema 2 (inicio, marca, toma…), igual que lo verá la próxima lectura
+    ahora = op.ahora_utc()
+    doc, _ = recetas.al_crear(doc, ahora, op.hora_local(ahora, doc).date())  # inventario+ventas o clientes+créditos nacen conectados
     await repo.reemplazar(request.app.state.db, user["id"], doc)
     await _olvidar_puntos(request.app.state.db, user["id"])  # los del CRM anterior no sirven para este
     return JSONResponse(vista_crm(doc, puntos=[]), status_code=201)
