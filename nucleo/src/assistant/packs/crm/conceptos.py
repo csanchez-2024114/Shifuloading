@@ -5,6 +5,7 @@ También: sugerir 2–3 gráficas (13/14) y humanizar el estado que ve el modelo
 from __future__ import annotations
 
 import json
+import os
 import re
 import unicodedata
 from functools import lru_cache
@@ -50,8 +51,22 @@ def _norm(s: str) -> str:
     return "".join(c for c in s if unicodedata.category(c) != "Mn")
 
 
+# Lo que ya se puede hacer y con qué herramienta (etapa 2). El catálogo marcaba «falta» a mano y se quedó viejo: decía «todavía no está:
+# ofrece lo más parecido» para relación, calculado y movimientos cuando ya existían, y el modelo ofrecía en vez de hacer (banco_erp,
+# banco_calculos y conceptos, 21-oct). Ahora lo decide el código con lo que de verdad está activo.
+_YA_SE_HACE = {"relacion": "enlazar_campo", "calculado": "calcular_campo", "movimientos": "aplicar_receta (inventario)"}
+
+
+def _falta(c: dict) -> str | None:
+    """Lo que de verdad falta de ese concepto, o None si ya se puede (CRM_CONECTAR=0 lo vuelve a esconder, como las herramientas)."""
+    f = c.get("falta")
+    if f in _YA_SE_HACE and os.getenv("CRM_CONECTAR", "1").strip() != "0":
+        return None
+    return f
+
+
 def _linea_compacta(c: dict) -> str:
-    falta = c.get("falta")
+    falta = _falta(c)
     extra = f" (todavía no: {falta})" if falta else ""
     return f"{c['id']}: {c['que_es']}{extra}"
 
@@ -76,8 +91,10 @@ def _detalle(c: dict, en_tu_crm: str | None = None) -> str:
             piezas.append(f"pestaña base {arma['pestana_base']}")
         if piezas:
             partes.append("Se arma con: " + "; ".join(piezas) + ".")
-    if c.get("falta"):
-        partes.append(f"Todavía no está en el producto ({c['falta']}): dilo con honestidad y ofrece lo más parecido que SÍ puedas.")
+    if _falta(c):
+        partes.append(f"Todavía no está en el producto ({_falta(c)}): dilo con honestidad y ofrece lo más parecido que SÍ puedas.")
+    elif c.get("falta") in _YA_SE_HACE:
+        partes.append(f"Ya se puede: hazlo con {_YA_SE_HACE[c['falta']]}.")
     conf = c.get("no_confundir_con") or []
     if conf:
         partes.append("No confundir con: " + ", ".join(conf) + ".")

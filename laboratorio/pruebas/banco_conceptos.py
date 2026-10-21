@@ -76,9 +76,9 @@ CASOS = [  # (descripción, plantilla, estado, texto, historial, muestra, brief,
     ("13 gráfica sobre sección vacía: avisa y ofrece", "membresias", E(bloques=[]), "ponme una gráfica de mis pagos por mes", None, VACIO, None,
      lambda d: bool(VACIA.search(d["respuesta"])) and pregunta(d)),
     ("19 quiero llevar inventario", "membresias", E(), "quiero llevar el inventario de los productos que vendo", None, POCOS, None,
-     lambda d: "crear_seccion" in hechas(d) and "numero" in tipos_nuevos(d)),
+     lambda d: ("crear_seccion" in hechas(d) and "numero" in tipos_nuevos(d)) or "aplicar_receta" in hechas(d)),  # 21-oct: la receta de inventario también
     ("19 cobros a crédito", "pedidos", E(bloques=[]), "vendo a crédito y quiero llevar quién me debe, cuánto y cuándo me tiene que pagar", None, POCOS, None,
-     lambda d: "crear_seccion" in hechas(d) and {"dinero", "fecha"} <= tipos_nuevos(d)),
+     lambda d: ("crear_seccion" in hechas(d) and {"dinero", "fecha"} <= tipos_nuevos(d)) or "aplicar_receta" in hechas(d)),  # o la receta de cuentas por cobrar
     ("7 «sí» suelto acepta la recomendada", "membresias", E(), "sí", H_RECOMENDADA, POCOS, None,
      lambda d: [b["uid"] for b in bloques(d)][:2] == ["b0", "b1"] and any(b["vista"] == "grafico" and (b.get("opciones") or {}).get("tipo") == "dona" for b in bloques(d))),
     ("7 «sí» suelto a una pregunta abierta no la repite", "membresias", E(), "sí", H_ABIERTA, POCOS, None,
@@ -97,22 +97,30 @@ CASOS = [  # (descripción, plantilla, estado, texto, historial, muestra, brief,
      lambda d: bool(re.search(r"repar|comput|celular|repuest|laptop", d["respuesta"], re.I))),
 ]
 
-ok = tot = 0
-tiempos = []
-for _ in range(N):
-    for desc, plantilla, est, txt, hist, muestra, brief, verif in CASOS:
-        try:
-            d, t = pide(plantilla, est, txt, hist, muestra, brief)
-        except Exception as e:  # noqa: BLE001
-            print(f"✗  error | {desc} | {e}")
+# La corrida va en main(): importar el banco (para reutilizar CASOS o `pide`) ya no lo corre entero (costó ~US$1,9 el 21-oct).
+
+def main() -> None:
+    global ok, tot
+    ok = tot = 0
+    tiempos = []
+    for _ in range(N):
+        for desc, plantilla, est, txt, hist, muestra, brief, verif in CASOS:
+            try:
+                d, t = pide(plantilla, est, txt, hist, muestra, brief)
+            except Exception as e:  # noqa: BLE001
+                print(f"✗  error | {desc} | {e}")
+                tot += 1
+                continue
+            tiempos.append(t)
+            b = bool(verif(d))
+            ok += b
             tot += 1
-            continue
-        tiempos.append(t)
-        b = bool(verif(d))
-        ok += b
-        tot += 1
-        print(f"{'✓' if b else '✗'} {t:4.1f}s | {desc} | «{txt}»")
-        if not b:
-            print(f"     hizo: {hechas(d)} fallos={d['fallos'][:1]}\n     dijo: {d['respuesta'][:300]}")
-tiempos.sort()
-print(f"\n{ok}/{tot} correctos · tiempo medio {sum(tiempos)/len(tiempos):.1f}s · mediana {tiempos[len(tiempos)//2]:.1f}s · máx {max(tiempos):.1f}s")
+            print(f"{'✓' if b else '✗'} {t:4.1f}s | {desc} | «{txt}»")
+            if not b:
+                print(f"     hizo: {hechas(d)} fallos={d['fallos'][:1]}\n     dijo: {d['respuesta'][:300]}")
+    tiempos.sort()
+    print(f"\n{ok}/{tot} correctos · tiempo medio {sum(tiempos)/len(tiempos):.1f}s · mediana {tiempos[len(tiempos)//2]:.1f}s · máx {max(tiempos):.1f}s")
+
+
+if __name__ == "__main__":
+    main()

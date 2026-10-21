@@ -2055,7 +2055,7 @@
    "id": "precio_costo_margen",
    "grupo": "erp",
    "nombre": "Precio / costo / margen",
-   "que_es": "Precio de venta, costo unitario y utilidad; margen auto aún no existe.",
+   "que_es": "Precio de venta, costo unitario y utilidad (el margen se puede calcular solo).",
    "para_que": "Saber si ganás en cada producto.",
    "frases": [
     "precio y costo",
