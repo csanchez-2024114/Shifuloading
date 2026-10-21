@@ -52,7 +52,7 @@ class _ColeccionPuntos(_Coleccion):
         return all(_cumple(d.get(k), v) for k, v in filtro.items())
 
     async def insert_one(self, doc):
-        if any(d.get("user_id") == doc.get("user_id") and d.get("n") == doc.get("n") for d in self.docs):
+        if "n" in doc and any(d.get("user_id") == doc.get("user_id") and d.get("n") == doc.get("n") for d in self.docs):
             raise AssertionError("índice único (user_id, n) violado")
         self.docs.append(_como_mongo(copy.deepcopy(doc)))
 

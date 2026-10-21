@@ -386,6 +386,8 @@ def filtrar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None =
 
     filtros_args = args.get("filtros")
     for k, v in (filtros_args.items() if isinstance(filtros_args, dict) else []):
+        if _falso(v):  # un filtro vacío («vence: ""») no filtra nada: se ignora en vez de ser un error
+            continue
         c = campo_por_clave(campos, k)
         if not c:
             todos = ", ".join(f"{x.get('id')} ({x.get('nombre')})" for x in campos)

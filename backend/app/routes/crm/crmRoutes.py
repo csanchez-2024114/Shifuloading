@@ -47,6 +47,7 @@ from app.crm import agente
 from app.crm import recetas
 from app.crm import calculos
 from app.crm import descarga as dl
+from app.crm import documento
 from app.crm import diseno
 from app.crm import estructura as est
 from app.crm import memoria as mem
@@ -697,6 +698,12 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     if diseno:  # la traza del turno, con la forma del laboratorio (las reglas no llaman herramientas: listas vacías)
         for clave in ("cambios", "fallos", "intentos", "consultas", "avisos"):
             salida[clave] = resultado.get(clave) or []
+    for pedido in resultado.get("documentos") or []:
+        try:
+            resultado.setdefault("descargas", []).append(await _documento_pdf(db, user["id"], doc, pedido))
+        except Exception as e:  # el modelo ya dijo «listo»: si no se pudo, la respuesta lo corrige
+            logger.warning("No se pudo armar el documento: %s", type(e).__name__)
+            respuesta = salida["respuesta"] = f"{salida['respuesta']}\n\nOjo: no pude preparar el documento. Pídemelo de nuevo en un momento."
     if resultado.get("descargas"):
         try:
             salida["descargas"] = [await repo.descarga_guardar(db, user["id"], a) for a in resultado["descargas"]]
@@ -704,6 +711,19 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
             logger.warning("No se pudo guardar el archivo para descargar: %s", type(e).__name__)
             salida["respuesta"] = f"{respuesta}\n\nOjo: no pude preparar el archivo. Pídemelo de nuevo en un momento."
     return salida
+
+
+async def _documento_pdf(db, user_id: str, doc: dict, pedido: dict) -> dict:
+    """Número (el mismo si ya existía y no pidió uno nuevo), foto congelada y PDF con la marca. Devuelve el archivo para `descargas`."""
+    previo = None if pedido.get("nuevo") else await repo.documento_existente(db, user_id, pedido["seccion"], pedido["registro"], pedido["tipo"])
+    hecho = previo or await repo.documento_nuevo(db, user_id, pedido["seccion"], pedido["registro"], pedido["tipo"], pedido["foto"])
+    marca = doc.get("marca") or {}
+    logo = (await repo.logo_obtener(db, user_id, marca["logo_id"]) or {}).get("imagen") if marca.get("logo_id") else None
+    num = documento.numero(hecho["tipo"], hecho["folio"])
+    contenido = documento.pdf(hecho["foto"], num, marca.get("primario"), logo)
+    nombre = dl.nombre_archivo(hecho["foto"].get("negocio"), f"{hecho['foto']['titulo']} {num} {hecho['foto'].get('registro') or ''}".strip(), "pdf",
+                               op.hora_local(op.ahora_utc(), doc).date())
+    return {"nombre": nombre, "formato": "pdf", "mime": "application/pdf", "contenido": contenido}
 
 
 def _archivo(nombre: str, mime: str, contenido: bytes) -> Response:

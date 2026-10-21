@@ -20,7 +20,7 @@ from typing import Any
 FORMATOS = ("excel", "csv", "respaldo")
 MIME = {"excel": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "csv": "text/csv; charset=utf-8",
         "respaldo": "application/json"}
-EXTENSION = {"excel": "xlsx", "csv": "csv", "respaldo": "json"}
+EXTENSION = {"excel": "xlsx", "csv": "csv", "respaldo": "json", "pdf": "pdf"}  # pdf: los documentos (documento.py)
 VERSION_RESPALDO = 1
 _FORMATO_NUMERO = {"numero": "#,##0.##", "dinero": "#,##0.00"}
 _HOJA_PROHIBIDO = re.compile(r"[\\/?*\[\]:]")

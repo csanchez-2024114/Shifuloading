@@ -60,6 +60,7 @@ from assistant.packs.crm.chat import _capitaliza, _norm
 from assistant.packs.crm.regional import PAISES
 from assistant.packs.crm import calculos
 from assistant.packs.crm import descarga as dl
+from assistant.packs.crm import documento
 from assistant.packs.crm import plantillas
 from assistant.packs.crm import recetas
 from assistant.packs.crm.secciones import OTROS_NOMBRES
@@ -111,6 +112,17 @@ def conectar_activo() -> bool:
     return os.getenv("CRM_CONECTAR", "1").strip() != "0"
 
 # Datos que se conectan (`calculos.py`): el modelo elige de listas cerradas; el código enlaza, calcula y dice qué salió.
+HERR_DOCUMENTO = {"type": "function", "function": {
+    "name": "documento_de",
+    "description": "Prepara en PDF el documento de UN registro, solo si la persona lo pide: recibo (de un pago), orden (de servicio o de un "
+                   "trabajo), cotizacion, estado_de_cuenta (un cliente con lo que se le enlaza: créditos, abonos, saldo) o ficha. Lleva la marca "
+                   "del negocio y un número consecutivo que pone el código (no lo inventes); si ya se hizo antes, sale el mismo número y valores, "
+                   "salvo nuevo=true («con los datos de hoy»). La pantalla le muestra el botón para bajarlo: no escribas enlaces.",
+    "parameters": {"type": "object", "properties": {
+        "seccion": {"type": "string"}, "registro": {"type": "string", "description": "cómo lo nombró la persona (Ana Ruiz) o su id"},
+        "tipo": {"type": "string", "enum": list(documento.TIPOS)},
+        "nuevo": {"type": "boolean", "description": "true solo si pide uno nuevo con los datos actuales"}},
+        "required": ["seccion", "registro", "tipo"]}}}
 HERR_ENLAZAR = {"type": "function", "function": {
     "name": "enlazar_campo",
     "description": "Conecta un campo de texto con otra sección: el valor sigue siendo el nombre que se ve («Ana López») y el código lo une con el "
@@ -357,6 +369,9 @@ _ANUNCIO = regex.compile(r"(?<!\p{L})(?:(?:te\s+)?(?:la|lo|las|los)\s+)?(?:creo|
                          regex.IGNORECASE)
 # «Descárgalo en la pantalla»: solo es verdad si en el turno se preparó un archivo (el botón existe). Lo decide el hecho, no el verbo.
 _DESCARGABLE = regex.compile(r"(?<!\p{L})desc[aá]rg\p{L}*", regex.IGNORECASE)
+# «No encontré a Luis»: dice que buscó. Si en el turno no corrió ninguna herramienta, no buscó (banco_documento, 21-oct: Luis sí existía).
+# Solo lo que afirma una BÚSQUEDA («no encontré», «no la hallé»); «eso no existe» habla de una función, no de un dato.
+_NO_ENCONTRE = regex.compile(r"(?<!\p{L})no\s+(?:l[oa]s?\s+|te\s+)?(?:encontr[ée]|hall[ée])(?!\p{L})", regex.IGNORECASE)
 _NUM_SEP = re.compile(r"(?<=\d)[,.](?=\d{3}\b)")
 
 # Partes de una oración para `afirma_sin_respaldo`: «ya estaba la de mañana, pero puse las de los jueves» son dos afirmaciones.
@@ -735,6 +750,7 @@ class SesionDiseno(agente.Sesion):
         self.cambios: list[dict] = []
         self.intentos: list[dict] = []
         self.consultas: list[dict] = []
+        self.documentos: list[dict] = []  # documentos pedidos (la foto congelada): la ruta les pone número, los guarda y arma el PDF
         self.descargas: list[dict] = []  # archivos que pidió (con sus bytes): la ruta los guarda y la pantalla muestra el botón
         self.avisos: list[dict] = []
         self.deshecho: set[str] = set()   # categorías deshechas en este turno
@@ -803,7 +819,7 @@ class SesionDiseno(agente.Sesion):
         datos = [HERR_AGREGAR_REGISTRO if h["function"]["name"] == "agregar_registro" else HERR_CONSULTAR if h["function"]["name"] == "consultar_datos" else h
                  for h in registros.HERRAMIENTAS_DATOS]
         return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *datos,
-                HERR_DESCARGAR, *([HERR_ENLAZAR, HERR_CALCULAR, HERR_RECETA] if conectar_activo() else []), edicion.HERR_ENLACE]
+                HERR_DESCARGAR, HERR_DOCUMENTO, *([HERR_ENLAZAR, HERR_CALCULAR, HERR_RECETA] if conectar_activo() else []), edicion.HERR_ENLACE]
 
     def nombrados_en_orden(self, tope: int = 15) -> list[str]:
         """Los registros que la persona nombró en la conversación, en el orden en que los nombró por primera vez (lo calcula el código:
@@ -878,7 +894,7 @@ class SesionDiseno(agente.Sesion):
 
     # --- los cercos que usa agente.revisar_respuesta ---
     def revisar_pantalla(self, respuesta: str) -> str | None:
-        aviso = self.aviso_archivo_inexistente(respuesta)
+        aviso = self.aviso_archivo_inexistente(respuesta) or self.aviso_no_busco(respuesta)
         if aviso:
             return aviso
         for gancho in GANCHOS_PANTALLA:
@@ -909,8 +925,8 @@ class SesionDiseno(agente.Sesion):
     def afirma_sin_cambios(self, respuesta: str) -> str | None:
         """chat.js: afirma un cambio y ninguna herramienta cambió nada. «Afirma» = el vocabulario del laboratorio (afirma_cambio) o el de
         Carlos (`_EXITO_D51`: «he agregado», «registré»…), las dos con la regla de D51."""
-        # Un archivo preparado (descargar) es algo hecho: «Listo, aquí está tu Excel» no es un falso éxito.
-        if not self.cambios and not self.descargas and (afirma_cambio(respuesta) or afirma_con(respuesta, _EXITO_D51)):
+        # Un archivo preparado (descargar, documento_de) es algo hecho: «Listo, aquí está tu Excel» no es un falso éxito.
+        if not self.cambios and not self.descargas and not self.documentos and (afirma_cambio(respuesta) or afirma_con(respuesta, _EXITO_D51)):
             fallaron = f" (fallaron: {' | '.join(self.fallos[-2:])})" if self.fallos else ""
             return f"[Aviso interno] Dices que hiciste un cambio, pero ninguna herramienta cambió la pantalla{fallaron}. Llama a la herramienta o di la verdad."
         return None
@@ -1298,6 +1314,7 @@ class SesionDiseno(agente.Sesion):
         hecho |= ph.palabras([c.get("resultado") for c in self.cambios])
         # El archivo preparado también es un hecho: «Preparé el Excel con las 5 reparaciones» (el regex de futuro toma «-aré» de «preparé»).
         hecho |= ph.palabras([f"{d['nombre']} {d['formato']} archivo descargar {d['lleva']}" for d in self.descargas])
+        hecho |= ph.palabras([f"{d['foto']['titulo']} {d['foto']['registro']} documento pdf archivo descargar" for d in self.documentos])
         pendiente = ph.palabras([ph.texto_de(x) for x in (*self.por_hacer_previo, *self.por_hacer)])
         salida = []
         for parte in _PARTES.split(sin_preguntas(respuesta)):
@@ -1726,7 +1743,7 @@ class SesionDiseno(agente.Sesion):
         formato = str(args.get("formato") or "").strip().lower()
         if formato not in dl.FORMATOS:
             return self._fallo_descarga(f"ERROR: formato «{_js(args.get('formato'))}»: usa excel, csv o respaldo.")
-        if len(self.descargas) >= MAX_DESCARGAS:
+        if len(self.descargas) + len(self.documentos) >= MAX_DESCARGAS:
             return self._fallo_descarga("ERROR: ya preparaste un archivo en este mensaje. Responde con ese.")
         negocio = (self.doc.get("brief") or {}).get("nombre")
         if formato == "respaldo":
@@ -1776,10 +1793,19 @@ class SesionDiseno(agente.Sesion):
         self.consultas.append({"args": {"descargar": args}, "resultado": t})
         return t
 
+    def aviso_no_busco(self, respuesta: str) -> str | None:
+        """Dice que no encontró a alguien o algo sin haber buscado: en el turno no corrió ninguna herramienta."""
+        if self.cambios or self.consultas or self.intentos or self.descargas or self.documentos:
+            return None
+        if not _NO_ENCONTRE.search(sin_preguntas(respuesta)):
+            return None
+        return ("[Aviso interno] Dices que algo no está, pero en este mensaje no buscaste. Búscalo con la herramienta (consultar_datos o la "
+                "que corresponda) antes de decir que no existe.")
+
     def aviso_archivo_inexistente(self, respuesta: str) -> str | None:
         """Le dice que descargue algo y en este mensaje no se preparó ningún archivo: en la pantalla no hay botón (banco_descarga: «Ya armé
         el respaldo… para que lo descargues» y «Ya preparé el Excel…» sin llamar a descargar, con descargas anteriores en la conversación)."""
-        if self.descargas or not afirma_con(respuesta, _DESCARGABLE):
+        if self.descargas or self.documentos or not afirma_con(respuesta, _DESCARGABLE):
             return None
         return ("[Aviso interno] Le dices que descargue un archivo, pero en este mensaje no preparaste ninguno: en su pantalla no hay botón. "
                 "Si lo pidió, llama a descargar ahora; si no, dilo sin mandarla a descargar.")
@@ -1880,6 +1906,44 @@ class SesionDiseno(agente.Sesion):
         return (f"Listo: {s['titulo']}.{nombre} lo calcula el código ({'nuevo' if existente is None else 'cambiado'}). "
                 f"Valores de ejemplo: {'; '.join(muestra) or 'todavía no hay registros'}. Di estos valores tal cual, sin inventar otros.")
 
+    def documento_de(self, args: Any) -> str:
+        """documento_de: el código arma la foto del documento (`documento.foto`); el número y el PDF los pone la ruta. No cambia nada."""
+        args = args if isinstance(args, dict) else {}
+        tipo = str(args.get("tipo") or "").strip().lower()
+        if tipo not in documento.TIPOS:
+            return self._fallo_descarga(f"ERROR: tipo «{_js(args.get('tipo'))}»: usa {', '.join(documento.TIPOS)}.")
+        if len(self.descargas) + len(self.documentos) >= MAX_DESCARGAS:
+            return self._fallo_descarga("ERROR: ya preparaste un archivo en este mensaje. Responde con ese.")
+        s, error = self._seccion_datos(args.get("seccion"))
+        if error:
+            return self._fallo_descarga(error)
+        regs = sv.registros_de({**self.doc, "ocultas": []}, s["id"])
+        b = registros.buscar_registro(regs, s, s["campos"], str(args.get("registro") or ""))
+        if b.get("ninguno"):
+            return self._fallo_descarga(f"ERROR: en {s['titulo']} no hay ningún registro «{_js(args.get('registro'))}». Pregúntale a cuál se refiere.")
+        if b.get("registro") is None:
+            ct = registros.campo_titulo(s, s["campos"])
+            cuales = ", ".join(registros.titulo_de(x, ct) for x in b["candidatos"][:6]) if ct else ""
+            return self._fallo_descarga(f"ERROR: «{_js(args.get('registro'))}» puede ser {cuales}. Pregúntale cuál.")
+        s, reg = self._duenio_del_estado(s, b["registro"]) if tipo == "estado_de_cuenta" else (s, b["registro"])
+        f = documento.foto(self.doc, s, reg, tipo, self.hoy, self.pais)
+        self.documentos.append({"seccion": s["id"], "registro": reg["id"], "tipo": tipo, "nuevo": bool(args.get("nuevo")), "foto": f})
+        tablas = "; ".join(f"{t['titulo']} ({len(t['filas'])})" for t in f["tablas"]) or "sin registros enlazados"
+        t = (f"Listo: el {f['titulo'].lower()} de {f['registro']} está preparado y la pantalla le muestra el botón para bajarlo en PDF. "
+             f"Lleva {len(f['datos'])} datos y {tablas}. El número lo pone el sistema: no lo digas ni lo inventes. Díselo en una línea; no escribas enlaces.")
+        self.consultas.append({"args": {"documento": args}, "resultado": t})
+        return t
+
+    def _duenio_del_estado(self, s: dict, r: dict) -> tuple[dict, dict]:
+        """El estado de cuenta es de la PERSONA: si eligió un crédito o un abono de Ana, el código lo cambia por Ana (su campo enlazado)."""
+        for c in s["campos"]:
+            if c.get("relacion") and (r.get("valores") or {}).get(c["id"]):
+                hallado = calculos.identificar(self.doc, c["relacion"], r["valores"][c["id"]])
+                destino = next((x for x in sv.secciones_de({**self.doc, "ocultas": []}) if x["id"] == c["relacion"]), None)
+                if hallado.get("registro") and destino:
+                    return destino, hallado["registro"]
+        return s, r
+
     def _fallo_descarga(self, t: str) -> str:
         self.consultas.append({"args": {"descargar": True}, "resultado": t[:500]})
         return t
@@ -1977,7 +2041,8 @@ def hechos_del_turno(sesion: SesionDiseno) -> list[dict]:
               for c in sesion.cambios]
     for c in sesion.consultas:
         a = c.get("args") if isinstance(c.get("args"), dict) else {}
-        nombre, args = ("descargar", a["descargar"]) if "descargar" in a else ("consultar_datos", a)
+        nombre, args = (("descargar", a["descargar"]) if "descargar" in a else ("documento_de", a["documento"]) if "documento" in a
+                        else ("consultar_datos", a))
         hechos.append({"herramienta": nombre, "args": corto(args), "resultado": str(c.get("resultado") or "")[:LARGO_RESULTADO_HECHO]})
     return hechos[:MAX_HECHOS_TURNO]
 
@@ -2130,6 +2195,8 @@ async def cerrar_turno(respuesta: str, ultimos: list[str], correcciones: int, se
         salida["pendiente"] = sesion.pendiente
     if sesion.descargas:
         salida["descargas"] = sesion.descargas
+    if sesion.documentos:
+        salida["documentos"] = sesion.documentos
     salida["hechos"] = hechos_del_turno(sesion)
     if sesion.logo and (sesion.doc.get("marca") or {}).get("logo_id") == sesion.logo["id"]:
         salida["logo"] = sesion.logo  # la imagen del logo que quedó puesto: la ruta la guarda con ese id
@@ -2204,6 +2271,8 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
                 resultado = sesion.consultar(args)
             elif nombre == "descargar":
                 resultado = sesion.descargar(args)
+            elif nombre == "documento_de":
+                resultado = sesion.documento_de(args)
             elif nombre == "deshacer":
                 resultado = sesion.deshacer(args)
             else:

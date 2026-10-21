@@ -163,3 +163,32 @@ async def descarga_obtener(db, user_id: str, descarga_id: str) -> dict | None:
     if d is not None:
         d["contenido"] = bytes(d["contenido"])
     return d
+
+
+# ───────── Documentos con número (colección `crm_documentos`) ─────────
+# Cada recibo, orden o cotización guarda su foto (los valores ya en texto) con su número: reimprimirlo sale idéntico.
+
+def _documentos(db):
+    return db[Collections.CRM_DOCUMENTOS]
+
+
+async def documento_existente(db, user_id: str, seccion: str, registro: str, tipo: str) -> dict | None:
+    """El último documento de ese tipo hecho para ese registro (para reimprimirlo igual), o None."""
+    hechos = await _documentos(db).find({"user_id": user_id, "seccion": seccion, "registro": registro, "tipo": tipo},
+                                        {"_id": 0}).sort("folio", -1).to_list(length=1)
+    return hechos[0] if hechos else None
+
+
+async def documento_nuevo(db, user_id: str, seccion: str, registro: str, tipo: str, foto: dict) -> dict:
+    """Le da el número siguiente de su tipo y lo guarda. Si dos se cruzan (índice único), reintenta con el siguiente."""
+    for _ in range(5):
+        ultimo = await _documentos(db).find({"user_id": user_id, "tipo": tipo}, {"_id": 0, "folio": 1}).sort("folio", -1).to_list(length=1)
+        d = {"user_id": user_id, "seccion": seccion, "registro": registro, "tipo": tipo, "folio": (ultimo[0]["folio"] if ultimo else 0) + 1,
+             "foto": foto, "creado": datetime.now(timezone.utc)}
+        try:
+            await _documentos(db).insert_one(dict(d))
+            return d
+        except Exception as e:  # noqa: BLE001 — choque de número: se toma el siguiente
+            if "duplicate" not in str(e).lower() and "E11000" not in str(e):
+                raise
+    raise ErrorCrm(409, "No pude numerar el documento. Inténtalo de nuevo.")

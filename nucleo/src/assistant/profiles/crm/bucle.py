@@ -153,6 +153,8 @@ class VueltaCrm(AgentMiddleware):
                 resultado = sesion.consultar(args)
             elif nombre == "descargar":
                 resultado = sesion.descargar(args)
+            elif nombre == "documento_de":
+                resultado = sesion.documento_de(args)
             elif nombre == "deshacer":
                 resultado = sesion.deshacer(args)
             else:

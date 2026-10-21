@@ -138,6 +138,7 @@ PyYAML
 RapidFuzz
 redis
 regex
+reportlab
 requests
 requests-oauthlib
 requests-toolbelt

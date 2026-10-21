@@ -277,6 +277,14 @@ def parse_periodo(texto: Any, hoy: date | datetime) -> dict | None:
     días», «los próximos 7 días» (de hoy a hoy + 7, como los grupos de lo que vence), «vencidos» (antes de hoy), «octubre», «octubre de
     2025», «del 1 al 15 de octubre» o una fecha suelta.
     """
+    # Dos fechas en ISO («2026-10-21 a 2026-10-28»): el modelo a veces calcula el rango él mismo (banco_datos, 21-oct).
+    m = re.fullmatch(r"\s*(?:del?\s+)?(\d{4}-\d{2}-\d{2})\s*(?:a|al|-|–|hasta)\s*(\d{4}-\d{2}-\d{2})\s*", str(texto or ""))
+    if m:
+        try:
+            a, b = date.fromisoformat(m.group(1)), date.fromisoformat(m.group(2))
+            return {"desde": min(a, b).isoformat(), "hasta": max(a, b).isoformat()}
+        except ValueError:
+            return None
     try:
         return _parse_periodo(texto, _dia(hoy))
     except (OverflowError, ValueError):
