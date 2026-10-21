@@ -193,6 +193,11 @@ def _consultar_con_orden() -> dict:
     base["function"]["parameters"]["properties"]["ordenar"] = {
         "type": "object", "description": "para «quién debe más», «los 3 más caros», «el más reciente»",
         "properties": {"campo": {"type": "string"}, "orden": {"type": "string", "enum": ["mayor", "menor"]}}}
+    # «¿cuánto me paga cada miembro en promedio?»: lo agrupa y calcula el código (registros._agrupar).
+    props = base["function"]["parameters"]["properties"]
+    props["agrupar"] = {"type": "string", "description": "campo para responder «por cada …» (cada miembro, cada plan)"}
+    props["funcion"] = {"type": "string", "enum": list(registros.FUNCIONES_GRUPO), "description": "con agrupar: qué calcular en cada grupo"}
+    props["valor"] = {"type": "string", "description": "con agrupar: campo de número o dinero a calcular"}
     return base
 
 

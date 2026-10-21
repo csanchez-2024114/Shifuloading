@@ -222,3 +222,27 @@ async def test_un_filtro_que_deja_cero_dice_cuanto_seria_sin_el(gym):
                         dice("400."))
     t = r["consultas"][0]["resultado"]
     assert "0 de 2" in t and "sin el filtro de Estado serían 2" in t and "400" in t
+
+
+# ───────── consultar_datos: agrupar («cuánto me paga cada miembro en promedio», banco2, 21-oct) ─────────
+
+@pytest.mark.asyncio
+async def test_promedio_por_cada_uno_lo_calcula_el_codigo(gym):
+    d = _nueva(gym, "Cobros", [("Socio", "texto"), ("Monto", "dinero")],
+               [{"Socio": "Ana", "Monto": 300}, {"Socio": "Ana", "Monto": 100}, {"Socio": "Luis", "Monto": 500}, {"Socio": "Eva"}])
+    r, _ = await correr(d, "¿cuánto me paga cada socio en promedio?",
+                        dice("", llamar("consultar_datos", seccion="Cobros", agrupar="Socio", funcion="promedio", valor="Monto")), dice("Luis 500, Ana 200."))
+    t = r["consultas"][0]["resultado"].replace("\xa0", " ")
+    assert "Por Socio (promedio de Monto, de mayor a menor)" in t
+    assert t.index("Luis") < t.index("Ana: Q 200") < t.index("Eva: sin datos")  # Eva no tiene monto: no cuenta como 0
+
+
+@pytest.mark.asyncio
+async def test_agrupar_sin_valor_cuenta_y_errores_guian(gym):
+    d = _nueva(gym, "Cobros", [("Socio", "texto"), ("Monto", "dinero")], [{"Socio": "Ana", "Monto": 1}, {"Socio": "Ana", "Monto": 2}])
+    r, _ = await correr(d, "¿cuántos cobros por socio?", dice("", llamar("consultar_datos", seccion="Cobros", agrupar="Socio")), dice("Ana 2."))
+    assert "Por Socio (cuántos, de mayor a menor): Ana: 2." in r["consultas"][0]["resultado"]  # sin valor: cuenta
+    r, _ = await correr(d, "x", dice("", llamar("consultar_datos", seccion="Cobros", agrupar="Socio", funcion="suma")), dice("."))
+    assert "Ana: Q 3 (2 registros)" in r["consultas"][0]["resultado"].replace("\xa0", " ")  # sin valor y un solo campo de dinero: ese
+    r, _ = await correr(d, "x", dice("", llamar("consultar_datos", seccion="Cobros", agrupar="Ciudad")), dice("."))
+    assert "ERROR: «Ciudad» no es un campo de Cobros" in r["consultas"][0]["resultado"]

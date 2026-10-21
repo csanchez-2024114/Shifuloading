@@ -428,6 +428,59 @@ def filtrar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None =
     return lista, filtros
 
 
+FUNCIONES_GRUPO = ("cuenta", "suma", "promedio", "maximo", "minimo")
+
+
+def _agrupar(lista: list[dict], campos: list[dict], args: dict, titulo: Any, fmt: Any) -> str:
+    """«¿Cuánto me paga cada miembro en promedio?»: el código agrupa y calcula (medido en banco2: sin esto el modelo pedía ordenar
+    por miembro, recibía ERROR y decía «no puedo», 4 de 4; o sacaba los promedios él mismo). "" si no pidieron agrupar."""
+    if _falso(args.get("agrupar")):
+        return ""
+    c_g = campo_por_clave(campos, args["agrupar"])
+    if not c_g:
+        return f"ERROR: «{plantilla_js(args['agrupar'])}» no es un campo de {titulo}. Campos: {', '.join(str(x.get('id')) for x in campos)}."
+    funcion = str(args.get("funcion") or ("suma" if not _falso(args.get("valor")) else "cuenta")).lower()
+    if funcion not in FUNCIONES_GRUPO:
+        return f"ERROR: «{plantilla_js(funcion)}» no es una función. Posibles: {', '.join(FUNCIONES_GRUPO)}."
+    c_v = None
+    if funcion != "cuenta":
+        numericos = [x for x in campos if _tipo(x) in ("numero", "dinero")]
+        c_v = campo_por_clave(campos, args.get("valor")) if not _falso(args.get("valor")) else (numericos[0] if len(numericos) == 1 else None)
+        if not c_v or not any(x is c_v for x in numericos):
+            se_puede = ", ".join(f"{x.get('id')} ({x.get('nombre')})" for x in numericos) or "nada (no tiene números)"
+            return f"ERROR: para «{funcion}» por grupo falta «valor», un campo de número o dinero de {titulo}: {se_puede}."
+    grupos: dict[str, list[float]] = {}
+    for x in lista:
+        v = _vals(x).get(c_g["id"])
+        nombre = mostrar(c_g, v, fmt) if v not in (None, "") else "(sin dato)"
+        grupos.setdefault(str(nombre), [])
+        if c_v is not None:
+            n = numero_js(_vals(x).get(c_v["id"]))
+            if not math.isnan(n):
+                grupos[nombre].append(n)
+        else:
+            grupos[nombre].append(1.0)
+    if not grupos:
+        return ""
+
+    def calc(xs: list[float]) -> float | None:
+        if funcion == "cuenta":
+            return float(len(xs))
+        if not xs:
+            return None
+        return {"suma": sum(xs), "promedio": sum(xs) / len(xs), "maximo": max(xs), "minimo": min(xs)}[funcion]
+
+    filas = sorted(((k, calc(xs), len(xs)) for k, xs in grupos.items()), key=lambda t: (t[1] is None, -(t[1] or 0)))
+    def ver(v: float | None) -> str:
+        if v is None:
+            return "sin datos"
+        return a_js(v) if c_v is None else mostrar(c_v, a_js(round(v, 2)), fmt)
+    que = "cuántos" if funcion == "cuenta" else f"{funcion} de {c_v.get('nombre')}"
+    partes = [f"{k}: {ver(v)}" + ("" if funcion == "cuenta" else f" ({n} registro{'s' if n != 1 else ''})") for k, v, n in filas[:MAX_LISTA]]
+    mas = f" (y {len(filas) - MAX_LISTA} más)" if len(filas) > MAX_LISTA else ""
+    return f" Por {c_g.get('nombre')} ({que}, de mayor a menor): {' | '.join(partes)}{mas}."
+
+
 def consultar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None = None, *, hoy: date | datetime, pais: Any = None) -> str:
     """Lee los datos para responder una pregunta: el CÓDIGO filtra, cuenta y suma (el modelo solo repite). Nunca cambia nada."""
     hoy = _hoy(hoy)
@@ -476,6 +529,10 @@ def consultar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None
         lista = sorted(lista, key=clave) if menor or _tipo(c) != "fecha" else sorted(lista, key=lambda x: str(_vals(x).get(c["id"]) or ""), reverse=True)
         orden_txt = f" Ordenados por {c.get('nombre')}, de {'menor a mayor' if menor else 'mayor a menor'}."
 
+    grupos_txt = _agrupar(lista, campos, args, titulo, fmt)
+    if grupos_txt.startswith("ERROR"):
+        return grupos_txt
+
     muestra = ""
     if lista:
         cuales = f"Los primeros {MAX_LISTA}" if len(lista) > MAX_LISTA else "Son"
@@ -490,7 +547,7 @@ def consultar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None
                           "Si la persona no pidió ese filtro, responde con estos.")
     filtros_txt = f" ({'; '.join(filtros)})" if filtros else ""
     registros_txt = "registro" if len(regs) == 1 else "registros"
-    return (f"Hoy es {fecha_larga(iso(hoy))}. En {titulo}{filtros_txt}: {len(lista)} de {len(regs)} {registros_txt}.{suma}{orden_txt}{muestra}{sin_filtro} "
+    return (f"Hoy es {fecha_larga(iso(hoy))}. En {titulo}{filtros_txt}: {len(lista)} de {len(regs)} {registros_txt}.{suma}{grupos_txt}{orden_txt}{muestra}{sin_filtro} "
             "Responde SOLO con estos números y datos (sin decir ids).")
 
 
