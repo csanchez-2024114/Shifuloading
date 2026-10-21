@@ -760,12 +760,11 @@ function sugerenciasDe(contactos) {
 
 const CLAVE_SUG_OCULTAS = 'shifu_sug_ocultas'
 const ANCHO_CHAT = 360
-const CLAVE_LUGAR_CHAT = 'shifu_lugar_chat'
 const CLAVE_CONSEJO_FOTO = 'shifu_consejo_foto'
 const CONSEJO_CADA_MS = 3 * 24 * 60 * 60 * 1000
 const ALTO_CHAT = 560
 
-function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, crm, aplicar, capturaLab, pos, setPos, onPosicion }) {
+function ChatShifu({ vista, tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, crm, aplicar, capturaLab, pos, setPos, onPosicion }) {
   const [txt, setTxt] = useState('')
   const [ancho, setAncho] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200))
   // El chat flota sobre la pantalla y se minimiza en la bolita, como en el CRM de Carlos (pedido en la prueba manual 21-oct): el modo
@@ -775,9 +774,10 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
   const [cabEl, setCabEl] = useState(null)
   const [popEl, setPopEl] = useState(null)
   const arrastrando = useRef(null)
-  // La bolita y el chat flotante se pueden mover juntos (arrastrando la bolita o la cabecera); se recuerda dónde quedaron.
-  // Sin mover, quedan en la esquina de siempre (crm-extra.css). { r, b }: distancia a la derecha y abajo de la pantalla.
-  const [lugar, setLugar] = useState(() => { try { return JSON.parse(localStorage.getItem(CLAVE_LUGAR_CHAT)) || null } catch { return null } })
+  // La bolita y el chat flotante se pueden mover juntos (arrastrando la bolita o la cabecera). Al cambiar de sección o recargar
+  // vuelven a la esquina de siempre (crm-extra.css; pedido 21-oct). { r, b }: distancia a la derecha y abajo de la pantalla.
+  const [lugar, setLugar] = useState(null)
+  useEffect(() => { setLugar(null) }, [vista])
   const moviendo = useRef(null)
   const recienMovido = useRef(false)
   const empezarMover = (e) => {
@@ -801,7 +801,6 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
       moviendo.current = null
       if (!m?.movio) return
       recienMovido.current = true
-      setLugar((l) => { try { localStorage.setItem(CLAVE_LUGAR_CHAT, JSON.stringify(l)) } catch { /* sin almacenamiento */ } return l })
     }
     window.addEventListener('pointermove', mover)
     window.addEventListener('pointerup', soltar)
@@ -1350,7 +1349,7 @@ ${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
         </div>
       )}
       {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
-      <ChatShifu modo={modo} sugerencias={sugerencias} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} crm={crm} aplicar={aplicar} capturaLab={DISENO ? capturaMod : null} pos={chatPos} setPos={setChatPos} onPosicion={onChatPosicion} />
+      <ChatShifu vista={vista} modo={modo} sugerencias={sugerencias} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} crm={crm} aplicar={aplicar} capturaLab={DISENO ? capturaMod : null} pos={chatPos} setPos={setChatPos} onPosicion={onChatPosicion} />
     </div>
   )
 }
