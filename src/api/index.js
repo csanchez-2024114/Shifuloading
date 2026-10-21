@@ -1,4 +1,4 @@
-import { CLAVE_USUARIO, HAY_SERVIDOR } from './config'
+import { API_URL, CLAVE_USUARIO, HAY_SERVIDOR } from './config'
 import { ErrorApi, pedir, pedirArchivo, token } from './http'
 import * as simulado from './mock/servidor'
 
@@ -38,6 +38,20 @@ export const auth = {
     if (!HAY_SERVIDOR) return false
     return !!(await pedir('POST', '/auth/email-exists', { email: correo }, { publico: true })).exists
   },
+  /** Dirección que empieza a entrar con Google: el servidor manda a Google y, al volver, a /entrar con la sesión. */
+  urlGoogle: () => `${API_URL}/auth/google/authorize`,
+  /** Abre la sesión con las llaves que trae la vuelta de Google. Devuelve false si no son válidas. */
+  sesionDeGoogle({ acceso, refresco }) {
+    if (!acceso || !refresco) return false
+    let correo = ''
+    try { correo = JSON.parse(atob(acceso.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).email || '' } catch { return false }
+    abrirSesion({ access_token: acceso, refresh_token: refresco, user: { email: correo } })
+    return true
+  },
+  /** Pide el correo para crear otra contraseña. El servidor responde igual exista o no la cuenta. */
+  olvideClave: (correo) => pedir('POST', '/auth/forgot-password', { email: correo }, { publico: true }),
+  /** Pone la contraseña nueva con el enlace del correo (vale una vez y por una hora). */
+  nuevaClave: ({ enlace, clave }) => pedir('POST', '/auth/reset-password', { token: enlace, new_password: clave }, { publico: true }),
   /** Primer paso del inicio de sesión en el servidor simulado (que no tiene contraseñas). */
   continuarConCorreo: (correo) => simulado.auth.continuarConCorreo(correo),
   /** Cierra la sesión aquí y en el servidor (si el servidor falla, igual se cierra aquí). */

@@ -238,3 +238,8 @@ button { font-family: inherit; cursor: pointer; }
 .login-fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .login-ayuda-campo { margin: -2px 0 12px; font-size: 12px; color: #616161; }
 .login-btn-oscuro:disabled { opacity: .6; cursor: progress; }
+
+/* Olvidé mi contraseña */
+.login-olvide { margin: -4px 0 12px; font-size: 13px; }
+.login-olvide a, .login-volver a { color: var(--azul); font-weight: 600; }
+.login-volver { margin: 20px 0 0; font-size: 13px; }

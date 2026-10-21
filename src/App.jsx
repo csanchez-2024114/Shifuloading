@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage'
 import BriefPage from './pages/BriefPage'
 import LoginPage from './pages/LoginPage'
 import RegistroPage from './pages/RegistroPage'
+import { EntrarConGoogle, NuevaClave, OlvideClave } from './pages/RecuperarPages'
 import CrmPage from './pages/CrmPage'
 import PanelPage from './pages/PanelPage'
 import InfoIntegraciones from './pages/InfoIntegraciones'
@@ -23,6 +24,9 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/registro" element={<RegistroPage />} />
+      <Route path="/entrar" element={<EntrarConGoogle />} />
+      <Route path="/olvide-clave" element={<OlvideClave />} />
+      <Route path="/reset-password" element={<NuevaClave />} />
       <Route path="/bienvenida" element={<BriefPage />} />
       <Route path="/mi-crm" element={<CrmPage />} />
       <Route path="/panel" element={<PanelPage />} />

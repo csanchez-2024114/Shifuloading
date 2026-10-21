@@ -509,6 +509,8 @@ async def google_login(request: Request, data: GoogleLoginModel):
 
     if not email_clean:
         raise HTTPException(status_code=400, detail="El token de Google no incluye email.")
+    if id_info.get("email_verified") is not True:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google no confirmó ese correo.")
 
     user_doc = await mongo[Collections.USERS].find_one({"email": email_clean})
 
@@ -713,7 +715,9 @@ async def google_authorize():
     client_id = Config.GOOGLE_SIGNIN_CLIENT_ID
     redirect_uri = Config.GOOGLE_SIGNIN_REDIRECT_URI
     if not client_id or not redirect_uri:
-        raise HTTPException(status_code=500, detail="Google Sign-In no configurado en el servidor.")
+        # La persona llega aquí navegando: un JSON de error la dejaría en una página en blanco.
+        logger.error("[google_authorize] Google Sign-In no configurado en el servidor.")
+        return RedirectResponse(url=f"{Config.FRONTEND_URL}/login?error=google_off")
 
     state = _make_oauth_state()
     params = {
@@ -792,6 +796,9 @@ async def google_callback(
 
     if not email_clean:
         return RedirectResponse(url=f"{frontend_url}/login?error=no_email")
+    # Se une a la cuenta que ya exista con ese correo: solo si Google confirma que el correo es de esa persona.
+    if id_info.get("email_verified") is not True:
+        return RedirectResponse(url=f"{frontend_url}/login?error=google_verify")
 
     mongo = request.app.state.db
     user_doc = await mongo[Collections.USERS].find_one({"email": email_clean})
@@ -824,5 +831,6 @@ async def google_callback(
     access_token_str = _build_access_token(user_id, email_clean)
     await _complete_pending_workspace_invites(mongo, user_id, email_clean)
 
-    qs = urlencode({"at": access_token_str, "rt": raw_refresh})
-    return RedirectResponse(url=f"{frontend_url}/onboarding?{qs}")
+    # Las llaves van en el fragmento (#): el navegador no lo manda a ningún servidor ni queda en sus registros.
+    frag = urlencode({"at": access_token_str, "rt": raw_refresh})
+    return RedirectResponse(url=f"{frontend_url}/entrar#{frag}")

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { HAY_SERVIDOR, auth } from '../api'
 import { FaApple, FaFacebook, FaWhatsapp } from 'react-icons/fa6'
 import { FcGoogle } from 'react-icons/fc'
@@ -17,6 +17,16 @@ function mensajeDeEntrada(e) {
   return e?.message || 'No pudimos continuar. Inténtalo de nuevo.'
 }
 
+/** Lo que pasó si la persona vuelve de Google sin poder entrar (?error=… que pone el servidor). */
+const ERRORES_GOOGLE = {
+  google_denied: 'Cancelaste el inicio de sesión con Google.',
+  google_off: 'Entrar con Google todavía no está disponible. Usa tu correo.',
+  server_config: 'Entrar con Google todavía no está disponible. Usa tu correo.',
+  google_verify: 'Google no pudo confirmar tu correo. Inténtalo de nuevo o usa tu correo.',
+  no_email: 'Tu cuenta de Google no compartió un correo. Usa tu correo.',
+  sesion: 'No pudimos abrir tu sesión con Google. Inténtalo de nuevo.',
+}
+
 /* Pantalla de inicio de sesión. Con servidor: primero el correo y luego la contraseña (como en Shopify). Sin servidor (modo de
  * prueba) solo pide el correo y manda al cuestionario. */
 export default function LoginPage() {
@@ -24,7 +34,9 @@ export default function LoginPage() {
   const [clave, setClave] = useState('')
   const [verClave, setVerClave] = useState(false)
   const [paso, setPaso] = useState('correo')
-  const [aviso, setAviso] = useState('')
+  const [params] = useSearchParams()
+  const errorGoogle = params.get('error')
+  const [aviso, setAviso] = useState(errorGoogle ? (ERRORES_GOOGLE[errorGoogle] || 'No pudimos entrar con Google. Inténtalo de nuevo.') : '')
   const [enviando, setEnviando] = useState(false)
   const nav = useNavigate()
 
@@ -88,6 +100,7 @@ export default function LoginPage() {
                   onChange={(e) => setClave(e.target.value)} className="login-input" />
                 <button type="button" onClick={() => setVerClave(!verClave)} aria-pressed={verClave}>{verClave ? 'Ocultar' : 'Mostrar'}</button>
               </div>
+              <p className="login-olvide"><Link to="/olvide-clave" state={{ correo: correo.trim() }}>¿Olvidaste tu contraseña?</Link></p>
             </>
           ) : (
             <>
@@ -111,7 +124,8 @@ export default function LoginPage() {
               </button>
 
               <div className="login-sociales">
-                <button type="button" aria-label="Continuar con Google"><FcGoogle size={20} /></button>
+                <button type="button" aria-label="Continuar con Google"
+                  onClick={() => { if (HAY_SERVIDOR) window.location.assign(auth.urlGoogle()); else setAviso('Entrar con Google necesita el servidor.') }}><FcGoogle size={20} /></button>
                 <button type="button" aria-label="Continuar con Apple"><FaApple size={20} /></button>
                 <button type="button" aria-label="Continuar con Facebook"><FaFacebook size={20} color="#1877f2" /></button>
                 <button type="button" aria-label="Continuar con WhatsApp"><FaWhatsapp size={20} color="#25d366" /></button>
