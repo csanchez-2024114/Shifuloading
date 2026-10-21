@@ -18,7 +18,9 @@ const ESTIMADO = 7 // cuántas preguntas se anuncian mientras la IA todavía no 
 const VERSION = 2
 
 const claveFijas = (r) => JSON.stringify([r.nombre, r.ubicacion, r.que_vendes])
-const adaptar = (p) => ({ id: p.id, capitulo: 'Para conocer tu negocio', emoji: p.emoji || '🧩', tipo: p.tipo, titulo: p.titulo, sub: p.sub, opciones: p.opciones || [], requerido: true })
+// Salida limpia para quien no se identifica con ninguna opción que escribió la IA (sin obligarlo a escribir).
+const NINGUNA = { v: '__ninguna', t: 'Ninguna de estas', e: '🤷' }
+const adaptar = (p) => ({ id: p.id, capitulo: 'Para conocer tu negocio', emoji: p.emoji || '🧩', tipo: p.tipo, titulo: p.titulo, sub: p.sub, opciones: [...(p.opciones || []), ...(p.tipo === 'una' || p.tipo === 'varias' ? [NINGUNA] : [])], requerido: true })
 const respuestaDe = (p, v) => {
   if (p.tipo === 'parrafo') return String(v || '').trim().slice(0, 300)
   const lista = Array.isArray(v) ? v : v ? [v] : []
@@ -32,7 +34,7 @@ function valido(q, r) {
   const v = r[q.id]
   if (q.tipo === 'texto') return typeof v === 'string' && v.trim().length >= 2
   if (q.tipo === 'parrafo') return typeof v === 'string' && v.trim().length >= 3
-  if (q.tipo === 'ubicacion') return !vacio(v?.pais) && typeof v?.ciudad === 'string' && v.ciudad.trim().length >= 2
+  if (q.tipo === 'ubicacion') return !vacio(v?.pais)
   return !vacio(v)
 }
 
@@ -133,8 +135,9 @@ export default function BriefPage() {
   const alternar = (v) => cambiar(q.id, (prev) => {
     const act = prev || []
     if (act.includes(v)) return act.filter((x) => x !== v)
+    if (v === NINGUNA.v) return [v] // "ninguna" no se mezcla con las demás
     if (q.max && act.length >= q.max) return act
-    return [...act, v]
+    return [...act.filter((x) => x !== NINGUNA.v), v]
   })
   const ponerPais = (v) => cambiar(q.id, (prev) => ({ ...(prev || {}), pais: v }))
   const ponerCiudad = (v) => cambiar(q.id, (prev) => ({ ...(prev || {}), ciudad: v }))
@@ -219,7 +222,7 @@ export default function BriefPage() {
             )}
 
             {q.tipo === 'ubicacion' && (
-              <input className="campo campo-chico" type="text" maxLength={50} placeholder="Tu ciudad" value={seleccion?.ciudad || ''} aria-label="Ciudad"
+              <input className="campo campo-chico" type="text" maxLength={50} placeholder="Tu ciudad (opcional)" value={seleccion?.ciudad || ''} aria-label="Ciudad"
                 onChange={(e) => ponerCiudad(e.target.value)} />
             )}
 
