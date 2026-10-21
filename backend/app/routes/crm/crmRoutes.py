@@ -146,6 +146,10 @@ class LoteImportacion(_Texto):
     nombre: str = Field("Importación", max_length=80)
 
 
+class LogoEntrada(BaseModel):
+    imagen: str = Field(..., max_length=est.MAX_LOGO + 200)
+
+
 class RegistrosLote(_Texto):
     """Filas para importar (de un Excel, por ejemplo): cada una va por id de campo. `lote` identifica la importación para poder quitarla entera."""
     filas: list[dict[str, Any]] = Field(..., min_length=1, max_length=300)
@@ -318,6 +322,17 @@ async def crear_registros_lote(lista_id: str, request: Request, datos: Registros
     except op.ErrorCrm as e:
         return _error(e)
     return JSONResponse({**vista_crm(doc), "importacion": resumen}, status_code=201)
+
+
+@router.put("/logo")
+async def poner_logo(request: Request, datos: LogoEntrada, user: dict = Depends(get_current_user)):
+    """El logotipo del negocio (PNG, JPG o WebP en base64, de hasta 150 mil caracteres)."""
+    return await _aplicar(request, user, lambda d: est.logo_fijar(d, datos.imagen))
+
+
+@router.delete("/logo")
+async def quitar_logo(request: Request, user: dict = Depends(get_current_user)):
+    return await _aplicar(request, user, lambda d: est.logo_quitar(d))
 
 
 @router.delete("/listas/{lista_id}/registros")

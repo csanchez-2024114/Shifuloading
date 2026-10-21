@@ -141,7 +141,7 @@
 
 
 /* ───────── Temas: oscuro (por defecto) y claro. Todo el color sale de estas variables. ───────── */
-.carga, .mc, .mc-chat {
+.carga, .mc, .mc-chat, .tour-raiz {
   --ink: 255, 255, 255; --sombra: 0, 0, 0;
   /* Un oscuro con más luz que el negro puro (verde-gris profundo) y texto más claro: se ve vivo, no apagado. */
   --bg: #121b18; --bg-top: #16211e; --card: #1b2824; --campo: rgba(0, 0, 0, .26);
@@ -149,7 +149,7 @@
   --burbuja: #31403b; --btn-abierto: #26352f;
   --azul-t: #aab3ff; --morado-t: #bdaeff; --rojo-t: #ff9db3; --ambar-t: #ffc66b;
 }
-.mc[data-tema="claro"], .mc-chat[data-tema="claro"] {
+.mc[data-tema="claro"], .mc-chat[data-tema="claro"], .tour-raiz[data-tema="claro"] {
   /* Un blanco "papel" cálido y de poco contraste, en vez de blanco puro: cansa menos la vista. */
   --ink: 38, 48, 44; --sombra: 38, 40, 34;
   --bg: #e5e4dd; --bg-top: #efede6; --card: #f2f0e9; --campo: #e9e7df;
@@ -354,3 +354,39 @@ html.cambiando-tema *, html.cambiando-tema *::before, html.cambiando-tema *::aft
 .mc-pie-lista { margin-top: 18px; display: flex; justify-content: flex-end; }
 .mc-pie-lista .mc-aj-confirma { justify-content: flex-end; max-width: 620px; }
 .mc-link-peligro { color: #ff9aa9 !important; font-size: 14px; }
+
+/* ───────── Barra superior más gruesa, con el logotipo del negocio ───────── */
+.mc-top { padding: 14px 28px; min-height: 72px; gap: 20px; box-shadow: 0 1px 0 rgba(var(--ink), .04); }
+.mc-buscar { padding: 11px 16px; border-radius: 14px; max-width: 520px; }
+.mc-buscar input { font-size: 15.5px; }
+.mc-camp { width: 44px; height: 44px; font-size: 20px; }
+.mc-yo { width: 40px; height: 40px; font-size: 16px; }
+.mc-marca { display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 260px; padding: 6px 14px 6px 8px; border-radius: 14px; border: 1px solid rgba(124, 92, 255, .35); background: rgba(124, 92, 255, .14); color: var(--tx); font: 600 15px var(--fuente); cursor: pointer; transition: background .2s, border-color .2s; }
+.mc-marca:hover { background: rgba(124, 92, 255, .24); border-color: rgba(124, 92, 255, .6); }
+.mc-marca i { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: linear-gradient(135deg, var(--morado), var(--verde)); color: #fff; font-style: normal; font-weight: 700; font-size: 16px; }
+.mc-marca span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Con logotipo. Cuadrado: la imagen con esquinas redondeadas y el nombre al lado. Ancho (ya trae el nombre): solo la imagen.
+   Con fondo transparente se pone sobre una base clara para que se lea con cualquier tema; con fondo propio, sola. */
+.mc-marca.con-logo { gap: 12px; padding: 0 8px 0 0; background: transparent; border: 0; border-radius: 14px; }
+.mc-marca.con-logo:hover { background: transparent; }
+.mc-marca.con-logo:hover img { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(var(--sombra), .3); }
+.mc-marca img { display: block; width: auto; height: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 2px 10px rgba(var(--sombra), .22); transition: transform .2s, box-shadow .2s; }
+.mc-marca.cuadrado img { width: 48px; height: 48px; object-fit: cover; }
+.mc-marca.cuadrado.transp img { object-fit: contain; padding: 6px; background: #fff; }
+.mc-marca.ancho img { max-height: 46px; max-width: 220px; }
+.mc-marca.ancho.transp img { padding: 6px 14px; background: #fff; box-sizing: content-box; max-height: 34px; max-width: 192px; }
+.mc-marca.con-logo span { font-size: 17px; font-weight: 650; letter-spacing: -.01em; max-width: 190px; }
+.mc-aj-fila > div.mc-aj-logo:first-child { display: flex; align-items: center; gap: 20px; min-width: 0; max-width: 560px; }
+.mc-aj-logo > div { display: grid; gap: 5px; min-width: 0; max-width: 380px; }
+.mc-aj-logo-vista { flex: none; width: 150px; height: 96px; display: grid; place-items: center; padding: 8px; box-sizing: border-box; overflow: hidden; border-radius: 16px; background: repeating-conic-gradient(rgba(var(--ink), .07) 0 25%, transparent 0 50%) 0 0 / 16px 16px, var(--card); border: 1px solid var(--linea); }
+.mc-aj-logo-vista img { display: block; width: auto; height: auto; max-width: 134px; max-height: 80px; object-fit: contain; border-radius: 8px; }
+.mc-aj-logo-vista i { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(135deg, var(--morado), var(--verde)); color: #fff; font-style: normal; font-weight: 700; font-size: 24px; }
+.mc-aj-botones { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .mc-top { padding: 14px 16px; min-height: 68px; gap: 12px; }
+  .mc-marca { display: inline-flex; max-width: 170px; }
+  .mc-marca.cuadrado img { width: 40px; height: 40px; }
+  .mc-marca.ancho img { max-height: 36px; max-width: 150px; }
+  .mc-marca span { display: none; }
+  .mc-aj-fila > div.mc-aj-logo:first-child { flex-direction: column; align-items: flex-start; }
+}

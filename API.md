@@ -39,6 +39,8 @@ La interfaz está lista para conectarse. Todo el acceso a datos pasa por `src/ap
 | `DELETE /crm/tareas/:id` | — | CRM |
 | `PUT /crm/automatizaciones/:id` | `{ on: boolean }` | CRM (422 si se intenta encender una que todavía no existe) |
 | `PUT /crm/secciones/:id` | `{ nombre }` (renombra una sección) | CRM |
+| `PUT /crm/logo` | `{ imagen }` (data URL `data:image/png\|jpeg\|webp;base64,…`, hasta 150 000 caracteres; se revisa que el contenido sea de verdad esa imagen) | CRM con `logo` (el mismo texto) · `422` si no es una imagen válida o pesa de más |
+| `DELETE /crm/logo` | — | CRM con `logo: null` |
 | `POST /crm/listas/:id/registros/lote` | `{ filas: [{ <idCampo>: valor }] (hasta 300), lote?: { id, nombre } }` (`id`: 6 a 40 letras, números, `_` o `-`; las tandas de una misma importación llevan el mismo `lote`) | `201` CRM + `importacion: { agregadas, omitidas }`. Se omiten filas vacías, repetidas o con un valor que no corresponde al tipo del campo; `422` con el motivo si no se pudo importar ninguna |
 | `DELETE /crm/listas/:id/importaciones/:lote` | — | CRM sin los registros de esa importación (incluso los editados). No se puede deshacer. `404` si ya no existe |
 | `POST /crm/listas/:id/registros` | `{ valores: { <idCampo>: valor } }` | `201` CRM (agrega un registro a una sección propia) |

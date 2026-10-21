@@ -71,10 +71,11 @@ export const crm = {
   registrosImportar: (listaId, filas, lote) => (HAY_SERVIDOR ? pedir('POST', `/crm/listas/${listaId}/registros/lote`, { filas, lote }) : simulado.crm.sinServidor()),
   /** Quita una importación entera (todos sus registros). No se puede deshacer. */
   importacionQuitar: (listaId, loteId) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/importaciones/${loteId}`) : simulado.crm.sinServidor()),
-  /** Quita TODO lo importado en una sección (lo escrito a mano se queda). No se puede deshacer. */
-  importacionesQuitarTodas: (listaId) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/importaciones`) : simulado.crm.sinServidor()),
   /** Borra TODOS los registros de una sección (la sección y sus campos se quedan). No se puede deshacer. */
   registrosVaciar: (listaId) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/registros`) : simulado.crm.sinServidor()),
+  /** El logotipo del negocio (imagen PNG, JPG o WebP en base64). */
+  logoGuardar: (imagen) => (HAY_SERVIDOR ? pedir('PUT', '/crm/logo', { imagen }) : simulado.crm.sinServidor()),
+  logoQuitar: () => (HAY_SERVIDOR ? pedir('DELETE', '/crm/logo') : simulado.crm.sinServidor()),
   registrosActualizar: (listaId, id, valores) => (HAY_SERVIDOR ? pedir('PATCH', `/crm/listas/${listaId}/registros/${id}`, { valores }) : simulado.crm.sinServidor()),
   registrosCrear: (listaId, valores) => (HAY_SERVIDOR ? pedir('POST', `/crm/listas/${listaId}/registros`, { valores }) : simulado.crm.sinServidor()),
   registrosEliminar: (listaId, id) => (HAY_SERVIDOR ? pedir('DELETE', `/crm/listas/${listaId}/registros/${id}`) : simulado.crm.sinServidor()),
