@@ -760,6 +760,7 @@ function sugerenciasDe(contactos) {
 
 const CLAVE_SUG_OCULTAS = 'shifu_sug_ocultas'
 const ANCHO_CHAT = 360
+const CLAVE_LUGAR_CHAT = 'shifu_lugar_chat'
 const ALTO_CHAT = 560
 
 function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, crm, aplicar, capturaLab, pos, setPos, onPosicion }) {
@@ -772,6 +773,38 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
   const [cabEl, setCabEl] = useState(null)
   const [popEl, setPopEl] = useState(null)
   const arrastrando = useRef(null)
+  // La bolita y el chat flotante se pueden mover juntos (arrastrando la bolita o la cabecera); se recuerda dónde quedaron.
+  // Sin mover, quedan en la esquina de siempre (crm-extra.css). { r, b }: distancia a la derecha y abajo de la pantalla.
+  const [lugar, setLugar] = useState(() => { try { return JSON.parse(localStorage.getItem(CLAVE_LUGAR_CHAT)) || null } catch { return null } })
+  const moviendo = useRef(null)
+  const recienMovido = useRef(false)
+  const empezarMover = (e) => {
+    if (ventana || e.button !== 0 || e.target.closest('button:not(.mc-chat-btn), input, a')) return
+    const caja = e.currentTarget.closest('.mc-chat')?.getBoundingClientRect()
+    if (caja) moviendo.current = { x0: e.clientX, y0: e.clientY, r0: window.innerWidth - caja.right, b0: window.innerHeight - caja.bottom, caja, movio: false }
+  }
+  useEffect(() => {
+    const mover = (e) => {
+      const m = moviendo.current
+      if (!m) return
+      const dx = e.clientX - m.x0, dy = e.clientY - m.y0
+      if (!m.movio && Math.hypot(dx, dy) < 5) return // un toque es un clic, no un arrastre
+      m.movio = true
+      const r = Math.min(Math.max(m.r0 - dx, 0), window.innerWidth - m.caja.width)
+      const b = Math.min(Math.max(m.b0 - dy, 0), window.innerHeight - m.caja.height)
+      setLugar({ r, b })
+    }
+    const soltar = () => {
+      const m = moviendo.current
+      moviendo.current = null
+      if (!m?.movio) return
+      recienMovido.current = true
+      setLugar((l) => { try { localStorage.setItem(CLAVE_LUGAR_CHAT, JSON.stringify(l)) } catch { /* sin almacenamiento */ } return l })
+    }
+    window.addEventListener('pointermove', mover)
+    window.addEventListener('pointerup', soltar)
+    return () => { window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar) }
+  }, [])
   useEffect(() => {
     const medir = () => setAncho(window.innerWidth)
     window.addEventListener('resize', medir)
@@ -910,7 +943,9 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
     await usarArchivo(archivo)
   }
 
-  const estiloLibre = ventana && pos?.modo === 'libre' ? { left: pos.x, top: pos.y } : undefined
+  // Si la ventana se achicó, la bolita no queda fuera de la pantalla.
+  const estiloLibre = ventana && pos?.modo === 'libre' ? { left: pos.x, top: pos.y }
+    : lugar ? { right: Math.min(lugar.r, Math.max(ancho - 80, 0)), bottom: Math.min(lugar.b, Math.max(window.innerHeight - (abierto ? ALTO_CHAT + 90 : 80), 0)) } : undefined // abierto, el panel crece hacia arriba
   const bloqueDiseno = ChatDiseno && crm ? <ChatDiseno crm={crm} aplicar={aplicar} cabecera={cabEl} pop={popEl} /> : null
   const filaSug = sugerencias.length > 0 && (
     <div className={ventana ? 'mc-chat-sug-fila' : undefined}>
@@ -933,7 +968,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
       )}
       {abierto && (
         <section className={`mc-chat-panel${ventana ? ' compacto' : ''}`} aria-label="Chat con Shifu" hidden={eligiendo || capturando}>
-          <header onPointerDown={enCabecera}><ShifuAvatar size={ventana ? 28 : 34} /><div><b>Shifu</b><small>{modo === 'reglas' ? 'Modo básico' : 'Tu asistente'}</small></div>
+          <header onPointerDown={(e) => { enCabecera(e); empezarMover(e) }} onDragStart={(e) => e.preventDefault()} style={ventana ? undefined : { cursor: 'grab', touchAction: 'none' }}><ShifuAvatar size={ventana ? 28 : 34} /><div><b>Shifu</b><small>{modo === 'reglas' ? 'Modo básico' : 'Tu asistente'}</small></div>
             <span className="mc-chat-cab-acc" ref={setCabEl} />
             {onOlvidar && <button type="button" onClick={onOlvidar} aria-label="Olvidar mi historial" title="Borrar el historial y lo que Shifu recuerda de mí"><LuTrash2 /></button>}
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar el chat"><LuX /></button></header>
@@ -978,7 +1013,8 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
           </form>
         </section>
       )}
-      <button type="button" className={`mc-chat-btn ${abierto ? 'abierto' : ''}`} onClick={() => setAbierto(!abierto)} aria-expanded={abierto} aria-label={abierto ? 'Cerrar el chat con Shifu' : 'Abrir el chat con Shifu'} hidden={eligiendo || capturando || ventana}>
+      <button type="button" className={`mc-chat-btn ${abierto ? 'abierto' : ''}`} style={{ touchAction: 'none' }} onPointerDown={empezarMover} onDragStart={(e) => e.preventDefault()}
+        onClick={() => { if (recienMovido.current) { recienMovido.current = false; return } setAbierto(!abierto) }} aria-expanded={abierto} aria-label={abierto ? 'Cerrar el chat con Shifu' : 'Abrir el chat con Shifu'} hidden={eligiendo || capturando || ventana}>
         {abierto ? <LuX /> : <><ShifuAvatar size={46} /><i className="punto" /></>}
       </button>
       {!abierto && pista && <span className="mc-chat-hint">¿Qué cambiamos hoy?</span>}
