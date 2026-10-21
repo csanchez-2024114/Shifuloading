@@ -57,6 +57,7 @@ from assistant.packs.crm.afirma import afirma_cambio, afirma_con, sin_preguntas
 from assistant.packs.crm import chat as agente_chat
 from assistant.packs.crm.chat import _capitaliza, _norm
 from assistant.packs.crm.regional import PAISES
+from assistant.packs.crm import calculos
 from assistant.packs.crm import descarga as dl
 from assistant.packs.crm import plantillas
 from assistant.packs.crm.secciones import OTROS_NOMBRES
@@ -102,6 +103,34 @@ HERR_DESCARGAR = {"type": "function", "function": {
         "required": ["formato"]}}}
 MAX_DESCARGAS = 1  # por mensaje
 
+# Datos que se conectan (`calculos.py`): el modelo elige de listas cerradas; el código enlaza, calcula y dice qué salió.
+HERR_ENLAZAR = {"type": "function", "function": {
+    "name": "enlazar_campo",
+    "description": "Conecta un campo de texto con otra sección: el valor sigue siendo el nombre que se ve («Ana López») y el código lo une con el "
+                   "registro que se llama igual allá (Pagos.Miembro → Miembros, Reservas.Huésped → Huéspedes). Úsalo cuando la persona quiera "
+                   "ligar dos secciones o antes de un calculado que resume lo de otra sección. El código dice cuántos se enlazaron y cuáles no.",
+    "parameters": {"type": "object", "properties": {
+        "seccion": {"type": "string", "description": "la sección que tiene el campo (Pagos)"},
+        "campo": {"type": "string", "description": "el campo de texto (id o nombre: Miembro); si no existe, se crea"},
+        "con": {"type": "string", "description": "la sección a la que apunta (Miembros)"}},
+        "required": ["seccion", "campo", "con"]}}}
+HERR_CALCULAR = {"type": "function", "function": {
+    "name": "calcular_campo",
+    "description": "Crea (o cambia) un campo que el CÓDIGO calcula solo; nadie lo escribe. Dentro del registro: op multiplicar / sumar / restar / "
+                   "dividir con «campos» (Total = cantidad × precio), o dias_desde / dias_hasta con «campo» de fecha. De otra sección: op resumen "
+                   "con «funcion» (suma, cuenta, promedio, maximo, minimo), «de_seccion» y «de_campo» (Pagado = suma de Pagos.Monto de cada "
+                   "miembro); para eso la otra sección debe tener un campo enlazado con esta (enlazar_campo). El código dice los valores que salieron.",
+    "parameters": {"type": "object", "properties": {
+        "seccion": {"type": "string"}, "nombre": {"type": "string", "description": "nombre del campo calculado (Total, Pagado, Saldo)"},
+        "op": {"type": "string", "enum": [*calculos.OPS_REGISTRO, *calculos.OPS_FECHA, "resumen"]},
+        "campos": {"type": "array", "items": {"type": "string"}, "description": "para multiplicar/sumar/restar/dividir: ids o nombres, en orden"},
+        "campo": {"type": "string", "description": "para dias_desde/dias_hasta: el campo de fecha"},
+        "funcion": {"type": "string", "enum": list(calculos.FUNCIONES), "description": "para resumen"},
+        "de_seccion": {"type": "string", "description": "para resumen: la sección cuyos registros se resumen (Pagos)"},
+        "de_campo": {"type": "string", "description": "para resumen (salvo cuenta): el campo de número o dinero de esa sección (Monto)"},
+        "formato": {"type": "string", "enum": list(calculos.FORMATOS), "description": "dinero si es plata; si no, numero"}},
+        "required": ["seccion", "nombre", "op"]}}}
+
 
 # Las de Carlos que hacen lo mismo que las de datos del laboratorio: no se muestran, pero si el modelo las llama van al mismo handler.
 ALIAS_DE_DATOS = frozenset({"agregar_contactos", "cambiar_contacto", "eliminar_contacto", "agregar_registros", "cambiar_registro", "eliminar_registro"})
@@ -122,6 +151,19 @@ def _agregar_registro_con_lote() -> dict:
 
 
 HERR_AGREGAR_REGISTRO = _agregar_registro_con_lote()
+
+
+def _consultar_con_orden() -> dict:
+    """El `consultar_datos` del laboratorio (literal en registros.py) más «ordenar»: «¿quién me debe más?» lo ordena el código
+    (prueba del 21-oct: sin orden, el modelo se enredó pidiendo un periodo)."""
+    base = copy.deepcopy(next(h for h in registros.HERRAMIENTAS_DATOS if h["function"]["name"] == "consultar_datos"))
+    base["function"]["parameters"]["properties"]["ordenar"] = {
+        "type": "object", "description": "para «quién debe más», «los 3 más caros», «el más reciente»",
+        "properties": {"campo": {"type": "string"}, "orden": {"type": "string", "enum": ["mayor", "menor"]}}}
+    return base
+
+
+HERR_CONSULTAR = _consultar_con_orden()
 
 
 def _lista_de_agregar(args: dict) -> list[dict] | None:
@@ -178,7 +220,7 @@ CATEGORIA: dict[str, str] = {
                                  "quitar_campo", "renombrar_campo", "cambiar_opciones_estado")},
     # De Carlos
     **{n: "datos" for n in (*ALIAS_DE_DATOS, "agregar_tarea", "cambiar_tarea", "mover_tarea", "eliminar_tarea", "agendar")},
-    **{n: "estructura" for n in ("definir_etapas", "mostrar_seccion", "definir_opciones", "mover_campo")},
+    **{n: "estructura" for n in ("definir_etapas", "mostrar_seccion", "definir_opciones", "mover_campo", "enlazar_campo", "calcular_campo")},
 }
 
 # De `laboratorio/servidor/chat.js` L70–L89 (`INSTRUCCIONES`), con estas diferencias (19-oct).
@@ -733,9 +775,10 @@ class SesionDiseno(agente.Sesion):
         """Carlos (sin alias ni nombres que ya trae edicion.js), herramientas de diseño con el mismo filtro que chat.js, toma, deshacer, datos y leer_enlace."""
         lab = [h for h in edicion.HERRAMIENTAS_EDICION if h["function"]["name"] != "deshacer"
                and (self._tiene_imagen() or h["function"]["name"] != "usar_logo")]
-        datos = [HERR_AGREGAR_REGISTRO if h["function"]["name"] == "agregar_registro" else h for h in registros.HERRAMIENTAS_DATOS]
+        datos = [HERR_AGREGAR_REGISTRO if h["function"]["name"] == "agregar_registro" else HERR_CONSULTAR if h["function"]["name"] == "consultar_datos" else h
+                 for h in registros.HERRAMIENTAS_DATOS]
         return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *datos,
-                HERR_DESCARGAR, edicion.HERR_ENLACE]
+                HERR_DESCARGAR, HERR_ENLAZAR, HERR_CALCULAR, edicion.HERR_ENLACE]
 
     def nombrados_en_orden(self, tope: int = 15) -> list[str]:
         """Los registros que la persona nombró en la conversación, en el orden en que los nombró por primera vez (lo calcula el código:
@@ -1635,7 +1678,8 @@ class SesionDiseno(agente.Sesion):
             t = "ERROR: ya consultaste los datos varias veces en este mensaje. Responde con lo que ya tienes."
         else:
             s, error = self._seccion_datos(args.get("seccion"))
-            t = error or registros.consultar(s, s["campos"], sv.registros_de(_visible(self.doc), s["id"]), args, hoy=self.hoy, pais=self.pais)
+            regs = None if error else sv.registros_de(calculos.con_calculos(_visible(self.doc), self.hoy), s["id"])
+            t = error or registros.consultar(s, s["campos"], regs, args, hoy=self.hoy, pais=self.pais)
         self.consultas.append({"args": args, "resultado": t[:2500]})
         return t
 
@@ -1664,7 +1708,7 @@ class SesionDiseno(agente.Sesion):
                 if s is None:
                     cuales = ", ".join(f"«{x['titulo']}»" for x in todas)
                     return self._fallo_descarga(f"ERROR: «{_js(k)}» no es una sección con registros. Secciones: {cuales}.")
-                regs = sv.registros_de({**self.doc, "ocultas": []}, s["id"])
+                regs = sv.registros_de(calculos.con_calculos({**self.doc, "ocultas": []}, self.hoy), s["id"])
                 r = registros.filtrar(s, s["campos"], regs, ped, hoy=self.hoy, pais=self.pais)
                 if isinstance(r, str):
                     return self._fallo_descarga(r)
@@ -1703,6 +1747,87 @@ class SesionDiseno(agente.Sesion):
             return None
         return ("[Aviso interno] Le dices que descargue un archivo, pero en este mensaje no preparaste ninguno: en su pantalla no hay botón. "
                 "Si lo pidió, llama a descargar ahora; si no, dilo sin mandarla a descargar.")
+
+    def _lista_propia(self, q: Any) -> tuple[dict | None, str | None]:
+        """Una sección PROPIA (con campos que se pueden enlazar o calcular). Contactos y tareas tienen campos fijos."""
+        s, error = self._seccion_datos(q)
+        if error:
+            return None, error
+        if s.get("virtual"):
+            return None, f"ERROR: «{s['titulo']}» tiene campos fijos: el enlace o el cálculo va en una sección propia."
+        return s, None
+
+    def _h_enlazar_campo(self, seccion: Any = None, campo: Any = None, con: Any = None, **_: Any) -> str:
+        s, error = self._lista_propia(seccion)
+        if error:
+            return error
+        destino, error = self._seccion_datos(con)
+        if error:
+            return error
+        if destino["id"] == s["id"]:
+            return "ERROR: una sección no se enlaza consigo misma."
+        c = registros.campo_por_clave(s["campos"], campo)
+        doc = self.doc
+        if c is None:
+            nombre = str(campo or destino["titulo"]).strip()[:24]
+            doc = est.campo_agregar(doc, s["id"], nombre, "texto", self.ahora)
+            nuevo = est._lista(doc, s["id"])["campos"][-1]
+            nuevo["id"] = pantalla.slug(nombre)
+            c = nuevo
+        elif c.get("tipo") != "texto" or calculos.es_calculado(c):
+            return f"ERROR: «{c['nombre']}» no es un campo de texto; el enlace va en un campo de texto (el nombre que se ve)."
+        doc = calculos.enlazar(doc, s["id"], c["id"], destino["id"])
+        self.doc = doc
+        inf = calculos.informe_enlace(doc, s["id"], c["id"])
+        extra = ""
+        if inf["sin_pareja"]:
+            extra += f" Sin pareja en {destino['titulo']} (no existen allá): {', '.join(inf['sin_pareja'][:8])}."
+        if inf["ambiguos"]:
+            extra += f" Ambiguos (hay dos o más con ese nombre en {destino['titulo']}): {', '.join(inf['ambiguos'][:8])}."
+        return f"Listo: {s['titulo']}.{c['nombre']} quedó enlazado con {destino['titulo']}: {inf['enlazados']} de {inf['total']} registros enlazados.{extra}"
+
+    def _h_calcular_campo(self, seccion: Any = None, nombre: Any = None, op: Any = None, campos: Any = None, campo: Any = None,
+                          funcion: Any = None, de_seccion: Any = None, de_campo: Any = None, formato: Any = None, **_: Any) -> str:
+        s, error = self._lista_propia(seccion)
+        if error:
+            return error
+        nombre = str(nombre or "").strip()[:24]
+        if not nombre:
+            return "ERROR: falta «nombre» del campo calculado."
+        existente = registros.campo_por_clave(s["campos"], nombre)
+        if existente is not None and not calculos.es_calculado(existente):
+            return f"ERROR: «{existente['nombre']}» ya existe y lo escribe la persona; usa otro nombre o pregúntale si lo reemplazas."
+        a_id = lambda campos_sec, k: (registros.campo_por_clave(campos_sec, k) or {}).get("id", str(k))  # noqa: E731
+        calculo: dict[str, Any] = {"op": op}
+        if op in calculos.OPS_REGISTRO:
+            calculo["campos"] = [a_id(s["campos"], k) for k in (campos or [])] if isinstance(campos, list) else campos
+        elif op in calculos.OPS_FECHA:
+            calculo["campo"] = a_id(s["campos"], campo)
+        elif op == "resumen":
+            otra, error = self._lista_propia(de_seccion)
+            if error:
+                return error
+            calculo.update({"funcion": funcion, "seccion": otra["id"], **({"campo": a_id(otra["campos"], de_campo)} if de_campo else {})})
+        error = calculos.revisar_calculo(self.doc, s["id"], calculo, existente["id"] if existente else None)
+        if error:
+            return error
+        if formato not in calculos.FORMATOS:
+            formato = "dinero" if any(x.get("tipo") == "dinero" for x in s["campos"] if x["id"] in calculo.get("campos", [])) else "numero"
+        doc = self.doc
+        if existente is None:
+            doc = est.campo_agregar(doc, s["id"], nombre, formato, self.ahora)
+            nuevo = est._lista(doc, s["id"])["campos"][-1]
+            nuevo["id"] = pantalla.slug(nombre)
+            cid = nuevo["id"]
+        else:
+            doc = copy.deepcopy(doc)
+            cid = existente["id"]
+        c = next(x for x in est._lista(doc, s["id"])["campos"] if x["id"] == cid)
+        c["tipo"], c["calculo"] = formato, calculo
+        self.doc = doc
+        muestra = calculos.ejemplos(doc, s["id"], cid, self.hoy)
+        return (f"Listo: {s['titulo']}.{nombre} lo calcula el código ({'nuevo' if existente is None else 'cambiado'}). "
+                f"Valores de ejemplo: {'; '.join(muestra) or 'todavía no hay registros'}. Di estos valores tal cual, sin inventar otros.")
 
     def _fallo_descarga(self, t: str) -> str:
         self.consultas.append({"args": {"descargar": True}, "resultado": t[:500]})

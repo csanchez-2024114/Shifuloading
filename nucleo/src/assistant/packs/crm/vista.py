@@ -8,8 +8,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from assistant.packs.crm import automatizaciones
+from assistant.packs.crm import calculos
 from assistant.packs.crm.estructura import ESQUEMA, esquema2_faltante
-from assistant.packs.crm.operaciones import ahora_utc
+from assistant.packs.crm.operaciones import ahora_utc, hora_local
 
 # Lo opcional de cada lista (esquema 2) que llega a la pantalla, con su nombre en camelCase.
 _LISTA_V2 = (("vista", "vista"), ("opciones", "opciones"), ("icono", "icono"), ("grupo", "grupo"), ("ficha", "ficha"), ("tarjeta", "tarjeta"),
@@ -64,6 +65,8 @@ def vista_puntos(puntos: list[dict]) -> list[dict]:
 def vista_crm(doc: dict, ahora: datetime | None = None, puntos: list[dict] | None = None) -> dict:
     """Un CRM de esquema 2 (ya normalizado) suma lo del sistema de diseño; uno de antes sale exactamente como siempre.
     `puntos` (opcional): la lista de `crm_puntos`; si se pasa, sale en `puntos` (sin foto)."""
+    # Los calculados (calculos.py) se llenan aquí, al leer: la pantalla los ve como cualquier número o dinero, y nunca se guardan.
+    doc = calculos.con_calculos(doc, hora_local(ahora or ahora_utc(), doc).date())
     salida = _vista_v1(doc, ahora)
     if (doc.get("esquema") or 1) >= ESQUEMA:
         v2 = {**{k: doc.get(k) for k in ("plantilla", "inicio", "paginas", "marca", "toma")}, **esquema2_faltante(doc)}

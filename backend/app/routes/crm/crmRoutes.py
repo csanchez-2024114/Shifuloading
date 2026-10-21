@@ -44,6 +44,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.core.limiter import limiter
 from app.crm import adjuntos
 from app.crm import agente
+from app.crm import calculos
 from app.crm import descarga as dl
 from app.crm import diseno
 from app.crm import estructura as est
@@ -274,6 +275,8 @@ async def _aplicar(request: Request, user: dict, cambiar, estado: int = 200, que
 
     def con_punto(d: dict) -> dict:
         nuevo = cambiar(d)
+        if nuevo is not d:
+            nuevo = calculos.propagar_renombres(d, nuevo)  # renombrar algo enlazado lo cambia también donde lo nombran
         if nuevo is d or que is None:
             return nuevo
         nuevo, p = pt.con_punto(d, nuevo, f"A mano: {que(d) if callable(que) else que}")
@@ -583,6 +586,7 @@ async def _turno_de_chat(db, user_id: str, texto: str, pendiente: dict | None, h
                 logger.warning("No se pudo guardar el logo: %s", type(e).__name__)
                 raise op.ErrorCrm(503, "No pude guardar tu logo. Inténtalo de nuevo en un momento.") from e
         deshecho = r.get("deshacer")
+        r["doc"] = calculos.propagar_renombres(doc, r["doc"])  # si cambió el nombre de algo enlazado, los que lo nombran también
         nuevo, punto = pt.con_punto(deshecho["base"] if deshecho else doc, r["doc"], texto or "(adjuntó una imagen)")
         guardado = await repo.guardar_version(db, user_id, nuevo, doc["version"])
         if guardado:
@@ -726,7 +730,8 @@ async def exportar(request: Request, formato: str = "excel", user: dict = Depend
     negocio = (doc.get("brief") or {}).get("nombre")
     if formato == "respaldo":
         return _archivo(dl.nombre_archivo(negocio, "Respaldo completo", "respaldo", hoy), dl.MIME["respaldo"], dl.respaldo(doc, ahora))
-    hojas = [{"titulo": s["titulo"], "campos": s["campos"], "registros": sv.registros_de(doc, s["id"])} for s in sv.secciones_de(doc)]
+    calc = calculos.con_calculos(doc, hoy)
+    hojas = [{"titulo": s["titulo"], "campos": s["campos"], "registros": sv.registros_de(calc, s["id"])} for s in sv.secciones_de(doc)]
     if not hojas:
         return JSONResponse({"mensaje": "Todavía no hay nada que descargar: agrega algo a tu CRM primero."}, status_code=404)
     return _archivo(dl.nombre_archivo(negocio, "CRM", "excel", hoy), dl.MIME["excel"], dl.excel(hojas))

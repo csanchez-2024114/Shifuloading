@@ -181,6 +181,8 @@ def valores_validos(campos: list[dict], valores: dict[str, Any]) -> dict[str, An
         campo = por_id.get(cid)
         if campo is None:
             raise ErrorCrm(422, "Ese campo no existe.")
+        if isinstance(campo.get("calculo"), dict):  # lo calcula el código al leer (calculos.py): nadie lo escribe
+            raise ErrorCrm(422, f"«{campo['nombre']}» se calcula solo; no se escribe a mano.")
         salida[cid] = valor_de_tipo(campo["tipo"], v, campo["nombre"], campo.get("opciones"))
     return salida
 

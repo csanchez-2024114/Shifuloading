@@ -14,7 +14,9 @@ const ANCHO_COMPLETO = ['kpis', 'tablero', 'agenda']
 /** Un campo de la API como lo entiende el laboratorio: «lista» es alias de «estado» (§1); un tipo desconocido se ve como texto. */
 function campoDe(c, opcionesEstado = {}) {
   const tipo = c.tipo === 'lista' ? 'estado' : TIPOS_CAMPO.includes(c.tipo) ? c.tipo : 'texto'
-  return { id: c.id, nombre: c.nombre, tipo, ...(tipo === 'estado' ? { opciones: opcionesEstado[c.id] || c.opciones || [] } : {}) }
+  return { id: c.id, nombre: c.nombre, tipo, ...(tipo === 'estado' ? { opciones: opcionesEstado[c.id] || c.opciones || [] } : {}),
+    // Datos que se conectan (calculos.py): el calculado lo llena el servidor y no se escribe; el enlazado une por nombre con otra sección.
+    ...(c.calculo ? { calculo: c.calculo } : {}), ...(c.relacion ? { relacion: c.relacion } : {}) }
 }
 
 /** Solo lo que tiene valor: así «—» sale igual en todas las vistas y la ficha no muestra textos vacíos. */

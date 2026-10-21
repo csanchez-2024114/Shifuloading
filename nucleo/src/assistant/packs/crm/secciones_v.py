@@ -32,7 +32,8 @@ _CLAVE_TAREA = {"tarea": "t", "vence": "vence", "hora": "hora"}
 def _campo(c: dict) -> dict:
     """El campo con el vocabulario del laboratorio: "lista" (Carlos) sale como "estado" (son lo mismo; lo guardado no cambia)."""
     tipo = "estado" if c["tipo"] == "lista" else c["tipo"]
-    return {"id": c["id"], "nombre": c["nombre"], "tipo": tipo, **({"opciones": c["opciones"]} if c.get("opciones") else {})}
+    return {"id": c["id"], "nombre": c["nombre"], "tipo": tipo, **({"opciones": c["opciones"]} if c.get("opciones") else {}),
+            **{k: c[k] for k in ("calculo", "relacion") if c.get(k)}}  # datos que se conectan (calculos.py)
 
 
 def _campos_contactos(doc: dict) -> list[dict]:

@@ -294,7 +294,10 @@ def describir_pantalla(doc: dict, vista: str | None = "inicio", puntos: list[dic
             continue
         campos = campos_de(s, por_id)
         x = {"id": s["id"], "titulo": s.get("titulo"),
-             "campos": [{"id": c["id"], "nombre": c.get("nombre"), "tipo": c.get("tipo"), **({"opciones": c["opciones"]} if c.get("opciones") else {})} for c in campos],
+             "campos": [{"id": c["id"], "nombre": c.get("nombre"), "tipo": c.get("tipo"), **({"opciones": c["opciones"]} if c.get("opciones") else {}),
+                         # calculado: lo llena el código (no se escribe); enlazado_con: el nombre une con un registro de esa sección
+                         **({"calculado": c["calculo"]} if c.get("calculo") else {}), **({"enlazado_con": c["relacion"]} if c.get("relacion") else {})}
+                        for c in campos],
              "ficha": ficha_de(s, campos)}
         if s.get("tarjeta"):
             x["tarjeta"] = s["tarjeta"].get("campos")

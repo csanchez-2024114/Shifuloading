@@ -14,7 +14,8 @@ export const paraPersona = (t) => {
 const aCampo = (c, v) => (v === undefined || v === null ? '' : String(v))
 
 /** Formulario de un registro: un control por campo según su tipo. onGuardar(valores) devuelve el error (texto) o null. */
-export function FormRegistro({ titulo, campos, inicial = {}, obligatorio, onGuardar, onCancelar, guardar = 'Guardar' }) {
+export function FormRegistro({ titulo, campos: todos, inicial = {}, obligatorio, onGuardar, onCancelar, guardar = 'Guardar' }) {
+  const campos = todos.filter((c) => !c.calculo) // un campo calculado lo llena el código: no se escribe a mano
   const [vals, setVals] = useState(() => Object.fromEntries(campos.map((c) => [c.id, aCampo(c, inicial[c.id])])))
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)

@@ -437,26 +437,58 @@ def consultar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None
     if isinstance(r, str):
         return r
     lista, filtros = r
-    suma = ""
+    c_suma = None
     if not _falso(args.get("sumar")):
-        c = campo_por_clave(campos, args["sumar"])
+        c_suma = campo_por_clave(campos, args["sumar"])
         sumables = [x for x in campos if _tipo(x) in ("numero", "dinero")]
-        if not c or not any(x is c for x in sumables):
+        if not c_suma or not any(x is c_suma for x in sumables):
             se_puede = ", ".join(f"{x.get('id')} ({x.get('nombre')})" for x in sumables) or "nada (no tiene números)"
             return f"ERROR: «{plantilla_js(args['sumar'])}» no se puede sumar en {titulo}. Se pueden sumar: {se_puede}."
+
+    def sumar(regs_: list[dict]) -> str:
+        if c_suma is None:
+            return ""
         total = 0.0
-        for r in lista:
-            n = numero_js(_vals(r).get(c["id"]))
+        for x in regs_:
+            n = numero_js(_vals(x).get(c_suma["id"]))
             total += 0.0 if math.isnan(n) or n == 0 else n
-        suma = f" Suma de {c.get('nombre')}: {mostrar(c, a_js(total), fmt)}."
+        return f" Suma de {c_suma.get('nombre')}: {mostrar(c_suma, a_js(total), fmt)}."
+
+    suma = sumar(lista)
+    orden_txt = ""
+    ordenar = args.get("ordenar")
+    if not _falso(ordenar):
+        o = ordenar if isinstance(ordenar, dict) else {"campo": ordenar}
+        c = campo_por_clave(campos, o.get("campo"))
+        if not c or _tipo(c) not in ("numero", "dinero", "fecha"):
+            se_puede = ", ".join(f"{x.get('id')} ({x.get('nombre')})" for x in campos if _tipo(x) in ("numero", "dinero", "fecha")) or "nada"
+            return f"ERROR: «{plantilla_js(o.get('campo'))}» no se puede ordenar en {titulo}. Se puede ordenar por: {se_puede}."
+        menor = str(o.get("orden") or "").lower().startswith("men")
+
+        def clave(x: dict):
+            v = _vals(x).get(c["id"])
+            n = v if _tipo(c) == "fecha" else numero_js(v)
+            vacio = v in (None, "") or (not isinstance(n, str) and math.isnan(n))
+            return (vacio, n if menor or vacio or isinstance(n, str) else -n)
+
+        lista = sorted(lista, key=clave) if menor or _tipo(c) != "fecha" else sorted(lista, key=lambda x: str(_vals(x).get(c["id"]) or ""), reverse=True)
+        orden_txt = f" Ordenados por {c.get('nombre')}, de {'menor a mayor' if menor else 'mayor a menor'}."
 
     muestra = ""
     if lista:
         cuales = f"Los primeros {MAX_LISTA}" if len(lista) > MAX_LISTA else "Son"
         muestra = f" {cuales}: {' | '.join(describir(r, campos, fmt, ct) for r in lista[:MAX_LISTA])}."
+    # Un filtro que deja 0 cuando sin él sí hay: el código lo dice con los números (prueba del 21-oct: «¿cuánto me deben?» con un
+    # «Estado: Activa» que nadie pidió respondió «Q 0»; sin el filtro eran 3 y 400).
+    sin_filtro = ""
+    if not lista and regs and isinstance(args.get("filtros"), dict) and args["filtros"]:
+        r2 = filtrar(sec, campos, regs, {k: v for k, v in args.items() if k != "filtros"}, hoy=hoy, pais=pais)
+        if not isinstance(r2, str) and r2[0]:
+            sin_filtro = (f" Ojo: sin el filtro de {', '.join(map(str, args['filtros']))} serían {len(r2[0])}.{sumar(r2[0])} "
+                          "Si la persona no pidió ese filtro, responde con estos.")
     filtros_txt = f" ({'; '.join(filtros)})" if filtros else ""
     registros_txt = "registro" if len(regs) == 1 else "registros"
-    return (f"Hoy es {fecha_larga(iso(hoy))}. En {titulo}{filtros_txt}: {len(lista)} de {len(regs)} {registros_txt}.{suma}{muestra} "
+    return (f"Hoy es {fecha_larga(iso(hoy))}. En {titulo}{filtros_txt}: {len(lista)} de {len(regs)} {registros_txt}.{suma}{orden_txt}{muestra}{sin_filtro} "
             "Responde SOLO con estos números y datos (sin decir ids).")
 
 
