@@ -923,7 +923,7 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
 
   // El chat va fuera de la página (en el body) para que siempre quede fijo en la esquina y no dependa de ningún contenedor.
   return createPortal(
-    <div className={`mc-chat${ventana ? ' ventana' : ''}`} data-tema={tema} data-modo={ventana ? (pos?.modo || 'lado') : undefined} style={estiloLibre}>
+    <div className={`mc-chat${ventana ? ' en-ventana' : ''}`} data-tema={tema} data-modo={ventana ? (pos?.modo || 'lado') : undefined} style={estiloLibre}>
       {ventana && !abierto && (
         <button type="button" className="mc-chat-riel" onClick={() => setAbierto(true)} aria-label="Abrir el chat con Shifu" title="Chat con Shifu">
           <ShifuAvatar size={32} /><small>Shifu</small>
