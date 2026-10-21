@@ -351,6 +351,10 @@ def catalogo(doc: dict) -> toma.Catalogo:
 # el pasado de los verbos en -rar («registré», «borré», «ignoré»). Los pasados en -aré/-eré/-iré («preparé», «generé») sí entran, pero
 # solo cuentan si lo que nombran no corrió en el turno: entonces tampoco es verdad. («-eremos» no: también es «queremos».)
 _FUTURO = regex.compile(r"(?<!\p{L})\p{L}+(?:[aei]ré|dré|aremos|iremos|dremos)(?!\p{L})", regex.IGNORECASE)
+# El mismo anuncio en PRESENTE: «No tienes la sección. La creo con campos…» y el turno se cierra sin llamar a nada (conceptos e
+# inventario, 21-oct: 3 de 8). «creo que…» es opinión, no anuncio; las preguntas («¿la creo?») las quita `sin_preguntas`.
+_ANUNCIO = regex.compile(r"(?<!\p{L})(?:(?:te\s+)?(?:la|lo|las|los)\s+)?(?:creo|agrego|armo|registro|configuro|anoto)(?!\s+que)(?!\p{L})",
+                         regex.IGNORECASE)
 # «Descárgalo en la pantalla»: solo es verdad si en el turno se preparó un archivo (el botón existe). Lo decide el hecho, no el verbo.
 _DESCARGABLE = regex.compile(r"(?<!\p{L})desc[aá]rg\p{L}*", regex.IGNORECASE)
 _NUM_SEP = re.compile(r"(?<=\d)[,.](?=\d{3}\b)")
@@ -1289,14 +1293,18 @@ class SesionDiseno(agente.Sesion):
         mecanismo que `afirma_sin_respaldo`: lo que dice tiene que estar en lo que corrió (los argumentos de los cambios) o en lo que el código
         dejó por hacer. Las preguntas y lo negado no cuentan («¿quieres que la cree?», «no la crearé»)."""
         hecho = ph.palabras([c.get("args") for c in self.cambios]) | ph.palabras([c.get("etiqueta") for c in self.cambios])
+        # También lo que respondió el código: «lo aclaré un poco a #e14747» lo eligió el código (no está en los argumentos del modelo) y
+        # se tomaba por promesa (22 veces en las corridas del 20 y 21-oct, una llamada extra cada una).
+        hecho |= ph.palabras([c.get("resultado") for c in self.cambios])
         # El archivo preparado también es un hecho: «Preparé el Excel con las 5 reparaciones» (el regex de futuro toma «-aré» de «preparé»).
         hecho |= ph.palabras([f"{d['nombre']} {d['formato']} archivo descargar {d['lleva']}" for d in self.descargas])
         pendiente = ph.palabras([ph.texto_de(x) for x in (*self.por_hacer_previo, *self.por_hacer)])
         salida = []
         for parte in _PARTES.split(sin_preguntas(respuesta)):
-            if not afirma_con(parte, _FUTURO):
+            # El presente solo cuenta si el turno no hizo NADA (el caso que falla); si hizo algo, «la agrego también al menú» no es promesa.
+            if not (afirma_con(parte, _FUTURO) or (not self.cambios and afirma_con(parte, _ANUNCIO))):
                 continue
-            contenido = ph.palabras(_FUTURO.sub(" ", parte))
+            contenido = ph.palabras(_ANUNCIO.sub(" ", _FUTURO.sub(" ", parte)))
             if contenido and not contenido & (hecho | pendiente):
                 salida.append(" ".join(parte.split()))
         return salida
