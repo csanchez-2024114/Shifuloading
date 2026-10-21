@@ -47,6 +47,7 @@ class Collections:
     CRM_CONVERSACIONES = 'crm_conversaciones'  # un documento por persona: su historial con Shifu y lo que Shifu recuerda de ella
     CRM_PUNTOS = 'crm_puntos'  # puntos de deshacer del CRM: uno por cambio, los últimos 30 por persona (app/crm/puntos.py)
     CRM_LOGOS = 'crm_logos'  # el logo del negocio (data URL) por id: aparte del CRM para que la imagen no viaje en cada respuesta
+    CRM_DESCARGAS = 'crm_descargas'  # archivos que la persona pidió descargar (app/crm/descarga.py); se borran solos a las 24 h
     FUNCTIONS = 'functions'
     FUNCTION_APPS = 'function_apps'
     ACTION_LOG = 'action_log'  # escrituras que el agente ejecuto en una app del usuario (modo act)

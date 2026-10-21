@@ -112,7 +112,7 @@ class VueltaCrm(AgentMiddleware):
         ia = state["messages"][-1]
         contenido = (ia.content if isinstance(ia.content, str) else "").strip()
         llamadas = [] if _sin_herramientas(t) else list(getattr(ia, "tool_calls", None) or [])
-        traza.paso_modelo(traza.ms_desde(t.t_modelo), llamadas, contenido)
+        traza.paso_modelo(traza.ms_desde(t.t_modelo), llamadas, contenido, uso=getattr(ia, "usage_metadata", None))
         nuevos: list = []
         if t.tras_deshacer:
             permitidas = {h["function"]["name"] for h in t.herr}
@@ -151,6 +151,8 @@ class VueltaCrm(AgentMiddleware):
                     resultado = _correr(t.buscador(str(args.get("consulta", ""))))
             elif nombre == "consultar_datos":
                 resultado = sesion.consultar(args)
+            elif nombre == "descargar":
+                resultado = sesion.descargar(args)
             elif nombre == "deshacer":
                 resultado = sesion.deshacer(args)
             else:

@@ -57,6 +57,7 @@ from assistant.packs.crm.afirma import afirma_cambio, afirma_con, sin_preguntas
 from assistant.packs.crm import chat as agente_chat
 from assistant.packs.crm.chat import _capitaliza, _norm
 from assistant.packs.crm.regional import PAISES
+from assistant.packs.crm import descarga as dl
 from assistant.packs.crm import plantillas
 from assistant.packs.crm.secciones import OTROS_NOMBRES
 from assistant.packs.crm.valores import campo_titulo, fecha_larga, parse_fecha, parse_hora, parse_numero, sin_acentos
@@ -80,6 +81,27 @@ HERR_DESHACER = {"type": "function", "function": {
                    "Nunca lo uses sin que la persona lo pida.",
     "parameters": {"type": "object", "properties": {"pedido": {"type": "integer", "minimum": 1, "description": "número de pedidos_anteriores; sin él, el último (\"deshaz lo último\")"}},
                    "required": []}}}
+
+# Solo cuando la persona lo pide. El modelo elige secciones, filtro y formato; el código arma el archivo (`descarga.py`) y la pantalla
+# muestra el botón. Los filtros son los de consultar_datos.
+HERR_DESCARGAR = {"type": "function", "function": {
+    "name": "descargar",
+    "description": "Prepara un ARCHIVO para que la persona lo descargue, solo si ella lo pide («pásame / descarga / exporta … en Excel», "
+                   "«en CSV», «un respaldo de todo»). El código lo arma y la pantalla le muestra el botón para bajarlo: no escribas enlaces. "
+                   "Sin secciones = todas las que tiene en el menú. Para responder una pregunta en el chat usa consultar_datos, no esto.",
+    "parameters": {"type": "object", "properties": {
+        "formato": {"type": "string", "enum": list(dl.FORMATOS),
+                    "description": "excel (una hoja por sección; el de siempre), csv (UNA sección) o respaldo (TODO el CRM en un archivo para guardarlo)"},
+        "secciones": {"type": "array", "description": "qué secciones y con qué filtro; vacío = todas", "items": {"type": "object", "properties": {
+            "seccion": {"type": "string"},
+            "buscar": {"type": "string", "description": "nombre o texto de un registro"},
+            "filtros": {"type": "object", "description": "campo → valor (estado: Activa)"},
+            "periodo": {"type": "object", "properties": {"campo": {"type": "string"}, "cuando": {"type": "string", "description": "como lo dijo: «octubre», «este mes»"}}},
+            "columnas": {"type": "array", "items": {"type": "string"}, "description": "solo si pidió ciertas columnas (id o nombre del campo)"}},
+            "required": ["seccion"]}}},
+        "required": ["formato"]}}}
+MAX_DESCARGAS = 1  # por mensaje
+
 
 # Las de Carlos que hacen lo mismo que las de datos del laboratorio: no se muestran, pero si el modelo las llama van al mismo handler.
 ALIAS_DE_DATOS = frozenset({"agregar_contactos", "cambiar_contacto", "eliminar_contacto", "agregar_registros", "cambiar_registro", "eliminar_registro"})
@@ -266,6 +288,8 @@ def catalogo(doc: dict) -> toma.Catalogo:
 # el pasado de los verbos en -rar («registré», «borré», «ignoré»). Los pasados en -aré/-eré/-iré («preparé», «generé») sí entran, pero
 # solo cuentan si lo que nombran no corrió en el turno: entonces tampoco es verdad. («-eremos» no: también es «queremos».)
 _FUTURO = regex.compile(r"(?<!\p{L})\p{L}+(?:[aei]ré|dré|aremos|iremos|dremos)(?!\p{L})", regex.IGNORECASE)
+# «Descárgalo en la pantalla»: solo es verdad si en el turno se preparó un archivo (el botón existe). Lo decide el hecho, no el verbo.
+_DESCARGABLE = regex.compile(r"(?<!\p{L})desc[aá]rg\p{L}*", regex.IGNORECASE)
 _NUM_SEP = re.compile(r"(?<=\d)[,.](?=\d{3}\b)")
 
 # Partes de una oración para `afirma_sin_respaldo`: «ya estaba la de mañana, pero puse las de los jueves» son dos afirmaciones.
@@ -644,6 +668,7 @@ class SesionDiseno(agente.Sesion):
         self.cambios: list[dict] = []
         self.intentos: list[dict] = []
         self.consultas: list[dict] = []
+        self.descargas: list[dict] = []  # archivos que pidió (con sus bytes): la ruta los guarda y la pantalla muestra el botón
         self.avisos: list[dict] = []
         self.deshecho: set[str] = set()   # categorías deshechas en este turno
         self.deshechos: set[int] = set()  # números de los puntos deshechos (la ruta los quita de crm_puntos)
@@ -710,7 +735,7 @@ class SesionDiseno(agente.Sesion):
                and (self._tiene_imagen() or h["function"]["name"] != "usar_logo")]
         datos = [HERR_AGREGAR_REGISTRO if h["function"]["name"] == "agregar_registro" else h for h in registros.HERRAMIENTAS_DATOS]
         return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *datos,
-                edicion.HERR_ENLACE]
+                HERR_DESCARGAR, edicion.HERR_ENLACE]
 
     def nombrados_en_orden(self, tope: int = 15) -> list[str]:
         """Los registros que la persona nombró en la conversación, en el orden en que los nombró por primera vez (lo calcula el código:
@@ -785,6 +810,9 @@ class SesionDiseno(agente.Sesion):
 
     # --- los cercos que usa agente.revisar_respuesta ---
     def revisar_pantalla(self, respuesta: str) -> str | None:
+        aviso = self.aviso_archivo_inexistente(respuesta)
+        if aviso:
+            return aviso
         for gancho in GANCHOS_PANTALLA:
             aviso = gancho(respuesta, self)
             if aviso:
@@ -813,7 +841,8 @@ class SesionDiseno(agente.Sesion):
     def afirma_sin_cambios(self, respuesta: str) -> str | None:
         """chat.js: afirma un cambio y ninguna herramienta cambió nada. «Afirma» = el vocabulario del laboratorio (afirma_cambio) o el de
         Carlos (`_EXITO_D51`: «he agregado», «registré»…), las dos con la regla de D51."""
-        if not self.cambios and (afirma_cambio(respuesta) or afirma_con(respuesta, _EXITO_D51)):
+        # Un archivo preparado (descargar) es algo hecho: «Listo, aquí está tu Excel» no es un falso éxito.
+        if not self.cambios and not self.descargas and (afirma_cambio(respuesta) or afirma_con(respuesta, _EXITO_D51)):
             fallaron = f" (fallaron: {' | '.join(self.fallos[-2:])})" if self.fallos else ""
             return f"[Aviso interno] Dices que hiciste un cambio, pero ninguna herramienta cambió la pantalla{fallaron}. Llama a la herramienta o di la verdad."
         return None
@@ -1196,6 +1225,8 @@ class SesionDiseno(agente.Sesion):
         mecanismo que `afirma_sin_respaldo`: lo que dice tiene que estar en lo que corrió (los argumentos de los cambios) o en lo que el código
         dejó por hacer. Las preguntas y lo negado no cuentan («¿quieres que la cree?», «no la crearé»)."""
         hecho = ph.palabras([c.get("args") for c in self.cambios]) | ph.palabras([c.get("etiqueta") for c in self.cambios])
+        # El archivo preparado también es un hecho: «Preparé el Excel con las 5 reparaciones» (el regex de futuro toma «-aré» de «preparé»).
+        hecho |= ph.palabras([f"{d['nombre']} {d['formato']} archivo descargar {d['lleva']}" for d in self.descargas])
         pendiente = ph.palabras([ph.texto_de(x) for x in (*self.por_hacer_previo, *self.por_hacer)])
         salida = []
         for parte in _PARTES.split(sin_preguntas(respuesta)):
@@ -1608,6 +1639,75 @@ class SesionDiseno(agente.Sesion):
         self.consultas.append({"args": args, "resultado": t[:2500]})
         return t
 
+    def descargar(self, args: Any) -> str:
+        """descargar: el código arma el archivo (`descarga.py`) con los mismos filtros de consultar_datos; no cambia nada.
+        Se pueden pedir secciones ocultas por su nombre (sus datos siguen ahí); sin secciones van las del menú."""
+        args = args if isinstance(args, dict) else {}
+        formato = str(args.get("formato") or "").strip().lower()
+        if formato not in dl.FORMATOS:
+            return self._fallo_descarga(f"ERROR: formato «{_js(args.get('formato'))}»: usa excel, csv o respaldo.")
+        if len(self.descargas) >= MAX_DESCARGAS:
+            return self._fallo_descarga("ERROR: ya preparaste un archivo en este mensaje. Responde con ese.")
+        negocio = (self.doc.get("brief") or {}).get("nombre")
+        if formato == "respaldo":
+            contenido, que, filas, lleva = dl.respaldo(self.doc, self.ahora), "Respaldo completo", None, "todo el crm respaldo completo"
+        else:
+            hojas: list[dict] = []
+            pedidas = [x for x in (args.get("secciones") or []) if isinstance(x, dict)]
+            todas = sv.secciones_de({**self.doc, "ocultas": []})
+            if not pedidas:
+                pedidas = [{"seccion": x["id"]} for x in sv.secciones_de(self.doc)]
+            for ped in pedidas:
+                k = str(ped.get("seccion") or "").strip()
+                sid = k if any(x["id"] == k for x in todas) else self._seccion(k)
+                s = next((x for x in todas if x["id"] == sid), None) or next((x for x in todas if _norm(x["titulo"]) == _norm(k)), None)
+                if s is None:
+                    cuales = ", ".join(f"«{x['titulo']}»" for x in todas)
+                    return self._fallo_descarga(f"ERROR: «{_js(k)}» no es una sección con registros. Secciones: {cuales}.")
+                regs = sv.registros_de({**self.doc, "ocultas": []}, s["id"])
+                r = registros.filtrar(s, s["campos"], regs, ped, hoy=self.hoy, pais=self.pais)
+                if isinstance(r, str):
+                    return self._fallo_descarga(r)
+                lista, filtros = r
+                campos = s["campos"]
+                pedidas_col = [c for c in (ped.get("columnas") or []) if str(c or "").strip()]
+                if pedidas_col:
+                    elegidas = [registros.campo_por_clave(campos, c) for c in pedidas_col]
+                    if any(c is None for c in elegidas):
+                        malas = [c for c, e in zip(pedidas_col, elegidas) if e is None]
+                        todos = ", ".join(f"{x.get('id')} ({x.get('nombre')})" for x in campos)
+                        return self._fallo_descarga(f"ERROR: {', '.join(f'«{_js(m)}»' for m in malas)} no es un campo de {s['titulo']}. Campos: {todos}.")
+                    campos = list({id(c): c for c in elegidas}.values())
+                hojas.append({"titulo": s["titulo"], "campos": campos, "registros": lista, "total": len(regs), "filtros": filtros})
+            if formato == "csv" and len(hojas) != 1:
+                return self._fallo_descarga("ERROR: un CSV lleva UNA sola sección. Pregúntale cuál, o usa excel (una hoja por sección).")
+            if not hojas:
+                return self._fallo_descarga("ERROR: no hay ninguna sección con registros para descargar. Díselo.")
+            contenido = dl.excel(hojas) if formato == "excel" else dl.csv_de(hojas[0]["campos"], hojas[0]["registros"])
+            que = hojas[0]["titulo"] if len(hojas) == 1 else "CRM"
+            filas = [f"{h['titulo']}: {len(h['registros'])} de {h['total']}" + (f" ({'; '.join(h['filtros'])})" if h["filtros"] else "") for h in hojas]
+            lleva = " ".join([*filas, *(str(c.get("nombre")) for h in hojas for c in h["campos"])])
+        nombre = dl.nombre_archivo(negocio, que, formato, self.hoy)
+        # `lleva` (secciones, filtros y columnas) es lo que el código sabe que trae el archivo: los cercos lo cuentan como hecho.
+        self.descargas.append({"nombre": nombre, "formato": formato, "mime": dl.MIME[formato], "contenido": contenido, "lleva": lleva})
+        detalle = f" Lleva: {' | '.join(filas)}." if filas else " Lleva todo el CRM (secciones, registros, diseño y marca)."
+        t = (f"Listo: el archivo «{nombre}» está preparado y la pantalla ya le muestra el botón para descargarlo.{detalle} "
+             "Díselo en una línea, con esas cantidades; no escribas enlaces.")
+        self.consultas.append({"args": {"descargar": args}, "resultado": t})
+        return t
+
+    def aviso_archivo_inexistente(self, respuesta: str) -> str | None:
+        """Le dice que descargue algo y en este mensaje no se preparó ningún archivo: en la pantalla no hay botón (banco_descarga: «Ya armé
+        el respaldo… para que lo descargues» y «Ya preparé el Excel…» sin llamar a descargar, con descargas anteriores en la conversación)."""
+        if self.descargas or not afirma_con(respuesta, _DESCARGABLE):
+            return None
+        return ("[Aviso interno] Le dices que descargue un archivo, pero en este mensaje no preparaste ninguno: en su pantalla no hay botón. "
+                "Si lo pidió, llama a descargar ahora; si no, dilo sin mandarla a descargar.")
+
+    def _fallo_descarga(self, t: str) -> str:
+        self.consultas.append({"args": {"descargar": True}, "resultado": t[:500]})
+        return t
+
     def deshacer(self, args: Any) -> str:
         """Deshacer selectivo, calculado por el código (`puntos.deshacer`): solo lo que ESE pedido cambió; si uno posterior tocó lo mismo,
         también se deshace y se dice."""
@@ -1829,6 +1929,8 @@ async def cerrar_turno(respuesta: str, ultimos: list[str], correcciones: int, se
         salida["vista"] = sesion.vista
     if sesion.pendiente:
         salida["pendiente"] = sesion.pendiente
+    if sesion.descargas:
+        salida["descargas"] = sesion.descargas
     if sesion.logo and (sesion.doc.get("marca") or {}).get("logo_id") == sesion.logo["id"]:
         salida["logo"] = sesion.logo  # la imagen del logo que quedó puesto: la ruta la guarda con ese id
     if sesion.deshechos:
@@ -1865,7 +1967,7 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
         ia = await _atar(base, herr, solo_responder or (tras_deshacer and not herr)).ainvoke(mensajes)
         contenido = (ia.content if isinstance(ia.content, str) else "").strip()
         llamadas = [] if solo_responder or (tras_deshacer and not herr) else list(getattr(ia, "tool_calls", None) or [])
-        traza.paso_modelo(traza.ms_desde(t_modelo), llamadas, contenido)
+        traza.paso_modelo(traza.ms_desde(t_modelo), llamadas, contenido, uso=getattr(ia, "usage_metadata", None))
         if tras_deshacer:
             permitidas = {h["function"]["name"] for h in herr}
             llamadas = [ll for ll in llamadas if ll.get("name") in permitidas]
@@ -1900,6 +2002,8 @@ async def _responder(doc: dict, texto: str, historial: list[dict] | None = None,
                     resultado = await buscador(str(args.get("consulta", "")))
             elif nombre == "consultar_datos":
                 resultado = sesion.consultar(args)
+            elif nombre == "descargar":
+                resultado = sesion.descargar(args)
             elif nombre == "deshacer":
                 resultado = sesion.deshacer(args)
             else:

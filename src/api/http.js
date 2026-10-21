@@ -60,9 +60,8 @@ async function enviar(metodo, ruta, cuerpo) {
   }
 }
 
-/** Una sola puerta de salida hacia el servidor: JSON, token en la cabecera, renovación automática de la sesión y errores uniformes.
- *  `publico: true` es para las rutas de entrar (login, registro), que no llevan sesión ni se reintentan. */
-export async function pedir(metodo, ruta, cuerpo, { publico = false } = {}) {
+/** Hace la petición con la sesión: si la llave de acceso venció, la renueva una vez y repite. */
+async function conSesion(metodo, ruta, cuerpo, publico) {
   let res = await enviar(metodo, ruta, cuerpo)
   if (res.status === 401 && !publico) {
     if (await renovar()) {
@@ -73,8 +72,32 @@ export async function pedir(metodo, ruta, cuerpo, { publico = false } = {}) {
       throw new ErrorApi(401, 'Tu sesión venció. Inicia sesión de nuevo.')
     }
   }
+  return res
+}
+
+/** Una sola puerta de salida hacia el servidor: JSON, token en la cabecera, renovación automática de la sesión y errores uniformes.
+ *  `publico: true` es para las rutas de entrar (login, registro), que no llevan sesión ni se reintentan. */
+export async function pedir(metodo, ruta, cuerpo, { publico = false } = {}) {
+  const res = await conSesion(metodo, ruta, cuerpo, publico)
   if (res.status === 204) return null
   const datos = await res.json().catch(() => null)
   if (!res.ok) throw new ErrorApi(res.status, textoDeError(datos), datos)
   return datos
+}
+
+/** El nombre que manda el servidor en Content-Disposition (filename* en UTF-8 primero; si no, filename). */
+function nombreDeArchivo(cabecera) {
+  const utf = /filename\*=UTF-8''([^;]+)/i.exec(cabecera || '')
+  if (utf) { try { return decodeURIComponent(utf[1]) } catch { /* sigue con el simple */ } }
+  return /filename="([^"]+)"/i.exec(cabecera || '')?.[1] || null
+}
+
+/** Un archivo del servidor (GET con la sesión): { blob, nombre }. Los errores, como en `pedir`. */
+export async function pedirArchivo(ruta) {
+  const res = await conSesion('GET', ruta)
+  if (!res.ok) {
+    const datos = await res.json().catch(() => null)
+    throw new ErrorApi(res.status, textoDeError(datos), datos)
+  }
+  return { blob: await res.blob(), nombre: nombreDeArchivo(res.headers.get('Content-Disposition')) }
 }

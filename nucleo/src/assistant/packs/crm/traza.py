@@ -77,13 +77,23 @@ def terminar(token: Any) -> None:
         _PASOS.reset(token)
 
 
-def paso_modelo(ms: int, llamadas: list[dict] | None = None, contenido: str = "", etapa: str = "vuelta") -> None:
-    """Una llamada al modelo: cuánto tardó, qué herramientas pidió y (recortado) qué escribió."""
+def paso_modelo(ms: int, llamadas: list[dict] | None = None, contenido: str = "", etapa: str = "vuelta", uso: Any = None) -> None:
+    """Una llamada al modelo: cuánto tardó, qué herramientas pidió, (recortado) qué escribió y los tokens que reportó OpenAI
+    (`uso` = `usage_metadata` del mensaje de LangChain; sin él, no se anotan)."""
     lista = _PASOS.get()
     if lista is None:
         return
-    lista.append({"tipo": "modelo", "etapa": etapa, "ms": ms, "pidio": [str(ll.get("name") or "") for ll in (llamadas or [])],
-                  "texto": _limpio(contenido, 600)})
+    paso = {"tipo": "modelo", "etapa": etapa, "ms": ms, "pidio": [str(ll.get("name") or "") for ll in (llamadas or [])],
+            "texto": _limpio(contenido, 600)}
+    if isinstance(uso, dict) and uso.get("input_tokens") is not None:
+        paso["tokens"] = {"entrada": int(uso.get("input_tokens") or 0), "salida": int(uso.get("output_tokens") or 0)}
+    lista.append(paso)
+
+
+def tokens_de(pasos: list[dict]) -> dict:
+    """Tokens del turno: la suma de las llamadas al modelo que los reportaron."""
+    t = [p["tokens"] for p in pasos if p.get("tipo") == "modelo" and p.get("tokens")]
+    return {"entrada": sum(x["entrada"] for x in t), "salida": sum(x["salida"] for x in t), "llamadas": len(t)}
 
 
 def paso_herramienta(nombre: str, args: Any, resultado: Any, ms: int) -> None:
@@ -123,6 +133,7 @@ def linea_turno(*, doc: dict, texto: str, ms: int, salida: dict | None = None, e
         "historial_mensajes": len(historial or []),
         "ms_total": ms,
         "pasos": pasos_turno or [],
+        "tokens": tokens_de(pasos_turno or []),
     }
     if error is not None:
         linea["error"] = type(error).__name__

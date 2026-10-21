@@ -310,6 +310,10 @@ async def lifespan(app: FastAPI):
              {"unique": True, "name": "idx_crm_puntos_user_n"}, "crm_puntos puntos de deshacer por persona"),
             ("crm_logos", [("user_id", 1), ("id", 1)],
              {"unique": True, "name": "idx_crm_logos_user_id"}, "crm_logos logo del negocio por persona"),
+            ("crm_descargas", [("user_id", 1), ("id", 1)],
+             {"unique": True, "name": "idx_crm_descargas_user_id"}, "crm_descargas archivo por persona"),
+            ("crm_descargas", [("creado", 1)],
+             {"expireAfterSeconds": 86400, "name": "idx_crm_descargas_ttl"}, "crm_descargas se borran a las 24 h"),
             ("document_extractions", [("user_id", 1), ("last_used_at", -1)],
              {"name": "idx_document_extractions_user_recency"}, "document_extractions cleanup"),
         ]:
@@ -546,7 +550,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Type", "Authorization", "Content-Disposition"],  # el nombre de los archivos que se descargan
 )
 
 # Protección TrustedHost: los hosts de siempre + TRUSTED_HOSTS_EXTRA (CSV) si se define.

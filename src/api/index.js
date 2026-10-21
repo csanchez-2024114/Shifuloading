@@ -1,5 +1,5 @@
 import { CLAVE_USUARIO, HAY_SERVIDOR } from './config'
-import { ErrorApi, pedir, token } from './http'
+import { ErrorApi, pedir, pedirArchivo, token } from './http'
 import * as simulado from './mock/servidor'
 
 /* Único punto por el que la interfaz habla con los datos. La interfaz nunca toca localStorage ni fetch para esto:
@@ -93,6 +93,10 @@ export const crm = {
   quitarEjemplos: () => (HAY_SERVIDOR ? pedir('POST', '/crm/registros/ejemplos/quitar', {}) : simulado.crm.quitarEjemplos()),
   /** El logo del negocio (`crm.marca.logo_id`): { id, imagen } con la imagen como data URL. El simulado no guarda logos. */
   logo: (id) => (HAY_SERVIDOR ? pedir('GET', `/crm/logo/${encodeURIComponent(id)}`) : Promise.reject(new ErrorApi(404, 'Ese logo no existe.'))),
+  /** Un archivo que preparó Shifu por el chat (`descargas` de la respuesta): { blob, nombre }. Solo con servidor. */
+  descarga: (id) => pedirArchivo(`/crm/descargas/${encodeURIComponent(id)}`),
+  /** El CRM completo para bajar: formato `excel` o `respaldo` (JSON). Solo con servidor. */
+  exportar: (formato) => pedirArchivo(`/crm/exportar?formato=${encodeURIComponent(formato)}`),
 }
 
 /** Los avisos de la persona (campana): los que dejan las automatizaciones y el resto de la plataforma. */
@@ -107,6 +111,6 @@ export const chat = {
   historial: () => (HAY_SERVIDOR ? pedir('GET', '/crm/chat/historial') : Promise.resolve({ mensajes: [], saludo: null })),
   /** Borra el historial y todo lo que Shifu recuerda de la persona. */
   olvidar: () => (HAY_SERVIDOR ? pedir('DELETE', '/crm/chat') : Promise.resolve()),
-  /** Mensaje para Shifu. Devuelve { respuesta, crm, vista?, pendiente? }; `pendiente` se reenvía en el siguiente mensaje para confirmar un borrado. */
+  /** Mensaje para Shifu. Devuelve { respuesta, crm, vista?, pendiente?, descargas? } (`descargas`: archivos que pidió, [{ id, nombre, formato }]); `pendiente` se reenvía en el siguiente mensaje para confirmar un borrado. */
   enviar: (texto, contexto) => (HAY_SERVIDOR ? pedir('POST', '/crm/chat', { texto, contexto }) : simulado.chat.enviar(texto, contexto)),
 }

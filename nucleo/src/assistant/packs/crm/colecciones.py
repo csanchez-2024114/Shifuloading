@@ -9,3 +9,4 @@ class Collections:
     CRM_CONVERSACIONES = 'crm_conversaciones'  # su historial con Shifu y lo que Shifu recuerda de ella
     CRM_PUNTOS = 'crm_puntos'  # puntos de deshacer: uno por cambio, los últimos 30 por persona (puntos.py)
     CRM_LOGOS = 'crm_logos'  # el logo del negocio (data URL) por id, aparte del CRM
+    CRM_DESCARGAS = 'crm_descargas'  # archivos que la persona pidió descargar (descarga.py); se borran solos a las 24 h

@@ -346,12 +346,13 @@ def _falso(v: Any) -> bool:
     return v is None or v is False or v == "" or (es_numero(v) and (v == 0 or math.isnan(v)))
 
 
-def consultar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None = None, *, hoy: date | datetime, pais: Any = None) -> str:
-    """Lee los datos para responder una pregunta: el CÓDIGO filtra, cuenta y suma (el modelo solo repite). Nunca cambia nada."""
+def filtrar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None = None, *, hoy: date | datetime,
+            pais: Any = None) -> tuple[list[dict], list[str]] | str:
+    """Los registros que cumplen `buscar`, `filtros` y `periodo` (como en consultar_datos) y la descripción de cada filtro.
+    Devuelve el texto de ERROR si un filtro no se entiende. Lo usan consultar y la descarga: el mismo filtro para las dos."""
     hoy = _hoy(hoy)
     args = args or {}
     fmt = region_de(pais)
-    ct = campo_titulo(sec, campos)
     titulo = sec.get("titulo")
     filtros: list[str] = []
     lista = list(regs)
@@ -422,6 +423,20 @@ def consultar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None
         if err:
             return err
 
+    return lista, filtros
+
+
+def consultar(sec: dict, campos: list[dict], regs: list[dict], args: dict | None = None, *, hoy: date | datetime, pais: Any = None) -> str:
+    """Lee los datos para responder una pregunta: el CÓDIGO filtra, cuenta y suma (el modelo solo repite). Nunca cambia nada."""
+    hoy = _hoy(hoy)
+    args = args or {}
+    fmt = region_de(pais)
+    ct = campo_titulo(sec, campos)
+    titulo = sec.get("titulo")
+    r = filtrar(sec, campos, regs, args, hoy=hoy, pais=pais)
+    if isinstance(r, str):
+        return r
+    lista, filtros = r
     suma = ""
     if not _falso(args.get("sumar")):
         c = campo_por_clave(campos, args["sumar"])

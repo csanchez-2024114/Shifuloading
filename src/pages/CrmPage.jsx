@@ -10,6 +10,7 @@ import ImportarALista from '../components/ImportarALista'
 import BuscadorGlobal from '../components/BuscadorGlobal'
 import { ANCHO_VENTANA, alSoltar, guardarPos, leerPos } from '../components/posicionChat'
 import { descargarExcel } from '../crm/exportarExcel'
+import { bajarDescarga, exportar } from '../crm/descargas'
 import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
@@ -394,7 +395,7 @@ function Lista({ lista, onAgregar, onActualizar, onBorrar, onQuitarImportacion, 
 /* ───────── Ajustes ───────── */
 
 /** Todo lo de la cuenta y la apariencia en un solo lugar: tema claro u oscuro, cerrar sesión y repetir el cuestionario (con confirmación, porque borra el CRM). */
-function Ajustes({ tema, setTema, yo, negocio, hayServidor, onSalir, onRehacer, onDescargar }) {
+function Ajustes({ tema, setTema, yo, negocio, hayServidor, onSalir, onRehacer, onDescargar, onRespaldo }) {
   const [confirmando, setConfirmando] = useState(false)
   const [bajando, setBajando] = useState(false)
   const [notaExcel, setNotaExcel] = useState('')
@@ -402,6 +403,13 @@ function Ajustes({ tema, setTema, yo, negocio, hayServidor, onSalir, onRehacer, 
     setBajando(true); setNotaExcel('')
     try { setNotaExcel((await onDescargar()) ? '¡Listo! Revisa tu carpeta de Descargas.' : 'Todavía no hay nada que descargar: agrega algo a tu CRM primero.') } catch { setNotaExcel('No se pudo preparar el archivo. Inténtalo de nuevo.') }
     setBajando(false)
+  }
+  const [respaldando, setRespaldando] = useState(false)
+  const [notaRespaldo, setNotaRespaldo] = useState('')
+  const respaldar = async () => {
+    setRespaldando(true); setNotaRespaldo('')
+    try { await onRespaldo(); setNotaRespaldo('¡Listo! Guárdalo en un lugar seguro: ahí está todo tu CRM.') } catch (e) { setNotaRespaldo(e?.message || 'No se pudo preparar el respaldo. Inténtalo de nuevo.') }
+    setRespaldando(false)
   }
   const [haciendo, setHaciendo] = useState(false)
   const rehacer = async () => { setHaciendo(true); await onRehacer(); setHaciendo(false); setConfirmando(false) }
@@ -433,6 +441,12 @@ function Ajustes({ tema, setTema, yo, negocio, hayServidor, onSalir, onRehacer, 
             <div><b>Descargar mi CRM en Excel</b><small>Un libro con una hoja por cada sección, con todo lo que llevas hasta hoy. Puedes descargarlo cuantas veces quieras.</small>{notaExcel && <small className="mc-aj-nota" role="status">{notaExcel}</small>}</div>
             <button type="button" className="mc-sec" disabled={bajando} onClick={descargar}><LuDownload aria-hidden="true" /> {bajando ? 'Preparando…' : 'Descargar Excel'}</button>
           </div>
+          {onRespaldo && (
+            <div className="mc-aj-fila">
+              <div><b>Respaldo completo</b><small>Un solo archivo con todo tu CRM: secciones, registros, diseño y colores. También puedes pedírselo a Shifu: «hazme un respaldo».</small>{notaRespaldo && <small className="mc-aj-nota" role="status">{notaRespaldo}</small>}</div>
+              <button type="button" className="mc-sec" disabled={respaldando} onClick={respaldar}><LuDownload aria-hidden="true" /> {respaldando ? 'Preparando…' : 'Descargar respaldo'}</button>
+            </div>
+          )}
         </section>
 
         <section aria-labelledby="aj-crm">
@@ -924,7 +938,8 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
           <div className="mc-chat-msgs" role="log" aria-live="polite">
             {mensajes.map((m) => (
               <div key={m.id} className={`cb ${m.de}`}>{m.de === 'shifu' && <ShifuAvatar size={26} />}
-                <div className="cb-t">{m.imagen && <img className="cb-img" src={m.imagen} alt="Captura enviada a Shifu" />}{m.de === 'shifu' ? <TextoChat texto={m.t} /> : m.t}</div></div>
+                <div className="cb-t">{m.imagen && <img className="cb-img" src={m.imagen} alt="Captura enviada a Shifu" />}{m.de === 'shifu' ? <TextoChat texto={m.t} /> : m.t}
+                  {m.archivos?.map((a) => <BotonArchivo key={a.id} archivo={a} />)}</div></div>
             ))}
             {escribiendo && <div className="cb shifu"><ShifuAvatar size={26} /><p className="puntos" aria-label="Shifu está escribiendo"><i /><i /><i /></p></div>}
             <div ref={fin} />
@@ -977,7 +992,22 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
 /* ───────── Página ───────── */
 
 let idMensaje = 0
-const mensaje = (de, t, imagen) => { idMensaje += 1; return { id: idMensaje, de, t, imagen } }
+const mensaje = (de, t, imagen, archivos) => { idMensaje += 1; return { id: idMensaje, de, t, imagen, archivos } }
+
+/** El archivo que preparó Shifu, dentro de su mensaje: se vuelve a bajar cuantas veces quiera (el servidor lo guarda 24 h). */
+function BotonArchivo({ archivo }) {
+  const [estado, setEstado] = useState('')
+  const bajar = async () => {
+    setEstado('bajando')
+    try { await bajarDescarga(archivo); setEstado('') } catch (e) { setEstado(e?.mensaje || e?.message || 'No se pudo descargar. Inténtalo de nuevo.') }
+  }
+  return (
+    <span className="cb-archivo">
+      <button type="button" className="mc-sec" disabled={estado === 'bajando'} onClick={bajar}><LuDownload aria-hidden="true" /> {estado === 'bajando' ? 'Descargando…' : archivo.nombre}</button>
+      {estado && estado !== 'bajando' && <small role="status">{estado}</small>}
+    </span>
+  )
+}
 
 export default function CrmPage() {
   const nav = useNavigate()
@@ -1134,7 +1164,9 @@ export default function CrmPage() {
       if (r.modo) setModo(r.modo)
       if (r.crm) setCrm(r.crm)
       if (r.vista) setVista(r.vista)
-      setMensajes((l) => [...l, mensaje('shifu', r.respuesta)])
+      setMensajes((l) => [...l, mensaje('shifu', r.respuesta, undefined, r.descargas)])
+      // Lo pidió en este mensaje: se baja solo; el botón queda en el chat por si el navegador lo bloqueó o lo quiere otra vez.
+      for (const a of r.descargas || []) bajarDescarga(a).catch(() => {})
     } catch {
       setMensajes((l) => [...l, mensaje('shifu', 'No pude conectarme con el servidor. Inténtalo de nuevo en un momento.')])
     } finally { setEscribiendo(false) }
@@ -1251,7 +1283,11 @@ ${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
           {vista === 'cobros' && <Cobros moneda={d.moneda} t={tit('cobros')} />}
           {vista === 'actividad' && <Actividad eventos={crm.eventos} t={tit('actividad')} />}
           {vista === 'rrhh' && <Rrhh vendedores={vendedores} lista={crm.contactos} total={crm.totalContactos} t={tit('rrhh')} />}
-          {vista === 'ajustes' && <Ajustes tema={tema} setTema={setTema} yo={yo} negocio={d.nombre} hayServidor={HAY_SERVIDOR} onSalir={salir} onRehacer={rehacer} onDescargar={() => descargarExcel(crm, d.nombre, { contactos: tit('contactos'), desarrollo: tit('desarrollo') })} />}
+          {vista === 'ajustes' && <Ajustes tema={tema} setTema={setTema} yo={yo} negocio={d.nombre} hayServidor={HAY_SERVIDOR} onSalir={salir} onRehacer={rehacer} onDescargar={async () => {
+            // Con servidor, el mismo archivo que arma Shifu (todas las secciones, también las que se ven distinto en pantalla); sin servidor, el del navegador.
+            if (HAY_SERVIDOR) { await exportar('excel'); return true }
+            return descargarExcel(crm, d.nombre, { contactos: tit('contactos'), desarrollo: tit('desarrollo') })
+          }} onRespaldo={HAY_SERVIDOR ? () => exportar('respaldo') : null} />}
           {vista === 'automatizaciones' && <Automatizaciones autos={crm.automatizaciones} onAlternar={(a) => aplicar(() => apiCrm.automatizacionFijar(a.id, !a.on))} />}
         </main>
       </div>

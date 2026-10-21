@@ -29,9 +29,12 @@ Endpoints (relativos al prefijo):
   POST   /deshacer                — Deshace un punto ({n}; sin n, el último): solo lo que ese cambio tocó
   POST   /chat                    — Mensaje para Shifu (texto y/o captura) -> respuesta + CRM actualizado
   GET    /logo/{id}               — La imagen del logo del negocio (`marca.logo_id`): { id, imagen } (data URL)
+  GET    /descargas/{id}          — Un archivo que la persona pidió por el chat (`descargas` en la respuesta del chat; vence a las 24 h)
+  GET    /exportar?formato=       — Descarga directa (botón de Ajustes): excel (todas las secciones del menú) o respaldo (JSON completo)
 """
 import logging
 import re
+from urllib.parse import quote
 from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
@@ -41,6 +44,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.core.limiter import limiter
 from app.crm import adjuntos
 from app.crm import agente
+from app.crm import descarga as dl
 from app.crm import diseno
 from app.crm import estructura as est
 from app.crm import memoria as mem
@@ -48,6 +52,7 @@ from app.crm import operaciones as op
 from app.crm import puntos as pt
 from app.crm import repositorio as repo
 from app.crm import sembrar
+from app.crm import secciones_v as sv
 from app.crm.chat import responder, sanear_pendiente
 from app.crm.seleccion import nota_seleccion
 from app.crm.generador import generar
@@ -684,7 +689,46 @@ async def chat_crm(request: Request, datos: ChatEntrada, segundo_plano: Backgrou
     if diseno:  # la traza del turno, con la forma del laboratorio (las reglas no llaman herramientas: listas vacías)
         for clave in ("cambios", "fallos", "intentos", "consultas", "avisos"):
             salida[clave] = resultado.get(clave) or []
+    if resultado.get("descargas"):
+        try:
+            salida["descargas"] = [await repo.descarga_guardar(db, user["id"], a) for a in resultado["descargas"]]
+        except Exception as e:  # el modelo ya dijo «listo»: si no se guardó, la respuesta lo corrige (nunca un botón que no baja nada)
+            logger.warning("No se pudo guardar el archivo para descargar: %s", type(e).__name__)
+            salida["respuesta"] = f"{respuesta}\n\nOjo: no pude preparar el archivo. Pídemelo de nuevo en un momento."
     return salida
+
+
+def _archivo(nombre: str, mime: str, contenido: bytes) -> Response:
+    ascii_ = nombre.encode("ascii", "ignore").decode() or "archivo"
+    return Response(content=contenido, media_type=mime,
+                    headers={"Content-Disposition": f"attachment; filename=\"{ascii_}\"; filename*=UTF-8''{quote(nombre)}"})
+
+
+@router.get("/descargas/{descarga_id}")
+async def bajar_descarga(request: Request, descarga_id: str, user: dict = Depends(get_current_user)):
+    d = await repo.descarga_obtener(request.app.state.db, user["id"], descarga_id)
+    if d is None:
+        return JSONResponse({"mensaje": "Ese archivo ya no está (duran 24 horas). Pídeselo otra vez a Shifu."}, status_code=404)
+    return _archivo(d["nombre"], d["mime"], d["contenido"])
+
+
+@router.get("/exportar")
+async def exportar(request: Request, formato: str = "excel", user: dict = Depends(get_current_user)):
+    """El botón de Ajustes: excel con todas las secciones del menú, o el respaldo completo. Lo mismo que pide el chat (`descarga.py`)."""
+    if formato not in ("excel", "respaldo"):
+        return JSONResponse({"mensaje": "Formato no válido: usa excel o respaldo."}, status_code=422)
+    doc = await repo.obtener(request.app.state.db, user["id"])
+    if doc is None:
+        return JSONResponse({"mensaje": "Todavía no tienes un CRM."}, status_code=404)
+    ahora = op.ahora_utc()
+    hoy = op.hora_local(ahora, doc).date()
+    negocio = (doc.get("brief") or {}).get("nombre")
+    if formato == "respaldo":
+        return _archivo(dl.nombre_archivo(negocio, "Respaldo completo", "respaldo", hoy), dl.MIME["respaldo"], dl.respaldo(doc, ahora))
+    hojas = [{"titulo": s["titulo"], "campos": s["campos"], "registros": sv.registros_de(doc, s["id"])} for s in sv.secciones_de(doc)]
+    if not hojas:
+        return JSONResponse({"mensaje": "Todavía no hay nada que descargar: agrega algo a tu CRM primero."}, status_code=404)
+    return _archivo(dl.nombre_archivo(negocio, "CRM", "excel", hoy), dl.MIME["excel"], dl.excel(hojas))
 
 
 @router.get("/logo/{logo_id}")

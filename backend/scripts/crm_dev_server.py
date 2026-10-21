@@ -187,7 +187,7 @@ def crear_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5180", "http://127.0.0.1:5180", "http://localhost:5173", "http://localhost:5199", "http://localhost:5205"],
-        allow_methods=["*"], allow_headers=["*"],
+        allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"],
     )
 
     @app.post("/api/v1/auth/register", status_code=201)

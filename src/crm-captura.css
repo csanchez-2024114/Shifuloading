@@ -27,3 +27,7 @@
 .mc-consejo-x { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(var(--sombra), .12); color: var(--on-tx); font-size: 13px; }
 @keyframes consejo-entra { from { opacity: 0; transform: translateY(10px) scale(.92); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .mc-consejo { animation: none; } }
+/* El archivo que preparó Shifu, dentro de su mensaje (descargas.js) */
+.cb .cb-t .cb-archivo { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.cb .cb-t .cb-archivo button { align-self: flex-start; max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; height: auto; }
+.cb .cb-t .cb-archivo small { opacity: .8; }

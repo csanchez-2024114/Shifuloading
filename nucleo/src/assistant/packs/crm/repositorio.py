@@ -5,6 +5,8 @@ cambió mientras tanto (campo `version`). Si hubo un cambio en medio, se reinten
 """
 from __future__ import annotations
 
+import secrets
+from datetime import datetime, timezone
 from typing import Callable
 
 import bson
@@ -137,3 +139,27 @@ async def logo_obtener(db, user_id: str, logo_id: str) -> dict | None:
 
 async def logos_borrar(db, user_id: str) -> None:
     await _logos(db).delete_many({"user_id": user_id})
+
+
+# ───────── Archivos para descargar (colección `crm_descargas`) ─────────
+# Los arma `descarga.py` cuando la persona los pide; aquí solo se guardan para que la pantalla los baje con su sesión.
+# Mongo los borra a las 24 h (índice TTL sobre `creado`, en main.py).
+
+def _descargas(db):
+    return db[Collections.CRM_DESCARGAS]
+
+
+async def descarga_guardar(db, user_id: str, archivo: dict) -> dict:
+    """Guarda {nombre, formato, mime, contenido} y devuelve {id, nombre, formato} (lo que ve la pantalla)."""
+    ficha = {"id": secrets.token_urlsafe(12), "nombre": archivo["nombre"], "formato": archivo["formato"]}
+    await _descargas(db).insert_one({**ficha, "user_id": user_id, "mime": archivo["mime"], "contenido": bson.Binary(archivo["contenido"]),
+                                     "creado": datetime.now(timezone.utc)})
+    return ficha
+
+
+async def descarga_obtener(db, user_id: str, descarga_id: str) -> dict | None:
+    """{nombre, mime, contenido} de un archivo de la persona, o None (no existe, es de otra persona o ya venció)."""
+    d = await _descargas(db).find_one({"user_id": user_id, "id": descarga_id}, {"_id": 0, "user_id": 0})
+    if d is not None:
+        d["contenido"] = bytes(d["contenido"])
+    return d
