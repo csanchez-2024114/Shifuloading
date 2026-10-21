@@ -30,6 +30,7 @@ from contextvars import ContextVar
 import json
 from collections import Counter
 import logging
+import os
 import re
 import time
 from datetime import date, datetime, timedelta
@@ -102,6 +103,11 @@ HERR_DESCARGAR = {"type": "function", "function": {
             "required": ["seccion"]}}},
         "required": ["formato"]}}}
 MAX_DESCARGAS = 1  # por mensaje
+
+
+def conectar_activo() -> bool:
+    """CRM_CONECTAR=0 esconde enlazar_campo y calcular_campo (lo ya calculado se sigue viendo). Para medir su efecto en los bancos."""
+    return os.getenv("CRM_CONECTAR", "1").strip() != "0"
 
 # Datos que se conectan (`calculos.py`): el modelo elige de listas cerradas; el código enlaza, calcula y dice qué salió.
 HERR_ENLAZAR = {"type": "function", "function": {
@@ -778,7 +784,7 @@ class SesionDiseno(agente.Sesion):
         datos = [HERR_AGREGAR_REGISTRO if h["function"]["name"] == "agregar_registro" else HERR_CONSULTAR if h["function"]["name"] == "consultar_datos" else h
                  for h in registros.HERRAMIENTAS_DATOS]
         return [*HERRAMIENTAS_CARLOS_SIN_EDICION, HERR_AGENDAR, *lab, *toma.herramientas_para(self.doc), HERR_DESHACER, *datos,
-                HERR_DESCARGAR, HERR_ENLAZAR, HERR_CALCULAR, edicion.HERR_ENLACE]
+                HERR_DESCARGAR, *([HERR_ENLAZAR, HERR_CALCULAR] if conectar_activo() else []), edicion.HERR_ENLACE]
 
     def nombrados_en_orden(self, tope: int = 15) -> list[str]:
         """Los registros que la persona nombró en la conversación, en el orden en que los nombró por primera vez (lo calcula el código:
