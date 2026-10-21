@@ -149,7 +149,7 @@ def test_tiempos_relativos():
 def test_la_vista_tiene_la_forma_del_contrato(doc):
     v = vista_crm(doc, AHORA)
     assert set(v) == {"brief", "totalContactos", "contactos", "vendedores", "tareas", "eventos", "automatizaciones", "secciones",
-                      "etapas", "camposContacto", "ocultas", "listas", "resumenIA"}
+                      "etapas", "camposContacto", "ocultas", "listas", "resumenIA", "logo"}
     assert set(v["contactos"][0]) == {"id", "n", "det", "canal", "etapa", "dueno", "dias", "extra"}
     assert set(v["eventos"][0]) == {"id", "e", "t", "h"}
     assert "user_id" not in v and "version" not in v

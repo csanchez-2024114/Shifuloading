@@ -10,7 +10,7 @@ export const PREGUNTAS = [
     titulo: '¡Te damos la bienvenida a Shifu! ¿Cómo se llama tu negocio o proyecto?',
     sub: 'Puede ser un negocio, un equipo, un club o algo tuyo. Con eso empezamos.', placeholder: 'Por ejemplo: Estudio Aurora' },
   { id: 'ubicacion', capitulo: 'Para empezar', emoji: '🌎', tipo: 'ubicacion',
-    titulo: (r) => `Mucho gusto${r.nombre ? `, ${r.nombre}` : ''}. ¿Desde dónde trabajas?`,
+    titulo: (r) => `Mucho gusto${r.nombre?.trim() ? `, ${r.nombre.trim()}` : ''}. ¿Desde dónde trabajas?`,
     sub: 'Nos ayuda a sugerirte moneda, impuestos y horarios.',
     opciones: [o('gt', '🇬🇹', 'Guatemala'), o('mx', '🇲🇽', 'México'), o('co', '🇨🇴', 'Colombia'), o('es', '🇪🇸', 'España'), o('us', '🇺🇸', 'Estados Unidos'), o('otro', '🌍', 'Otro país')] },
   { id: 'rubro', capitulo: 'Tu negocio', emoji: '🏷️', tipo: 'una', requerido: true,

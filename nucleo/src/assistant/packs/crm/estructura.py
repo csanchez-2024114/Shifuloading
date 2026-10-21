@@ -37,6 +37,7 @@ def normalizar(doc: dict) -> dict:
     doc.setdefault("listas", [])
     doc.setdefault("ciudad", None)
     doc.setdefault("resumen_ia", None)
+    doc.setdefault("logo", None)
     for c in doc.get("contactos", []):
         c.setdefault("extra", {})
     for k, v in esquema2_faltante(doc).items():  # esquema 2, perezoso: solo lo que falta; nunca toca registros
@@ -96,6 +97,45 @@ def _nombre(texto: Any, largo: int, que: str) -> str:
 
 def _igual(a: str, b: str) -> bool:
     return a.strip().lower() == b.strip().lower()
+
+
+# ───────── Logotipo del negocio ─────────
+
+MAX_LOGO = 150_000  # caracteres de la imagen en texto (la pantalla la reduce antes de mandarla: un logo normal pesa 10 a 40 mil)
+_LOGO = re.compile(r"^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$")
+
+
+def logo_fijar(doc: dict, imagen: Any, ahora: datetime | None = None) -> dict:
+    """Guarda el logotipo del negocio (una imagen PNG, JPG o WebP en texto base64). Se revisa que de verdad sea esa imagen y que no pese de más."""
+    import base64
+
+    ahora = ahora or ahora_utc()
+    m = _LOGO.match(imagen) if isinstance(imagen, str) else None
+    if not m:
+        raise ErrorCrm(422, "El logotipo debe ser una imagen PNG, JPG o WebP.")
+    if len(imagen) > MAX_LOGO:
+        raise ErrorCrm(422, "Ese logotipo pesa demasiado. Prueba con una imagen más pequeña.")
+    try:
+        raw = base64.b64decode(m.group(2), validate=True)
+    except ValueError:
+        raise ErrorCrm(422, "No pude leer esa imagen.") from None
+    firmas = {"png": raw[:8] == b"\x89PNG\r\n\x1a\n", "jpeg": raw[:3] == b"\xff\xd8\xff", "webp": raw[:4] == b"RIFF" and raw[8:12] == b"WEBP"}
+    if not firmas[m.group(1)]:
+        raise ErrorCrm(422, "Ese archivo no es una imagen válida.")  # el nombre o el tipo decían una cosa y el contenido es otra
+    out = _copia(doc)
+    out["logo"] = imagen
+    _registrar(out, "🖼️", "Cambiaste el logotipo de tu negocio", ahora)
+    return out
+
+
+def logo_quitar(doc: dict, ahora: datetime | None = None) -> dict:
+    ahora = ahora or ahora_utc()
+    if not doc.get("logo"):
+        return doc
+    out = _copia(doc)
+    out["logo"] = None
+    _registrar(out, "🖼️", "Quitaste el logotipo de tu negocio", ahora)
+    return out
 
 
 # ───────── Valores de los campos ─────────

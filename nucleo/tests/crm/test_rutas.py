@@ -955,3 +955,45 @@ def test_se_puede_vaciar_una_seccion_entera_y_se_queda_con_sus_columnas(cli, db)
     assert r.status_code == 200 and r.json()["listas"][0]["registros"] == [] and r.json()["listas"][0]["importaciones"] == []
     assert [c["nombre"] for c in r.json()["listas"][0]["campos"]] == ["Producto", "Precio"]  # la estructura se queda
     assert cli.delete("/api/v1/crm/listas/l_no/registros", headers=H).status_code == 404
+
+
+def _imagen(formato="PNG", tam=(40, 20)):
+    """Una imagen de verdad (la prueba la dibuja), como data URL."""
+    import base64
+    import io
+
+    from PIL import Image
+
+    b = io.BytesIO()
+    Image.new("RGBA" if formato != "JPEG" else "RGB", tam, (20, 120, 90)).save(b, formato)
+    return f"data:image/{formato.lower()};base64," + base64.b64encode(b.getvalue()).decode()
+
+
+def test_el_negocio_puede_poner_y_quitar_su_logotipo(cli):
+    pytest.importorskip("PIL")
+    crear(cli)
+    assert crear_logo_inicial(cli) is None
+    for formato in ("PNG", "JPEG", "WEBP"):
+        r = cli.put("/api/v1/crm/logo", json={"imagen": _imagen(formato)}, headers=H)
+        assert r.status_code == 200 and r.json()["logo"].startswith(f"data:image/{formato.lower()};base64,")
+    r = cli.get("/api/v1/crm", headers=H).json()
+    assert r["logo"] and r["eventos"][0]["t"] == "Cambiaste el logotipo de tu negocio"  # y queda guardado en el CRM
+    assert cli.delete("/api/v1/crm/logo", headers=H).json()["logo"] is None
+
+
+def test_un_logotipo_que_no_es_una_imagen_de_verdad_o_pesa_de_mas_se_rechaza(cli):
+    pytest.importorskip("PIL")
+    import base64
+
+    crear(cli)
+    url = "/api/v1/crm/logo"
+    falso = "data:image/png;base64," + base64.b64encode(b"<script>alert(1)</script>").decode()  # dice ser PNG pero es otra cosa
+    svg = "data:image/svg+xml;base64," + base64.b64encode(b"<svg onload=alert(1)></svg>").decode()
+    for malo in (falso, svg, "no es una imagen", "data:image/png;base64,@@@", "javascript:alert(1)", _imagen("PNG").replace("image/png", "image/jpeg")):
+        assert cli.put(url, json={"imagen": malo}, headers=H).status_code == 422, malo[:40]
+    enorme = "data:image/png;base64," + "A" * 160_000
+    assert cli.put(url, json={"imagen": enorme}, headers=H).status_code == 422
+
+
+def crear_logo_inicial(cli):
+    return cli.get("/api/v1/crm", headers=H).json().get("logo")

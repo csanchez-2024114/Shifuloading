@@ -1,5 +1,5 @@
 /* ───────── CRM básico que arma Shifu (tema oscuro, misma paleta: menta y morado) ───────── */
-.carga, .mc, .mc-chat { --verde: #22d3a6; --morado: #7c5cff; --gris: var(--tx3); --linea: rgba(var(--ink), .09); --panel: rgba(var(--ink), .04); font-family: var(--fuente); color: var(--tx); }
+.carga, .mc, .mc-chat, .tour-raiz { --verde: #22d3a6; --morado: #7c5cff; --gris: var(--tx3); --linea: rgba(var(--ink), .09); --panel: rgba(var(--ink), .04); font-family: var(--fuente); color: var(--tx); }
 
 /* Pantalla de carga */
 .carga { position: relative; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; background: #050807; overflow: hidden; }

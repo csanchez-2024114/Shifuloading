@@ -91,7 +91,7 @@ def _vista_v1(doc: dict, ahora: datetime | None = None) -> dict:
         "etapas": doc["etapas"],
         "camposContacto": doc["campos_contacto"],
         "ocultas": doc["ocultas"],
-        "listas": [{"id": l["id"], "nombre": l["nombre"], "tipo": l.get("tipo"), "campos": l["campos"], **_lista_v2(l),
+        "listas": [{"id": l["id"], "nombre": l["nombre"], "tipo": l.get("tipo"), "descripcion": l.get("descripcion"), "campos": l["campos"], **_lista_v2(l),
                     "registros": [_registro(r) for r in l["registros"]],
                     # Las importaciones que siguen teniendo registros (si ya se borraron todos a mano, no se muestra).
                     "importaciones": [{"id": i["id"], "nombre": i["nombre"], "creado": i["creado"].isoformat() if hasattr(i["creado"], "isoformat") else str(i["creado"]),
@@ -103,4 +103,5 @@ def _vista_v1(doc: dict, ahora: datetime | None = None) -> dict:
         "automatizaciones": [{**a, **automatizaciones.detalle(a["id"])} for a in doc["automatizaciones"]],
         "secciones": doc["secciones"],
         "resumenIA": doc.get("resumen_ia"),
+        "logo": doc.get("logo"),
     }

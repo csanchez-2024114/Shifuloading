@@ -11,6 +11,8 @@ import BuscadorGlobal from '../components/BuscadorGlobal'
 import { ANCHO_VENTANA, alSoltar, guardarPos, leerPos } from '../components/posicionChat'
 import { descargarExcel } from '../crm/exportarExcel'
 import { bajarDescarga, exportar } from '../crm/descargas'
+import Tour from '../components/Tour'
+import { armarRecorrido } from '../crm/recorrido'
 import { HAY_SERVIDOR, auth, avisos as apiAvisos, chat as apiChat, crm as apiCrm } from '../api'
 import { etiqueta } from '../brief/preguntas'
 import { borrarBorrador, guardarBorrador, leerBorrador } from '../brief/borrador'
@@ -198,7 +200,7 @@ function Contactos({ lista, total, buscar, t, onAgregar, onActualizar, onBorrar,
     <>
       <div className="mc-cab">
         <div><h1>{t}</h1><p>{total === 0 ? 'Todavía no tienes ninguno.' : `${total.toLocaleString('es')} en total. Toca uno para editarlo.`}</p></div>
-        {!modo && <div className="mc-cab-acc"><button type="button" className="mc-sec" onClick={onImportar}><LuUpload aria-hidden="true" /> Importar</button><button type="button" className="btn-pildora" onClick={() => abrir('nuevo')}><LuPlus aria-hidden="true" /> Agregar</button></div>}
+        {!modo && <div className="mc-cab-acc"><button type="button" className="mc-sec" data-tour="importar" onClick={onImportar}><LuUpload aria-hidden="true" /> Importar</button><button type="button" className="btn-pildora" onClick={() => abrir('nuevo')}><LuPlus aria-hidden="true" /> Agregar</button></div>}
       </div>
       {modo && <FormFila key={modo} titulo={editando ? `Editar a ${editando.n}` : 'Agregar'} campos={formulario} inicial={inicial} enviando={enviando} error={error} onGuardar={guardar} onCancelar={() => setModo(null)} />}
       <div className="mc-kpis c4k" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
@@ -236,13 +238,11 @@ function Contactos({ lista, total, buscar, t, onAgregar, onActualizar, onBorrar,
 }
 
 /** Una sección propia: una tabla con los campos que la persona (o Shifu) definió. Se puede agregar, editar y eliminar; la estructura se cambia por el chat. */
-function Lista({ lista, onAgregar, onActualizar, onBorrar, onQuitarImportacion, onQuitarTodas, onVaciar, onSubirFoto, onImportar, metodos }) {
+function Lista({ lista, onAgregar, onActualizar, onBorrar, onVaciar, onSubirFoto, onImportar, metodos }) {
   const [modo, setModo] = useState(null) // null | 'nuevo' | id del registro que se edita
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [borrando, setBorrando] = useState(null)
-  const [quitando, setQuitando] = useState(null) // id de la importación con la advertencia abierta
-  const [haciendo, setHaciendo] = useState(false)
   const [buscar, setBuscar] = useState('')
   const [vaciando, setVaciando] = useState(null) // null | 'pregunta' | 'haciendo'
   const cols = { '--cols': `${lista.campos.map(() => 'minmax(0, 1fr)').join(' ')} 76px` }
@@ -269,55 +269,18 @@ function Lista({ lista, onAgregar, onActualizar, onBorrar, onQuitarImportacion, 
       if (ok) setModo(null); else setError('No se pudo guardar. Revisa los valores.')
     }
   }
-  const quitar = async (i) => { setHaciendo(true); await onQuitarImportacion(lista.id, i.id); setHaciendo(false); setQuitando(null) }
-  const quitarTodas = async () => { setHaciendo(true); await onQuitarTodas(lista.id); setHaciendo(false); setQuitando(null) }
-  const totalImportado = (lista.importaciones || []).reduce((n, i) => n + i.cantidad, 0)
   return (
     <>
       <div className="mc-cab">
         <div><h1>{lista.nombre}</h1><p>{lista.registros.length === 0 ? 'Todavía no tiene registros.' : `${lista.registros.length.toLocaleString('es')} ${lista.registros.length === 1 ? 'registro' : 'registros'}. Toca uno para editarlo.`} Para cambiar los campos o quitar la sección, pídeselo a Shifu en el chat.</p></div>
         {!modo && (
           <div className="mc-cab-acc">
-            <button type="button" className="mc-sec" onClick={onImportar}><LuUpload aria-hidden="true" /> Importar</button>
+            <button type="button" className="mc-sec" data-tour="importar" onClick={onImportar}><LuUpload aria-hidden="true" /> Importar</button>
             <button type="button" className="btn-pildora" onClick={() => abrir('nuevo')}><LuPlus aria-hidden="true" /> Agregar</button>
           </div>
         )}
       </div>
       {modo && <FormFila key={modo} titulo={editando ? 'Editar registro' : 'Agregar registro'} campos={lista.campos} inicial={editando ? valoresDe(editando) : {}} enviando={enviando} error={error} onGuardar={guardar} onCancelar={() => setModo(null)} />}
-
-      {lista.importaciones?.length > 0 && (
-        <details className="mc-importaciones">
-          <summary><LuUpload aria-hidden="true" /> <b>Importaciones de esta sección ({lista.importaciones.length})</b> <small>Toca aquí para quitar lo que importaste</small></summary>
-          {lista.importaciones.length > 1 && (
-            <div className="mc-imp-item mc-imp-todas">
-              <div><b>Todo lo importado</b><small>{totalImportado.toLocaleString('es')} registros de {lista.importaciones.length} importaciones</small></div>
-              {quitando === 'todas'
-                ? (
-                  <div className="mc-aj-confirma" role="alertdialog" aria-label="Confirmar que se quita todo lo importado">
-                    <p>⚠ Se borrarán los {totalImportado.toLocaleString('es')} registros de todas las importaciones de esta sección, incluso los que hayas editado. Lo que agregaste a mano se queda. {avisoDeshacer()}</p>
-                    <button type="button" className="mc-peligro" disabled={haciendo} onClick={quitarTodas}>{haciendo ? 'Quitando…' : 'Sí, quitar todo lo importado'}</button>
-                    <button type="button" className="mc-link" disabled={haciendo} onClick={() => setQuitando(null)}>Cancelar</button>
-                  </div>
-                )
-                : <button type="button" className="mc-peligro mc-chico" onClick={() => setQuitando('todas')}>Quitar todo lo importado</button>}
-            </div>
-          )}
-          {lista.importaciones.map((i) => (
-            <div key={i.id} className="mc-imp-item">
-              <div><b>{i.nombre}</b><small>{i.cantidad.toLocaleString('es')} {i.cantidad === 1 ? 'registro' : 'registros'} · {new Date(i.creado).toLocaleDateString('es')}</small></div>
-              {quitando === i.id
-                ? (
-                  <div className="mc-aj-confirma" role="alertdialog" aria-label="Confirmar que se quita la importación">
-                    <p>⚠ Se borrarán los {i.cantidad.toLocaleString('es')} registros de esta importación, incluso los que hayas editado. {avisoDeshacer()}</p>
-                    <button type="button" className="mc-peligro" disabled={haciendo} onClick={() => quitar(i)}>{haciendo ? 'Quitando…' : 'Sí, quitar la importación'}</button>
-                    <button type="button" className="mc-link" disabled={haciendo} onClick={() => setQuitando(null)}>Cancelar</button>
-                  </div>
-                )
-                : <button type="button" className="mc-sec" onClick={() => setQuitando(i.id)}>Quitar importación</button>}
-            </div>
-          ))}
-        </details>
-      )}
 
       {lista.registros.length === 0 && !modo && (
         <div className="mc-vacio-grande mc-vacio-foto">
@@ -395,7 +358,7 @@ function Lista({ lista, onAgregar, onActualizar, onBorrar, onQuitarImportacion, 
 /* ───────── Ajustes ───────── */
 
 /** Todo lo de la cuenta y la apariencia en un solo lugar: tema claro u oscuro, cerrar sesión y repetir el cuestionario (con confirmación, porque borra el CRM). */
-function Ajustes({ tema, setTema, yo, negocio, hayServidor, onSalir, onRehacer, onDescargar, onRespaldo }) {
+function Ajustes({ tema, setTema, yo, negocio, hayServidor, onSalir, onRehacer, onDescargar, onRespaldo, onTour }) {
   const [confirmando, setConfirmando] = useState(false)
   const [bajando, setBajando] = useState(false)
   const [notaExcel, setNotaExcel] = useState('')
@@ -434,6 +397,14 @@ function Ajustes({ tema, setTema, yo, negocio, hayServidor, onSalir, onRehacer, 
             </div>
           </section>
         )}
+
+        <section aria-labelledby="aj-ayuda">
+          <h2 id="aj-ayuda">Ayuda</h2>
+          <div className="mc-aj-fila">
+            <div><b>Recorrido de bienvenida</b><small>Shifu te muestra otra vez qué hay en cada parte de tu CRM y todo lo que puede hacer por ti.</small></div>
+            <button type="button" className="mc-sec" onClick={onTour}><LuSparkles aria-hidden="true" /> Ver el recorrido</button>
+          </div>
+        </section>
 
         <section aria-labelledby="aj-datos">
           <h2 id="aj-datos">Mis datos</h2>
@@ -724,7 +695,7 @@ function Avisos({ onIr }) {
   }
 
   return (
-    <div className="mc-avisos" ref={caja}>
+    <div className="mc-avisos" ref={caja} data-tour="campana">
       <button type="button" className="mc-camp" aria-label={sinLeer ? `Avisos: ${sinLeer} sin leer` : 'Avisos'} aria-expanded={abierta} onClick={() => { setAbierta(!abierta); if (!abierta) cargar() }}>
         <LuBell />{sinLeer > 0 && <i aria-hidden="true">{sinLeer > 9 ? '9+' : sinLeer}</i>}
       </button>
@@ -1020,7 +991,7 @@ function ChatShifu({ vista, tema, abierto, setAbierto, mensajes, escribiendo, on
           </form>
         </section>
       )}
-      <button type="button" className={`mc-chat-btn ${abierto ? 'abierto' : ''}`} style={{ touchAction: 'none' }} onPointerDown={empezarMover} onDragStart={(e) => e.preventDefault()}
+      <button type="button" data-tour="chat" className={`mc-chat-btn ${abierto ? 'abierto' : ''}`} style={{ touchAction: 'none' }} onPointerDown={empezarMover} onDragStart={(e) => e.preventDefault()}
         onClick={() => { if (recienMovido.current) { recienMovido.current = false; return } setAbierto(!abierto) }} aria-expanded={abierto} aria-label={abierto ? 'Cerrar el chat con Shifu' : 'Abrir el chat con Shifu'} hidden={eligiendo || capturando || ventana}>
         {abierto ? <LuX /> : <><ShifuAvatar size={46} /><i className="punto" /></>}
       </button>
@@ -1151,7 +1122,6 @@ export default function CrmPage() {
   const actualizarRegistro = (listaId, id, valores) => aplicar(() => apiCrm.registrosActualizar(listaId, id, valores))
   const quitarImportacion = (listaId, loteId) => aplicar(() => apiCrm.importacionQuitar(listaId, loteId))
   const vaciarLista = (listaId) => aplicar(() => apiCrm.registrosVaciar(listaId))
-  const quitarTodasLasImportaciones = (listaId) => aplicar(() => apiCrm.importacionesQuitarTodas(listaId))
   const agregarContacto = (fila) => aplicar(() => apiCrm.contactosCrear([fila], 'Manual', `Agregaste a ${fila.n}`))
   const actualizarContacto = (id, cambios) => aplicar(() => apiCrm.contactosActualizar(id, cambios))
   const agregarTarea = (t, vence, hora) => aplicar(() => apiCrm.tareasCrear(t, vence, hora))
@@ -1252,6 +1222,27 @@ ${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
     setBienvenida(false)
   }, [crm, recienTerminado])
 
+  // Recorrido de bienvenida: se ofrece solo al terminar de generarse el CRM (una vez por persona) y se puede repetir desde Ajustes.
+  const [tour, setTour] = useState(false)
+  const tourPendiente = useRef(recienTerminado)
+  const claveTour = () => `shifu_tour_${auth.usuario()?.correo || 'local'}`
+  const empezarTour = () => {
+    const primera = menu.find((m) => m.propia && m.grupo === 1) ?? menu[0] // se abre una pestaña propia para poder señalar sus botones
+    if (primera) setVista(primera.id)
+    setChatAbierto(false); setTour(true)
+  }
+  useEffect(() => {
+    if (!tourPendiente.current || animando || !crm) return
+    tourPendiente.current = false
+    let visto = false
+    try { visto = !!localStorage.getItem(claveTour()) } catch { /* sin almacenamiento: se muestra */ }
+    if (!visto) empezarTour()
+  }, [crm, animando]) // eslint-disable-line react-hooks/exhaustive-deps
+  const terminarTour = () => {
+    try { localStorage.setItem(claveTour(), '1') } catch { /* sin almacenamiento */ }
+    setTour(false); setChatAbierto(true) // al cerrar, Shifu ya está abierto para saludar
+  }
+
   if (fallo) return <Fallo onReintentar={() => { pedido.current = null; cargar() }} />
   if (animando && d) return <Cargando pasos={pasos} listo={!!crm} onListo={() => { setAnimando(false); nav('/mi-crm', { replace: true, state: null }) }} />
   if (!crm || !d) return <div className="carga" role="status"><p className="carga-sub">Abriendo tu CRM…</p></div>
@@ -1284,18 +1275,18 @@ ${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
       </header>
 
       <div className="mc-cuerpo">
-        <nav className={`mc-menu ${menu.length > 9 ? 'mc-menu-denso' : ''}`} aria-label="Secciones">
+        <nav className={`mc-menu ${menu.length > 9 ? 'mc-menu-denso' : ''}`} aria-label="Secciones" data-tour="menu">
           {GRUPOS.map((g, gi) => (menu.some((m) => m.grupo === gi) && (
             <div key={g} className="mc-grupo">
               <h2>{g}</h2>
               <ul>
                 {menu.filter((m) => m.grupo === gi).map(({ id, t, I }) => (
-                  <li key={id}><button type="button" title={t} data-seccion={id} className={vista === id ? 'on' : ''} aria-current={vista === id ? 'page' : undefined} onClick={() => ir(id)}><I aria-hidden="true" /><span>{t}</span></button></li>
+                  <li key={id}><button type="button" data-tour={`seccion-${id}`} title={t} data-seccion={id} className={vista === id ? 'on' : ''} aria-current={vista === id ? 'page' : undefined} onClick={() => ir(id)}><I aria-hidden="true" /><span>{t}</span></button></li>
                 ))}
               </ul>
             </div>
           )))}
-          <button type="button" className={`mc-ajustes ${vista === 'ajustes' ? 'on' : ''}`} aria-current={vista === 'ajustes' ? 'page' : undefined} onClick={() => ir('ajustes')}><LuSettings aria-hidden="true" /><span>Ajustes</span></button>
+          <button type="button" data-tour="ajustes" className={`mc-ajustes ${vista === 'ajustes' ? 'on' : ''}`} aria-current={vista === 'ajustes' ? 'page' : undefined} onClick={() => ir('ajustes')}><LuSettings aria-hidden="true" /><span>Ajustes</span></button>
         </nav>
 
         <main className="mc-main">
@@ -1321,7 +1312,7 @@ ${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
           )}
           {!conDiseno && vista.startsWith('l_') && crm.listas?.find((l) => l.id === vista) && (
             <Lista lista={crm.listas.find((l) => l.id === vista)} metodos={comoLlevaHoy(brief)} onImportar={() => setImportando(vista)} onSubirFoto={() => window.dispatchEvent(new Event('shifu:subir-foto'))} onAgregar={(id, valores) => aplicar(() => apiCrm.registrosCrear(id, valores))}
-              onActualizar={actualizarRegistro} onQuitarImportacion={quitarImportacion} onQuitarTodas={quitarTodasLasImportaciones} onVaciar={vaciarLista}
+              onActualizar={actualizarRegistro} onVaciar={vaciarLista}
               onBorrar={(id, rid) => aplicar(() => apiCrm.registrosEliminar(id, rid))} />
           )}
           {vista === 'cobros' && <Cobros moneda={d.moneda} t={tit('cobros')} />}
@@ -1331,7 +1322,7 @@ ${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
             // Con servidor, el mismo archivo que arma Shifu (todas las secciones, también las que se ven distinto en pantalla); sin servidor, el del navegador.
             if (HAY_SERVIDOR) { await exportar('excel'); return true }
             return descargarExcel(crm, d.nombre, { contactos: tit('contactos'), desarrollo: tit('desarrollo') })
-          }} onRespaldo={HAY_SERVIDOR ? () => exportar('respaldo') : null} />}
+          }} onRespaldo={HAY_SERVIDOR ? () => exportar('respaldo') : null} onTour={empezarTour} />}
           {vista === 'automatizaciones' && <Automatizaciones autos={crm.automatizaciones} onAlternar={(a) => aplicar(() => apiCrm.automatizacionFijar(a.id, !a.on))} />}
         </main>
       </div>
@@ -1348,6 +1339,7 @@ ${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
           </div>
         </div>
       )}
+      {tour && <Tour tema={tema} pasos={armarRecorrido({ negocio: d.nombre, menu, crm })} onFin={terminarTour} />}
       {aviso && <p className="mc-toast" role="alert">{aviso}</p>}
       <ChatShifu vista={vista} modo={modo} sugerencias={sugerencias} tema={tema} abierto={chatAbierto} setAbierto={setChatAbierto} mensajes={mensajes} escribiendo={escribiendo} onEnviar={enviar} onOlvidar={HAY_SERVIDOR ? olvidar : undefined} crm={crm} aplicar={aplicar} capturaLab={DISENO ? capturaMod : null} pos={chatPos} setPos={setChatPos} onPosicion={onChatPosicion} />
     </div>

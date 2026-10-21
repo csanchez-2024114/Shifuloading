@@ -340,27 +340,34 @@ async def test_la_ia_hace_la_siguiente_pregunta_viendo_todo_lo_contestado():
 
 
 @pytest.mark.asyncio
-async def test_se_termina_solo_despues_de_la_pregunta_abierta_y_del_minimo_y_nunca_se_pasa_del_maximo():
-    qa = lambda n, abierta_en=None: [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo", "abierta": i == abierta_en} for i in range(n)]
+async def test_se_termina_con_listo_despues_del_minimo_y_nunca_se_pasa_del_maximo():
+    qa = lambda n: [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo"} for i in range(n)]
     # antes del mínimo, un "listo" no se acepta: se sigue con las preguntas fijas
     assert (await diseno.siguiente_pregunta({**DATOS, "qa": qa(1)}, modelo=Modelo({"listo": True})))["modo"] == "base"
-    # si la IA dice "listo" sin haber hecho la pregunta abierta, se hace la abierta (que es lo que de verdad dice qué busca la persona)
+    # cumplido el mínimo, "listo" termina sin inventar una pregunta abierta
     r = await diseno.siguiente_pregunta({**DATOS, "qa": qa(diseno.MIN_IA)}, modelo=Modelo({"listo": True, "rubro": "otro"}))
-    assert r["rubro"] == "otro" and r["pregunta"]["tipo"] == "parrafo" and "dentro de un mes" in r["pregunta"]["titulo"]
-    # contestada la abierta y cumplido el mínimo, se termina sin volver a llamar a la IA
+    assert r["rubro"] == "otro" and r["pregunta"] is None and r["modo"] == "ia"
+    # en el máximo no se llama al modelo
     m = Modelo(RuntimeError("no debía llamarse"))
-    r = await diseno.siguiente_pregunta({**DATOS, "qa": qa(diseno.MIN_IA, abierta_en=diseno.MIN_IA - 1)}, modelo=m)
-    assert r["pregunta"] is None and r["modo"] == "ia" and m.recibido is None
-    # en el máximo tampoco se llama al modelo
     assert (await diseno.siguiente_pregunta({**DATOS, "qa": qa(diseno.MAX_IA)}, modelo=m))["pregunta"] is None and m.recibido is None
 
 
 @pytest.mark.asyncio
-async def test_la_ultima_pregunta_posible_siempre_es_la_abierta_aunque_la_ia_haga_otra():
-    qa = [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo", "abierta": False} for i in range(diseno.MAX_IA - 1)]
-    m = Modelo({"rubro": "otro", "pregunta": {"titulo": "¿Una pregunta más de opciones?", "tipo": "una", "opciones": [{"t": "Sí"}, {"t": "No"}]}})
-    r = await diseno.siguiente_pregunta({**DATOS, "qa": qa}, modelo=m)
-    assert r["pregunta"]["tipo"] == "parrafo" and "ÚLTIMA pregunta posible" in " ".join(msg.content for msg in m.recibido)
+async def test_nunca_se_hace_una_pregunta_abierta_se_reintenta_con_una_de_opciones():
+    class DosVeces(Modelo):
+        def __init__(self):
+            super().__init__(None)
+            self.llamadas = 0
+
+        async def ainvoke(self, mensajes):
+            self.llamadas += 1
+            self.recibido = mensajes
+            return AIMessage(content=json.dumps({"pregunta": {"titulo": "¿Qué cuentas tienes que llevar?", "tipo": "texto"}} if self.llamadas == 1 else {"pregunta": PREG}))
+
+    m = DosVeces()
+    r = await diseno.siguiente_pregunta(DATOS, modelo=m)
+    assert m.llamadas == 2 and r["pregunta"]["tipo"] == "una" and "NO puede ser de texto abierto" in " ".join(msg.content for msg in m.recibido)
+    assert "NUNCA hagas una pregunta abierta" in diseno._SISTEMA_SIGUIENTE
 
 
 @pytest.mark.asyncio
@@ -373,28 +380,10 @@ async def test_una_pregunta_repetida_o_mal_hecha_o_una_falla_de_la_ia_pasan_a_la
 
 
 @pytest.mark.asyncio
-async def test_un_rubro_inventado_se_descarta_y_la_pregunta_abierta_no_dice_opcional():
-    qa = [{"pregunta": f"¿Pregunta número {i}?", "respuesta": "Algo", "abierta": False} for i in range(diseno.MIN_IA - 1)]
-    m = Modelo({"rubro": "naves espaciales", "pregunta": {"titulo": "¿Qué te gustaría contarnos de tus clientes?", "tipo": "texto"}})
-    r = await diseno.siguiente_pregunta({**DATOS, "qa": qa}, modelo=m)
-    assert r["rubro"] is None and r["pregunta"]["tipo"] == "parrafo" and "Opcional" not in r["pregunta"]["sub"]
-
-
-@pytest.mark.asyncio
-async def test_la_abierta_no_se_hace_a_mitad_del_cuestionario_se_reintenta_con_una_de_opciones():
-    class DosVeces(Modelo):
-        def __init__(self):
-            super().__init__(None)
-            self.llamadas = 0
-
-        async def ainvoke(self, mensajes):
-            self.llamadas += 1
-            self.recibido = mensajes
-            return AIMessage(content=json.dumps({"pregunta": {"titulo": "¿Qué cuentas tienes que llevar?", "tipo": "texto"}} if self.llamadas == 1 else {"pregunta": PREG}))
-
-    m = DosVeces()
-    r = await diseno.siguiente_pregunta(DATOS, modelo=m)  # sin preguntas hechas: todavía no toca la abierta
-    assert m.llamadas == 2 and r["pregunta"]["tipo"] == "una" and "NO puede ser de texto abierto" in " ".join(msg.content for msg in m.recibido)
+async def test_un_rubro_inventado_se_descarta():
+    m = Modelo({"rubro": "naves espaciales", "pregunta": PREG})
+    r = await diseno.siguiente_pregunta(DATOS, modelo=m)
+    assert r["rubro"] is None and r["pregunta"]["tipo"] == "una"
 
 
 @pytest.mark.asyncio
@@ -450,3 +439,14 @@ def test_el_primer_campo_de_una_seccion_siempre_nombra_cada_fila():
     for primero in ("Proveedor", "Platillo", "Cliente", "Producto"):
         ok, _ = diseno.aplicar_propuesta(doc, {"secciones": [{"nombre": "Lista", "campos": [{"nombre": primero}, {"nombre": "Teléfono"}]}]}, AHORA)
         assert [c["nombre"] for c in ok["listas"][0]["campos"]][0] == primero
+
+
+def test_cada_seccion_trae_su_explicacion_para_el_recorrido_de_bienvenida():
+    from app.crm.vista import vista_crm
+
+    doc = generar("u1", PANADERIA, AHORA)
+    nuevo, _ = diseno.aplicar_propuesta(doc, {"secciones": [
+        {"nombre": "Productos", "descripcion": "  Aquí anotas lo que vendes, su precio y cuánto te queda.  ", "campos": [{"nombre": "Producto"}, {"nombre": "Precio", "tipo": "numero"}]},
+        {"nombre": "Proveedores", "campos": [{"nombre": "Proveedor"}]}]}, AHORA)  # esta no trae explicación: queda vacía y la pantalla usa una general
+    v = vista_crm(nuevo, AHORA)
+    assert [l["descripcion"] for l in v["listas"]] == ["Aquí anotas lo que vendes, su precio y cuánto te queda."] + [None] * (len(v["listas"]) - 1)
