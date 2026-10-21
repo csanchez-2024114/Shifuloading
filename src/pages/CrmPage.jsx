@@ -761,6 +761,8 @@ function sugerenciasDe(contactos) {
 const CLAVE_SUG_OCULTAS = 'shifu_sug_ocultas'
 const ANCHO_CHAT = 360
 const CLAVE_LUGAR_CHAT = 'shifu_lugar_chat'
+const CLAVE_CONSEJO_FOTO = 'shifu_consejo_foto'
+const CONSEJO_CADA_MS = 3 * 24 * 60 * 60 * 1000
 const ALTO_CHAT = 560
 
 function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, crm, aplicar, capturaLab, pos, setPos, onPosicion }) {
@@ -855,11 +857,17 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
   const [eligiendo, setEligiendo] = useState(false)
   const [capturando, setCapturando] = useState(false)
   const [errorImg, setErrorImg] = useState('')
-  // Consejo de la cámara: sale cada vez que se abre el chat y se va al tocar la cámara, al cerrarlo o a los 12 segundos.
+  // Consejo de la foto: de vez en cuando, no cada vez que se abre el chat (prueba manual 21-oct). Sale como mucho una vez cada
+  // 3 días y nunca más cuando la persona ya usó la foto o lo cerró con la X. Se va solo a los 12 segundos.
   const [consejo, setConsejo] = useState(false)
-  const cerrarConsejo = () => setConsejo(false)
+  const leerConsejo = () => { try { return JSON.parse(localStorage.getItem(CLAVE_CONSEJO_FOTO)) || {} } catch { return {} } }
+  const guardarConsejo = (x) => { try { localStorage.setItem(CLAVE_CONSEJO_FOTO, JSON.stringify({ ...leerConsejo(), ...x })) } catch { /* sin almacenamiento */ } }
+  const cerrarConsejo = (yaLoSabe = false) => { setConsejo(false); if (yaLoSabe === true) guardarConsejo({ listo: true }) }
   useEffect(() => {
     if (!abierto) { setConsejo(false); return undefined }
+    const c = leerConsejo()
+    if (c.listo || Date.now() - (c.visto || 0) < CONSEJO_CADA_MS) return undefined
+    guardarConsejo({ visto: Date.now() })
     setConsejo(true)
     const t = setTimeout(() => setConsejo(false), 12000)
     return () => clearTimeout(t)
@@ -1000,12 +1008,12 @@ function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar,
           )}
           {consejo && !imagen?.url && !imagen?.piezas?.length && !documento && !errorImg && (
             <div className="mc-consejo" role="note">
-              <button type="button" className="mc-consejo-x" onClick={cerrarConsejo} aria-label="Cerrar el consejo"><LuX /></button>
+              <button type="button" className="mc-consejo-x" onClick={() => cerrarConsejo(true)} aria-label="Cerrar el consejo"><LuX /></button>
               <p><b>📷 ¿Tienes tus datos en un cuaderno?</b> Toca el botón de foto, súbela y yo los paso aquí.</p>
             </div>
           )}
           <form onSubmit={enviar} onDragOver={(e) => e.preventDefault()} onDrop={soltar}>
-            <button type="button" className="mc-chat-cam mc-chat-foto" onClick={() => { cerrarConsejo(); fotoRef.current?.click() }} disabled={escribiendo} aria-label="Subir una foto" title="Subir una foto"><LuImagePlus /></button>
+            <button type="button" className="mc-chat-cam mc-chat-foto" onClick={() => { cerrarConsejo(true); fotoRef.current?.click() }} disabled={escribiendo} aria-label="Subir una foto" title="Subir una foto"><LuImagePlus /></button>
             <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); docRef.current?.click() }} disabled={escribiendo} aria-label="Adjuntar un documento" title="Adjuntar PDF, Excel, Word…"><LuPaperclip /></button>
             <button type="button" className="mc-chat-cam" onClick={() => { cerrarConsejo(); setEligiendo(true) }} disabled={escribiendo} aria-label="Capturar una parte de la pantalla" title="Capturar una parte de la pantalla"><LuCamera /></button>
             <input ref={campo} value={txt} onChange={(e) => setTxt(e.target.value)} onPaste={pegar} placeholder={imagen ? 'Qué hago con esta foto…' : documento ? 'Qué hago con este archivo…' : ventana ? 'Escribe o adjunta…' : 'Escribe, sube una foto o adjunta un archivo…'} aria-label="Mensaje para Shifu" maxLength={2000} />
