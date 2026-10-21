@@ -765,7 +765,9 @@ const ALTO_CHAT = 560
 function ChatShifu({ tema, abierto, setAbierto, mensajes, escribiendo, onEnviar, sugerencias, modo, onOlvidar, crm, aplicar, capturaLab, pos, setPos, onPosicion }) {
   const [txt, setTxt] = useState('')
   const [ancho, setAncho] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200))
-  const ventana = DISENO && ancho >= ANCHO_VENTANA
+  // El chat flota sobre la pantalla y se minimiza en la bolita, como en el CRM de Carlos (pedido en la prueba manual 21-oct): el modo
+  // «ventana» pegado al lado achicaba la pantalla. Se deja apagado; ANCHO_VENTANA y chat-ventana.css quedan para volver a probarlo.
+  const ventana = false && DISENO && ancho >= ANCHO_VENTANA
   const [sugOcultas, setSugOcultas] = useState(() => { try { return localStorage.getItem(CLAVE_SUG_OCULTAS) === '1' } catch { return false } })
   const [cabEl, setCabEl] = useState(null)
   const [popEl, setPopEl] = useState(null)
@@ -1250,7 +1252,6 @@ ${ejemplos.map((e) => `- «${e}»`).join('\n')}`)])
               </ul>
             </div>
           )))}
-          <button type="button" className="mc-pedir" onClick={() => setChatAbierto(true)}><LuSparkles aria-hidden="true" /><span>¿Qué más quieres tener?<small>Pídeselo a Shifu y lo agrega</small></span></button>
           <button type="button" className={`mc-ajustes ${vista === 'ajustes' ? 'on' : ''}`} aria-current={vista === 'ajustes' ? 'page' : undefined} onClick={() => ir('ajustes')}><LuSettings aria-hidden="true" /><span>Ajustes</span></button>
         </nav>
 
